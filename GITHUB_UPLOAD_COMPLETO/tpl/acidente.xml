@@ -1,0 +1,3669 @@
+<w:tbl>
+      <w:tblPr>
+        <w:tblStyle w:val="TableNormal"/>
+        
+        <w:tblW w:w="10469" w:type="dxa"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+          <w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblLook w:val="01E0" w:firstRow="1" w:lastRow="1" w:firstColumn="1" w:lastColumn="1" w:noHBand="0" w:noVBand="0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1311"/>
+        <w:gridCol w:w="1308"/>
+        <w:gridCol w:w="3925"/>
+        <w:gridCol w:w="1308"/>
+        <w:gridCol w:w="2617"/>
+      </w:tblGrid>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="073D5759" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="253"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1311" w:type="dxa"/>
+            <w:shd w:val="clear" w:color="auto" w:fill="B6C7FF"/>
+          </w:tcPr>
+          <w:p w14:paraId="1C196E40" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Agente</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5233" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:shd w:val="clear" w:color="auto" w:fill="B6C7FF"/>
+          </w:tcPr>
+          <w:p w14:paraId="16A743BA" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Queda</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Objetos</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1308" w:type="dxa"/>
+            <w:shd w:val="clear" w:color="auto" w:fill="B6C7FF"/>
+          </w:tcPr>
+          <w:p w14:paraId="29DDEC12" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Grupo</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:shd w:val="clear" w:color="auto" w:fill="B6C7FF"/>
+          </w:tcPr>
+          <w:p w14:paraId="41B63C8A" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Acidente</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="5A9F8096" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="256"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="574CA34F" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Frequência</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+          </w:tcPr>
+          <w:p w14:paraId="3221ED75" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Intermitente</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="640D5283" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="254"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="3414E797" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Classif.</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Efeito</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+          </w:tcPr>
+          <w:p w14:paraId="21055151" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Moderado</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="76021EA6" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="253"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="6E234D5E" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Nível</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>risco</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+          </w:tcPr>
+          <w:p w14:paraId="5B5C10EC" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Risco</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Baixo</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="542177AA" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="221"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:bottom w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="4A5EBC3E" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="34" w:line="168" w:lineRule="exact"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Fonte</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Geradora</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:bottom w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="2F686CC4" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="34" w:line="168" w:lineRule="exact"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Ambiente</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>trabalho.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="5C99BB97" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="607"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:vMerge w:val="restart"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="22F89425" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Medidas</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-5"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Existentes</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+              <w:bottom w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="35580BAF" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28" w:right="4851"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve">EPI: </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Uso de capacete de segurança.</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-54"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Uso</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>do</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>calçado</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>segurança.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="0DC513EA" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:line="167" w:lineRule="exact"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Uso</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>dos</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>óculos</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Segurança.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="1F71D09E" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="264"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:vMerge/>
+            <w:tcBorders>
+              <w:top w:val="nil"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="10BE89EB" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="2"/>
+                <w:szCs w:val="2"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="78BDABB9" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="41"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve">EPC: </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Isolamento</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>área</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>risco</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="4649529B" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="448"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="6C5D1357" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Efeito</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+          </w:tcPr>
+          <w:p w14:paraId="49BBD78F" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>As</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>consequências</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>uma</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="51"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>queda</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>um</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>objeto</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="53"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>incluem:</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="54"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Lesões</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>nos</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="52"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>membros</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="55"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>inferiores;</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-53"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>esmagamento/aprisionamento</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>membros</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>escoriações.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="2D37B696" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="1776"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="05F2CCFE" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Orientação</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:bottom w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="4EAEE717" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28" w:right="21"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Ocupacional deverá</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>ser</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>comunicado</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>por</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>escrito,</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>para</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>que</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>seja</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>realizada</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>nova</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>avaliação.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="26E44DC0" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="1F8783E9" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:ind w:left="28" w:right="17"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>O(s)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-12"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>EPI(s)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>deverá(ão)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>ser</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-12"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>adquirido(s)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-12"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>distribuído(s),</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>conforme</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>o(s)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>risco(s)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>da(s)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-13"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>atividade(s),</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-54"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>da</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Portaria</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>3.214/78</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>do</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>M.T.E.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="2CDC4E39" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="12"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="15"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="1AB1AC9D" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:line="168" w:lineRule="exact"/>
+              <w:ind w:left="28"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Observar</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>cumprir</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>as normas</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-4"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>segurança</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>da</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>empresa.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="5F6D071D" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="1776"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="4D647122" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Medidas</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Propostas</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+              <w:bottom w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="2154FA9F" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="38"/>
+              </w:numPr>
+              <w:tabs>
+                <w:tab w:val="left" w:pos="748"/>
+                <w:tab w:val="left" w:pos="749"/>
+              </w:tabs>
+              <w:spacing w:before="31"/>
+              <w:ind w:hanging="361"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Treinar</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>os</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>trabalhadores</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>quanto as</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>atividades</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>carga</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-4"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>descarga</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de materiais;</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="541F745C" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="11"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="15"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="55BFDC04" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="38"/>
+              </w:numPr>
+              <w:tabs>
+                <w:tab w:val="left" w:pos="748"/>
+                <w:tab w:val="left" w:pos="749"/>
+              </w:tabs>
+              <w:ind w:hanging="361"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Manter o</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>ambiente</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>limpo</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>organizado;</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="3C686330" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="10"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="15"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="0BB20B32" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="38"/>
+              </w:numPr>
+              <w:tabs>
+                <w:tab w:val="left" w:pos="749"/>
+              </w:tabs>
+              <w:spacing w:before="1"/>
+              <w:ind w:left="748" w:right="17"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Manter os materiais estocados de maneira que os limites de peso sejam respeitados,</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>bem como estejam afastados das estruturas laterais do prédio a uma distância mínima</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-54"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>50</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>centímetros</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>acordo</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>com a</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>NR-11;</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="48644013" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="10"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="15"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="48FAFA9C" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="38"/>
+              </w:numPr>
+              <w:tabs>
+                <w:tab w:val="left" w:pos="748"/>
+                <w:tab w:val="left" w:pos="749"/>
+              </w:tabs>
+              <w:spacing w:line="170" w:lineRule="exact"/>
+              <w:ind w:hanging="361"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Utilização</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>botina</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>segurança</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>para</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>proteção</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>dos</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>pés</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>contra</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>queda</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>objetos;</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="6B9743A2" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="446"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="74B6D892" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="29"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Efeitos</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Potenciais</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="259F4E9A" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="29"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>De</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-6"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>acordo</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-5"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>com</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-5"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>as</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-6"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>informações</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>levantadas</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>na</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-7"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>empresa,</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-5"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>não</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-5"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>há</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-7"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>ocorrências</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-6"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-6"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>comprometimento</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-53"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>à</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>saúde</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>decorrente</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>do</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>trabalho.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="6128F61E" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="415"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="250A87F4" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="33"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Fundamentação</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:spacing w:val="-4"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Legal</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:bottom w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="200E56E9" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="13" w:line="190" w:lineRule="atLeast"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Estabelecido</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="16"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>pela</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="18"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Norma</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="15"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Regulamentadora</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="18"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>N°11</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="19"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>(Transporte,</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="21"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Movimentação,</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="18"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Armazenagem</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="16"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-53"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Manuseio de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Materiais)</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>da Portaria 3214/78</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>do</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Ministério</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>do</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Trabalho</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>e</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Emprego.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="00995481" w:rsidRPr="00C746D4" w14:paraId="5AA46A0C" w14:textId="77777777" w:rsidTr="008B336C">
+        <w:trPr>
+          <w:trHeight w:val="448"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2619" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+          </w:tcPr>
+          <w:p w14:paraId="7B76D60E" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Observações/Metodologia</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="18" w:space="0" w:color="FFFFFF"/>
+            </w:tcBorders>
+          </w:tcPr>
+          <w:p w14:paraId="18FECC47" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:spacing w:before="31"/>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Avaliação</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-3"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Qualitativa</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="01EF7692" w14:textId="77777777" w:rsidR="00995481" w:rsidRPr="00C746D4" w:rsidRDefault="00995481" w:rsidP="008B336C">
+            <w:pPr>
+              <w:ind w:left="28"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Técnica:</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>Inspeção</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-2"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>no local</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-4"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>de</w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:spacing w:val="-1"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:eastAsia="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:lang w:val="pt-PT"/>
+              </w:rPr>
+              <w:t>trabalho.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>

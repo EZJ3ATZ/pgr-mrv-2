@@ -1,0 +1,1866 @@
+<w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="10467" w:type="dxa"/>
+        <w:jc w:val="center"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:insideH w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:insideV w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblCellMar>
+          <w:left w:w="30" w:type="dxa"/>
+          <w:right w:w="30" w:type="dxa"/>
+        </w:tblCellMar>
+        <w:tblLook w:val="0000" w:firstRow="0" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="1309"/>
+        <w:gridCol w:w="1308"/>
+        <w:gridCol w:w="2617"/>
+        <w:gridCol w:w="1308"/>
+        <w:gridCol w:w="1308"/>
+        <w:gridCol w:w="2617"/>
+      </w:tblGrid>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="090D3C31" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1309" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="ABCBAB"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="6BA2F5DE" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Agente</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="5233" w:type="dxa"/>
+            <w:gridSpan w:val="3"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="ABCBAB"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="65BF3D75" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Ruído </w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1308" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="ABCBAB"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="74A59C6C" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Grupo</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="ABCBAB"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="106EE328" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Físico</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="30474BFB" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="5BCAE24A" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Limite de Tolerância</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="11581D75" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>85,0 dB(A)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2616" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7C6ECC8B" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Nível de Ação</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="41A9F5CB" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>80,0 dB(A)</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="19CF5B22" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="3A3AB0DA" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Meio de Propagação</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="789F7EC6" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Ar / Ondas Sonoras</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="1DE6D804" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="42E7DBBA" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Frequência</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="53E54722" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Habitual - Intermitente</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="07985E27" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="3BF9E42D" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Classificação do Efeito</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7CB35A33" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Moderado</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="1C89F663" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1309" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7B60A8F3" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Data</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1308" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="463E679D" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Medição</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3925" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="6319DD41" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Empresa</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3925" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="724A040A" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Técnica Utilizada</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="4DCD944F" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1309" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="73BDE617" w14:textId="04D64190" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="00DD3C84" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>20/02/2024</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="1308" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="5730EE0D" w14:textId="5FDEC6D1" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="0041308A" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t xml:space="preserve">81,57 dB(A) </w:t>
+            </w:r>
+            
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3925" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF" w:themeFill="background1"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="0B293F91" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Fênix Consultoria </w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="3925" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF" w:themeFill="background1"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="48786528" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Dosimetria - NHO 01</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="7D55E00E" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="62BF804D" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Fonte Geradora</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="67A9EF80" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Ruído proveniente de equipamentos e máquinas no canteiro de obra</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="08B618F3" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="62818221" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Medidas Existentes EPI</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="1D6A0E5F" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Protetor auricular</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="445B44D7" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="4CE7CBDD" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Medidas Existentes EPC</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7384AFDA" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>-</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="34B07EEC" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7C6CD5AD" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Efeito</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="764E4B6D" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Pode causar ansiedade, tensão, insônia e nervosismo.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="504CD691" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7201F3FB" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Orientação</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="4FF9D2A1" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="3E123A70" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="5C58AD42" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>O(s) EPI(s) deverá(ão) ser adquirido(s) e distribuído(s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do M.T.E.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="50FB9D42" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="5FCCD679" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Observar e cumprir as normas de segurança da empresa. </w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="4005CBD3" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="2ED0671F" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Medidas Propostas</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="0C10E010" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Foi identificada a exposição ao agente ruído, sendo necessário.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="7E708A71" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t> </w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="3E7C1FF1" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:pStyle w:val="PargrafodaLista"/>
+              <w:widowControl/>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="2"/>
+              </w:numPr>
+              <w:autoSpaceDE/>
+              <w:autoSpaceDN/>
+              <w:adjustRightInd/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Sugerimos o estudo para identificação das máquinas e equipamentos com maior emissão de ruído a fim de intervir na fonte geradora de forma a manter a exposição ao agente abaixo dos Limites de Tolerância. </w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="3AE22303" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLine="60"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="1066085A" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:pStyle w:val="PargrafodaLista"/>
+              <w:widowControl/>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="2"/>
+              </w:numPr>
+              <w:autoSpaceDE/>
+              <w:autoSpaceDN/>
+              <w:adjustRightInd/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Realizar nova avaliação quantitativa com objetivo de avaliar a eficácia das ações adotadas. Caso os níveis de ruído não tenham sido atenuados de forma que a exposição seja abaixo dos limites legais, sugerimos ações administrativas realizando o rodízio dos trabalhadores para redução do tempo de exposição. </w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="355B2B81" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:ind w:firstLine="60"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+          </w:p>
+          <w:p w14:paraId="05A0C04B" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:pStyle w:val="PargrafodaLista"/>
+              <w:widowControl/>
+              <w:numPr>
+                <w:ilvl w:val="0"/>
+                <w:numId w:val="2"/>
+              </w:numPr>
+              <w:autoSpaceDE/>
+              <w:autoSpaceDN/>
+              <w:adjustRightInd/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+              <w:t>Treinar os trabalhadores quanto aos riscos provenientes da exposição ao ruído e as formas de prevenção de doenças.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="02FDBB37" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t> </w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="5B03E8C6" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Recomendamos o uso de protetor auditivo e a realização dos exames médicos, audiometria, face o que estabelece a NR-07 (PCMSO) da Portaria 3214 do M.T.E., diante do nível de ruído ter ultrapassado o limite de tolerância (LT) de 85 dB(A).</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="5D1BFF9C" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="39692A9B" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Efeitos Potenciais</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="129444B1" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="5973E8BE" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="1629DE30" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Fundamentação Legal</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="5F3D9B19" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Acima do nível de ação, conforme NR-09 da Portaria 3214/78 do M.T.E.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="26ADDB6E" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="2617" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="4EB4B8FC" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Observações/Metodologia</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="7850" w:type="dxa"/>
+            <w:gridSpan w:val="4"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="06296DF9" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Avaliação: Quantitativa.</w:t>
+            </w:r>
+          </w:p>
+          <w:p w14:paraId="7E6C9570" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Técnica: Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. O equipamento foi fixado dentro da zona auditiva (raio medido a partir do canal auditivo </w:t>
+            <w:lastRenderedPageBreak/><w:t>de 150 mm a mais ou menos 50 mm), ajustado no modo de resposta lenta e com o critério de avaliação estabelecido pela legislação do Ministério do Trabalho - M.T.E. - nomeado -critério legal- que adota como parâmetro para a determinação do Limite de Exposição (LE), o critério de referência de 85 dB (A) para 8 horas de exposição, correspondendo à dose de 100 % da exposição permissível, com nível liminar de integração (NLI) de 80 dB (A) e incremento de dose de 5. </w:t></w:r>
+            
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>

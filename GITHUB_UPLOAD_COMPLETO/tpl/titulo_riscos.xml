@@ -1,0 +1,45 @@
+
+    <w:p w14:paraId="4C19C077" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+      <w:pPr>
+        <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+          <w:b/>
+          <w:bCs/>
+          <w:sz w:val="16"/>
+          <w:szCs w:val="16"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    <w:p w14:paraId="12F97764" w14:textId="4DB3684D" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+      <w:pPr>
+        <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+          <w:sz w:val="16"/>
+          <w:szCs w:val="16"/>
+        </w:rPr>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+          <w:b/>
+          <w:bCs/>
+          <w:sz w:val="16"/>
+          <w:szCs w:val="16"/>
+        </w:rPr>
+        <w:t xml:space="preserve">Especificação dos Riscos - Cargo: Pedreiro </w:t>
+      </w:r>
+      
+    </w:p>
+    <w:p w14:paraId="0765E8DC" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+      <w:pPr>
+        <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+          <w:sz w:val="16"/>
+          <w:szCs w:val="16"/>
+        </w:rPr>
+      </w:pPr>
+    </w:p>
+    

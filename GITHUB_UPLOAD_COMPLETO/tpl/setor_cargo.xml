@@ -1,0 +1,274 @@
+<w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="10467" w:type="dxa"/>
+        <w:jc w:val="center"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:insideH w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:insideV w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblCellMar>
+          <w:left w:w="30" w:type="dxa"/>
+          <w:right w:w="30" w:type="dxa"/>
+        </w:tblCellMar>
+        <w:tblLook w:val="0000" w:firstRow="0" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="10467"/>
+      </w:tblGrid>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="178462EF" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="10467" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="D9D9D9"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="29BB7501" w14:textId="72A80271" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="004E033B">
+            <w:pPr>
+              <w:pStyle w:val="Estilo2"/>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+            </w:pPr>
+            <w:bookmarkStart w:id="28" w:name="_Toc46925847"/>
+            <w:bookmarkStart w:id="29" w:name="_Toc90628272"/>
+            <w:bookmarkStart w:id="30" w:name="_Toc224893004"/>
+            <w:r>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+              <w:t>Setor: Ribeirão das Neves - MG</w:t>
+            </w:r>
+            
+            
+            <w:bookmarkEnd w:id="28"/>
+            <w:bookmarkEnd w:id="29"/>
+            <w:bookmarkEnd w:id="30"/>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="005B1A97" w:rsidRPr="000A45FC" w14:paraId="02EE46E1" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="10467" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="4CD42DCF" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:b/>
+                <w:bCs/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t xml:space="preserve">Ambientes diversos, abertos e fechados, da área de construção civil. </w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p w14:paraId="0A21CFB4" w14:textId="2D831AEF" w:rsidR="00601B16" w:rsidRDefault="00601B16" w:rsidP="005B1A97">
+      <w:pPr>
+        <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+        <w:rPr>
+          <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+          <w:sz w:val="16"/>
+          <w:szCs w:val="16"/>
+        </w:rPr>
+      </w:pPr>
+      <w:bookmarkStart w:id="31" w:name="_Toc45724987"/>
+      <w:bookmarkStart w:id="32" w:name="_Toc45777712"/>
+    </w:p>
+    <w:tbl>
+      <w:tblPr>
+        <w:tblW w:w="10467" w:type="dxa"/>
+        <w:jc w:val="center"/>
+        <w:tblBorders>
+          <w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:insideH w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+          <w:insideV w:val="single" w:sz="8" w:space="0" w:color="000000"/>
+        </w:tblBorders>
+        <w:tblLayout w:type="fixed"/>
+        <w:tblCellMar>
+          <w:left w:w="30" w:type="dxa"/>
+          <w:right w:w="30" w:type="dxa"/>
+        </w:tblCellMar>
+        <w:tblLook w:val="0000" w:firstRow="0" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="0"/>
+      </w:tblPr>
+      <w:tblGrid>
+        <w:gridCol w:w="6280"/>
+        <w:gridCol w:w="4187"/>
+      </w:tblGrid>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="01FA5C9D" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="6280" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="590655E6" w14:textId="4C2BF719" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="004E033B">
+            <w:pPr>
+              <w:pStyle w:val="Estilo2"/>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+            </w:pPr>
+            <w:bookmarkStart w:id="33" w:name="_Toc90628277"/>
+            <w:bookmarkStart w:id="34" w:name="_Toc224893005"/>
+            <w:bookmarkEnd w:id="31"/>
+            <w:bookmarkEnd w:id="32"/>
+            <w:r>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+              <w:t>Cargo: Pedreiro</w:t>
+            </w:r>
+            <w:bookmarkEnd w:id="33"/>
+            <w:bookmarkEnd w:id="34"/>
+            <w:r>
+              <w:rPr>
+                <w:color w:val="auto"/>
+              </w:rPr>
+              <w:t xml:space="preserve"> </w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="4187" w:type="dxa"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="631A45F3" w14:textId="77777777" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="005B1A97" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Masc.: 0 Fem.: 0 Menor: 0 Total: 0</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+      <w:tr w:rsidR="000A45FC" w:rsidRPr="000A45FC" w14:paraId="5F1BE47F" w14:textId="77777777" w:rsidTr="00800010">
+        <w:trPr>
+          <w:jc w:val="center"/>
+        </w:trPr>
+        <w:tc>
+          <w:tcPr>
+            <w:tcW w:w="10467" w:type="dxa"/>
+            <w:gridSpan w:val="2"/>
+            <w:tcBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+            <w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>
+            <w:tcMar>
+              <w:top w:w="30" w:type="dxa"/>
+              <w:left w:w="30" w:type="dxa"/>
+              <w:bottom w:w="30" w:type="dxa"/>
+              <w:right w:w="30" w:type="dxa"/>
+            </w:tcMar>
+          </w:tcPr>
+          <w:p w14:paraId="7CBFA4A2" w14:textId="02BBCFC6" w:rsidR="005B1A97" w:rsidRPr="000A45FC" w:rsidRDefault="003673C7" w:rsidP="005B1A97">
+            <w:pPr>
+              <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+              <w:jc w:val="both"/>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+            </w:pPr>
+            <w:r>
+              <w:rPr>
+                <w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/>
+                <w:sz w:val="16"/>
+                <w:szCs w:val="16"/>
+              </w:rPr>
+              <w:t>Executar serviços de acabamento e reparos de blocos e superfícies concretadas, assentamento de tijolos, reboco e arremates de estruturas construídas, preparação de argamassa de diversos tipos, colocação de telhas, lajes pré-moldadas, pisos, azulejos, ferragens, manilhas, bancadas e peças sanitárias, de acordo com orientações e solicitações recebidas do superior imediato.</w:t>
+            </w:r>
+          </w:p>
+        </w:tc>
+      </w:tr>
+    </w:tbl>

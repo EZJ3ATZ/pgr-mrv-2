@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de PGR — MRV</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#0f1623;color:#e2e8f4;min-height:100vh}
+    header{background:linear-gradient(135deg,#1a2540,#0f1623);padding:22px 32px;border-bottom:1px solid #1e2d4a;display:flex;align-items:center;gap:16px}
+    header h1{font-size:1.4rem;font-weight:700;color:#4a9eff}
+    header span{font-size:.85rem;color:#6b85a8;margin-left:8px}
+    .container{max-width:860px;margin:32px auto;padding:0 20px}
+    .card{background:#1a2235;border:1px solid #233050;border-radius:12px;padding:24px;margin-bottom:20px}
+    .card-title{font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4a9eff;margin-bottom:16px}
+    .upload-zone{border:2px dashed #2a3f6a;border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:.2s;background:#111a2e}
+    .upload-zone:hover{border-color:#4a9eff;background:#131f35}
+    .upload-zone.active{border-color:#27ae60;background:#0f2018}
+    .upload-zone p{color:#6b85a8;font-size:.9rem;margin-top:8px}
+    .upload-zone .icon{font-size:2.4rem}
+    #pdf-name{margin-top:10px;font-size:.85rem;color:#4a9eff;font-weight:600}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .grid3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px}
+    label{display:block;font-size:.78rem;color:#7a90b0;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    input,select{width:100%;background:#111a2e;border:1px solid #1e2d4a;border-radius:7px;padding:9px 12px;color:#e2e8f4;font-size:.9rem;transition:.2s;outline:none}
+    input:focus,select:focus{border-color:#4a9eff;background:#0f1623}
+    .cargo-row{display:flex;gap:10px;align-items:center}
+    .cargo-row input{flex:1}
+    .cargo-row select{flex:1}
+    .btn{padding:10px 18px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:.88rem;transition:.15s}
+    .btn-add{background:#1d6a3a;color:#fff}
+    .btn-add:hover{background:#27ae60}
+    .btn-rem{background:#5a1a1a;color:#fff}
+    .btn-rem:hover{background:#e74c3c}
+    .btn-gerar{background:linear-gradient(135deg,#1a5eff,#0d3eb3);color:#fff;width:100%;padding:15px;font-size:1rem;border-radius:10px;letter-spacing:.04em}
+    .btn-gerar:hover{background:linear-gradient(135deg,#2a6eff,#1a4ec3);transform:translateY(-1px)}
+    .btn-gerar:disabled{background:#1e2d4a;color:#4a5a7a;cursor:not-allowed;transform:none}
+    #cargo-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+    .cargo-item{display:flex;align-items:center;justify-content:space-between;background:#111a2e;border:1px solid #1e2d4a;border-radius:7px;padding:8px 12px;font-size:.88rem}
+    .cargo-item .ghe-tag{font-size:.72rem;color:#4a9eff;background:#0d1f3a;border:1px solid #1e3a6a;border-radius:4px;padding:2px 7px;margin-left:8px}
+    .cargo-item .ghe-tag.unknown{color:#d4a017;background:#2a1f00;border-color:#6a4a00}
+    .cargo-item.cargo-unknown{border:1px solid #6a4a00;background:#1a1400}
+    .cargo-item button{background:none;border:none;color:#e74c3c;cursor:pointer;font-size:1rem;padding:0 4px}
+    .cargo-alert{background:#2a1f00;border:1px solid #d4a017;border-radius:8px;padding:10px 14px;font-size:.85rem;color:#f0c040;margin-top:8px;display:none}
+    .status{padding:10px 14px;border-radius:8px;font-size:.88rem;margin-top:12px;display:none}
+    .status.ok{background:#0f2a1a;border:1px solid #27ae60;color:#5ddb8a;display:block}
+    .status.err{background:#2a0f0f;border:1px solid #e74c3c;color:#ff6b6b;display:block}
+    .status.loading{background:#0d1f3a;border:1px solid #4a9eff;color:#7ab8ff;display:block}
+    .status.warn{background:#2a1f00;border:1px solid #d4a017;color:#f0c040;display:block}
+    .spin{display:inline-block;animation:spin 1s linear infinite;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .divider{height:1px;background:#1e2d4a;margin:16px 0}
+    .tip{font-size:.78rem;color:#4a5a7a;margin-top:6px}
+    @media(max-width:600px){.grid2,.grid3{grid-template-columns:1fr}.cargo-row{flex-direction:column}}
+  </style>
+</head>
+<body>
+<header>
+  <div>⚙️</div>
+  <div>
+    <h1>Gerador de PGR <span style="color:#4a9eff">MRV</span></h1>
+    <span>Ocupacional Medicina do Trabalho — Maio 2026</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- PDF Upload -->
+  <div class="card">
+    <div class="card-title">📄 Arquivo da Empresa</div>
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
+      <div class="icon">📂</div>
+      <strong>Clique para selecionar o PDF</strong>
+      <p>ou arraste o arquivo aqui</p>
+      <div id="pdf-name"></div>
+    </div>
+    <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePdf(this)">
+    <p class="tip">O sistema extrai automaticamente CNPJ, endereço e cargos. Confira e ajuste antes de gerar.</p>
+  </div>
+
+  <!-- Dados da Empresa -->
+  <div class="card">
+    <div class="card-title">🏢 Dados da Empresa</div>
+    <div style="margin-bottom:14px">
+      <label>Razão Social / Nome</label>
+      <input type="text" id="f-nome" placeholder="Nome completo da empresa ou MEI">
+    </div>
+    <div class="grid2" style="margin-bottom:14px">
+      <div><label>CNPJ</label><input type="text" id="f-cnpj" placeholder="00.000.000/0001-00"></div>
+      <div><label>CEP</label><input type="text" id="f-cep" placeholder="00.000-000"></div>
+    </div>
+    <div class="grid3" style="margin-bottom:14px">
+      <div><label>Logradouro</label><input type="text" id="f-rua" placeholder="Rua / Avenida"></div>
+      <div><label>Número</label><input type="text" id="f-numero" placeholder="Nº"></div>
+      <div><label>Complemento</label><input type="text" id="f-compl" placeholder="Apto, Casa..."></div>
+    </div>
+    <div class="grid3">
+      <div><label>Bairro</label><input type="text" id="f-bairro" placeholder="Bairro"></div>
+      <div><label>Cidade</label><input type="text" id="f-cidade" placeholder="Cidade"></div>
+      <div><label>UF</label>
+        <select id="f-uf">
+          <option value="MG" selected>MG</option>
+          <option value="SP">SP</option><option value="RJ">RJ</option>
+          <option value="ES">ES</option><option value="GO">GO</option>
+          <option value="BA">BA</option><option value="PR">PR</option>
+          <option value="SC">SC</option><option value="RS">RS</option>
+          <option value="DF">DF</option><option value="MT">MT</option>
+          <option value="MS">MS</option><option value="PA">PA</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cargos -->
+  <div class="card">
+    <div class="card-title">👷 Cargos</div>
+    <div class="cargo-row">
+      <input type="text" id="cargo-input" placeholder="Digite o cargo..." onkeydown="if(event.key==='Enter')addCargo()">
+      <select id="cargo-select" onchange="selectCargo(this)">
+        <option value="">— Selecionar cargo —</option>
+        {% for c in cargos_sugestoes %}
+        <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-add" onclick="addCargo()">＋ Adicionar</button>
+    </div>
+    <div id="cargo-list"></div>
+    <div id="cargo-alert" class="cargo-alert">
+      ⚠️ <strong>Cargo não reconhecido no GHE MRV.</strong> O sistema não consegue identificar os riscos corretos para este cargo. Verifique a grafia ou entre em contato para cadastrá-lo.
+    </div>
+    <p class="tip" style="margin-top:10px">O GHE e os agentes de risco são preenchidos automaticamente para cada cargo.</p>
+  </div>
+
+  <!-- Gerar -->
+  <button class="btn btn-gerar" id="btn-gerar" onclick="gerarPGR()">
+    ⚡ GERAR PGR
+  </button>
+  <div class="status" id="status"></div>
+
+</div>
+
+<script>
+let cargos = [];
+
+// Drag & Drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.pdf')) processFile(file);
+});
+
+function handlePdf(input) {
+  if (input.files[0]) processFile(input.files[0]);
+}
+
+async function processFile(file) {
+  document.getElementById('pdf-name').textContent = '⏳ Extraindo dados...';
+  const fd = new FormData();
+  fd.append('pdf', file);
+  try {
+    const r = await fetch('/extrair', { method: 'POST', body: fd });
+    const d = await r.json();
+    document.getElementById('pdf-name').textContent = '✅ ' + file.name;
+    dz.classList.add('active');
+    setField('f-nome', d.nome);
+    setField('f-cnpj', d.cnpj);
+    setField('f-rua',  d.rua);
+    setField('f-numero', d.numero);
+    setField('f-compl', d.complemento);
+    setField('f-cep', d.cep);
+    setField('f-bairro', d.bairro);
+    setField('f-cidade', d.cidade);
+    if (d.uf) document.getElementById('f-uf').value = d.uf;
+    if (d.cargos && d.cargos.length > 0) {
+      cargos = d.cargos;
+      renderCargos();
+    }
+    showStatus('Dados extraídos! Confira e ajuste se necessário, depois clique em GERAR PGR.', 'ok');
+  } catch(e) {
+    document.getElementById('pdf-name').textContent = '⚠️ Erro ao extrair';
+    showStatus('Não foi possível extrair os dados. Preencha manualmente.', 'err');
+  }
+}
+
+function setField(id, val) {
+  if (val) document.getElementById(id).value = val;
+}
+
+function selectCargo(sel) {
+  if (sel.value) {
+    document.getElementById('cargo-input').value = sel.value;
+    sel.value = '';
+  }
+}
+
+function addCargo() {
+  const v = document.getElementById('cargo-input').value.trim();
+  if (!v) return;
+  if (!cargos.includes(v)) { cargos.push(v); renderCargos(); }
+  document.getElementById('cargo-input').value = '';
+}
+
+function remCargo(i) { cargos.splice(i,1); renderCargos(); }
+
+const GHE_MAP = {
+  AZULEJ:'ACABAMENTO', LADRILH:'ACABAMENTO',
+  GESSEIRO:'GESSO_REJUNTE', REJUNT:'GESSO_REJUNTE',
+  ENGENHEIRO:'ADMINISTRATIVO', TOPOGRAFO:'ADMINISTRATIVO', ANALISTA:'ADMINISTRATIVO',
+  ALMOXARIFE:'ALMOXARIFADO',
+  ESTAGIARIO:'APOIO_PRODUCAO',
+  ARMADOR:'ARMACAO',
+  CARPINT:'CARPINTARIA',
+  BETONEIRA:'CENTRAL_BETONEIRA',
+  MONTADOR:'ESTRUTURA_PAREDE',
+  BOMBEIRO:'HIDRAULICA', ENCANADOR:'HIDRAULICA',
+  PINTOR:'PINTURA',
+  PORTEIRO:'PORTARIA', VIGIA:'PORTARIA',
+  SERRALHEIRO:'SERRALHERIA',
+  ENCARREGADO:'SUPERVISAO', MESTRE:'SUPERVISAO',
+  PEDREIRO:'ESTRUTURA_ALVENARIA',
+};
+
+function getGHE(cargo) {
+  const c = cargo.toUpperCase();
+  if (c.includes('ELETRIC') && !c.includes('ENCARREGADO')) return 'ELETRICA';
+  if (c.includes('POLIVALENTE')) return 'POLIVALENTE';
+  if (c.includes('OPERADOR MAQUIN') || c.includes('MAQUINAS GERAL')) return 'MAQUINAS_GERAL';
+  if (c.includes('CREMALHEIRA') || c.includes('GRUA') || c.includes('SINALEIRO')) return 'MAQUINAS_ESTAC';
+  if (c.includes('SERVENTE') || c.includes('AJUDANTE') || c.includes('AUXILIAR DE LIMP') || c.includes('AUXILIAR DE SERVICO')) return 'OPERACIONAL';
+  for (const [k,v] of Object.entries(GHE_MAP)) {
+    if (c.includes(k)) return v;
+  }
+  if (c.includes('MEIO OFICIAL')) return 'ESTRUTURA_ALVENARIA';
+  return null; // desconhecido
+}
+
+function renderCargos() {
+  const el = document.getElementById('cargo-list');
+  let temDesconhecido = false;
+  el.innerHTML = cargos.map((c,i) => {
+    const ghe = getGHE(c);
+    const isDesconhecido = ghe === null;
+    if (isDesconhecido) temDesconhecido = true;
+    const tag = isDesconhecido
+      ? `<span class="ghe-tag unknown">⚠️ NÃO RECONHECIDO</span>`
+      : `<span class="ghe-tag">${ghe}</span>`;
+    return `<div class="cargo-item ${isDesconhecido ? 'cargo-unknown' : ''}">
+      <span>${c} ${tag}</span>
+      <button onclick="remCargo(${i})" title="Remover">✕</button>
+    </div>`;
+  }).join('');
+
+  // Mostrar alerta se tiver cargo desconhecido
+  const alertEl = document.getElementById('cargo-alert');
+  if (alertEl) {
+    alertEl.style.display = temDesconhecido ? 'block' : 'none';
+  }
+}
+
+function renderCargos() {
+  const el = document.getElementById('cargo-list');
+  el.innerHTML = cargos.map((c,i) => `
+    <div class="cargo-item">
+      <span>${c} <span class="ghe-tag">${getGHE(c)}</span></span>
+      <button onclick="remCargo(${i})" title="Remover">✕</button>
+    </div>`).join('');
+}
+
+async function gerarPGR() {
+  const nome = document.getElementById('f-nome').value.trim();
+  if (!nome) { showStatus('Informe a Razão Social da empresa.', 'err'); return; }
+  if (!cargos.length) { showStatus('Adicione pelo menos um cargo.', 'err'); return; }
+
+  const btn = document.getElementById('btn-gerar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando...';
+  showStatus('<span class="spin">⚙️</span> Gerando PGR, aguarde...', 'loading');
+
+  try {
+    const resp = await fetch('/gerar', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nome, cnpj: document.getElementById('f-cnpj').value,
+        rua: document.getElementById('f-rua').value,
+        numero: document.getElementById('f-numero').value,
+        complemento: document.getElementById('f-compl').value,
+        cep: document.getElementById('f-cep').value,
+        bairro: document.getElementById('f-bairro').value,
+        cidade: document.getElementById('f-cidade').value || 'Belo Horizonte',
+        uf: document.getElementById('f-uf').value,
+        cargos
+      })
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      if (resp.status === 422 && err.aviso) {
+        throw new Error('⚠️ ' + err.erro);
+      }
+      throw new Error(err.erro || 'Erro desconhecido');
+    }
+
+    // Verificar se veio JSON com aviso (GHE sem data, campos faltando etc.)
+    const ct = resp.headers.get('Content-Type') || '';
+    if (ct.includes('application/json')) {
+      const json = await resp.json();
+      if (json.aviso_gerado) {
+        // Baixar via base64
+        const bytes = atob(json.docx_b64);
+        const arr = new Uint8Array(bytes.length);
+        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        const blob = new Blob([arr], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.download = json.filename;
+        a.href = url; a.click();
+        URL.revokeObjectURL(url);
+
+        // Mostrar alertas em amarelo
+        const msgs = json.alertas.map(a => `⚠️ ${a}`).join('<br><br>');
+        showStatus(`✅ PGR gerado com alertas:<br><br>${msgs}`, 'warn');
+        return;
+      }
+      throw new Error(json.erro || 'Erro desconhecido');
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const cd = resp.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="(.+)"/);
+    a.download = match ? match[1] : `PGR - ${nome}.docx`;
+    a.href = url; a.click();
+    URL.revokeObjectURL(url);
+    showStatus(`✅ PGR gerado com sucesso! O arquivo foi baixado automaticamente.`, 'ok');
+  } catch(e) {
+    showStatus('❌ Erro: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ GERAR PGR';
+  }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.innerHTML = msg;
+}
+</script>
+</body>
+</html>
