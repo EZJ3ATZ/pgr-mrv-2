@@ -623,6 +623,19 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         shutil.rmtree(work_dir, ignore_errors=True)
 
 # ── Extração de PDF ───────────────────────────────────────────────
+def _label_value(lines, *patterns):
+    """Retorna o conteúdo da linha seguinte ao label que bate com qualquer padrão."""
+    for i, l in enumerate(lines):
+        for pat in patterns:
+            if re.search(pat, l, re.I):
+                # Valor pode estar na mesma linha após ':' ou na próxima linha
+                after_colon = re.sub(pat + r'\s*:?\s*', '', l, flags=re.I).strip()
+                if after_colon:
+                    return after_colon
+                if i + 1 < len(lines):
+                    return lines[i + 1].strip()
+    return ''
+
 def extrair_pdf(file_bytes):
     dados = {"nome":"","cnpj":"","rua":"","numero":"","complemento":"","cep":"","bairro":"","cidade":"","uf":"MG","cargos":[]}
     if not PDF_OK:
@@ -632,27 +645,103 @@ def extrair_pdf(file_bytes):
         texto = pdf_extract(buf)
     except:
         return dados
-    full = ' '.join(l.strip() for l in texto.split('\n') if l.strip())
+    if not texto or not texto.strip():
+        return dados
+
+    full  = ' '.join(l.strip() for l in texto.split('\n') if l.strip())
     lines = [l.strip() for l in texto.split('\n') if l.strip()]
-    cnpj_m = re.search(r'\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[/\s]?\d{4}[-\s]?\d{2}', full)
-    if cnpj_m: dados['cnpj'] = re.sub(r'\s','',cnpj_m.group())
-    for i,l in enumerate(lines):
-        if re.search(r'RAZ[ÃA]O SOCIAL|NOME EMPRES', l, re.I) and i+1<len(lines):
-            dados['nome'] = lines[i+1].strip(); break
-    if not dados['nome'] and cnpj_m:
+
+    # ── CNPJ ─────────────────────────────────────────────────────────
+    cnpj_m = re.search(r'\d{2}[.\s]?\d{3}[.\s]?\d{3}[/\s]?\d{4}[-\s]?\d{2}', full)
+    if cnpj_m:
+        dados['cnpj'] = re.sub(r'\s', '', cnpj_m.group())
+
+    # ── Razão Social ──────────────────────────────────────────────────
+    nome = _label_value(lines, r'RAZ[ÃA]O SOCIAL', r'NOME EMPRESARIAL', r'EMPRESA', r'EMPREGADOR')
+    if not nome and cnpj_m:
         idx = full.find(cnpj_m.group())
         before = full[:idx].strip().split()
-        if before: dados['nome'] = ' '.join(before[-8:]).strip()
+        if before:
+            nome = ' '.join(before[-8:]).strip()
+    dados['nome'] = nome
+
+    # ── CEP ───────────────────────────────────────────────────────────
     cep_m = re.search(r'\d{5}-?\d{3}', full)
-    if cep_m: dados['cep'] = cep_m.group()
-    uf_m = re.search(r'\b(MG|SP|RJ|ES|GO|BA|PR|SC|RS|DF|MT|MS|AM|PA|CE|PE|MA|RN|PB|AL|SE|PI|TO|RO|AC|RR|AP|GO)\b', full)
-    if uf_m: dados['uf'] = uf_m.group()
-    for i,l in enumerate(lines):
-        if re.search(r'(RUA|AV\.|AVENIDA|LOGRADOURO|ENDERE)', l, re.I) and len(l) > 5:
-            dados['rua'] = l; break
-    for cargo in ["Pedreiro","Servente","Pintor","Meio Oficial Pintor","Armador","Eletricista","Carpinteiro","Gesseiro","Rejuntador","Azulejista","Bombeiro Hidraulico","Encarregado","Montador","Meio Oficial Pedreiro","Meio Oficial Eletricista","Auxiliar de Limpeza","Porteiro","Vigia","Topografo","Auxiliar Administrativo","Engenheiro"]:
-        if re.search(re.escape(cargo), full, re.I):
-            dados['cargos'].append(cargo)
+    if cep_m:
+        dados['cep'] = cep_m.group()
+
+    # ── UF ────────────────────────────────────────────────────────────
+    UFS = r'AC|AL|AM|AP|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO'
+    uf_m = re.search(rf'\b({UFS})\b', full)
+    if uf_m:
+        dados['uf'] = uf_m.group()
+
+    # ── Cidade ────────────────────────────────────────────────────────
+    cidade = ''
+    # 1. Procurar label "MUNICIPIO", "CIDADE" ou "CIDADE/UF" e pegar o valor
+    for i, l in enumerate(lines):
+        if re.search(r'MUNIC[IÍ]PIO|CIDADE', l, re.I):
+            # Valor pode estar na linha seguinte
+            candidato = lines[i + 1].strip() if i + 1 < len(lines) else ''
+            # Remover a parte " / UF" ou " - UF" se houver
+            candidato = re.sub(rf'\s*[/\-]\s*(?:{UFS})\b.*', '', candidato).strip()
+            if len(candidato) > 3:
+                cidade = candidato.title()
+                break
+    if not cidade:
+        # Formato inline "BELO HORIZONTE / MG" em qualquer linha
+        cidade_uf = re.search(rf'([A-ZÀ-Ú][A-ZÀ-Ú\s]{{3,}})\s*[/\-]\s*(?:{UFS})\b', full)
+        if cidade_uf:
+            cidade = cidade_uf.group(1).strip().title()
+    dados['cidade'] = cidade
+
+    # ── Bairro ────────────────────────────────────────────────────────
+    dados['bairro'] = _label_value(lines, r'BAIRRO', r'DISTRITO')
+
+    # ── Endereço ─────────────────────────────────────────────────────
+    # Encontrar linha com endereço real (não o label)
+    end_label_pat = re.compile(r'^(ENDERE[CÇ]O|LOGRADOURO)\s*:?\s*$', re.I)
+    rua_raw = ''
+    for i, l in enumerate(lines):
+        # Pular linhas que são só o label
+        if end_label_pat.match(l):
+            if i + 1 < len(lines):
+                rua_raw = lines[i + 1]
+            break
+        # Linha que já começa com tipo de logradouro
+        if re.match(r'^(RUA|AV\.?|AVENIDA|ALAMEDA|ESTRADA|ROD\.?|RODOVIA|TRAVESSA|PRAÇA|PC\.?)\b', l, re.I):
+            rua_raw = l
+            break
+        # Label com valor na mesma linha: "ENDEREÇO: RUA X, 123"
+        m = re.match(r'(?:ENDERE[CÇ]O|LOGRADOURO)\s*:\s*(.+)', l, re.I)
+        if m:
+            rua_raw = m.group(1).strip()
+            break
+
+    if rua_raw:
+        # Separar rua, número e complemento: "RUA DAS FLORES, 250, APTO 10"
+        partes = [p.strip() for p in rua_raw.split(',')]
+        dados['rua'] = partes[0] if partes else rua_raw
+        if len(partes) > 1 and re.match(r'^\d+', partes[1]):
+            dados['numero'] = partes[1]
+            if len(partes) > 2:
+                dados['complemento'] = ', '.join(partes[2:])
+        elif len(partes) > 1:
+            dados['complemento'] = ', '.join(partes[1:])
+
+    # ── Cargos ────────────────────────────────────────────────────────
+    # Usar a lista completa do sistema, do mais específico para o mais genérico
+    cargos_encontrados = []
+    texto_norm = re.sub(r'[^\w\s]', ' ', full, flags=re.UNICODE)
+    for cargo in sorted(CARGOS_SUGESTOES, key=len, reverse=True):
+        padrao = r'\b' + re.escape(cargo) + r'\b'
+        if re.search(padrao, texto_norm, re.I):
+            # Evitar duplicatas por substring (ex: não adicionar "Pedreiro" se já tem "Meio Oficial Pedreiro")
+            ja_coberto = any(cargo.upper() in c.upper() for c in cargos_encontrados)
+            if not ja_coberto:
+                cargos_encontrados.append(cargo)
+    dados['cargos'] = cargos_encontrados
+
     return dados
 
 # ── Rotas ─────────────────────────────────────────────────────────
