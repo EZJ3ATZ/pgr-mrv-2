@@ -1,4 +1,4 @@
-import os, re, shutil, zipfile, io, tempfile
+import os, re, shutil, zipfile, io, tempfile, random
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template
 import xml.etree.ElementTree as ET
@@ -417,6 +417,21 @@ def load_tpl(name):
 def xs(s): return s.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
 def spacer(): return '\n    <w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p>\n'
 
+def _new_para_id():
+    """Gera um paraId/textId único de 8 dígitos hex (evita 00000000 e 77777777)."""
+    while True:
+        v = random.randint(1, 0xFFFFFFFE)
+        if v != 0x77777777:
+            return '%08X' % v
+
+def _uniquify_ids(xml):
+    """Substitui todos w14:paraId e w14:textId por valores únicos."""
+    xml = re.sub(r'w14:paraId="[0-9A-Fa-f]{8}"',
+                 lambda m: f'w14:paraId="{_new_para_id()}"', xml)
+    xml = re.sub(r'w14:textId="[0-9A-Fa-f]{8}"',
+                 lambda m: f'w14:textId="{_new_para_id()}"', xml)
+    return xml
+
 def _replace_run_text(xml, old_text, new_text):
     """Substitui texto dentro de um run XML, respeitando espaços trailing."""
     return xml.replace(f'>{old_text}<', f'>{new_text}<')
@@ -539,7 +554,8 @@ def build_cargo_section(cargo, cidade, uf):
             _, nome_ag, nr = ag
             risk += adapt_acid(nome_ag, nr) + spacer()
 
-    return sc + titulo + risk
+    section = sc + titulo + risk
+    return _uniquify_ids(section)
 
 def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, uf, cargos):
     data_atual = mes_ano()
@@ -568,6 +584,7 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         para = tpl_idx.replace('>Cargo: Pedreiro<', f'>Cargo: {xs(cargo)}<')
         new_id = '%08X' % (0x762D6EE3 + i + 1)
         para = para.replace('762D6EE3', new_id)
+        para = _uniquify_ids(para)
         idx_novo += para + '\n'
     if tpl_idx in p1:
         p1 = p1.replace(tpl_idx, idx_novo, 1)
