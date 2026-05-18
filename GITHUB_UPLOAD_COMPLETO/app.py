@@ -1,1 +1,1 @@
-placeholder_app_py
+CONTENT_PLACEHOLDER_APP
