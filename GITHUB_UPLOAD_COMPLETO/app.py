@@ -801,6 +801,32 @@ def extrair_pdf(file_bytes):
             texto_restante = re.sub(pat, ' ' * len(cargo), texto_restante, flags=re.I)
     dados['cargos'] = cargos_encontrados
 
+    # ── Possíveis cargos não reconhecidos na base de dados ────────────
+    _stop = {'de','do','da','dos','das','em','no','na','nos','nas','e','a','o',
+             'para','com','por','que','se','ao','as','um','uma','ou','são',
+             'foi','ter','ser','pelo','pela','entre','sobre','após','até'}
+    potenciais_raw = re.findall(
+        r'\b([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+){0,2})\b',
+        texto_restante
+    )
+    vistos = set()
+    potenciais = []
+    for term in potenciais_raw:
+        t = term.strip()
+        if t in vistos or len(t) < 4:
+            continue
+        vistos.add(t)
+        words = t.split()
+        if len(words) > 3 or re.search(r'\d', t):
+            continue
+        meaningful = [w for w in words if w.lower() not in _stop and len(w) > 2]
+        if not meaningful:
+            continue
+        # Only include if the term appears at least twice in the full text
+        if len(re.findall(r'\b' + re.escape(t) + r'\b', full, re.I)) >= 2:
+            potenciais.append(t)
+    dados['possiveis_nao_reconhecidos'] = potenciais[:15]
+
     return dados
 
 # ── Rotas ─────────────────────────────────────────────────────────
@@ -960,6 +986,44 @@ def _fc(v, decimals=2):
         s = '0'
     return s.replace('.', ',')
 
+def _make_foto_xml(rid, pic_id, cx=1800000, cy=1800000):
+    """Build OOXML inline-image run for a photo placeholder."""
+    return (
+        f'<w:r><w:drawing>'
+        f'<wp:inline distT="0" distB="0" distL="0" distR="0"'
+        f' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">'
+        f'<wp:extent cx="{cx}" cy="{cy}"/>'
+        f'<wp:effectExtent l="0" t="0" r="0" b="0"/>'
+        f'<wp:docPr id="{pic_id}" name="Foto {pic_id}"/>'
+        f'<wp:cNvGraphicFramePr>'
+        f'<a:graphicFrameLocks'
+        f' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+        f' noChangeAspect="1"/>'
+        f'</wp:cNvGraphicFramePr>'
+        f'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+        f'<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        f'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        f'<pic:nvPicPr>'
+        f'<pic:cNvPr id="{pic_id}" name="Foto {pic_id}"/>'
+        f'<pic:cNvPicPr/>'
+        f'</pic:nvPicPr>'
+        f'<pic:blipFill>'
+        f'<a:blip r:embed="{rid}"'
+        f' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>'
+        f'<a:stretch><a:fillRect/></a:stretch>'
+        f'</pic:blipFill>'
+        f'<pic:spPr>'
+        f'<a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        f'</pic:spPr>'
+        f'</pic:pic>'
+        f'</a:graphicData>'
+        f'</a:graphic>'
+        f'</wp:inline>'
+        f'</w:drawing></w:r>'
+    )
+
+
 def _calor_row(local, tempo, tbn, tbs, tg, ibutg, is_last):
     """Build one measurement data row XML for the Laudo de Calor table."""
     pid = _new_para_id
@@ -1103,6 +1167,10 @@ def _calor_build_sector_block(tpl_block, setor, num):
         blk, flags=re.DOTALL
     )
 
+    # Mark FOTO cells with unique per-sector markers for photo insertion
+    for k in range(1, 4):
+        blk = blk.replace('>FOTO<', f'>§§FOTO_{num}_{k}§§<', 1)
+
     return blk
 
 def gerar_laudo_calor_bytes(empresa, avaliacao, setores):
@@ -1190,16 +1258,55 @@ def gerar_laudo_calor_bytes(empresa, avaliacao, setores):
         # Replace template block with all sector blocks
         xml = xml[:tpl_block_start] + sector_xml + xml[tpl_block_end:]
 
+        # ── Photo insertion ───────────────────────────────────────
+        import base64 as _b64
+        extra_media = {}
+        extra_rels = []
+        for i, setor in enumerate(setores):
+            fotos = setor.get('fotos') or []
+            for k in range(3):
+                marker = f'§§FOTO_{i+1}_{k+1}§§'
+                foto_b64 = fotos[k] if k < len(fotos) and fotos[k] else None
+                if foto_b64:
+                    raw = foto_b64.split(',')[-1]
+                    img_bytes = _b64.b64decode(raw)
+                    ext = 'png' if 'image/png' in foto_b64[:40] else 'jpg'
+                    media_name = f'foto_{i+1}_{k+1}.{ext}'
+                    rid = f'rIdFoto{i+1}x{k+1}'
+                    extra_media[f'word/media/{media_name}'] = img_bytes
+                    extra_rels.append(
+                        f'<Relationship Id="{rid}" '
+                        f'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+                        f'Target="media/{media_name}"/>'
+                    )
+                    img_run = _make_foto_xml(rid, i * 3 + k + 1)
+                    xml = re.sub(
+                        r'<w:r\b[^>]*>(?:<w:rPr>.*?</w:rPr>)?<w:t[^>]*>'
+                        + re.escape(marker) + r'</w:t></w:r>',
+                        img_run, xml, flags=re.DOTALL
+                    )
+                else:
+                    xml = xml.replace(marker, 'FOTO')
+
+        # ── Update rels if photos added ──────────────────────────
+        rels_xml = ztpl.read('word/_rels/document.xml.rels').decode('utf-8')
+        if extra_rels:
+            rels_xml = rels_xml.replace(
+                '</Relationships>', ''.join(extra_rels) + '</Relationships>'
+            )
+
         # ── Repack DOCX ───────────────────────────────────────────
         buf = io.BytesIO()
-        added = set()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zout:
             for item in ztpl.namelist():
                 if item == 'word/document.xml':
                     zout.writestr(item, xml.encode('utf-8'))
+                elif item == 'word/_rels/document.xml.rels':
+                    zout.writestr(item, rels_xml.encode('utf-8'))
                 else:
                     zout.writestr(item, ztpl.read(item))
-                added.add(item)
+            for path, data in extra_media.items():
+                zout.writestr(path, data)
         buf.seek(0)
         return buf.getvalue()
 
