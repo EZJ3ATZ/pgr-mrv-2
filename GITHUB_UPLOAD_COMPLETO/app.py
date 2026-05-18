@@ -597,13 +597,26 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         shutil.copytree(MODEL_DIR, os.path.join(work_dir, 'doc'))
         with open(os.path.join(work_dir, 'doc', 'word', 'document.xml'), 'w', encoding='utf-8') as f:
             f.write(new_xml)
+        _RELS_CONTENT = (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+            '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>\n'
+            '  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>\n'
+            '  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>\n'
+            '</Relationships>'
+        )
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            added = set()
             for root, dirs, files in os.walk(os.path.join(work_dir, 'doc')):
                 for file in files:
                     abs_path = os.path.join(root, file)
                     rel_path = os.path.relpath(abs_path, os.path.join(work_dir, 'doc'))
                     zf.write(abs_path, rel_path)
+                    added.add(rel_path)
+            # Garantir que _rels/.rels sempre está presente
+            if '_rels/.rels' not in added:
+                zf.writestr('_rels/.rels', _RELS_CONTENT)
         buf.seek(0)
         return buf.getvalue()
     finally:
