@@ -11,7 +11,6 @@
     header h1{font-size:1.4rem;font-weight:700;color:#4a9eff}
     header span{font-size:.85rem;color:#6b85a8;margin-left:8px}
 
-    /* Tabs */
     .tab-nav{display:flex;gap:0;background:#111a2e;border-bottom:2px solid #1e2d4a;padding:0 20px;max-width:960px;margin:0 auto}
     .tab-btn{padding:13px 28px;border:none;background:none;color:#6b85a8;font-size:.92rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;letter-spacing:.03em}
     .tab-btn:hover{color:#a0b8d8}
@@ -58,7 +57,7 @@
     .tip{font-size:.76rem;color:#4a5a7a;margin-top:6px}
     .divider{height:1px;background:#1e2d4a;margin:14px 0}
 
-    /* Laudo de Calor — Setor */
+    /* Laudo de Calor */
     .setor-card{background:#131e33;border:1px solid #1e3a6a;border-radius:10px;padding:18px;margin-bottom:14px}
     .setor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
     .setor-title{font-size:.85rem;font-weight:700;color:#7ab8ff}
@@ -71,10 +70,26 @@
     .ibutg-calc{font-size:.8rem;color:#7ab8ff;font-weight:600;padding:7px 4px;background:#0d1f3a;border-radius:6px;border:1px solid #1e3a6a;text-align:center;white-space:nowrap}
     .ponto-header{display:grid;grid-template-columns:2fr 60px 70px 70px 70px 2fr 80px auto;gap:8px;padding:0 10px;margin-bottom:4px}
     .ponto-header span{font-size:.68rem;color:#4a6a9a;text-transform:uppercase;letter-spacing:.05em}
+
+    /* Foto upload */
+    .foto-section{margin-top:16px;padding-top:14px;border-top:1px solid #1e2d4a}
+    .foto-section-title{font-size:.75rem;color:#7a90b0;text-transform:uppercase;font-weight:600;letter-spacing:.05em;margin-bottom:10px}
+    .foto-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .foto-slot{border:2px dashed #2a3f6a;border-radius:8px;aspect-ratio:1;cursor:pointer;position:relative;overflow:hidden;background:#111a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.2s;min-height:100px}
+    .foto-slot:hover{border-color:#4a9eff;background:#131f35}
+    .foto-slot.filled{border-color:#27ae60;border-style:solid}
+    .foto-slot img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0}
+    .foto-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s}
+    .foto-slot:hover .foto-overlay{opacity:1}
+    .foto-label{font-size:.72rem;color:#4a5a7a;text-align:center;padding:8px;line-height:1.4}
+    .foto-num{font-size:1.6rem;margin-bottom:4px}
+    .foto-rem{position:absolute;top:4px;right:4px;background:rgba(180,30,30,.85);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10}
+
     @media(max-width:700px){
       .grid2,.grid3,.grid4{grid-template-columns:1fr}
       .ponto-row,.ponto-header{grid-template-columns:1fr 1fr;gap:6px}
       .cargo-row{flex-direction:column}
+      .foto-grid{grid-template-columns:1fr 1fr}
     }
   </style>
 </head>
@@ -107,6 +122,8 @@
     <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePdf(this)">
     <p class="tip">O sistema extrai automaticamente CNPJ, endereço e cargos.</p>
   </div>
+
+  <div id="aviso-cargos" style="display:none" class="status warn"></div>
 
   <div class="card">
     <div class="card-title">🏢 Dados da Empresa</div>
@@ -165,7 +182,6 @@
 <div id="tab-calor" class="tab-content">
 <div class="container">
 
-  <!-- Dados da Empresa -->
   <div class="card">
     <div class="card-title">🏢 Dados da Empresa</div>
     <div style="margin-bottom:12px">
@@ -207,7 +223,6 @@
     </div>
   </div>
 
-  <!-- Dados da Avaliação -->
   <div class="card">
     <div class="card-title">📋 Dados da Avaliação</div>
     <div class="grid2" style="margin-bottom:12px">
@@ -224,7 +239,6 @@
     </div>
   </div>
 
-  <!-- Setores -->
   <div class="card">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
       <span>🏭 Setores de Medição</span>
@@ -264,6 +278,8 @@ function handlePdf(input) { if (input.files[0]) processFile(input.files[0]); }
 async function processFile(file) {
   document.getElementById('pdf-name').textContent = '⏳ Extraindo dados...';
   const fd = new FormData(); fd.append('pdf', file);
+  const avisoEl = document.getElementById('aviso-cargos');
+  avisoEl.style.display = 'none';
   try {
     const r = await fetch('/extrair', { method: 'POST', body: fd });
     const d = await r.json();
@@ -274,7 +290,21 @@ async function processFile(file) {
     setField('f-cep', d.cep); setField('f-bairro', d.bairro); setField('f-cidade', d.cidade);
     if (d.uf) document.getElementById('f-uf').value = d.uf;
     if (d.cargos && d.cargos.length > 0) { cargos = d.cargos; renderCargos(); }
-    showStatus('Dados extraídos! Confira e ajuste se necessário.', 'ok', 'status');
+
+    // ── Aviso de cargos não reconhecidos ──
+    if (d.possiveis_nao_reconhecidos && d.possiveis_nao_reconhecidos.length > 0) {
+      avisoEl.style.display = 'block';
+      avisoEl.innerHTML =
+        '⚠️ <strong>Possíveis cargos no PDF não encontrados na base de dados MRV:</strong><br>' +
+        d.possiveis_nao_reconhecidos.map(t =>
+          `<span style="display:inline-block;margin:3px 4px;background:#0d1f3a;border:1px solid #2a4a7a;padding:2px 8px;border-radius:4px;cursor:pointer"
+                 onclick="document.getElementById(\'cargo-input\').value=\'${t.replace(/'/g,"\\'")}\'"
+                 title="Clique para preencher no campo de cargo">${t}</span>`
+        ).join('') +
+        '<br><small style="opacity:.7">Clique num termo para adicioná-lo ao campo de cargo. Adicione manualmente se necessário.</small>';
+    }
+
+    showStatus('✅ Dados extraídos! Confira e ajuste se necessário.', 'ok', 'status');
   } catch(e) {
     document.getElementById('pdf-name').textContent = '⚠️ Erro ao extrair';
     showStatus('Não foi possível extrair. Preencha manualmente.', 'err', 'status');
@@ -341,7 +371,15 @@ async function gerarPGR() {
         cargos
       })
     });
-    if (!resp.ok) { const err = await resp.json(); throw new Error(err.erro || 'Erro desconhecido'); }
+    if (!resp.ok) {
+      const err = await resp.json();
+      if (err.aviso) {
+        showStatus('⚠️ ' + err.erro, 'warn', 'status');
+      } else {
+        throw new Error(err.erro || 'Erro desconhecido');
+      }
+      return;
+    }
     const ct = resp.headers.get('Content-Type') || '';
     if (ct.includes('application/json')) {
       const json = await resp.json();
@@ -390,10 +428,12 @@ function nr15Limite(m) {
   return NR15[NR15.length-1][1];
 }
 
-function calcIBUTG(tbn, tg) { return +(0.7*tbn + 0.3*tg).toFixed(2); }
-
 function adicionarSetor() {
-  setores.push({ nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)', pontos:[] });
+  setores.push({
+    nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)',
+    fotos:[null,null,null],
+    pontos:[]
+  });
   const idx = setores.length - 1;
   adicionarPonto(idx);
   renderSetores();
@@ -413,12 +453,6 @@ function removerPonto(sIdx, pIdx) {
   setores[sIdx].pontos.splice(pIdx,1);
   if (setores[sIdx].pontos.length === 0) adicionarPonto(sIdx);
   else renderSetores();
-}
-
-function atualizarSetor(sIdx, field, val) {
-  setores[sIdx][field] = val;
-  if (field !== 'nome' && field !== 'horario' && field !== 'vestimenta') return;
-  renderSumario(sIdx);
 }
 
 function atualizarPonto(sIdx, pIdx, field, val) {
@@ -447,6 +481,46 @@ function renderSumario(sIdx) {
   badge.className = 'setor-badge ' + (ok ? 'ok' : 'warn');
 }
 
+function handleFoto(si, k, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    if (!setores[si].fotos) setores[si].fotos = [null,null,null];
+    setores[si].fotos[k-1] = e.target.result;
+    // Update slot without full re-render to preserve file inputs
+    const slot = document.getElementById(`foto-slot-${si}-${k}`);
+    if (slot) {
+      slot.classList.add('filled');
+      let img = slot.querySelector('img');
+      if (!img) {
+        slot.innerHTML = `<img id="foto-img-${si}-${k}" src="" alt="Foto ${k}">
+          <div class="foto-overlay"><span style="color:#fff;font-size:.8rem">✏️ Trocar</span></div>
+          <button class="foto-rem" onclick="event.stopPropagation();removerFoto(${si},${k})" title="Remover foto">✕</button>
+          <input type="file" id="foto-input-${si}-${k}" accept="image/*" style="display:none"
+                 onchange="handleFoto(${si},${k},this)">`;
+        img = slot.querySelector('img');
+      }
+      img.src = e.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function removerFoto(si, k) {
+  if (!setores[si].fotos) return;
+  setores[si].fotos[k-1] = null;
+  const slot = document.getElementById(`foto-slot-${si}-${k}`);
+  if (slot) {
+    slot.classList.remove('filled');
+    slot.innerHTML = `
+      <span class="foto-num">📷</span>
+      <div class="foto-label">Foto ${k}<br><span style="color:#2a3f6a;font-size:.68rem">Clique para adicionar</span></div>
+      <input type="file" id="foto-input-${si}-${k}" accept="image/*" style="display:none"
+             onchange="handleFoto(${si},${k},this)">`;
+  }
+}
+
 function renderSetores() {
   const container = document.getElementById('setores-list');
   if (!setores.length) {
@@ -459,6 +533,23 @@ function renderSetores() {
       ? `${stats.ibutgMedio}°C / Lim: ${stats.limite}°C ${stats.ibutgMedio<=stats.limite?'✅':'⚠️'}`
       : '–';
     const badgeCls = stats ? (stats.ibutgMedio<=stats.limite?'ok':'warn') : '';
+
+    const fotoSlots = [1,2,3].map(k => {
+      const hasFoto = s.fotos && s.fotos[k-1];
+      return `<div class="foto-slot ${hasFoto?'filled':''}"
+                   id="foto-slot-${si}-${k}"
+                   onclick="document.getElementById('foto-input-${si}-${k}').click()">
+        ${hasFoto
+          ? `<img id="foto-img-${si}-${k}" src="" alt="Foto ${k}">
+             <div class="foto-overlay"><span style="color:#fff;font-size:.8rem">✏️ Trocar</span></div>
+             <button class="foto-rem" onclick="event.stopPropagation();removerFoto(${si},${k})" title="Remover">✕</button>`
+          : `<span class="foto-num">📷</span>
+             <div class="foto-label">Foto ${k}<br><span style="color:#2a3f6a;font-size:.68rem">Clique para adicionar</span></div>`}
+        <input type="file" id="foto-input-${si}-${k}" accept="image/*" style="display:none"
+               onchange="handleFoto(${si},${k},this)">
+      </div>`;
+    }).join('');
+
     return `
     <div class="setor-card">
       <div class="setor-header">
@@ -509,11 +600,28 @@ function renderSetores() {
       }).join('')}
       <button class="btn btn-add" style="margin-top:8px;font-size:.8rem;padding:7px 14px"
         onclick="adicionarPonto(${si})">&#xFF0B; Adicionar Ponto</button>
+
+      <div class="foto-section">
+        <div class="foto-section-title">📷 Fotos da Medição <span style="font-weight:400;color:#4a5a7a;text-transform:none;letter-spacing:0">(opcionais — inseridas automaticamente no laudo)</span></div>
+        <div class="foto-grid">${fotoSlots}</div>
+      </div>
     </div>`;
   }).join('');
+
+  // Restore photo previews after DOM update
+  setores.forEach((s, si) => {
+    if (s.fotos) {
+      s.fotos.forEach((f, k) => {
+        if (f) {
+          const img = document.getElementById(`foto-img-${si}-${k+1}`);
+          if (img) img.src = f;
+        }
+      });
+    }
+  });
 }
 
-function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 async function gerarCalor() {
   const nome = document.getElementById('c-nome').value.trim();
@@ -561,6 +669,7 @@ async function gerarCalor() {
           nome: s.nome,
           horario: s.horario,
           vestimenta: s.vestimenta,
+          fotos: (s.fotos || []).map(f => f || null),
           pontos: s.pontos.map(p => ({
             local: p.local,
             tempo: +p.tempo,
@@ -599,7 +708,6 @@ function showStatus(msg, type, elId) {
   el.innerHTML = msg;
 }
 
-// Initialize Laudo de Calor with one default sector
 adicionarSetor();
 </script>
 </body>
