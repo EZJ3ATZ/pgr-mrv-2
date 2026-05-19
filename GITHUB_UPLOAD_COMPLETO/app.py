@@ -400,6 +400,7 @@ def load_tpl(name):
         return f.read()
 
 def xs(s): return s.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
+def xclean(s): return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', s or '')
 def spacer(): return '\n    <w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p>\n'
 
 def _replace_run_text(xml, old_text, new_text):
@@ -533,15 +534,15 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
     part1 = load_tpl('part1')
     part3 = load_tpl('part3')
     def subst(t):
-        t = t.replace('63.370.132 MARCIO DA SILVA', nome)
-        t = t.replace('63.370.132/0001-25', cnpj)
-        t = t.replace('Al Das Sibipurunas Nº 1137', endereco)
-        t = t.replace('33.830-360', cep or 'A definir')
-        t = t.replace('>Ribeirão das Neves<', f'>{cidade}<')
-        t = t.replace('Vale das Acácias', bairro or 'A definir')
-        t = t.replace('RIBEIRÃO DAS NEVES - MG</w:t>', f'{cidade.upper()} - {uf.upper()}</w:t>')
-        t = t.replace('Setor: Ribeirão das Neves - MG</w:t>', f'Setor: {cidade} - {uf}</w:t>')
-        t = t.replace('>Pedreiro<', f'>{cargos[0]}<')
+        t = t.replace('63.370.132 MARCIO DA SILVA', xs(nome))
+        t = t.replace('63.370.132/0001-25', xs(cnpj))
+        t = t.replace('Al Das Sibipurunas Nº 1137', xs(endereco))
+        t = t.replace('33.830-360', xs(cep) or 'A definir')
+        t = t.replace('>Ribeirão das Neves<', f'>{xs(cidade)}<')
+        t = t.replace('Vale das Acácias', xs(bairro) or 'A definir')
+        t = t.replace('RIBEIRÃO DAS NEVES - MG</w:t>', f'{xs(cidade).upper()} - {xs(uf).upper()}</w:t>')
+        t = t.replace('Setor: Ribeirão das Neves - MG</w:t>', f'Setor: {xs(cidade)} - {xs(uf)}</w:t>')
+        t = t.replace('>Pedreiro<', f'>{xs(cargos[0])}<')
         t = t.replace(f'>{ORIG["data"]}<', f'>{data_atual}<')
         return t
     p1 = subst(part1)
@@ -628,16 +629,16 @@ def extrair():
 @app.route('/gerar', methods=['POST'])
 def gerar():
     data = request.json
-    nome   = data.get('nome','').strip()
-    cnpj   = data.get('cnpj','').strip()
-    rua    = data.get('rua','').strip()
-    numero = data.get('numero','').strip()
-    compl  = data.get('complemento','').strip()
-    cep    = data.get('cep','').strip()
-    bairro = data.get('bairro','').strip()
-    cidade = data.get('cidade','').strip() or 'Belo Horizonte'
-    uf     = data.get('uf','MG').strip().upper()
-    cargos = [c.strip() for c in data.get('cargos',[]) if c.strip()]
+    nome   = xclean(data.get('nome','').strip())
+    cnpj   = xclean(data.get('cnpj','').strip())
+    rua    = xclean(data.get('rua','').strip())
+    numero = xclean(data.get('numero','').strip())
+    compl  = xclean(data.get('complemento','').strip())
+    cep    = xclean(data.get('cep','').strip())
+    bairro = xclean(data.get('bairro','').strip())
+    cidade = xclean(data.get('cidade','').strip()) or 'Belo Horizonte'
+    uf     = xclean(data.get('uf','MG').strip().upper())
+    cargos = [xclean(c.strip()) for c in data.get('cargos',[]) if c.strip()]
 
     if not nome: return jsonify({'erro': 'Informe a Razão Social'}), 400
     if not cargos: return jsonify({'erro': 'Adicione pelo menos um cargo'}), 400
