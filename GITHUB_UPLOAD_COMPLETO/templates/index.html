@@ -3,147 +3,503 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerador de Documentos SST — Ocupacional</title>
+  <title>Gerador de PGR — MRV Engenharia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#0f1623;color:#e2e8f4;min-height:100vh}
-    header{background:linear-gradient(135deg,#1a2540,#0f1623);padding:18px 32px;border-bottom:1px solid #1e2d4a;display:flex;align-items:center;gap:16px}
-    header h1{font-size:1.4rem;font-weight:700;color:#4a9eff}
-    header span{font-size:.85rem;color:#6b85a8;margin-left:8px}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .tab-nav{display:flex;gap:0;background:#111a2e;border-bottom:2px solid #1e2d4a;padding:0 20px;max-width:960px;margin:0 auto}
-    .tab-btn{padding:13px 28px;border:none;background:none;color:#6b85a8;font-size:.92rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;letter-spacing:.03em}
-    .tab-btn:hover{color:#a0b8d8}
-    .tab-btn.active{color:#4a9eff;border-bottom-color:#4a9eff}
-    .tab-content{display:none}
-    .tab-content.active{display:block}
+    :root {
+      --mrv-orange: #F26522;
+      --mrv-dark:   #1A1A1A;
+      --mrv-red:    #C0392B;
+      --bg:         #F0F2F5;
+      --card:       #FFFFFF;
+      --border:     #DDE1E9;
+      --text:       #1C2333;
+      --muted:      #6B7280;
+      --input-bg:   #F8F9FB;
+      --focus:      #F26522;
+      --success-bg: #ECFDF5;
+      --success-bd: #10B981;
+      --success-tx: #065F46;
+      --warn-bg:    #FFFBEB;
+      --warn-bd:    #F59E0B;
+      --warn-tx:    #92400E;
+      --err-bg:     #FEF2F2;
+      --err-bd:     #EF4444;
+      --err-tx:     #991B1B;
+      --radius:     10px;
+      --shadow:     0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
 
-    .container{max-width:960px;margin:28px auto;padding:0 20px}
-    .card{background:#1a2235;border:1px solid #233050;border-radius:12px;padding:24px;margin-bottom:18px}
-    .card-title{font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4a9eff;margin-bottom:16px}
-    .upload-zone{border:2px dashed #2a3f6a;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:.2s;background:#111a2e}
-    .upload-zone:hover{border-color:#4a9eff;background:#131f35}
-    .upload-zone.active{border-color:#27ae60;background:#0f2018}
-    .upload-zone p{color:#6b85a8;font-size:.9rem;margin-top:8px}
-    .upload-zone .icon{font-size:2.2rem}
-    #pdf-name{margin-top:10px;font-size:.85rem;color:#4a9eff;font-weight:600}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .grid3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px}
-    .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
-    label{display:block;font-size:.75rem;color:#7a90b0;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-    input,select,textarea{width:100%;background:#111a2e;border:1px solid #1e2d4a;border-radius:7px;padding:9px 12px;color:#e2e8f4;font-size:.88rem;transition:.2s;outline:none}
-    input:focus,select:focus,textarea:focus{border-color:#4a9eff;background:#0f1623}
-    .cargo-row{display:flex;gap:10px;align-items:center}
-    .cargo-row input{flex:1}
-    .cargo-row select{flex:1}
-    .btn{padding:9px 16px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:.85rem;transition:.15s}
-    .btn-add{background:#1d6a3a;color:#fff}
-    .btn-add:hover{background:#27ae60}
-    .btn-rem{background:#5a1a1a;color:#fff;padding:6px 11px;font-size:.8rem}
-    .btn-rem:hover{background:#e74c3c}
-    .btn-gerar{background:linear-gradient(135deg,#1a5eff,#0d3eb3);color:#fff;width:100%;padding:15px;font-size:1rem;border-radius:10px;letter-spacing:.04em}
-    .btn-gerar:hover{background:linear-gradient(135deg,#2a6eff,#1a4ec3);transform:translateY(-1px)}
-    .btn-gerar:disabled{background:#1e2d4a;color:#4a5a7a;cursor:not-allowed;transform:none}
-    #cargo-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
-    .cargo-item{display:flex;align-items:center;justify-content:space-between;background:#111a2e;border:1px solid #1e2d4a;border-radius:7px;padding:8px 12px;font-size:.88rem}
-    .cargo-item .ghe-tag{font-size:.72rem;color:#4a9eff;background:#0d1f3a;border:1px solid #1e3a6a;border-radius:4px;padding:2px 7px;margin-left:8px}
-    .status{padding:10px 14px;border-radius:8px;font-size:.88rem;margin-top:12px;display:none}
-    .status.ok{background:#0f2a1a;border:1px solid #27ae60;color:#5ddb8a;display:block}
-    .status.err{background:#2a0f0f;border:1px solid #e74c3c;color:#ff6b6b;display:block}
-    .status.loading{background:#0d1f3a;border:1px solid #4a9eff;color:#7ab8ff;display:block}
-    .status.warn{background:#2a1f00;border:1px solid #d4a017;color:#f0c040;display:block}
-    .spin{display:inline-block;animation:spin 1s linear infinite;margin-right:6px}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .tip{font-size:.76rem;color:#4a5a7a;margin-top:6px}
-    .divider{height:1px;background:#1e2d4a;margin:14px 0}
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
 
-    /* Laudo de Calor */
-    .setor-card{background:#131e33;border:1px solid #1e3a6a;border-radius:10px;padding:18px;margin-bottom:14px}
-    .setor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-    .setor-title{font-size:.85rem;font-weight:700;color:#7ab8ff}
-    .setor-badge{font-size:.75rem;background:#0d1f3a;border:1px solid #1e3a6a;border-radius:4px;padding:3px 8px;margin-left:10px}
-    .setor-badge.ok{color:#5ddb8a;border-color:#1a5a30}
-    .setor-badge.warn{color:#f0c040;border-color:#6a4a00}
-    .ponto-row{display:grid;grid-template-columns:2fr 60px 70px 70px 70px 2fr 80px auto;gap:8px;align-items:end;margin-bottom:8px;background:#0f1623;border-radius:8px;padding:10px}
-    .ponto-row label{font-size:.68rem}
-    .ponto-row input{font-size:.82rem;padding:7px 8px}
-    .ibutg-calc{font-size:.8rem;color:#7ab8ff;font-weight:600;padding:7px 4px;background:#0d1f3a;border-radius:6px;border:1px solid #1e3a6a;text-align:center;white-space:nowrap}
-    .ponto-header{display:grid;grid-template-columns:2fr 60px 70px 70px 70px 2fr 80px auto;gap:8px;padding:0 10px;margin-bottom:4px}
-    .ponto-header span{font-size:.68rem;color:#4a6a9a;text-transform:uppercase;letter-spacing:.05em}
+    /* ── Header ── */
+    header {
+      background: var(--mrv-dark);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
 
-    /* Foto upload */
-    .foto-section{margin-top:16px;padding-top:14px;border-top:1px solid #1e2d4a}
-    .foto-section-title{font-size:.75rem;color:#7a90b0;text-transform:uppercase;font-weight:600;letter-spacing:.05em;margin-bottom:10px}
-    .foto-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    .foto-slot{border:2px dashed #2a3f6a;border-radius:8px;aspect-ratio:1;cursor:pointer;position:relative;overflow:hidden;background:#111a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.2s;min-height:100px}
-    .foto-slot:hover{border-color:#4a9eff;background:#131f35}
-    .foto-slot.filled{border-color:#27ae60;border-style:solid}
-    .foto-slot img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0}
-    .foto-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;opacity:0;transition:.2s}
-    .foto-slot:hover .foto-overlay{opacity:1}
-    .foto-label{font-size:.72rem;color:#4a5a7a;text-align:center;padding:8px;line-height:1.4}
-    .foto-num{font-size:1.6rem;margin-bottom:4px}
-    .foto-rem{position:absolute;top:4px;right:4px;background:rgba(180,30,30,.85);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10}
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-    @media(max-width:700px){
-      .grid2,.grid3,.grid4{grid-template-columns:1fr}
-      .ponto-row,.ponto-header{grid-template-columns:1fr 1fr;gap:6px}
-      .cargo-row{flex-direction:column}
-      .foto-grid{grid-template-columns:1fr 1fr}
+    .logo-mark {
+      background: var(--mrv-orange);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -.5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+
+    .logo-text {
+      color: #fff;
+      font-weight: 600;
+      font-size: .95rem;
+      line-height: 1.3;
+    }
+
+    .logo-sub {
+      color: #9CA3AF;
+      font-size: .75rem;
+      font-weight: 400;
+    }
+
+    .header-badge {
+      background: rgba(242,101,34,.15);
+      color: var(--mrv-orange);
+      border: 1px solid rgba(242,101,34,.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+    }
+
+    /* ── Layout ── */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    .page-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .page-sub {
+      color: var(--muted);
+      font-size: .85rem;
+      margin-bottom: 28px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-icon {
+      width: 34px;
+      height: 34px;
+      background: #FFF3EC;
+      border: 1px solid #FDDEC9;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .card-icon svg { width: 17px; height: 17px; color: var(--mrv-orange); }
+
+    .card-title {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .card-desc {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    /* ── Upload ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      background: var(--input-bg);
+    }
+
+    .upload-zone:hover {
+      border-color: var(--mrv-orange);
+      background: #FFF8F4;
+    }
+
+    .upload-zone.active {
+      border-color: #10B981;
+      background: #ECFDF5;
+    }
+
+    .upload-icon {
+      width: 44px;
+      height: 44px;
+      background: #FFF3EC;
+      border: 1px solid #FDDEC9;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .upload-icon svg { width: 22px; height: 22px; color: var(--mrv-orange); }
+
+    .upload-zone strong { display: block; font-size: .9rem; color: var(--text); margin-bottom: 4px; }
+    .upload-zone p { font-size: .8rem; color: var(--muted); }
+    #pdf-name { margin-top: 8px; font-size: .82rem; font-weight: 600; color: #10B981; }
+
+    .tip {
+      font-size: .76rem;
+      color: var(--muted);
+      margin-top: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    /* ── Form ── */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+    .field { margin-bottom: 14px; }
+
+    label {
+      display: block;
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    input, select {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: .88rem;
+      font-family: inherit;
+      transition: all .15s;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--mrv-orange);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(242,101,34,.1);
+    }
+
+    input::placeholder { color: #B0B8C8; }
+
+    /* ── Cargos ── */
+    .cargo-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-add {
+      background: var(--mrv-orange);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 18px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+      font-family: inherit;
+    }
+
+    .btn-add:hover { background: #D4551A; }
+
+    #cargo-list { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
+
+    .cargo-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--input-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 14px;
+      font-size: .875rem;
+      transition: border-color .15s;
+    }
+
+    .cargo-item:hover { border-color: #C8CEDB; }
+
+    .cargo-item.cargo-unknown {
+      border-color: var(--warn-bd);
+      background: var(--warn-bg);
+    }
+
+    .cargo-meta { display: flex; align-items: center; gap: 8px; }
+
+    .cargo-name { font-weight: 500; color: var(--text); }
+
+    .ghe-tag {
+      font-size: .7rem;
+      font-weight: 600;
+      color: var(--mrv-orange);
+      background: #FFF3EC;
+      border: 1px solid #FDDEC9;
+      border-radius: 4px;
+      padding: 2px 7px;
+      letter-spacing: .02em;
+    }
+
+    .ghe-tag.unknown {
+      color: var(--warn-tx);
+      background: var(--warn-bg);
+      border-color: var(--warn-bd);
+    }
+
+    .btn-rem {
+      background: none;
+      border: none;
+      color: #C0C8D8;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all .15s;
+      line-height: 1;
+    }
+
+    .btn-rem:hover { color: var(--err-bd); background: var(--err-bg); }
+
+    .cargo-alert {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-bd);
+      border-radius: 7px;
+      padding: 10px 14px;
+      font-size: .82rem;
+      color: var(--warn-tx);
+      margin-top: 10px;
+      display: none;
+    }
+
+    /* ── Botão Gerar ── */
+    .btn-gerar {
+      width: 100%;
+      padding: 15px;
+      background: var(--mrv-orange);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: .95rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .02em;
+      font-family: inherit;
+      transition: all .15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .btn-gerar:hover { background: #D4551A; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(242,101,34,.35); }
+    .btn-gerar:disabled { background: #D1D5DB; color: #9CA3AF; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Status ── */
+    .status {
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: .85rem;
+      margin-top: 12px;
+      display: none;
+      line-height: 1.5;
+    }
+
+    .status.ok      { background: var(--success-bg); border: 1px solid var(--success-bd); color: var(--success-tx); display: block; }
+    .status.err     { background: var(--err-bg);     border: 1px solid var(--err-bd);     color: var(--err-tx);     display: block; }
+    .status.loading { background: #EFF6FF;            border: 1px solid #93C5FD;           color: #1E40AF;           display: block; }
+    .status.warn    { background: var(--warn-bg);    border: 1px solid var(--warn-bd);    color: var(--warn-tx);    display: block; }
+
+    .spin { display: inline-block; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider { height: 1px; background: var(--border); margin: 18px 0; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: .75rem;
+      color: #B0B8C8;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 640px) {
+      header { padding: 0 20px; }
+      .page { padding: 20px 14px 50px; }
+      .card { padding: 18px 16px; }
+      .grid2, .grid3 { grid-template-columns: 1fr; }
+      .cargo-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+
+<!-- ══ Header ══════════════════════════════════════════════════════ -->
 <header>
-  <div>⚙️</div>
-  <div>
-    <h1>Ocupacional <span style="color:#4a9eff">SST</span></h1>
-    <span>Gerador de Documentos — Medicina do Trabalho</span>
+  <div class="logo">
+    <div class="logo-mark">MRV</div>
+    <div>
+      <div class="logo-text">Gerador de PGR</div>
+      <div class="logo-sub">Ocupacional · Medicina do Trabalho</div>
+    </div>
   </div>
+  <div class="header-badge">Parque Canoas · 2025</div>
 </header>
 
-<div class="tab-nav">
-  <button class="tab-btn active" onclick="switchTab('pgr',this)">📋 Gerador de PGR</button>
-  <button class="tab-btn" onclick="switchTab('calor',this)">🔥 Laudo de Calor</button>
-</div>
+<!-- ══ Página ═══════════════════════════════════════════════════════ -->
+<div class="page">
 
-<!-- ════════════════════ ABA PGR ════════════════════ -->
-<div id="tab-pgr" class="tab-content active">
-<div class="container">
+  <p class="page-title">Programa de Gerenciamento de Riscos</p>
+  <p class="page-sub">Preencha os dados da empresa, adicione os cargos e clique em Gerar PGR.</p>
 
+  <!-- ── Upload PDF ─────────────────────────────────────────── -->
   <div class="card">
-    <div class="card-title">📄 Arquivo da Empresa</div>
+    <div class="card-header">
+      <div class="card-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 8l-4-4-4 4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title">Importar PDF da Empresa</div>
+        <div class="card-desc">Extração automática de CNPJ, endereço e cargos</div>
+      </div>
+    </div>
+
     <div class="upload-zone" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
-      <div class="icon">📂</div>
+      <div class="upload-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+      </div>
       <strong>Clique para selecionar o PDF</strong>
-      <p>ou arraste o arquivo aqui</p>
+      <p>ou arraste o arquivo aqui · PDF até 10 MB</p>
       <div id="pdf-name"></div>
     </div>
     <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePdf(this)">
-    <p class="tip">O sistema extrai automaticamente CNPJ, endereço e cargos.</p>
+    <p class="tip">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      Os dados extraídos são apenas uma sugestão — confira e corrija antes de gerar.
+    </p>
   </div>
 
-  <div id="aviso-cargos" style="display:none" class="status warn"></div>
-
+  <!-- ── Dados da Empresa ────────────────────────────────────── -->
   <div class="card">
-    <div class="card-title">🏢 Dados da Empresa</div>
-    <div style="margin-bottom:14px">
+    <div class="card-header">
+      <div class="card-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title">Dados da Empresa</div>
+        <div class="card-desc">Razão social, CNPJ e endereço completo</div>
+      </div>
+    </div>
+
+    <div class="field">
       <label>Razão Social / Nome</label>
       <input type="text" id="f-nome" placeholder="Nome completo da empresa ou MEI">
     </div>
-    <div class="grid2" style="margin-bottom:14px">
-      <div><label>CNPJ</label><input type="text" id="f-cnpj" placeholder="00.000.000/0001-00"></div>
-      <div><label>CEP</label><input type="text" id="f-cep" placeholder="00.000-000"></div>
+    <div class="grid2 field">
+      <div>
+        <label>CNPJ</label>
+        <input type="text" id="f-cnpj" placeholder="00.000.000/0001-00">
+      </div>
+      <div>
+        <label>CEP</label>
+        <input type="text" id="f-cep" placeholder="00000-000">
+      </div>
     </div>
-    <div class="grid3" style="margin-bottom:14px">
-      <div><label>Logradouro</label><input type="text" id="f-rua" placeholder="Rua / Avenida"></div>
-      <div><label>Número</label><input type="text" id="f-numero" placeholder="Nº"></div>
-      <div><label>Complemento</label><input type="text" id="f-compl" placeholder="Apto, Casa..."></div>
+    <div class="grid3 field">
+      <div>
+        <label>Logradouro</label>
+        <input type="text" id="f-rua" placeholder="Rua / Avenida">
+      </div>
+      <div>
+        <label>Número</label>
+        <input type="text" id="f-numero" placeholder="Nº">
+      </div>
+      <div>
+        <label>Complemento</label>
+        <input type="text" id="f-compl" placeholder="Apto, Bloco...">
+      </div>
     </div>
     <div class="grid3">
-      <div><label>Bairro</label><input type="text" id="f-bairro" placeholder="Bairro"></div>
-      <div><label>Cidade</label><input type="text" id="f-cidade" placeholder="Cidade"></div>
-      <div><label>UF</label>
+      <div>
+        <label>Bairro</label>
+        <input type="text" id="f-bairro" placeholder="Bairro">
+      </div>
+      <div>
+        <label>Cidade</label>
+        <input type="text" id="f-cidade" placeholder="Cidade">
+      </div>
+      <div>
+        <label>UF</label>
         <select id="f-uf">
           <option value="MG" selected>MG</option>
           <option value="SP">SP</option><option value="RJ">RJ</option>
@@ -157,558 +513,256 @@
     </div>
   </div>
 
+  <!-- ── Cargos ─────────────────────────────────────────────── -->
   <div class="card">
-    <div class="card-title">👷 Cargos</div>
+    <div class="card-header">
+      <div class="card-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-1a4 4 0 00-5.916-3.519M9 20H4v-1a4 4 0 015.916-3.519M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="card-title">Cargos da Empresa</div>
+        <div class="card-desc">O GHE e os agentes de risco são preenchidos automaticamente</div>
+      </div>
+    </div>
+
     <div class="cargo-row">
-      <input type="text" id="cargo-input" placeholder="Digite o cargo..." onkeydown="if(event.key==='Enter')addCargo()">
+      <input type="text" id="cargo-input" placeholder="Digite o cargo..."
+             onkeydown="if(event.key==='Enter')addCargo()">
       <select id="cargo-select" onchange="selectCargo(this)">
-        <option value="">— Selecionar cargo —</option>
+        <option value="">— Selecionar da lista —</option>
         {% for c in cargos_sugestoes %}
         <option value="{{ c }}">{{ c }}</option>
         {% endfor %}
       </select>
-      <button class="btn btn-add" onclick="addCargo()">&#xFF0B; Adicionar</button>
+      <button class="btn-add" onclick="addCargo()">+ Adicionar</button>
     </div>
+
     <div id="cargo-list"></div>
-    <p class="tip" style="margin-top:10px">O GHE e os agentes de risco são preenchidos automaticamente para cada cargo.</p>
+
+    <div id="cargo-alert" class="cargo-alert">
+      Cargo não reconhecido no GHE MRV. Verifique a grafia ou entre em contato para cadastrá-lo.
+    </div>
+
+    <p class="tip" style="margin-top:12px">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      Cargos sem GHE reconhecido serão sinalizados em amarelo.
+    </p>
   </div>
 
-  <button class="btn btn-gerar" id="btn-gerar" onclick="gerarPGR()">⚡ GERAR PGR</button>
+  <!-- ── Gerar ──────────────────────────────────────────────── -->
+  <button class="btn-gerar" id="btn-gerar" onclick="gerarPGR()">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
+    </svg>
+    Gerar PGR
+  </button>
   <div class="status" id="status"></div>
+
 </div>
-</div>
 
-<!-- ════════════════════ ABA LAUDO DE CALOR ════════════════════ -->
-<div id="tab-calor" class="tab-content">
-<div class="container">
-
-  <div class="card">
-    <div class="card-title">🏢 Dados da Empresa</div>
-    <div style="margin-bottom:12px">
-      <label>Razão Social</label>
-      <input type="text" id="c-nome" placeholder="Nome completo da empresa">
-    </div>
-    <div class="grid2" style="margin-bottom:12px">
-      <div><label>CNPJ</label><input type="text" id="c-cnpj" placeholder="00.000.000/0001-00"></div>
-      <div><label>CEP</label><input type="text" id="c-cep" placeholder="00.000-000"></div>
-    </div>
-    <div class="grid2" style="margin-bottom:12px">
-      <div><label>Endereço (Rua + Número)</label><input type="text" id="c-endereco" placeholder="Av. Exemplo, 123"></div>
-      <div><label>Bairro</label><input type="text" id="c-bairro" placeholder="Bairro"></div>
-    </div>
-    <div class="grid4" style="margin-bottom:12px">
-      <div><label>Cidade</label><input type="text" id="c-cidade" value="Belo Horizonte"></div>
-      <div><label>UF</label>
-        <select id="c-uf">
-          <option value="MG" selected>MG</option><option value="SP">SP</option>
-          <option value="RJ">RJ</option><option value="ES">ES</option>
-          <option value="GO">GO</option><option value="BA">BA</option>
-          <option value="PR">PR</option><option value="SC">SC</option>
-          <option value="RS">RS</option><option value="DF">DF</option>
-        </select>
-      </div>
-      <div><label>CNAE</label><input type="text" id="c-cnae" placeholder="00.00-0-00"></div>
-      <div><label>Grau de Risco</label>
-        <select id="c-gr"><option>1</option><option>2</option><option selected>3</option><option>4</option></select>
-      </div>
-    </div>
-    <div style="margin-bottom:12px">
-      <label>Descrição CNAE</label>
-      <input type="text" id="c-cnae-desc" placeholder="Ex: Fabricação de produtos de panificação.">
-    </div>
-    <div class="grid3">
-      <div><label>Contato</label><input type="text" id="c-contato" placeholder="Nome do responsável"></div>
-      <div><label>Telefone</label><input type="text" id="c-tel" placeholder="(00) 0000-0000"></div>
-      <div><label>E-mail</label><input type="text" id="c-email" placeholder="email@empresa.com.br"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">📋 Dados da Avaliação</div>
-    <div class="grid2" style="margin-bottom:12px">
-      <div><label>Data da Avaliação</label><input type="text" id="c-data" placeholder="dd/mm/aaaa"></div>
-      <div><label>Cidade e Mês/Ano da Carta</label><input type="text" id="c-carta" value="BELO HORIZONTE, MAIO DE 2026"></div>
-    </div>
-    <div style="margin-bottom:12px">
-      <label>Equipamento Utilizado</label>
-      <input type="text" id="c-equip" value="Net.Temp – Chrompack Smart TEMP | S/N: IBU0000000209">
-    </div>
-    <div class="grid2">
-      <div><label>Certificado de Calibração Nº</label><input type="text" id="c-cert" value="180.646"></div>
-      <div><label>Data de Calibração</label><input type="text" id="c-dcal" value="24/03/2026"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>🏭 Setores de Medição</span>
-      <button class="btn btn-add" onclick="adicionarSetor()">&#xFF0B; Adicionar Setor</button>
-    </div>
-    <div id="setores-list"></div>
-  </div>
-
-  <button class="btn btn-gerar" id="btn-calor" onclick="gerarCalor()">🔥 GERAR LAUDO DE CALOR</button>
-  <div class="status" id="status-calor"></div>
-</div>
-</div>
+<footer>
+  MRV Engenharia · Ocupacional Medicina do Trabalho · Parque Canoas 2025
+</footer>
 
 <script>
-// ═══════════════════════ TAB SWITCHING ═══════════════════════
-function switchTab(tab, btn) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ═══════════════════════ PGR ═══════════════════════
 let cargos = [];
 
+// ── Drag & Drop ────────────────────────────────────────────────────
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('active'));
 dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('active');
+  e.preventDefault();
+  dz.classList.remove('active');
   const file = e.dataTransfer.files[0];
   if (file && file.name.endsWith('.pdf')) processFile(file);
 });
 
-function handlePdf(input) { if (input.files[0]) processFile(input.files[0]); }
+function handlePdf(input) {
+  if (input.files[0]) processFile(input.files[0]);
+}
 
 async function processFile(file) {
-  document.getElementById('pdf-name').textContent = '⏳ Extraindo dados...';
-  const fd = new FormData(); fd.append('pdf', file);
-  const avisoEl = document.getElementById('aviso-cargos');
-  avisoEl.style.display = 'none';
+  document.getElementById('pdf-name').textContent = 'Extraindo dados...';
+  const fd = new FormData();
+  fd.append('pdf', file);
   try {
-    const r = await fetch('/extrair', { method: 'POST', body: fd });
-    const d = await r.json();
-    document.getElementById('pdf-name').textContent = '✅ ' + file.name;
+    const r  = await fetch('/extrair', { method: 'POST', body: fd });
+    const d  = await r.json();
+    document.getElementById('pdf-name').textContent = 'Arquivo carregado: ' + file.name;
     dz.classList.add('active');
-    setField('f-nome', d.nome); setField('f-cnpj', d.cnpj); setField('f-rua', d.rua);
-    setField('f-numero', d.numero); setField('f-compl', d.complemento);
-    setField('f-cep', d.cep); setField('f-bairro', d.bairro); setField('f-cidade', d.cidade);
+    setField('f-nome',   d.nome);
+    setField('f-cnpj',   d.cnpj);
+    setField('f-rua',    d.rua);
+    setField('f-numero', d.numero);
+    setField('f-compl',  d.complemento);
+    setField('f-cep',    d.cep);
+    setField('f-bairro', d.bairro);
+    setField('f-cidade', d.cidade);
     if (d.uf) document.getElementById('f-uf').value = d.uf;
-    if (d.cargos && d.cargos.length > 0) { cargos = d.cargos; renderCargos(); }
-
-    // ── Aviso de cargos não reconhecidos ──
-    if (d.possiveis_nao_reconhecidos && d.possiveis_nao_reconhecidos.length > 0) {
-      avisoEl.style.display = 'block';
-      avisoEl.innerHTML =
-        '⚠️ <strong>Possíveis cargos no PDF não encontrados na base de dados MRV:</strong><br>' +
-        d.possiveis_nao_reconhecidos.map(t =>
-          `<span style="display:inline-block;margin:3px 4px;background:#0d1f3a;border:1px solid #2a4a7a;padding:2px 8px;border-radius:4px;cursor:pointer"
-                 onclick="document.getElementById(\'cargo-input\').value=\'${t.replace(/'/g,"\\'")}\'"
-                 title="Clique para preencher no campo de cargo">${t}</span>`
-        ).join('') +
-        '<br><small style="opacity:.7">Clique num termo para adicioná-lo ao campo de cargo. Adicione manualmente se necessário.</small>';
-    }
-
-    showStatus('✅ Dados extraídos! Confira e ajuste se necessário.', 'ok', 'status');
-  } catch(e) {
-    document.getElementById('pdf-name').textContent = '⚠️ Erro ao extrair';
-    showStatus('Não foi possível extrair. Preencha manualmente.', 'err', 'status');
+    if (d.cargos && d.cargos.length) { cargos = d.cargos; renderCargos(); }
+    showStatus('Dados extraídos com sucesso. Confira as informações antes de gerar.', 'ok');
+  } catch (e) {
+    document.getElementById('pdf-name').textContent = 'Erro ao extrair dados';
+    showStatus('Não foi possível extrair os dados. Preencha manualmente.', 'err');
   }
 }
 
-function setField(id, val) { if (val) document.getElementById(id).value = val; }
-function selectCargo(sel) { if (sel.value) { document.getElementById('cargo-input').value = sel.value; sel.value = ''; } }
+function setField(id, val) {
+  if (val) document.getElementById(id).value = val;
+}
+
+function selectCargo(sel) {
+  if (sel.value) {
+    document.getElementById('cargo-input').value = sel.value;
+    sel.value = '';
+  }
+}
+
 function addCargo() {
   const v = document.getElementById('cargo-input').value.trim();
-  if (!v || cargos.includes(v)) return;
-  cargos.push(v); renderCargos();
+  if (!v) return;
+  if (!cargos.includes(v)) { cargos.push(v); renderCargos(); }
   document.getElementById('cargo-input').value = '';
 }
-function remCargo(i) { cargos.splice(i,1); renderCargos(); }
 
-const GHE_MAP = {
-  AZULEJ:'ACABAMENTO',LADRILH:'ACABAMENTO',GESSEIRO:'GESSO_REJUNTE',REJUNT:'GESSO_REJUNTE',
-  ENGENHEIRO:'ADMINISTRATIVO',TOPOGRAFO:'ADMINISTRATIVO',ANALISTA:'ADMINISTRATIVO',
-  ALMOXARIFE:'ALMOXARIFADO',ESTAGIARIO:'APOIO_PRODUCAO',ARMADOR:'ARMACAO',
-  CARPINT:'CARPINTARIA',BETONEIRA:'CENTRAL_BETONEIRA',MONTADOR:'ESTRUTURA_PAREDE',
-  BOMBEIRO:'HIDRAULICA',ENCANADOR:'HIDRAULICA',PINTOR:'PINTURA',
-  PORTEIRO:'PORTARIA',VIGIA:'PORTARIA',SERRALHEIRO:'SERRALHERIA',
-  ENCARREGADO:'SUPERVISAO',MESTRE:'SUPERVISAO',PEDREIRO:'ESTRUTURA_ALVENARIA',
-};
+function remCargo(i) { cargos.splice(i, 1); renderCargos(); }
+
+// ── GHE lookup (espelho simplificado do backend) ───────────────────
 function getGHE(cargo) {
   const c = cargo.toUpperCase();
+  if (c.includes('PEDREIRO ACABAMENTO') || c.includes('AZULEJ') || c.includes('LADRILH')) return 'ACABAMENTO';
+  if (c.includes('GESSEIRO') || c.includes('REJUNT')) return 'GESSO_REJUNTE';
+  if (c.includes('ADMIN') || c.includes('ANALISTA') || c.includes('ENGENHEIRO') || c.includes('TOPOGRAFO') || c.includes('APONTADOR')) return 'ADMINISTRATIVO';
+  if (c.includes('ENCARREGADO ALMOXARIFE')) return 'SUPERVISAO';
+  if (c.includes('ALMOXARIFE') || c.includes('FERRAMENTEIRO')) return 'ALMOXARIFADO';
+  if (c.includes('TECNICO EDIF') || c.includes('TECNICO SEGUR') || c.includes('TECNICO AMBI') || c.includes('TECNICO INSTAL') || c.includes('ESTAGIARIO') || c.includes('ASSISTENTE TECNICO') || c.includes('AUXILIAR SEGUR') || c.includes('AUXILIAR TECNICO SEGUR')) return 'APOIO_PRODUCAO';
+  if (c.includes('ARMADOR') || c.includes('AUXILIAR ARMAD') || c.includes('AJUDANTE ARMAD') || c.includes('FERREIRO')) return 'ARMACAO';
+  if (c.includes('CARPINT') || c.includes('SERRAD') || c.includes('MARCENEIRO')) return 'CARPINTARIA';
+  if (c.includes('BETONEIRA')) return 'CENTRAL_BETONEIRA';
+  if (c.includes('ELETRICISTA POS ENTREGA')) return 'ASSIST_TEC_ELETRICA';
+  if (c.includes('POS ENTREGA')) return 'ASSIST_TEC_ESPEC';
   if (c.includes('ELETRIC') && !c.includes('ENCARREGADO')) return 'ELETRICA';
+  if (c.includes('BOMBEIRO') || c.includes('ENCANADOR') || c.includes('HIDRAUL')) return 'HIDRAULICA';
+  if (c.includes('MAQUINAS LEVE') || c.includes('MAQUINAS PEQUENO')) return 'MAQUINAS_PEQUENO_PORTE';
+  if (c.includes('OPERADOR MAQUIN') || c.includes('MAQUINAS GERAL') || c.includes('MAQUINAS PESAD') || c.includes('OPERADOR EQUIP')) return 'MAQUINAS_GERAL';
+  if (c.includes('CREMALHEIRA') || c.includes('GRUA') || c.includes('SINALEIRO') || c.includes('GUINCHO') || c.includes('ELEVADOR CARGA')) return 'MAQUINAS_ESTAC';
+  if (c.includes('JARDINEIRO')) return 'PAISAGISMO';
   if (c.includes('POLIVALENTE')) return 'POLIVALENTE';
-  if (c.includes('OPERADOR MAQUIN') || c.includes('MAQUINAS GERAL')) return 'MAQUINAS_GERAL';
-  if (c.includes('CREMALHEIRA') || c.includes('GRUA') || c.includes('SINALEIRO')) return 'MAQUINAS_ESTAC';
-  if (c.includes('SERVENTE') || c.includes('AJUDANTE') || c.includes('AUXILIAR DE LIMP') || c.includes('AUXILIAR DE SERVICO')) return 'OPERACIONAL';
-  for (const [k,v] of Object.entries(GHE_MAP)) { if (c.includes(k)) return v; }
-  if (c.includes('MEIO OFICIAL')) return 'ESTRUTURA_ALVENARIA';
-  return 'NÃO_RECONHECIDO';
-}
-function renderCargos() {
-  document.getElementById('cargo-list').innerHTML = cargos.map((c,i) => `
-    <div class="cargo-item">
-      <span>${c} <span class="ghe-tag">${getGHE(c)}</span></span>
-      <button onclick="remCargo(${i})" style="background:none;border:none;color:#e74c3c;cursor:pointer">✕</button>
-    </div>`).join('');
+  if (c.includes('PINTOR') || c.includes('AUXILIAR PINT')) return 'PINTURA';
+  if (c.includes('PORTEIRO') || c.includes('VIGIA') || c.includes('GUARITEIRO')) return 'PORTARIA';
+  if (c.includes('SERRALHEIRO') || c.includes('SOLDADOR')) return 'SERRALHERIA';
+  if (c.includes('FAXINEIRO') || c.includes('AUXILIAR LIMPEZA') || c.includes('AUXILIAR SERVICOS GERAIS')) return 'SERVICOS_GERAIS';
+  if (c.includes('ENCARREGADO') || c.includes('MESTRE') || c.includes('SUPERVISOR') || c.includes('CABO TURMA') || c.includes('CONTRA MESTRE') || c.includes('PROFISSIONAL LIDER')) return 'SUPERVISAO';
+  if (c.includes('MONTADOR FORMA') || c.includes('MONTADOR FORMAS') || c.includes('AUXILIAR MONTADOR') || c.includes('MEIO OFICIAL MONTADOR')) return 'ESTRUTURA_PAREDE';
+  if (c === 'MONTADOR' || c === 'MONTADOR DE FORMA METALICA') return 'ESTRUTURA_PAREDE';
+  if (c.includes('PEDREIRO') || c.includes('MEIO OFICIAL') || c.includes('AUXILIAR PEDREIRO') || c.includes('OFICIAL PLENO') || c.includes('MONTADOR ANDAIME') || c.includes('MONTADOR ESQUADRIA')) return 'ESTRUTURA_ALVENARIA';
+  if (c.trim() === 'OFICIAL') return 'ESTRUTURA_ALVENARIA';
+  if (c.includes('SERVENTE') || c.includes('AJUDANTE') || c.includes('AUXILIAR DE LIMP') || c.includes('AUXILIAR DE SERVICO') || c.includes('AUXILIAR OBRAS') || c.includes('AUXILIAR PRODUCAO')) return 'OPERACIONAL';
+  return null;
 }
 
+function renderCargos() {
+  const el = document.getElementById('cargo-list');
+  let temDesconhecido = false;
+  el.innerHTML = cargos.map((c, i) => {
+    const ghe = getGHE(c);
+    if (!ghe) temDesconhecido = true;
+    const tag = ghe
+      ? `<span class="ghe-tag">${ghe}</span>`
+      : `<span class="ghe-tag unknown">Não reconhecido</span>`;
+    return `<div class="cargo-item ${!ghe ? 'cargo-unknown' : ''}">
+      <div class="cargo-meta">
+        <span class="cargo-name">${c}</span>
+        ${tag}
+      </div>
+      <button class="btn-rem" onclick="remCargo(${i})" title="Remover">✕</button>
+    </div>`;
+  }).join('');
+  document.getElementById('cargo-alert').style.display = temDesconhecido ? 'block' : 'none';
+}
+
+// ── Gerar PGR ─────────────────────────────────────────────────────
 async function gerarPGR() {
   const nome = document.getElementById('f-nome').value.trim();
-  if (!nome) { showStatus('Informe a Razão Social da empresa.', 'err', 'status'); return; }
-  if (!cargos.length) { showStatus('Adicione pelo menos um cargo.', 'err', 'status'); return; }
+  if (!nome) { showStatus('Informe a Razão Social da empresa.', 'err'); return; }
+  if (!cargos.length) { showStatus('Adicione pelo menos um cargo.', 'err'); return; }
+
   const btn = document.getElementById('btn-gerar');
-  btn.disabled = true; btn.textContent = '⏳ Gerando...';
-  showStatus('<span class="spin">⚙️</span> Gerando PGR, aguarde...', 'loading', 'status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Gerando...';
+  showStatus('Gerando PGR, aguarde...', 'loading');
+
   try {
     const resp = await fetch('/gerar', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nome, cnpj: document.getElementById('f-cnpj').value,
-        rua: document.getElementById('f-rua').value,
-        numero: document.getElementById('f-numero').value,
+        nome,
+        cnpj:        document.getElementById('f-cnpj').value,
+        rua:         document.getElementById('f-rua').value,
+        numero:      document.getElementById('f-numero').value,
         complemento: document.getElementById('f-compl').value,
-        cep: document.getElementById('f-cep').value,
-        bairro: document.getElementById('f-bairro').value,
-        cidade: document.getElementById('f-cidade').value || 'Belo Horizonte',
-        uf: document.getElementById('f-uf').value,
+        cep:         document.getElementById('f-cep').value,
+        bairro:      document.getElementById('f-bairro').value,
+        cidade:      document.getElementById('f-cidade').value || 'Belo Horizonte',
+        uf:          document.getElementById('f-uf').value,
         cargos
       })
     });
+
     if (!resp.ok) {
       const err = await resp.json();
-      if (err.aviso) {
-        showStatus('⚠️ ' + err.erro, 'warn', 'status');
-      } else {
-        throw new Error(err.erro || 'Erro desconhecido');
-      }
-      return;
+      if (resp.status === 422 && err.aviso) throw new Error(err.erro);
+      throw new Error(err.erro || 'Erro desconhecido');
     }
+
     const ct = resp.headers.get('Content-Type') || '';
     if (ct.includes('application/json')) {
       const json = await resp.json();
       if (json.aviso_gerado) {
-        const bytes = atob(json.docx_b64); const arr = new Uint8Array(bytes.length);
-        for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-        downloadBlob(new Blob([arr], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), json.filename);
-        showStatus('✅ PGR gerado com alertas:<br>' + json.alertas.map(a=>`⚠️ ${a}`).join('<br>'), 'warn', 'status');
+        baixarBlob(json.docx_b64, json.filename);
+        showStatus('PGR gerado com avisos:<br>' + json.alertas.map(a => '· ' + a).join('<br>'), 'warn');
         return;
       }
       throw new Error(json.erro || 'Erro desconhecido');
     }
+
     const blob = await resp.blob();
-    const cd = resp.headers.get('Content-Disposition') || '';
-    const match = cd.match(/filename="(.+)"/);
-    downloadBlob(blob, match ? match[1] : `PGR - ${nome}.docx`);
-    showStatus('✅ PGR gerado com sucesso! O arquivo foi baixado.', 'ok', 'status');
-  } catch(e) {
-    showStatus('❌ Erro: ' + e.message, 'err', 'status');
+    const cd   = resp.headers.get('Content-Disposition') || '';
+    const m    = cd.match(/filename="(.+)"/);
+    baixarUrl(URL.createObjectURL(blob), m ? m[1] : `PGR - ${nome}.docx`);
+    showStatus('PGR gerado com sucesso. O arquivo foi baixado automaticamente.', 'ok');
+  } catch (e) {
+    showStatus('Erro: ' + e.message, 'err');
   } finally {
-    btn.disabled = false; btn.textContent = '⚡ GERAR PGR';
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/></svg> Gerar PGR`;
   }
 }
 
-// ═══════════════════════ LAUDO DE CALOR ═══════════════════════
-let setores = [];
-
-const NR15 = [
-  [100,33.7],[102,33.6],[104,33.5],[106,33.4],[108,33.3],[110,33.2],[112,33.1],[115,33.0],
-  [117,32.9],[119,32.8],[122,32.7],[124,32.6],[127,32.5],[129,32.4],[132,32.3],[135,32.2],
-  [137,32.1],[140,32.0],[143,31.9],[146,31.8],[149,31.7],[152,31.6],[155,31.5],[158,31.4],
-  [161,31.3],[165,31.2],[168,31.1],[171,31.0],[175,30.9],[178,30.8],[182,30.7],[186,30.6],
-  [189,30.5],[193,30.4],[197,30.3],[201,30.2],[205,30.1],[209,30.0],[214,29.9],[218,29.8],
-  [222,29.7],[227,29.6],[231,29.5],[236,29.4],[241,29.3],[246,29.2],[251,29.1],[256,29.0],
-  [261,28.9],[266,28.8],[272,28.7],[277,28.6],[283,28.5],[289,28.4],[294,28.3],[300,28.2],
-  [306,28.1],[313,28.0],[319,27.9],[325,27.8],[332,27.7],[339,27.6],[346,27.5]
-];
-
-function nr15Limite(m) {
-  if (m <= NR15[0][0]) return NR15[0][1];
-  if (m >= NR15[NR15.length-1][0]) return NR15[NR15.length-1][1];
-  for (let i=0; i<NR15.length-1; i++) {
-    const [m1,l1]=NR15[i], [m2,l2]=NR15[i+1];
-    if (m>=m1 && m<=m2) return +(l1+(l2-l1)*(m-m1)/(m2-m1)).toFixed(1);
-  }
-  return NR15[NR15.length-1][1];
+function baixarBlob(b64, filename) {
+  const bytes = atob(b64);
+  const arr   = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  baixarUrl(URL.createObjectURL(new Blob([arr], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  })), filename);
 }
 
-function adicionarSetor() {
-  setores.push({
-    nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)',
-    fotos:[null,null,null],
-    pontos:[]
-  });
-  const idx = setores.length - 1;
-  adicionarPonto(idx);
-  renderSetores();
-}
-
-function removerSetor(idx) { setores.splice(idx,1); renderSetores(); }
-
-function adicionarPonto(setorIdx) {
-  setores[setorIdx].pontos.push({
-    local:'', tempo:30, tbn:'', tbs:'', tg:'',
-    atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198
-  });
-  renderSetores();
-}
-
-function removerPonto(sIdx, pIdx) {
-  setores[sIdx].pontos.splice(pIdx,1);
-  if (setores[sIdx].pontos.length === 0) adicionarPonto(sIdx);
-  else renderSetores();
-}
-
-function atualizarPonto(sIdx, pIdx, field, val) {
-  setores[sIdx].pontos[pIdx][field] = field==='tempo'||field==='M' ? +val : val;
-  renderSumario(sIdx);
-}
-
-function calcSetorStats(setor) {
-  const pts = setor.pontos;
-  const valid = pts.filter(p => p.tbn!=='' && p.tg!=='' && p.tempo>0 && p.M>0);
-  if (!valid.length) return null;
-  const totalT = valid.reduce((s,p)=>s+p.tempo,0);
-  const ibutgMedio = valid.reduce((s,p)=>s+(0.7*+p.tbn+0.3*+p.tg)*p.tempo,0)/totalT;
-  const mMedio = valid.reduce((s,p)=>s+p.M*p.tempo,0)/totalT;
-  const limite = nr15Limite(mMedio);
-  return { ibutgMedio:+ibutgMedio.toFixed(1), mMedio:+mMedio.toFixed(0), limite };
-}
-
-function renderSumario(sIdx) {
-  const stats = calcSetorStats(setores[sIdx]);
-  const badge = document.getElementById(`badge-${sIdx}`);
-  if (!badge) return;
-  if (!stats) { badge.textContent='–'; badge.className='setor-badge'; return; }
-  const ok = stats.ibutgMedio <= stats.limite;
-  badge.textContent = `${stats.ibutgMedio}°C / Lim: ${stats.limite}°C ${ok?'✅':'⚠️'}`;
-  badge.className = 'setor-badge ' + (ok ? 'ok' : 'warn');
-}
-
-function handleFoto(si, k, input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    if (!setores[si].fotos) setores[si].fotos = [null,null,null];
-    setores[si].fotos[k-1] = e.target.result;
-    // Update slot without full re-render to preserve file inputs
-    const slot = document.getElementById(`foto-slot-${si}-${k}`);
-    if (slot) {
-      slot.classList.add('filled');
-      let img = slot.querySelector('img');
-      if (!img) {
-        slot.innerHTML = `<img id="foto-img-${si}-${k}" src="" alt="Foto ${k}">
-          <div class="foto-overlay"><span style="color:#fff;font-size:.8rem">✏️ Trocar</span></div>
-          <button class="foto-rem" onclick="event.stopPropagation();removerFoto(${si},${k})" title="Remover foto">✕</button>
-          <input type="file" id="foto-input-${si}-${k}" accept="image/*" style="display:none"
-                 onchange="handleFoto(${si},${k},this)">`;
-        img = slot.querySelector('img');
-      }
-      img.src = e.target.result;
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-function removerFoto(si, k) {
-  if (!setores[si].fotos) return;
-  setores[si].fotos[k-1] = null;
-  const slot = document.getElementById(`foto-slot-${si}-${k}`);
-  if (slot) {
-    slot.classList.remove('filled');
-    slot.innerHTML = `
-      <span class="foto-num">📷</span>
-      <div class="foto-label">Foto ${k}<br><span style="color:#2a3f6a;font-size:.68rem">Clique para adicionar</span></div>
-      <input type="file" id="foto-input-${si}-${k}" accept="image/*" style="display:none"
-             onchange="handleFoto(${si},${k},this)">`;
-  }
-}
-
-function renderSetores() {
-  const container = document.getElementById('setores-list');
-  if (!setores.length) {
-    container.innerHTML = '<p style="color:#4a5a7a;font-size:.85rem;text-align:center;padding:20px">Nenhum setor adicionado. Clique em "&#xFF0B; Adicionar Setor".</p>';
-    return;
-  }
-  container.innerHTML = setores.map((s, si) => {
-    const stats = calcSetorStats(s);
-    const badgeTxt = stats
-      ? `${stats.ibutgMedio}°C / Lim: ${stats.limite}°C ${stats.ibutgMedio<=stats.limite?'✅':'⚠️'}`
-      : '–';
-    const badgeCls = stats ? (stats.ibutgMedio<=stats.limite?'ok':'warn') : '';
-
-    const fotoSlots = [1,2,3].map(k => {
-      const hasFoto = s.fotos && s.fotos[k-1];
-      return `<div class="foto-slot ${hasFoto?'filled':''}"
-                   id="foto-slot-${si}-${k}"
-                   onclick="document.getElementById('foto-input-${si}-${k}').click()">
-        ${hasFoto
-          ? `<img id="foto-img-${si}-${k}" src="" alt="Foto ${k}">
-             <div class="foto-overlay"><span style="color:#fff;font-size:.8rem">✏️ Trocar</span></div>
-             <button class="foto-rem" onclick="event.stopPropagation();removerFoto(${si},${k})" title="Remover">✕</button>`
-          : `<span class="foto-num">📷</span>
-             <div class="foto-label">Foto ${k}<br><span style="color:#2a3f6a;font-size:.68rem">Clique para adicionar</span></div>`}
-        <input type="file" id="foto-input-${si}-${k}" accept="image/*" style="display:none"
-               onchange="handleFoto(${si},${k},this)">
-      </div>`;
-    }).join('');
-
-    return `
-    <div class="setor-card">
-      <div class="setor-header">
-        <div style="display:flex;align-items:center;gap:10px;flex:1">
-          <span class="setor-title">Setor ${si+1}</span>
-          <input type="text" placeholder="Nome do setor (ex: PADARIA)" value="${esc(s.nome)}"
-            style="flex:1;font-weight:700;color:#e2e8f4"
-            oninput="setores[${si}].nome=this.value">
-          <span class="setor-badge ${badgeCls}" id="badge-${si}">${badgeTxt}</span>
-        </div>
-        <button class="btn btn-rem" onclick="removerSetor(${si})">✕ Setor</button>
-      </div>
-      <div class="grid3" style="margin-bottom:12px">
-        <div><label>Horário da Medição</label>
-          <input type="text" placeholder="08:50 – 10:01" value="${esc(s.horario)}"
-            oninput="setores[${si}].horario=this.value"></div>
-        <div style="grid-column:span 2"><label>Tipo de Vestimenta</label>
-          <input type="text" value="${esc(s.vestimenta)}"
-            oninput="setores[${si}].vestimenta=this.value"></div>
-      </div>
-      <div class="ponto-header">
-        <span>Local / Ponto</span><span>Tempo (min)</span>
-        <span>Tbn (°C)</span><span>Tbs (°C)</span><span>Tg (°C)</span>
-        <span>Tipo de Atividade</span><span>M (W)</span><span></span>
-      </div>
-      ${s.pontos.map((p,pi) => {
-        const ibutg = p.tbn!==''&&p.tg!=='' ? (0.7*+p.tbn+0.3*+p.tg).toFixed(2) : '–';
-        return `<div class="ponto-row">
-          <div><input type="text" placeholder="Local do ponto" value="${esc(p.local)}"
-            oninput="setores[${si}].pontos[${pi}].local=this.value"></div>
-          <div><input type="number" min="1" max="480" value="${p.tempo}"
-            onchange="atualizarPonto(${si},${pi},'tempo',this.value)"></div>
-          <div><input type="number" step="0.1" placeholder="°C" value="${p.tbn}"
-            oninput="atualizarPonto(${si},${pi},'tbn',this.value)"></div>
-          <div><input type="number" step="0.1" placeholder="°C" value="${p.tbs}"
-            oninput="atualizarPonto(${si},${pi},'tbs',this.value)"></div>
-          <div><input type="number" step="0.1" placeholder="°C" value="${p.tg}"
-            oninput="atualizarPonto(${si},${pi},'tg',this.value)"></div>
-          <div><input type="text" placeholder="Tipo de atividade" value="${esc(p.atividade)}"
-            oninput="setores[${si}].pontos[${pi}].atividade=this.value"></div>
-          <div><input type="number" min="80" max="500" value="${p.M}"
-            onchange="atualizarPonto(${si},${pi},'M',this.value)"></div>
-          <div style="display:flex;flex-direction:column;gap:4px">
-            <div class="ibutg-calc">${ibutg !== '–' ? ibutg+'°C' : '–'}</div>
-            ${s.pontos.length>1?`<button class="btn btn-rem" onclick="removerPonto(${si},${pi})">✕</button>`:''}
-          </div>
-        </div>`;
-      }).join('')}
-      <button class="btn btn-add" style="margin-top:8px;font-size:.8rem;padding:7px 14px"
-        onclick="adicionarPonto(${si})">&#xFF0B; Adicionar Ponto</button>
-
-      <div class="foto-section">
-        <div class="foto-section-title">📷 Fotos da Medição <span style="font-weight:400;color:#4a5a7a;text-transform:none;letter-spacing:0">(opcionais — inseridas automaticamente no laudo)</span></div>
-        <div class="foto-grid">${fotoSlots}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  // Restore photo previews after DOM update
-  setores.forEach((s, si) => {
-    if (s.fotos) {
-      s.fotos.forEach((f, k) => {
-        if (f) {
-          const img = document.getElementById(`foto-img-${si}-${k+1}`);
-          if (img) img.src = f;
-        }
-      });
-    }
-  });
-}
-
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-async function gerarCalor() {
-  const nome = document.getElementById('c-nome').value.trim();
-  if (!nome) { showStatus('Informe a Razão Social.', 'err', 'status-calor'); return; }
-  if (!setores.length) { showStatus('Adicione pelo menos um setor.', 'err', 'status-calor'); return; }
-  for (const s of setores) {
-    if (!s.nome.trim()) { showStatus('Preencha o nome de todos os setores.', 'err', 'status-calor'); return; }
-    for (const p of s.pontos) {
-      if (p.tbn===''||p.tbs===''||p.tg==='') {
-        showStatus(`Preencha Tbn, Tbs e Tg de todos os pontos do setor "${s.nome}".`, 'err', 'status-calor');
-        return;
-      }
-    }
-  }
-  const btn = document.getElementById('btn-calor');
-  btn.disabled = true; btn.textContent = '⏳ Gerando...';
-  showStatus('<span class="spin">🔥</span> Gerando laudo, aguarde...', 'loading', 'status-calor');
-  try {
-    const resp = await fetch('/gerar_calor', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        empresa: {
-          razaoSocial: nome,
-          cnpj: document.getElementById('c-cnpj').value,
-          endereco: document.getElementById('c-endereco').value,
-          cep: document.getElementById('c-cep').value,
-          cidade: document.getElementById('c-cidade').value,
-          bairro: document.getElementById('c-bairro').value,
-          uf: document.getElementById('c-uf').value,
-          cnae: document.getElementById('c-cnae').value,
-          descricaoCnae: document.getElementById('c-cnae-desc').value,
-          grauRisco: document.getElementById('c-gr').value,
-          contato: document.getElementById('c-contato').value,
-          telefone: document.getElementById('c-tel').value,
-          email: document.getElementById('c-email').value,
-        },
-        avaliacao: {
-          dataAvaliacao: document.getElementById('c-data').value,
-          cidadeCarta: document.getElementById('c-carta').value,
-          equipamento: document.getElementById('c-equip').value,
-          certNo: document.getElementById('c-cert').value,
-          dataCalib: document.getElementById('c-dcal').value,
-        },
-        setores: setores.map(s => ({
-          nome: s.nome,
-          horario: s.horario,
-          vestimenta: s.vestimenta,
-          fotos: (s.fotos || []).map(f => f || null),
-          pontos: s.pontos.map(p => ({
-            local: p.local,
-            tempo: +p.tempo,
-            tbn: +p.tbn,
-            tbs: +p.tbs,
-            tg: +p.tg,
-            atividade: p.atividade,
-            M: +p.M,
-          }))
-        }))
-      })
-    });
-    if (!resp.ok) { const err = await resp.json(); throw new Error(err.erro || 'Erro'); }
-    const blob = await resp.blob();
-    const cd = resp.headers.get('Content-Disposition') || '';
-    const match = cd.match(/filename="(.+)"/);
-    downloadBlob(blob, match ? match[1] : `Laudo de Calor - ${nome}.docx`);
-    showStatus('✅ Laudo gerado com sucesso! O arquivo foi baixado.', 'ok', 'status-calor');
-  } catch(e) {
-    showStatus('❌ Erro: ' + e.message, 'err', 'status-calor');
-  } finally {
-    btn.disabled = false; btn.textContent = '🔥 GERAR LAUDO DE CALOR';
-  }
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
+function baixarUrl(url, filename) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
-function showStatus(msg, type, elId) {
-  const el = document.getElementById(elId);
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
   el.className = 'status ' + type;
   el.innerHTML = msg;
 }
-
-adicionarSetor();
 </script>
 </body>
 </html>
