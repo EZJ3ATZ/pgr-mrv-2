@@ -1,4 +1,4 @@
-import os, re, shutil, zipfile, io, tempfile
+import os, re, shutil, zipfile, io, tempfile, base64
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template
 import xml.etree.ElementTree as ET
@@ -10,7 +10,7 @@ except ImportError:
     PDF_OK = False
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max (fotos)
 
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 TPL_DIR    = os.path.join(BASE_DIR, 'tpl')
@@ -745,133 +745,275 @@ def gerar_calor_bytes(d):
     with open(tpl,'rb') as f: raw = f.read()
     zin = zipfile.ZipFile(io.BytesIO(raw))
     xml = zin.read('word/document.xml').decode('utf-8')
+    rels_xml = zin.read('word/_rels/document.xml.rels').decode('utf-8')
 
-    # ── Fixed company replacements ───────────────────────────────────
+    # ── Company replacements (Dahana template) ───────────────────────
     razao = emp.get('razaoSocial','')
-    xml = xml.replace('HD Indústria De Alimentos Ltda', _xe(razao))
-    xml = xml.replace('>XXXXXXXXXXXXXX<', f'>{_xe(razao.upper())}<')
-    xml = xml.replace('NOME DA EMPRESA', _xe(razao.upper()))
-    xml = xml.replace('Rua Itapema, Nº. 326', _xe(emp.get('endereco','')))
-    xml = xml.replace('44.888.946/0001-01', _xe(emp.get('cnpj','')))
-    xml = xml.replace('30310-490', _xe(emp.get('cep','')))
-    xml = xml.replace('>Anchieta<', f'>{_xe(emp.get("bairro",""))}<')
-    xml = xml.replace('10.91-1', _xe(emp.get('cnae','')))
-    xml = xml.replace('Fabricação de produtos de panificação.', _xe(emp.get('descricaoCnae','')))
-    xml = xml.replace('>Pedro<', f'>{_xe(emp.get("contato",""))}<')
-    xml = xml.replace('(31) 3287-7022', _xe(emp.get('telefone','')))
-    xml = xml.replace('administrativo199@paoecia.com.br', _xe(emp.get('email','')))
+    xml = xml.replace('COMERCIAL DAHANA LTDA', _xe(razao))
+    xml = xml.replace('Av. General Olímpio Mourão Filho, 717', _xe(emp.get('endereco','')))
+    xml = xml.replace('00.070.509/0034-79', _xe(emp.get('cnpj','')))
+    xml = xml.replace('31710-690', _xe(emp.get('cep','')))
+    xml = xml.replace('>Planalto<', f'>{_xe(emp.get("bairro",""))}<')
     xml = xml.replace('>Belo Horizonte<', f'>{_xe(emp.get("cidade","Belo Horizonte"))}<')
+    xml = xml.replace('>MG<', f'>{_xe(emp.get("uf","MG"))}<')
+    xml = xml.replace('47.11-3-02', _xe(emp.get('cnae','')))
+    xml = xml.replace('Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - supermercados', _xe(emp.get('descricaoCnae','')))
+    xml = xml.replace('>Thais Taveira<', f'>{_xe(emp.get("contato",""))}<')
+    xml = xml.replace('(31)3359-3389', _xe(emp.get('telefone','')))
+    xml = xml.replace('thais.conde@supernosso.com.br', _xe(emp.get('email','')))
+    xml = xml.replace('BELO HORIZONTE, MAIO DE 2026.', _xe(aval.get('cidadeCarta','BELO HORIZONTE, MAIO DE 2026')) + '.')
+    equip_old = 'Net.Temp – Chrompack Smart TEMP | S/N: IBU0000000209 | Calibração: 24/03/2026 | Certificado Nº 180.646'
+    xml = xml.replace(equip_old, _xe(aval.get('equipamento', equip_old)))
 
-    # Carta header: "CONTAGEM, " + "JULHO " + "DE 20" + "xx."
-    cc = aval.get('cidadeCarta','BELO HORIZONTE, MAIO DE 2026')
-    cc_parts = cc.split(',',1)
-    cc_cidade = cc_parts[0].strip()
-    cc_resto  = cc_parts[1].strip() if len(cc_parts)>1 else 'MAIO DE 2026'
-    # cc_resto like "MAIO DE 2026" or "MAIO DE 2026."
-    cc_de_idx = cc_resto.upper().find(' DE ')
-    cc_mes = cc_resto[:cc_de_idx].strip() if cc_de_idx>0 else 'MAIO'
-    cc_ano = cc_resto[cc_de_idx+4:].strip().rstrip('.') if cc_de_idx>0 else '2026'
-    xml = xml.replace('CONTAGEM, ', _xe(cc_cidade) + ', ')
-    xml = xml.replace('JULHO ', _xe(cc_mes) + ' ')
-    xml = re.sub(r'>DE 20\d{2}\.?<', f'>DE {_xe(cc_ano)}.<', xml)
-
-    # Calibration equipment
-    xml = xml.replace('Termômetro de Globo Protemp 4 – Griffer.', _xe(aval.get('equipamento','Net.Temp – Chrompack Smart TEMP')))
-    xml = xml.replace('>nome<', '>WESLEY VIEIRA RODRIGUES<')
-    xml = xml.replace('>xxx<', '>0079720<')
-
-    # ── Sector block boundaries ──────────────────────────────────────
-    calor2_idx = xml.find('w:val="CALOR2"')
-    if calor2_idx == -1: raise ValueError("CALOR2 style not found in template")
-    sec_start = xml.rfind('<w:p ', 0, calor2_idx)
+    # ── Sector block template ────────────────────────────────────────
+    calor2_poses = [m.start() for m in re.finditer('w:val="CALOR2"', xml)]
+    if not calor2_poses: raise ValueError("CALOR2 style not found in template")
+    sec_start = xml.rfind('<w:p ', 0, calor2_poses[0])
     cert_idx  = xml.find('CERTIFICADO DE CALIBRA', sec_start)
     tbl_end   = xml.rfind('</w:tbl>', sec_start, cert_idx) + len('</w:tbl>')
-    sec_tpl   = xml[sec_start:tbl_end]
 
-    # Template data row 2 (Bancada de preparo) as base for generated rows
-    tbl_rows = re.findall(r'<w:tr[ >].*?</w:tr>', sec_tpl, re.DOTALL)
-    row1_tpl = tbl_rows[1]  # Forno
-    row2_tpl = tbl_rows[2]  # Bancada de preparo
+    # Use first sector as template
+    if len(calor2_poses) > 1:
+        sec_tpl = xml[sec_start : xml.rfind('<w:p ', 0, calor2_poses[1])]
+    else:
+        sec_tpl = xml[sec_start:tbl_end]
 
-    def make_row(pi, si, ponto):
-        local  = ponto.get('local', f'Ponto {pi+1}')
-        tempo  = str(int(float(ponto.get('tempo',60))))
-        tbn    = float(ponto.get('tbn',0))
-        tbs    = float(ponto.get('tbs',0))
-        tg     = float(ponto.get('tg',0))
-        ibutg  = round(0.7*tbn + 0.3*tg, 2)
-        formula = f'IBUTG = (0,7 x {_fx(tbn)}) + (0,3 x {_fx(tg)})'
-        r = row2_tpl
-        r = re.sub(r'(w14:paraId=")([0-9A-Fa-f]{8})',
-                   lambda m: m.group(1)+f'{(int(m.group(2),16)+si*0x10000+(pi+1)*0x100)&0xFFFFFFFF:08X}',r)
-        r = r.replace('>Bancada de preparo<', f'>{_xe(local)}<')
-        r = r.replace('>40<', f'>{tempo}<')
-        r = r.replace('>19,82<', f'>{_fx(tbn)}<')
-        r = r.replace('>29,16<', f'>{_fx(tbs)}<')
-        r = r.replace('>27,82<', f'>{_fx(tg)}<')
-        r = r.replace('IBUTG = (0,7 x 19,82) + (0,3 x 27,82)', formula)
-        r = r.replace('>22,1<', f'>{_fx(ibutg)}<')
-        return r
+    tbl_open      = sec_tpl.find('<w:tbl>')
+    calor2_para   = sec_tpl[:tbl_open]
+    tbl_in_sec    = sec_tpl[tbl_open:]
+    first_tr_pos  = tbl_in_sec.find('<w:tr')
+    tbl_prefix    = tbl_in_sec[:first_tr_pos]  # <w:tbl> + tblPr + tblGrid
+    tpl_rows      = re.findall(r'<w:tr[ >].*?</w:tr>', tbl_in_sec, re.DOTALL)
 
-    sector_blocks = []
-    for si, setor in enumerate(sets):
-        nome_s   = setor.get('nome', f'SETOR {si+1}')
-        horario  = setor.get('horario','')
-        pontos   = setor.get('pontos',[])
+    row_hdr        = tpl_rows[0]   # header
+    row_data_tpl   = tpl_rows[2]   # "Fritadeira" – clean data row
+    row_ibutg_tpl  = tpl_rows[4]   # IBUTG médio
+    row_act1_tpl   = tpl_rows[5]   # Atividade 01 (com labels "Tipo" e "Taxa M")
+    row_actn_tpl   = tpl_rows[6]   # Atividade 02 (continuation)
+    row_mmed_tpl   = tpl_rows[8]   # M média
+    row_hor_tpl    = tpl_rows[9]   # Horário / vestimenta
+    row_conc_hdr   = tpl_rows[10]  # CONCLUSÃO header
+    row_conc_tpl   = tpl_rows[11]  # Conclusion text
 
-        total_t  = sum(float(p.get('tempo',60)) for p in pontos) or 1
-        ibutg_m  = sum((0.7*float(p.get('tbn',0))+0.3*float(p.get('tg',0)))*float(p.get('tempo',60)) for p in pontos)/total_t
-        m_med    = sum(float(p.get('M',200))*float(p.get('tempo',60)) for p in pontos)/total_t
-        limite   = get_limite_nr15(m_med)
-        ok       = ibutg_m <= limite
+    # ── Photo support ────────────────────────────────────────────────
+    extra_rels  = []
+    extra_media = {}
+    _img_ctr    = [31]
+    _iid_ctr    = [20]
 
-        c1 = (f'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, '
-              f'do Anexo Nº 3, na NR-09, para uma taxa de metabolismo média de '
-              f'{round(m_med)} W é de {_fx(limite)} IBUTG.')
-        c2 = ('O IBUTG encontrado na medição não ultrapassou o limite de tolerância.' if ok else
-              f'O IBUTG médio encontrado ({_fx(ibutg_m)} ºC) ultrapassou o limite de tolerância.')
+    def _add_image(b64_str):
+        _img_ctr[0] += 1; _iid_ctr[0] += 1
+        rid = f'rId{_img_ctr[0]}'; iid = _iid_ctr[0]
+        if b64_str.startswith('data:'):
+            hdr, data = b64_str.split(',', 1)
+            ext = 'jpeg' if ('jpeg' in hdr or 'jpg' in hdr) else 'png'
+        else:
+            data, ext = b64_str, 'jpeg'
+        fname = f'media/calor_foto_{_img_ctr[0]}.{ext}'
+        extra_rels.append(
+            f'<Relationship Id="{rid}" '
+            f'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+            f'Target="{fname}"/>')
+        extra_media[f'word/{fname}'] = base64.b64decode(data)
+        return rid, iid
 
-        blk = sec_tpl
-        blk = re.sub(r'(w14:paraId=")([0-9A-Fa-f]{8})',
-                     lambda m: m.group(1)+f'{(int(m.group(2),16)+si*0x10000)&0xFFFFFFFF:08X}', blk)
-
-        # Sector title (split across runs: "Avaliação 01 -  descarga " + "–" + " envernizadora" + " de refletores")
-        blk = re.sub(
-            r'<w:t xml:space="preserve">Avaliação 01 -  descarga </w:t></w:r>'
-            r'<w:r[^>]*><w:t>[^<]*</w:t></w:r>'
-            r'(?:<w:r[^>]*><w:t xml:space="preserve">[^<]*</w:t></w:r>){1,3}',
-            f'<w:t xml:space="preserve">{_xe(nome_s)}</w:t></w:r>',
-            blk, count=1
+    def _photo_cell(rid, iid, caption, w, span, pid):
+        CX, CY = 2251710, 1689000
+        ah = f'{pid:08X}'; eh = f'{(pid^0xABCD):08X}'
+        gs = f'<w:gridSpan w:val="{span}"/>' if span > 1 else ''
+        return (
+            f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{gs}'
+            f'<w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            f'<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            f'<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            f'<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tcBorders>'
+            f'<w:shd w:val="clear" w:color="auto" w:fill="FFFFFF" w:themeFill="background1"/>'
+            f'<w:vAlign w:val="center"/></w:tcPr>'
+            f'<w:p w14:paraId="{ah}" w14:textId="77777777">'
+            f'<w:pPr><w:pStyle w:val="CORPODETEXTO"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>'
+            f'<w:r><w:drawing>'
+            f'<wp:inline distT="0" distB="0" distL="0" distR="0" wp14:anchorId="{ah}" wp14:editId="{eh}">'
+            f'<wp:extent cx="{CX}" cy="{CY}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>'
+            f'<wp:docPr id="{iid}" name="Foto {iid}"/>'
+            f'<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+            f'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+            f'<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+            f'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+            f'<pic:nvPicPr><pic:cNvPr id="{iid}" name="foto_{iid}.jpeg"/><pic:cNvPicPr/></pic:nvPicPr>'
+            f'<pic:blipFill><a:blip r:embed="{rid}">'
+            f'<a:extLst><a:ext uri="{{28A0092B-C50C-407E-A947-70E740481C1C}}">'
+            f'<a14:useLocalDpi xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" val="0"/>'
+            f'</a:ext></a:extLst></a:blip>'
+            f'<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+            f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{CX}" cy="{CY}"/></a:xfrm>'
+            f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+            f'</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
+            f'<w:r><w:t>{_xe(caption)}</w:t></w:r></w:p></w:tc>'
         )
 
-        # Replace data rows with generated rows
-        new_data = ''.join(make_row(pi,si,p) for pi,p in enumerate(pontos))
-        blk = blk.replace(row1_tpl,'',1)
-        blk = blk.replace(row2_tpl, new_data, 1)
+    def _empty_cell(caption, w, span, pid):
+        ah = f'{pid:08X}'
+        gs = f'<w:gridSpan w:val="{span}"/>' if span > 1 else ''
+        return (
+            f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{gs}'
+            f'<w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            f'<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            f'<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            f'<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tcBorders>'
+            f'<w:shd w:val="clear" w:color="auto" w:fill="FFFFFF" w:themeFill="background1"/>'
+            f'<w:vAlign w:val="center"/></w:tcPr>'
+            f'<w:p w14:paraId="{ah}" w14:textId="77777777">'
+            f'<w:pPr><w:pStyle w:val="CORPODETEXTO"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>'
+            f'<w:r><w:t>{_xe(caption)}</w:t></w:r></w:p></w:tc>'
+        )
 
-        blk = blk.replace('>14:00<', f'>{_xe(horario)}<')
-        blk = blk.replace(
-            'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, do Anexo Nº 3, na NR-09, para uma taxa de metabolismo média de 243 W é de 29,2 IBUTG.',
+    # Cell widths & gridSpans for photo rows (10-column table, total 11055 DXA)
+    _photo_specs = {
+        1: [(11055, 10)],
+        2: [(3968, 5), (7087, 5)],
+        3: [(3683, 4), (3686, 4), (3686, 2)],
+    }
+
+    def _photo_rows(si, pontos):
+        batch = [(pi, p) for pi, p in enumerate(pontos) if p.get('foto')]
+        if not batch: return []
+        rows = []
+        for bi in range(0, len(batch), 3):
+            grp = batch[bi:bi+3]
+            n   = len(grp)
+            spc = _photo_specs.get(n, _photo_specs[3])
+            cells = []
+            for ci, (pi, p) in enumerate(grp):
+                cw, gs = spc[ci]
+                pid = (si * 0x100000 + pi * 0x1000 + bi + ci + 0x500000) & 0xFFFFFFF
+                b64 = p.get('foto','')
+                cap = p.get('local','')
+                if b64:
+                    rid, iid = _add_image(b64)
+                    cells.append(_photo_cell(rid, iid, cap, cw, gs, pid))
+                else:
+                    cells.append(_empty_cell(cap, cw, gs, pid))
+            tr_pid = (si * 0x100000 + bi + 0x600000) & 0xFFFFFFF
+            rows.append(
+                f'<w:tr w14:paraId="{tr_pid:08X}" w14:textId="77777777">'
+                f'<w:trPr><w:cantSplit/><w:trHeight w:val="3500"/></w:trPr>'
+                + ''.join(cells) + '</w:tr>')
+        return rows
+
+    # ── Row generators ───────────────────────────────────────────────
+    def _uid(base_hex, si, offset):
+        return f'{(int(base_hex, 16) + si*0x10000 + offset) & 0xFFFFFFFF:08X}'
+
+    def _bump_ids(r, si, offset=0):
+        return re.sub(r'(w14:paraId=")([0-9A-Fa-f]{8})',
+                      lambda m: m.group(1)+_uid(m.group(2), si, offset), r)
+
+    def make_data_row(pi, si, p):
+        tbn = float(p.get('tbn',0)); tbs = float(p.get('tbs',0)); tg = float(p.get('tg',0))
+        ibutg = round(0.7*tbn + 0.3*tg, 1)
+        formula = f'IBUTG = (0,7 x {_fx(tbn)}) + (0,3 x {_fx(tg)})'
+        r = _bump_ids(row_data_tpl, si, (pi+1)*0x100)
+        r = r.replace('>Padaria – Fritadeira<', f'>{_xe(p.get("local",f"Ponto {pi+1}"))}<')
+        r = r.replace('>15<', f'>{int(float(p.get("tempo",60)))}<')
+        r = r.replace('>21,0<', f'>{_fx(tbn)}<')
+        r = r.replace('>25,3<', f'>{_fx(tbs)}<')
+        r = r.replace('>26,3<', f'>{_fx(tg)}<')
+        r = r.replace('IBUTG = (0,7 x 21,0) + (0,3 x 26,3)', formula)
+        r = r.replace('>22,6<', f'>{_fx(ibutg)}<')
+        return r
+
+    def make_act_row(pi, si, p):
+        ativ = p.get('atividade','Trabalho Moderado – De p\xe9, com os bra\xe7os e tronco')
+        M = round(float(p.get('M',198)))
+        if pi == 0:
+            r = _bump_ids(row_act1_tpl, si, 0x8000)
+            r = r.replace(' Trabalho Moderado – De p\xe9, com os bra\xe7os e tronco',
+                          f' {_xe(ativ)}')
+            r = r.replace('>198 W<', f'>{M} W<')
+        else:
+            r = _bump_ids(row_actn_tpl, si, (pi+1)*0x8000)
+            r = r.replace('>Atividade 02:<', f'>Atividade {pi+1:02d}:<')
+            r = r.replace(' Trabalho Moderado – De p\xe9, com os bra\xe7os e tronco',
+                          f' {_xe(ativ)}')
+            r = r.replace('>198<', f'>{M}<')
+        return r
+
+    # ── Sector assembly ──────────────────────────────────────────────
+    sector_blocks = []
+    for si, setor in enumerate(sets):
+        nome_s    = setor.get('nome', f'SETOR {si+1}')
+        horario   = setor.get('horario','')
+        vestimenta = setor.get('vestimenta','Uniforme de Trabalho (0)')
+        pontos    = setor.get('pontos',[])
+
+        total_t = sum(float(p.get('tempo',60)) for p in pontos) or 1
+        ibutg_m = round(sum((0.7*float(p.get('tbn',0))+0.3*float(p.get('tg',0)))*float(p.get('tempo',60)) for p in pontos)/total_t, 1)
+        m_med   = sum(float(p.get('M',198))*float(p.get('tempo',60)) for p in pontos)/total_t
+        limite  = get_limite_nr15(m_med)
+        ok      = ibutg_m <= limite
+
+        c1 = (f'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, do Anexo Nº 3, '
+              f'na NR-09, para uma taxa de metabolismo média de {round(m_med)} W é de {_fx(limite)} IBUTG.')
+        c2 = (f'O IBUTG médio encontrado foi de {_fx(ibutg_m)} ºC, ' +
+              ('não ultrapassando o limite de tolerância.' if ok else 'ultrapassando o limite de tolerância.'))
+
+        # CALOR2 title paragraph
+        cp = _bump_ids(calor2_para, si)
+        cp = re.sub(r'<w:t>[^<]*Avalia[^<]*</w:t>',
+                    f'<w:t>Avaliação {si+1:02d} – Departamento: {_xe(nome_s)}</w:t>', cp)
+
+        # Build rows
+        data_rows = ''.join(make_data_row(pi, si, p) for pi, p in enumerate(pontos))
+
+        r_ibutg = _bump_ids(row_ibutg_tpl, si, 0x1000)
+        r_ibutg = re.sub(r'IBUTG \(M[eé]dio\) = [0-9,]+ ºC',
+                         f'IBUTG (Médio) = {_fx(ibutg_m)} ºC', r_ibutg)
+
+        act_rows = ''.join(make_act_row(pi, si, p) for pi, p in enumerate(pontos))
+
+        r_mmed = _bump_ids(row_mmed_tpl, si, 0x2000)
+        r_mmed = r_mmed.replace('>198 W<', f'>{round(m_med)} W<')
+
+        r_hor = _bump_ids(row_hor_tpl, si, 0x3000)
+        r_hor = r_hor.replace('>08:50 – 10:01<', f'>{_xe(horario)}<')
+        r_hor = r_hor.replace('>Uniforme de Trabalho (0)<', f'>{_xe(vestimenta)}<')
+
+        r_conc = _bump_ids(row_conc_tpl, si, 0x4000)
+        r_conc = r_conc.replace(
+            'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, do Anexo Nº 3, na NR-09, para uma taxa de metabolismo média de 198 W é de 30,2 IBUTG.',
             _xe(c1))
-        blk = blk.replace(
-            'O IBUTG encontrado na medição não ultrapassou o limite de tolerância.',
+        r_conc = r_conc.replace(
+            'O IBUTG médio encontrado foi de 21,7 ºC, não ultrapassando o limite de tolerância.',
             _xe(c2))
 
-        if si > 0:
-            blk = ('<w:p><w:pPr><w:pStyle w:val="CORPODETEXTO"/></w:pPr>'
-                   '<w:r><w:rPr><w:noProof/></w:rPr><w:br w:type="page"/></w:r></w:p>') + blk
+        photo_rows = _photo_rows(si, pontos)
 
-        sector_blocks.append(blk)
+        tbl_xml = (tbl_prefix + row_hdr + data_rows + r_ibutg + act_rows +
+                   r_mmed + r_hor + row_conc_hdr + r_conc +
+                   ''.join(photo_rows) + '</w:tbl>')
+
+        pb = ('<w:p><w:pPr><w:pStyle w:val="CORPODETEXTO"/></w:pPr>'
+              '<w:r><w:rPr><w:noProof/></w:rPr><w:br w:type="page"/></w:r></w:p>') if si > 0 else ''
+        sector_blocks.append(pb + cp + tbl_xml)
 
     xml = xml[:sec_start] + ''.join(sector_blocks) + xml[tbl_end:]
+
+    # Inject new image relationships
+    if extra_rels:
+        rels_xml = rels_xml.replace('</Relationships>',
+                                    '\n'.join(extra_rels) + '</Relationships>')
 
     zout = io.BytesIO()
     with zipfile.ZipFile(zout,'w',zipfile.ZIP_DEFLATED) as zw:
         for item in zin.infolist():
             if item.filename == 'word/document.xml':
                 zw.writestr(item, xml.encode('utf-8'))
+            elif item.filename == 'word/_rels/document.xml.rels':
+                zw.writestr(item, rels_xml.encode('utf-8'))
             else:
                 zw.writestr(item, zin.read(item.filename))
+        for path, data in extra_media.items():
+            zw.writestr(path, data)
     zin.close()
     return zout.getvalue()
 
