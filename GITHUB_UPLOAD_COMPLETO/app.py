@@ -1044,6 +1044,17 @@ def gerar_calor_bytes(d):
 
     xml = xml[:sec_start] + ''.join(sector_blocks) + xml[tbl_end:]
 
+    # ── ART section (conditional) ────────────────────────────────────
+    art_numero = aval.get('artNumero', '').strip()
+    if not art_numero:
+        p1 = xml.find('RESPOSABILIDADE')
+        p2 = xml.find('RESPOSABILIDADE', p1 + 1) if p1 != -1 else -1
+        if p2 != -1:
+            art_tbl = xml.rfind('<w:tbl>', 0, p2)
+            sect_pr = xml.find('<w:sectPr', art_tbl)
+            if art_tbl != -1 and sect_pr != -1:
+                xml = xml[:art_tbl] + xml[sect_pr:]
+
     # Inject new image relationships
     if extra_rels:
         rels_xml = rels_xml.replace('</Relationships>',
