@@ -1059,33 +1059,35 @@ function fmtBR(v) { return (+v).toFixed(2).replace('.',','); }
 
 let setores = [];
 
+function _novoPonto() {
+  return { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198, fotos:[null,null,null] };
+}
+
 function addSetor() {
-  setores.push({ nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)', pontos:[
-    { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198, foto:null }
-  ]});
+  setores.push({ nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)', pontos:[ _novoPonto() ]});
   renderSetores();
 }
 
 function remSetor(si) { setores.splice(si,1); renderSetores(); }
 
 function addPonto(si) {
-  setores[si].pontos.push({ local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198, foto:null });
+  setores[si].pontos.push(_novoPonto());
   renderSetores();
 }
 
-function selectFoto(si, pi) {
+function selectFoto(si, pi, fi) {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*';
   inp.onchange = e => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => { setores[si].pontos[pi].foto = ev.target.result; renderSetores(); };
+    reader.onload = ev => { setores[si].pontos[pi].fotos[fi] = ev.target.result; renderSetores(); };
     reader.readAsDataURL(file);
   };
   inp.click();
 }
 
-function removeFoto(si, pi) { setores[si].pontos[pi].foto = null; renderSetores(); }
+function removeFoto(si, pi, fi) { setores[si].pontos[pi].fotos[fi] = null; renderSetores(); }
 
 function remPonto(si, pi) { setores[si].pontos.splice(pi,1); renderSetores(); }
 
@@ -1184,14 +1186,16 @@ function renderSetores() {
               oninput="updatePonto(${si},${pi},'M',this.value)"
               style="width:68px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
             <td style="padding:3px 6px;color:var(--orange);font-weight:600;white-space:nowrap;font-size:.75rem;" id="ibutg-${si}-${pi}"></td>
-            <td style="padding:3px 4px;text-align:center;">
-              ${p.foto
-                ? `<span style="display:inline-flex;align-items:center;gap:4px;">
-                    <img src="${p.foto}" style="height:28px;width:38px;object-fit:cover;border-radius:3px;border:1px solid var(--border);" title="${p.local||'foto'}">
-                    <button onclick="removeFoto(${si},${pi})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;padding:2px;">✕</button>
-                  </span>`
-                : `<button onclick="selectFoto(${si},${pi})" style="background:var(--surface);border:1px dashed var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;font-size:.72rem;padding:4px 8px;white-space:nowrap;">📷 Foto</button>`
-              }
+            <td style="padding:3px 4px;">
+              <div style="display:flex;gap:4px;align-items:center;">
+                ${(p.fotos||[null,null,null]).map((f,fi) => f
+                  ? `<span style="position:relative;display:inline-block;">
+                      <img src="${f}" style="height:30px;width:40px;object-fit:cover;border-radius:3px;border:1px solid var(--border);cursor:pointer;" onclick="selectFoto(${si},${pi},${fi})" title="Trocar foto ${fi+1}">
+                      <button onclick="removeFoto(${si},${pi},${fi})" style="position:absolute;top:-4px;right:-4px;background:var(--surface2);border:1px solid var(--border2);border-radius:50%;color:var(--text3);cursor:pointer;font-size:.6rem;width:14px;height:14px;line-height:1;padding:0;">✕</button>
+                    </span>`
+                  : `<button onclick="selectFoto(${si},${pi},${fi})" style="background:var(--surface);border:1px dashed var(--border2);border-radius:4px;color:var(--text3);cursor:pointer;font-size:.65rem;padding:3px 5px;white-space:nowrap;height:30px;" title="Foto ${fi+1}">📷${fi+1}</button>`
+                ).join('')}
+              </div>
             </td>
             <td style="padding:3px 2px;">${s.pontos.length>1?`<button onclick="remPonto(${si},${pi})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;padding:4px;">✕</button>`:''}</td>
           </tr>`).join('')}
@@ -1250,7 +1254,7 @@ async function gerarCalor() {
         local: p.local, tempo: +p.tempo,
         tbn: +p.tbn, tbs: +p.tbs, tg: +p.tg,
         atividade: p.atividade, M: +p.M,
-        foto: p.foto || null
+        fotos: (p.fotos||[null,null,null]).map(f => f||null)
       }))
     }))
   };
