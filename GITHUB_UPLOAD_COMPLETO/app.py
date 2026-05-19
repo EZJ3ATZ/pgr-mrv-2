@@ -559,6 +559,21 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         p1 = p1.replace(tpl_idx, idx_novo, 1)
     new_cargos = ''.join(build_cargo_section(c, cidade, uf) for c in cargos)
     new_xml = p1 + '\n' + new_cargos + '\n    ' + p3
+    # Reatribuir IDs duplicados — Word moderno rejeita w:id e w14:paraId repetidos
+    _id_counter = [1]
+    def _new_wid(m):
+        _id_counter[0] += 1
+        return f'w:id="{_id_counter[0]}"'
+    new_xml = re.sub(r'w:id="\d+"', _new_wid, new_xml)
+    _pid_seen = set()
+    def _new_paraid(m):
+        import random
+        v = m.group(1)
+        while v in _pid_seen:
+            v = '%08X' % random.randint(1, 0x7FFFFFFE)
+        _pid_seen.add(v)
+        return f'w14:paraId="{v}"'
+    new_xml = re.sub(r'w14:paraId="([^"]+)"', _new_paraid, new_xml)
     ET.fromstring(new_xml)  # valida
     # Empacotar em memória
     work_dir = tempfile.mkdtemp()
