@@ -1471,84 +1471,251 @@ def api_pump_sns():
     return jsonify(_PUMP_SN.get(pump, []))
 
 
-# ── API: Convert lab result PDF to base64 JPG images ─────────────────
+# ── API: Convert lab result PDF to base64 JPG images + extract data ──
 @app.route('/api/convert_laudo', methods=['POST'])
 def api_convert_laudo():
     try:
         import fitz
     except ImportError:
-        return jsonify({'erro': 'pymupdf não instalado'}), 500
+        return jsonify({'erro': 'pymupdf nao instalado'}), 500
     try:
+        import re as _re
         f = request.files.get('file')
         if not f:
             return jsonify({'erro': 'Nenhum arquivo'}), 400
         data = f.read()
         doc = fitz.open(stream=data, filetype='pdf')
         imgs = []
+        full_text = ''
         for page in doc:
             mat = fitz.Matrix(2, 2)
             pix = page.get_pixmap(matrix=mat)
-            img_bytes = pix.tobytes('jpeg')
-            imgs.append('data:image/jpeg;base64,' + base64.b64encode(img_bytes).decode())
+            imgs.append('data:image/jpeg;base64,' + base64.b64encode(pix.tobytes('jpeg')).decode())
+            full_text += page.get_text() + '\n'
         doc.close()
-        return jsonify({'paginas': imgs})
+
+        def _get(patterns):
+            for pat in patterns:
+                m = _re.search(pat, full_text, _re.IGNORECASE | _re.MULTILINE)
+                if m:
+                    return m.group(1).strip().strip('—–-').strip()
+            return ''
+
+        trabalhador = _get([
+            r'Funcion[a\xe1]rio[:\s]+([^\n\r—–\-]+?)(?:\s*[—–\-]+\s*Fun)',
+            r'FUNCION[A\xc1]RIO[:\s]+([^\n\r—–]+)',
+        ])
+        cargo = _get([
+            r'Fun[\xe7c][a\xe3]o[:\s]+([^\n\r]+)',
+            r'FUNC[\xc3A]O[:\s]+([^\n\r]+)',
+        ])
+        setor  = _get([r'Setor[:\s]+([^\n\r]+)', r'SETOR[:\s]+([^\n\r]+)'])
+        filtro = _get([
+            r'N[\xba\xba\.]\s*do\s*relat[o\xf3]rio[^:]*:\s*([A-Z]{2}\d+)',
+            r'Amostrador[^:]*:\s*([A-Z]{2}\d+)',
+            r'\b([A-Z]{2}\d{5})\b',
+        ])
+        data_col = _get([
+            r'Data\s+(?:de\s+)?amostragem[:\s]+(\d{2}/\d{2}/\d{4})',
+            r'Data[:\s]+(\d{2}/\d{2}/\d{4})',
+        ])
+        vazao_raw = _get([
+            r'Vaz[a\xe3]o\s+m[e\xe9]dia\s+da\s+bomba[:\s]+([\d,\.]+)\s*[Ll]',
+            r'VAZ[A\xc3]O[^\n\r]*?[:\s]+([\d,\.]+)\s*[Ll]',
+        ])
+        vazao_fmt = ''
+        if vazao_raw:
+            try:
+                vazao_fmt = '{:.4f}'.format(float(vazao_raw.replace(',', '.'))).replace('.', ',')
+            except:
+                vazao_fmt = vazao_raw.replace('.', ',')
+
+        volume_raw = _get([
+            r'Volume\s+de\s+ar\s+amostrado[:\s]+([\d,\.]+)\s*m',
+            r'Volume\s+de\s+ar\s+amostrado[:\s]+([\d,\.]+)\s*[Ll]',
+            r'VOLUME[^\n\r]*?[:\s]+([\d,\.]+)',
+        ])
+        volume_fmt = ''
+        if volume_raw:
+            try:
+                v = float(volume_raw.replace(',', '.'))
+                if v < 1:  # provavelmente em m³ → converter para L
+                    v *= 1000
+                volume_fmt = '{:.3f}'.format(v).replace('.', ',')
+            except:
+                volume_fmt = volume_raw.replace('.', ',')
+
+        tempo_raw = _get([r'Tempo\s+de\s+amostragem[:\s]+([\d:]+)', r'TEMPO[^\n\r]*?[:\s]+([\d:]+)'])
+        tempo_min = ''
+        if tempo_raw:
+            parts = tempo_raw.split(':')
+            try:
+                tempo_min = str(int(parts[0]) * 60 + int(parts[1]))
+            except:
+                tempo_min = tempo_raw
+
+        agente = _get([r'Agente[:\s]+([^\n\r]+)', r'AGENTE[:\s]+([^\n\r]+)'])
+
+        dados = {k: v for k, v in {
+            'filtroNumero': filtro,
+            'trabalhador':  trabalhador,
+            'cargo':        cargo,
+            'setor':        setor,
+            'dataColeta':   data_col,
+            'vazaoInicial': vazao_fmt,
+            'vazaoFinal':   vazao_fmt,
+            'volume':       volume_fmt,
+            'tempoColeta':  tempo_min,
+            'agente':       agente,
+        }.items() if v}
+
+        return jsonify({'paginas': imgs, 'dadosExtraidos': dados})
     except Exception as e:
-        return jsonify({'erro': str(e)}), 500
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
 
 
-# ── API: Parse chain of custody Excel ────────────────────────────────
+# ── API: Parse chain of custody Excel (Uniscientific format) ─────────
 @app.route('/api/parse_cadeia', methods=['POST'])
 def api_parse_cadeia():
     try:
         import openpyxl
+        from datetime import datetime as _dt
     except ImportError:
-        return jsonify({'erro': 'openpyxl não instalado'}), 500
+        return jsonify({'erro': 'openpyxl nao instalado'}), 500
     try:
         f = request.files.get('file')
         if not f:
             return jsonify({'erro': 'Nenhum arquivo'}), 400
         wb = openpyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
-        ws = wb.active
-        rows = []
-        headers = []
-        for i, row in enumerate(ws.iter_rows(values_only=True)):
-            if i == 0:
-                headers = [str(c).strip() if c else '' for c in row]
-                continue
+
+        # Prefer "Dados Agentes" sheet (Uniscientific format)
+        ws = wb['Dados Agentes'] if 'Dados Agentes' in wb.sheetnames else wb.active
+
+        all_rows = list(ws.iter_rows(values_only=True))
+
+        # Find header row: contains FUNCIONÁRIO or FUNÇÃO
+        header_idx = None
+        header_row = []
+        for i, row in enumerate(all_rows):
+            row_txt = ' '.join(str(c) for c in row if c).upper()
+            if 'FUNCION' in row_txt or 'FUN\xc7' in row_txt or 'FUNCAO' in row_txt:
+                header_idx = i
+                header_row = [str(c).strip() if c else '' for c in row]
+                break
+
+        if header_idx is None:
+            return jsonify({'erro': 'Cabecalho nao encontrado (nenhuma coluna FUNCIONARIO/FUNCAO)'}), 400
+
+        def find_col(keywords):
+            for j, h in enumerate(header_row):
+                h_up = h.upper()
+                for kw in keywords:
+                    if kw.upper() in h_up:
+                        return j
+            return None
+
+        col_id      = find_col(['AMOSTRADOR (CLIENTE)', 'N\xba DO AMOSTRADOR'])
+        col_data    = find_col(['DATA AMOSTRAGEM', 'DATA DE AMOSTRAGEM'])
+        col_nome    = find_col(['NOME DO FUNCION', 'FUNCION\xc1RIO', 'FUNCIONARIO'])
+        col_funcao  = find_col(['FUN\xc7\xc3O', 'FUNCAO', 'CARGO'])
+        col_setor   = find_col(['SETOR'])
+        col_vazao   = find_col(['VAZ\xc3O M\xc9DIA', 'VAZAO MEDIA', 'VAZ\xc3O'])
+        col_volume  = find_col(['VOLUME AMOSTRADO', 'VOLUME'])
+        col_inicio  = find_col(['IN\xcdCIO DA AMOSTRAGEM', 'INICIO DA AMOSTRAGEM'])
+        col_termino = find_col(['T\xc9RMINO DA AMOSTRAGEM', 'TERMINO DA AMOSTRAGEM'])
+        agente_cols = [j for j, h in enumerate(header_row) if 'AGENTE' in h.upper()]
+
+        def _cv(row, col):
+            if col is None or col >= len(row):
+                return None
+            return row[col]
+
+        def _str(v):
+            if v is None:
+                return ''
+            if hasattr(v, 'strftime'):
+                try:
+                    return v.strftime('%d/%m/%Y')
+                except:
+                    return str(v)
+            s = str(v).strip()
+            return '' if s == 'None' else s
+
+        def _time_str(v):
+            if v is None:
+                return ''
+            if hasattr(v, 'hour'):
+                return '{:02d}:{:02d}'.format(v.hour, v.minute)
+            parts = str(v).strip().split(':')
+            return '{}:{}'.format(parts[0], parts[1]) if len(parts) >= 2 else str(v)
+
+        def _fmt_float(v, dec=4):
+            if v is None:
+                return ''
+            try:
+                return ('{:.' + str(dec) + 'f}').format(float(str(v).replace(',', '.'))).replace('.', ',')
+            except:
+                return str(v).strip()
+
+        def _tempo_min(ini, fim):
+            try:
+                if hasattr(ini, 'hour') and hasattr(fim, 'hour'):
+                    from datetime import datetime as _dt2, date
+                    d = date.today()
+                    diff = _dt2.combine(d, fim) - _dt2.combine(d, ini)
+                    return str(int(diff.total_seconds() / 60))
+                parts_i = str(ini).split(':')
+                parts_f = str(fim).split(':')
+                mins = (int(parts_f[0]) * 60 + int(parts_f[1])) - (int(parts_i[0]) * 60 + int(parts_i[1]))
+                return str(mins)
+            except:
+                return ''
+
+        avaliacoes = []
+        for row in all_rows[header_idx + 1:]:
             if not any(row):
                 continue
-            obj = {}
-            for j, val in enumerate(row):
-                if j < len(headers) and headers[j]:
-                    obj[headers[j]] = str(val).strip() if val is not None else ''
-            rows.append(obj)
-        # Try to map common field names to our schema
-        mapped = []
-        field_map = {
-            'trabalhador': ['nome', 'trabalhador', 'funcionário', 'funcionario', 'colaborador'],
-            'cargo':       ['cargo', 'função', 'funcao', 'ocupação', 'ocupacao'],
-            'setor':       ['setor', 'departamento', 'área', 'area', 'local'],
-            'filtroNumero':['filtro', 'filtro nº', 'filtro numero', 'número filtro'],
-            'vazaoInicial':['vazão inicial', 'vazao inicial', 'qi', 'q inicial'],
-            'vazaoFinal':  ['vazão final', 'vazao final', 'qf', 'q final'],
-            'tempoColeta': ['tempo de coleta', 'tempo coleta', 'duração', 'duracao'],
-            'volume':      ['volume', 'volume amostrado'],
-            'agente':      ['agente', 'substância', 'substancia', 'produto'],
-            'dataColeta':  ['data da coleta', 'data coleta', 'data amostragem'],
-        }
-        for row in rows:
-            ev = {}
-            row_lower = {k.lower(): v for k, v in row.items()}
-            for field, aliases in field_map.items():
-                for alias in aliases:
-                    if alias in row_lower and row_lower[alias]:
-                        ev[field] = row_lower[alias]
-                        break
-            if ev:
-                mapped.append(ev)
-        return jsonify({'linhas': rows, 'avaliacoes': mapped, 'headers': headers})
+            nome = _str(_cv(row, col_nome))
+            if not nome:
+                continue
+
+            agentes = [str(_cv(row, ac)).strip() for ac in agente_cols
+                       if _cv(row, ac) and str(_cv(row, ac)).strip() not in ('', 'None')]
+
+            ini_v  = _cv(row, col_inicio)
+            fim_v  = _cv(row, col_termino)
+            vaz_v  = _cv(row, col_vazao)
+            vol_v  = _cv(row, col_volume)
+            vaz_fmt = _fmt_float(vaz_v, 4)
+
+            # Volume in Litros (sheet already in L)
+            vol_fmt = _fmt_float(vol_v, 3)
+
+            # Date
+            data_v = _cv(row, col_data)
+            data_s = data_v.strftime('%d/%m/%Y') if hasattr(data_v, 'strftime') else _str(data_v)
+
+            ev = {
+                'filtroNumero':  _str(_cv(row, col_id)),
+                'dataColeta':    data_s,
+                'trabalhador':   nome,
+                'cargo':         _str(_cv(row, col_funcao)),
+                'setor':         _str(_cv(row, col_setor)),
+                'vazaoInicial':  vaz_fmt,
+                'vazaoFinal':    vaz_fmt,
+                'volume':        vol_fmt,
+                'tempoColeta':   _tempo_min(ini_v, fim_v),
+                'inicioColeta':  _time_str(ini_v),
+                'terminoColeta': _time_str(fim_v),
+                'agente':        agentes[0] if agentes else '',
+            }
+            avaliacoes.append(ev)
+
+        return jsonify({'avaliacoes': avaliacoes})
     except Exception as e:
-        return jsonify({'erro': str(e)}), 500
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
 
 
 if __name__ == '__main__':
