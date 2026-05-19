@@ -778,6 +778,10 @@
       <div><label>Certificado de Calibração Nº</label><input type="text" id="c-cert" value="180.646"></div>
       <div><label>Data de Calibração</label><input type="text" id="c-calib" value="24/03/2026"></div>
     </div>
+    <div class="field">
+      <label>Número ART <span style="font-weight:400;color:#888">(opcional — deixe em branco se não houver)</span></label>
+      <input type="text" id="c-art" placeholder="Ex: 2026123456789">
+    </div>
   </div>
 
   <!-- Setores -->
@@ -1338,6 +1342,7 @@ async function gerarCalor() {
       equipamento: document.getElementById('c-equip').value,
       certNo: document.getElementById('c-cert').value,
       dataCalib: document.getElementById('c-calib').value,
+      artNumero: document.getElementById('c-art').value,
     },
     setores: setores.map(s => ({
       nome: s.nome,
