@@ -823,18 +823,59 @@
 
   <div class="page-head">
     <div class="page-title">Análise Química — NR-15 Agentes Químicos</div>
-    <div class="page-sub">Preencha os dados da empresa e adicione as avaliações por cargo.</div>
+    <div class="page-sub">Preencha os dados, selecione o equipamento e adicione as avaliações.</div>
   </div>
 
-  <!-- Dados da Empresa -->
+  <!-- Equipamento -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></div>
+      <div><div class="card-title">Equipamento de Coleta</div><div class="card-desc">Bomba gravimétrica e calibrador utilizados</div></div>
+    </div>
+    <div class="grid2 field">
+      <div>
+        <label>Bomba Gravimétrica</label>
+        <select id="q-bomba" onchange="qUpdateBombaSN()">
+          <option value="">— Selecionar —</option>
+          <option value="bdx">BDX II – GILLIAN</option>
+          <option value="airlite">AIRLITE – SKC</option>
+          <option value="turam">FORMIS – TURAM</option>
+          <option value="inlite">INLITE VENTUSPRO</option>
+        </select>
+      </div>
+      <div>
+        <label>Número de Série da Bomba</label>
+        <select id="q-bomba-sn"><option value="">— Selecione a bomba primeiro —</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Calibrador de Fluxo de Ar</label>
+      <div style="display:flex;gap:24px;align-items:center;margin-top:6px;">
+        <label style="display:flex;gap:8px;align-items:center;font-weight:400;cursor:pointer;">
+          <input type="radio" name="q-calib" value="defender510m" checked> DEFENDER 510M
+        </label>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:400;cursor:pointer;">
+          <input type="radio" name="q-calib" value="tsi4143f"> TSI 4143F
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empresa -->
   <div class="card">
     <div class="card-header">
       <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4"/></svg></div>
-      <div><div class="card-title">Dados da Empresa</div><div class="card-desc">Razão social, CNPJ, endereço</div></div>
+      <div><div class="card-title">Dados da Empresa</div><div class="card-desc">Razão social, CNPJ, endereço e logo</div></div>
     </div>
-    <div class="field">
-      <label>Razão Social</label>
-      <input type="text" id="q-razao" placeholder="Nome completo da empresa">
+    <div class="grid2 field">
+      <div>
+        <label>Razão Social</label>
+        <input type="text" id="q-razao" placeholder="Nome completo da empresa">
+      </div>
+      <div>
+        <label>Logo da Empresa <span style="font-weight:400;color:#888">(opcional)</span></label>
+        <input type="file" id="q-logo" accept="image/*" style="padding:4px;">
+      </div>
     </div>
     <div class="field">
       <label>Título / Nome de Fantasia</label>
@@ -867,15 +908,53 @@
     </div>
   </div>
 
+  <!-- Importar arquivos -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg></div>
+      <div style="flex:1"><div class="card-title">Importar Arquivos</div><div class="card-desc">Cadeia de custódia (Excel) e resultado do laboratório (PDF)</div></div>
+    </div>
+    <div class="grid2 field">
+      <div>
+        <label>Cadeia de Custódia <span style="font-weight:400;color:#888">(.xlsx)</span></label>
+        <input type="file" id="q-cadeia-file" accept=".xlsx,.xls" style="padding:4px;">
+        <button class="btn-add" style="margin-top:8px;width:100%;" onclick="qImportCadeia()">
+          Importar e preencher avaliações
+        </button>
+        <div id="q-cadeia-status" style="font-size:.8rem;color:var(--text3);margin-top:4px;"></div>
+      </div>
+      <div>
+        <label>Resultado do Laboratório <span style="font-weight:400;color:#888">(.pdf → inserido na seção X)</span></label>
+        <input type="file" id="q-laudo-file" accept=".pdf" style="padding:4px;">
+        <button class="btn-add" style="margin-top:8px;width:100%;" onclick="qImportLaudo()">
+          Converter PDF para o laudo
+        </button>
+        <div id="q-laudo-status" style="font-size:.8rem;color:var(--text3);margin-top:4px;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Avaliações -->
   <div class="card" id="card-q-avals">
     <div class="card-header">
       <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/></svg></div>
-      <div style="flex:1"><div class="card-title">Avaliações</div><div class="card-desc">Uma avaliação por cargo / trabalhador</div></div>
+      <div style="flex:1"><div class="card-title">Avaliações (VI)</div><div class="card-desc">Uma avaliação por cargo / trabalhador</div></div>
       <button class="btn-add" onclick="qAddAval()">+ Avaliação</button>
     </div>
     <div id="q-avals-list"></div>
   </div>
+
+  <!-- Memorial Fotográfico -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+      <div style="flex:1"><div class="card-title">VIII – Memorial Fotográfico</div><div class="card-desc">Fotos dos funcionários durante a medição</div></div>
+      <button class="btn-add" onclick="qAddFoto()">+ Foto</button>
+    </div>
+    <div id="q-fotos-list"><div style="text-align:center;padding:16px;color:var(--text3);font-size:.85rem;">Nenhuma foto. Clique em "+ Foto".</div></div>
+  </div>
+
+  <datalist id="q-agente-list"></datalist>
 
   <button class="btn-gerar" id="btn-quimico" onclick="gerarQuimico()">
     <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
@@ -1386,25 +1465,161 @@ renderSetores();
 
 // ── Análise Química ──────────────────────────────────────────────────
 let qAvals = [];
+let qFotosVIII = [];   // [{img: dataURL, desc: ''}]
+let qLaudoImgs = [];   // [dataURL]  — pages of lab result PDF
+let qMetodos   = {};   // guia de métodos: {by_cas:{}, by_name:{}}
 
+// Load guia de métodos on startup
+fetch('/api/metodos').then(r=>r.json()).then(d=>{
+  qMetodos = d;
+  const dl = document.getElementById('q-agente-list');
+  if (!dl) return;
+  const names = new Set();
+  Object.values(d.by_cas||{}).forEach(arr => arr.forEach(e => names.add(e.nome)));
+  dl.innerHTML = [...names].sort().map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+}).catch(()=>{});
+
+// ── Bomba SN update ────────────────────────────────────────────────
+function qUpdateBombaSN() {
+  const model = document.getElementById('q-bomba').value;
+  const sel   = document.getElementById('q-bomba-sn');
+  if (!model) { sel.innerHTML = '<option value="">— Selecione a bomba primeiro —</option>'; return; }
+  fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
+    sel.innerHTML = sns.map(sn=>`<option value="${sn}">${sn}</option>`).join('');
+  }).catch(()=>{ sel.innerHTML = '<option value="">Erro ao carregar</option>'; });
+}
+
+// ── Cadeia de custódia import ──────────────────────────────────────
+async function qImportCadeia() {
+  const f = document.getElementById('q-cadeia-file').files[0];
+  if (!f) { document.getElementById('q-cadeia-status').textContent = 'Selecione um arquivo .xlsx'; return; }
+  const fd = new FormData(); fd.append('file', f);
+  document.getElementById('q-cadeia-status').textContent = 'Importando...';
+  try {
+    const r = await fetch('/api/parse_cadeia', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.erro) throw new Error(d.erro);
+    if (d.avaliacoes && d.avaliacoes.length) {
+      d.avaliacoes.forEach(ev => {
+        const a = qNewAval();
+        Object.assign(a, ev);
+        qAvals.push(a);
+      });
+      qRenderAvals();
+      document.getElementById('q-cadeia-status').textContent = `✓ ${d.avaliacoes.length} avaliação(ões) importada(s)`;
+    } else {
+      document.getElementById('q-cadeia-status').textContent = `${d.linhas?.length||0} linha(s) lida(s), nenhuma mapeada`;
+    }
+  } catch(e) {
+    document.getElementById('q-cadeia-status').textContent = 'Erro: ' + e.message;
+  }
+}
+
+// ── Lab result PDF import ──────────────────────────────────────────
+async function qImportLaudo() {
+  const f = document.getElementById('q-laudo-file').files[0];
+  if (!f) { document.getElementById('q-laudo-status').textContent = 'Selecione um arquivo .pdf'; return; }
+  const fd = new FormData(); fd.append('file', f);
+  document.getElementById('q-laudo-status').textContent = 'Convertendo PDF...';
+  try {
+    const r = await fetch('/api/convert_laudo', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.erro) throw new Error(d.erro);
+    qLaudoImgs = d.paginas || [];
+    document.getElementById('q-laudo-status').textContent = `✓ ${qLaudoImgs.length} página(s) prontas para inserir na seção X`;
+  } catch(e) {
+    document.getElementById('q-laudo-status').textContent = 'Erro: ' + e.message;
+  }
+}
+
+// ── Fotos VIII ─────────────────────────────────────────────────────
+function qAddFoto() {
+  qFotosVIII.push({img:'', desc:''});
+  qRenderFotos();
+}
+function qRemoveFoto(i) { qFotosVIII.splice(i,1); qRenderFotos(); }
+
+function qRenderFotos() {
+  const c = document.getElementById('q-fotos-list');
+  if (!qFotosVIII.length) {
+    c.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:.85rem;">Nenhuma foto. Clique em "+ Foto".</div>';
+    return;
+  }
+  c.innerHTML = qFotosVIII.map((ft, i) => `
+    <div style="border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start;">
+      <div style="flex:0 0 120px;text-align:center;">
+        ${ft.img ? `<img src="${ft.img}" style="max-width:120px;max-height:90px;border-radius:4px;border:1px solid var(--border);">` : '<div style="width:120px;height:90px;border:2px dashed var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:.7rem;">sem foto</div>'}
+        <label style="display:block;margin-top:6px;cursor:pointer;font-size:.75rem;color:var(--orange);font-weight:600;">
+          Selecionar foto
+          <input type="file" accept="image/*" style="display:none;" onchange="qFotoUpload(${i},this)">
+        </label>
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:.8rem;">Descrição (horário, cargo, local)</label>
+        <input type="text" value="${qEsc(ft.desc)}" placeholder="Ex: 13:44H — Técnica de Enfermagem — Expurgo" onchange="qFotosVIII[${i}].desc=this.value" style="width:100%;margin-top:4px;">
+      </div>
+      <button onclick="qRemoveFoto(${i})" style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);padding:4px 10px;cursor:pointer;font-size:.8rem;white-space:nowrap;">✕</button>
+    </div>
+  `).join('');
+}
+
+function qFotoUpload(i, inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { qFotosVIII[i].img = e.target.result; qRenderFotos(); };
+  reader.readAsDataURL(file);
+}
+
+// ── Avaliações ─────────────────────────────────────────────────────
 function qNewAval() {
   return {
-    cargo: 'Técnica de Enfermagem', trabalhador: '', setor: '',
-    jornada: '09:00H', dataColeta: '', dataAnalise: '',
-    agente: 'Isopropanol (2-Propanol)', fonte: '', filtroNumero: '',
-    vazaoInicial: '0,2000', vazaoFinal: '0,1910',
-    tempoColeta: '15', volume: '2,933',
-    tempoExposicao: '18 Min', acessorios: 'Redutor de vazão',
-    ltNR15: '310 PPM', naNR15: '155 PPM', concentracao: '',
-    ltTWA: '200 ppm', naTWA: '100 ppm', ltSTEL: '400 PPM', conclusao: ''
+    cargo:'', trabalhador:'', setor:'',
+    jornada:'09:00H', dataColeta:'', dataAnalise:'',
+    agente:'', fonte:'', filtroNumero:'',
+    vazaoInicial:'0,2000', vazaoFinal:'0,1910',
+    tempoColeta:'15', volume:'2,933',
+    tempoExposicao:'18 Min', acessorios:'Redutor de vazão',
+    ltNR15:'', naNR15:'', concentracao:'',
+    ltTWA:'', naTWA:'', ltSTEL:'', conclusao:''
   };
 }
 
 function qAddAval() { qAvals.push(qNewAval()); qRenderAvals(); }
-function qRemoveAval(i) { qAvals.splice(i, 1); qRenderAvals(); }
-
+function qRemoveAval(i) { qAvals.splice(i,1); qRenderAvals(); }
 function qEsc(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// When agent is selected, auto-fill from guia de métodos
+function qAgenteChange(i, val) {
+  qAvals[i].agente = val;
+  const upper = val.toUpperCase();
+  const all = qMetodos.by_cas || {};
+  let found = null;
+  // Try to find by name
+  for (const entries of Object.values(all)) {
+    for (const e of entries) {
+      if (e.nome && e.nome.toUpperCase() === upper) { found = e; break; }
+    }
+    if (found) break;
+  }
+  // Try by CAS
+  if (!found && all[val]) found = all[val][0];
+  if (found) {
+    // Auto-fill memória de campo
+    if (found.vazao && found.vazao !== '0') {
+      // Parse range "0,02 A 0,2 L/MIN" → take max
+      const nums = found.vazao.replace(/,/g,'.').match(/[\d.]+/g);
+      if (nums && nums.length) {
+        const v = nums[nums.length-1];
+        qAvals[i].vazaoInicial = v.replace('.',',');
+        qAvals[i].vazaoFinal   = v.replace('.',',');
+      }
+    }
+    if (found.amostradorDesc) qAvals[i].acessorios = found.amostradorDesc;
+    qRenderAvals();
+  }
 }
 
 function qRenderAvals() {
@@ -1433,12 +1648,15 @@ function qRenderAvals() {
         <div><label>Data da Análise</label><input type="text" value="${qEsc(av.dataAnalise)}" placeholder="dd/mm/aaaa" onchange="qAvals[${i}].dataAnalise=this.value"></div>
       </div>
       <div class="field">
-        <label>Agente Químico (CAS)</label>
-        <input type="text" value="${qEsc(av.agente)}" onchange="qAvals[${i}].agente=this.value">
+        <label>Agente Químico (CAS) — digite para sugestões</label>
+        <input type="text" list="q-agente-list" value="${qEsc(av.agente)}"
+          placeholder="Ex: Isopropanol (2-Propanol)"
+          oninput="qAgenteChange(${i},this.value)"
+          onchange="qAgenteChange(${i},this.value)">
       </div>
       <div class="field">
         <label>Fonte Geradora</label>
-        <input type="text" value="${qEsc(av.fonte)}" placeholder="Ex: Limpeza e esterilização de peças cirúrgicas" onchange="qAvals[${i}].fonte=this.value">
+        <input type="text" value="${qEsc(av.fonte)}" placeholder="Ex: Limpeza de peças cirúrgicas" onchange="qAvals[${i}].fonte=this.value">
       </div>
       <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">MEMÓRIA DE CAMPO</div>
       <div class="grid3 field">
@@ -1448,7 +1666,7 @@ function qRenderAvals() {
       </div>
       <div class="grid3 field">
         <div><label>Volume Amostrado (L)</label><input type="text" value="${qEsc(av.volume)}" onchange="qAvals[${i}].volume=this.value"></div>
-        <div><label>Tempo de Exposição</label><input type="text" value="${qEsc(av.tempoExposicao)}" placeholder="Ex: 18 Min" onchange="qAvals[${i}].tempoExposicao=this.value"></div>
+        <div><label>Tempo de Exposição</label><input type="text" value="${qEsc(av.tempoExposicao)}" placeholder="18 Min" onchange="qAvals[${i}].tempoExposicao=this.value"></div>
         <div><label>Acessórios</label><input type="text" value="${qEsc(av.acessorios)}" onchange="qAvals[${i}].acessorios=this.value"></div>
       </div>
       <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">RESULTADOS</div>
@@ -1463,47 +1681,64 @@ function qRenderAvals() {
         <div><label>LT ACGIH STEL</label><input type="text" value="${qEsc(av.ltSTEL)}" onchange="qAvals[${i}].ltSTEL=this.value"></div>
       </div>
       <div class="field">
-        <label>Conclusão <span style="font-size:.75rem;color:var(--text3)">(deixe vazio para usar o texto padrão)</span></label>
+        <label>Conclusão <span style="font-size:.75rem;color:var(--text3)">(vazio = texto padrão)</span></label>
         <textarea rows="2" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:8px;font-family:inherit;font-size:.85rem;resize:vertical;" onchange="qAvals[${i}].conclusao=this.value">${qEsc(av.conclusao)}</textarea>
       </div>
     </div>
   `).join('');
 }
 
+// ── Gerar ──────────────────────────────────────────────────────────
 async function gerarQuimico() {
   const razao = document.getElementById('q-razao').value.trim();
   if (!razao) { showQStatus('Informe a Razão Social.', 'err'); return; }
   if (!qAvals.length) { showQStatus('Adicione pelo menos uma avaliação.', 'err'); return; }
-  const semConc = qAvals.some(a => !a.concentracao.trim());
-  if (semConc) { showQStatus('Preencha a Concentração em todas as avaliações.', 'err'); return; }
 
   const btn = document.getElementById('btn-quimico');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin">↻</span> Gerando...';
   showQStatus('Gerando laudo, aguarde...', 'loading');
 
+  // Logo
+  let logo = '';
+  const logoFile = document.getElementById('q-logo').files[0];
+  if (logoFile) {
+    logo = await new Promise(res => {
+      const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(logoFile);
+    });
+  }
+
+  const calib = document.querySelector('input[name="q-calib"]:checked')?.value || 'defender510m';
+
   const payload = {
     empresa: {
-      razaoSocial: razao,
-      titulo: document.getElementById('q-titulo').value,
-      cnpj: document.getElementById('q-cnpj').value,
-      cep: document.getElementById('q-cep').value,
-      endereco: document.getElementById('q-end').value,
-      numero: document.getElementById('q-num').value,
-      bairro: document.getElementById('q-bairro').value,
-      cidade: document.getElementById('q-cidade').value,
-      uf: document.getElementById('q-uf').value,
-      cnae: document.getElementById('q-cnae').value,
-      descricaoCnae: document.getElementById('q-cnae-desc').value,
+      razaoSocial: razao, logo,
+      titulo:       document.getElementById('q-titulo').value,
+      cnpj:         document.getElementById('q-cnpj').value,
+      cep:          document.getElementById('q-cep').value,
+      endereco:     document.getElementById('q-end').value,
+      numero:       document.getElementById('q-num').value,
+      bairro:       document.getElementById('q-bairro').value,
+      cidade:       document.getElementById('q-cidade').value,
+      uf:           document.getElementById('q-uf').value,
+      cnae:         document.getElementById('q-cnae').value,
+      descricaoCnae:document.getElementById('q-cnae-desc').value,
     },
-    avaliacoes: qAvals.map(av => ({...av}))
+    avaliacoes: qAvals.map(av => ({...av})),
+    config: {
+      bomba:      document.getElementById('q-bomba').value,
+      bombaSN:    document.getElementById('q-bomba-sn').value,
+      calibrador: calib,
+      fotosVIII:  qFotosVIII.filter(f => f.img),
+      laudoImgs:  qLaudoImgs,
+    }
   };
 
   try {
     const resp = await fetch('/gerar_quimico', {
-      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
     });
-    if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro||'Erro desconhecido'); }
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro||'Erro'); }
     const blob = await resp.blob();
     const cd = resp.headers.get('Content-Disposition')||'';
     const m = cd.match(/filename="(.+)"/);
@@ -1523,9 +1758,10 @@ function showQStatus(msg, type) {
   el.innerHTML = msg;
 }
 
-// Init with one empty evaluation
+// Init
 qAvals.push(qNewAval());
 qRenderAvals();
+qRenderFotos();
 </script>
 </body>
 </html>
