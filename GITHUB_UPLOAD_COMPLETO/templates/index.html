@@ -526,6 +526,19 @@
       <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
     </svg>
     Laudo de Calor
+  </div>
+  <div class="tab" onclick="switchTab('ruido', this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
+    </svg>
+    Laudo de Ruído
+    <span class="tab-badge">EM BREVE</span>
+  </div>
+  <div class="tab" onclick="switchTab('quimico', this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
+    </svg>
+    Laudo Químico
     <span class="tab-badge">EM BREVE</span>
   </div>
 </nav>
@@ -691,24 +704,114 @@
 <div class="page">
 
   <div class="page-head">
-    <div class="page-title">Laudo de Calor</div>
-    <div class="page-sub">Avaliação de exposição ao calor conforme NR-15 Anexo 3.</div>
+    <div class="page-title">Laudo de Calor — NR-15 Anexo 3</div>
+    <div class="page-sub">Preencha os dados da empresa, da avaliação e os setores medidos.</div>
   </div>
 
+  <!-- Dados da Empresa -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4"/></svg></div>
+      <div><div class="card-title">Dados da Empresa</div><div class="card-desc">Razão social, CNPJ, endereço e contato</div></div>
+    </div>
+    <div class="field">
+      <label>Razão Social</label>
+      <input type="text" id="c-nome" placeholder="Nome completo da empresa">
+    </div>
+    <div class="grid2 field">
+      <div><label>CNPJ</label><input type="text" id="c-cnpj" placeholder="00.000.000/0001-00"></div>
+      <div><label>CEP</label><input type="text" id="c-cep" placeholder="00000-000"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>Endereço</label><input type="text" id="c-end" placeholder="Rua / Avenida, Nº"></div>
+      <div><label>Bairro</label><input type="text" id="c-bairro" placeholder="Bairro"></div>
+      <div><label>Cidade</label><input type="text" id="c-cidade" placeholder="Cidade" value="Belo Horizonte"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>CNAE</label><input type="text" id="c-cnae" placeholder="00.00-0/00"></div>
+      <div><label>Grau de Risco</label>
+        <select id="c-gr"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+      </div>
+      <div><label>UF</label>
+        <select id="c-uf">
+          <option value="MG" selected>MG</option><option value="SP">SP</option><option value="RJ">RJ</option>
+          <option value="ES">ES</option><option value="GO">GO</option><option value="BA">BA</option>
+          <option value="PR">PR</option><option value="SC">SC</option><option value="RS">RS</option>
+          <option value="DF">DF</option>
+        </select>
+      </div>
+    </div>
+    <div><label>Descrição CNAE</label><input type="text" id="c-cnae-desc" placeholder="Descrição da atividade econômica"></div>
+    <div class="grid3 field" style="margin-top:12px">
+      <div><label>Contato</label><input type="text" id="c-contato" placeholder="Nome do responsável"></div>
+      <div><label>Telefone</label><input type="text" id="c-tel" placeholder="(00) 00000-0000"></div>
+      <div><label>E-mail</label><input type="text" id="c-email" placeholder="email@empresa.com"></div>
+    </div>
+  </div>
+
+  <!-- Dados da Avaliação -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+      <div><div class="card-title">Dados da Avaliação</div><div class="card-desc">Data, equipamento e certificado de calibração</div></div>
+    </div>
+    <div class="grid2 field">
+      <div><label>Data da Avaliação</label><input type="text" id="c-data" placeholder="dd/mm/aaaa"></div>
+      <div><label>Cidade e Mês/Ano (carta)</label><input type="text" id="c-carta" placeholder="BELO HORIZONTE, MAIO DE 2026" value="BELO HORIZONTE, MAIO DE 2026"></div>
+    </div>
+    <div class="field">
+      <label>Equipamento Utilizado</label>
+      <input type="text" id="c-equip" value="Net.Temp – Chrompack Smart TEMP | S/N: IBU0000000209">
+    </div>
+    <div class="grid2">
+      <div><label>Certificado de Calibração Nº</label><input type="text" id="c-cert" value="180.646"></div>
+      <div><label>Data de Calibração</label><input type="text" id="c-calib" value="24/03/2026"></div>
+    </div>
+  </div>
+
+  <!-- Setores -->
+  <div class="card" id="card-setores">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/></svg></div>
+      <div style="flex:1"><div class="card-title">Setores de Medição</div><div class="card-desc">Adicione um setor para cada ambiente avaliado</div></div>
+      <button class="btn-add" onclick="addSetor()">+ Setor</button>
+    </div>
+    <div id="setores-list"></div>
+  </div>
+
+  <!-- Gerar -->
+  <button class="btn-gerar" id="btn-calor" onclick="gerarCalor()">
+    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+    Gerar Laudo de Calor
+  </button>
+  <div class="status" id="status-calor"></div>
+
+</div>
+</div>
+
+<!-- ══ Painel Laudo de Ruído ════════════════════════════════════════════ -->
+<div id="tab-ruido" class="tab-panel">
+<div class="page">
+  <div class="page-head"><div class="page-title">Laudo de Ruído</div><div class="page-sub">NR-15 Anexo 1 — Em desenvolvimento.</div></div>
   <div class="coming-soon">
-    <span class="soon-badge">EM DESENVOLVIMENTO</span>
-    <div class="coming-icon">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
-      </svg>
-    </div>
-    <div class="coming-title">Laudo de Calor — NR-15 Anexo 3</div>
-    <div class="coming-desc">
-      Funcionalidade em desenvolvimento. Em breve você poderá gerar laudos de calor (IBUTG) com os dados de medição diretamente aqui.
-    </div>
+    <span class="soon-badge">EM BREVE</span>
+    <div class="coming-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/></svg></div>
+    <div class="coming-title">Laudo de Ruído — NR-15 Anexo 1</div>
+    <div class="coming-desc">Em desenvolvimento. Disponível em breve.</div>
   </div>
+</div>
+</div>
 
+<!-- ══ Painel Laudo Químico ═════════════════════════════════════════════ -->
+<div id="tab-quimico" class="tab-panel">
+<div class="page">
+  <div class="page-head"><div class="page-title">Laudo Químico</div><div class="page-sub">NR-15 Agentes Químicos — Em desenvolvimento.</div></div>
+  <div class="coming-soon">
+    <span class="soon-badge">EM BREVE</span>
+    <div class="coming-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/></svg></div>
+    <div class="coming-title">Laudo Químico</div>
+    <div class="coming-desc">Em desenvolvimento. Disponível em breve.</div>
+  </div>
 </div>
 </div>
 
@@ -923,6 +1026,233 @@ function showStatus(msg, type) {
   el.className = 'status ' + type;
   el.innerHTML = msg;
 }
+
+// ══════════════════════════════════════════════════════════════
+// LAUDO DE CALOR
+// ══════════════════════════════════════════════════════════════
+
+const TABELA_NR15 = [
+  [100,33.7],[102,33.6],[104,33.5],[106,33.4],[108,33.3],[110,33.2],
+  [112,33.1],[115,33.0],[117,32.9],[119,32.8],[122,32.7],[124,32.6],
+  [127,32.5],[129,32.4],[132,32.3],[135,32.2],[137,32.1],[140,32.0],
+  [143,31.9],[146,31.8],[149,31.7],[152,31.6],[155,31.5],[158,31.4],
+  [161,31.3],[165,31.2],[168,31.1],[171,31.0],[175,30.9],[178,30.8],
+  [182,30.7],[186,30.6],[189,30.5],[193,30.4],[197,30.3],[201,30.2],
+  [205,30.1],[209,30.0],[214,29.9],[218,29.8],[222,29.7],[227,29.6],
+  [231,29.5],[236,29.4],[241,29.3],[246,29.2],[251,29.1],[256,29.0],
+  [261,28.9],[266,28.8],[272,28.7],[277,28.6],[283,28.5],[289,28.4],
+  [294,28.3],[300,28.2],[306,28.1],[313,28.0],[319,27.9],[325,27.8],
+  [332,27.7],[339,27.6],[346,27.5]
+];
+
+function getLimiteNR15(m) {
+  if (m <= 100) return 33.7;
+  if (m >= 346) return 27.5;
+  for (let i = 0; i < TABELA_NR15.length-1; i++) {
+    const [m1,i1] = TABELA_NR15[i], [m2,i2] = TABELA_NR15[i+1];
+    if (m >= m1 && m <= m2) return +(i1 + (i2-i1)*(m-m1)/(m2-m1)).toFixed(1);
+  }
+  return 30.0;
+}
+
+function fmtBR(v) { return (+v).toFixed(2).replace('.',','); }
+
+let setores = [];
+
+function addSetor() {
+  setores.push({ nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)', pontos:[
+    { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198 }
+  ]});
+  renderSetores();
+}
+
+function remSetor(si) { setores.splice(si,1); renderSetores(); }
+
+function addPonto(si) {
+  setores[si].pontos.push({ local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198 });
+  renderSetores();
+}
+
+function remPonto(si, pi) { setores[si].pontos.splice(pi,1); renderSetores(); }
+
+function updateSetor(si, field, val) { setores[si][field] = val; recalcSetor(si); }
+function updatePonto(si, pi, field, val) {
+  setores[si].pontos[pi][field] = field==='tempo'||field==='M' ? +val : val;
+  recalcSetor(si);
+}
+
+function recalcSetor(si) {
+  const pontos = setores[si].pontos;
+  const totalT = pontos.reduce((s,p) => s + (+p.tempo||0), 0) || 1;
+  const ibutgMed = pontos.reduce((s,p) => {
+    const tbn = +p.tbn||0, tg = +p.tg||0, t = +p.tempo||0;
+    return s + (0.7*tbn + 0.3*tg)*t;
+  }, 0) / totalT;
+  const mMed = pontos.reduce((s,p) => s + (+p.M||0)*(+p.tempo||0), 0) / totalT;
+  const limite = getLimiteNR15(mMed);
+  const ok = ibutgMed <= limite;
+
+  const resEl = document.getElementById(`setor-res-${si}`);
+  if (resEl && pontos.some(p => p.tbn && p.tg)) {
+    resEl.innerHTML = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;font-size:.8rem;margin-top:10px;">
+        <span>IBUTG médio: <strong>${fmtBR(ibutgMed)} ºC</strong></span>
+        <span>M média: <strong>${Math.round(mMed)} W</strong></span>
+        <span>Limite NR-15: <strong>${limite} ºC</strong></span>
+        <span style="color:${ok?'var(--green)':'var(--red)'}"><strong>${ok?'✔ ACEITÁVEL':'✘ ACIMA DO LIMITE'}</strong></span>
+      </div>`;
+  }
+
+  // Update individual IBUTG per point
+  pontos.forEach((p,pi) => {
+    const el = document.getElementById(`ibutg-${si}-${pi}`);
+    if (el && p.tbn && p.tg) {
+      const v = (0.7*(+p.tbn) + 0.3*(+p.tg));
+      el.textContent = `IBUTG = ${fmtBR(v)} ºC`;
+    } else if (el) el.textContent = '';
+  });
+}
+
+function renderSetores() {
+  const cont = document.getElementById('setores-list');
+  if (setores.length === 0) {
+    cont.innerHTML = `<p style="color:var(--text3);font-size:.82rem;text-align:center;padding:20px 0;">Clique em "+ Setor" para adicionar o primeiro setor de medição.</p>`;
+    return;
+  }
+  cont.innerHTML = setores.map((s,si) => `
+    <div style="border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:12px;background:var(--surface2);">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+        <input type="text" placeholder="Nome do setor (ex: PADARIA)" value="${s.nome}"
+          oninput="updateSetor(${si},'nome',this.value)"
+          style="flex:2;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.86rem;font-family:inherit;font-weight:700;outline:none;">
+        <input type="text" placeholder="Horário (ex: 08:30 – 10:00)" value="${s.horario}"
+          oninput="updateSetor(${si},'horario',this.value)"
+          style="flex:1.5;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.84rem;font-family:inherit;outline:none;">
+        <button onclick="remSetor(${si})" class="btn-rem" style="padding:6px 10px;font-size:.8rem;border:1px solid var(--border2);border-radius:6px;color:var(--text3);background:none;cursor:pointer;">✕ Remover</button>
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:8px;">
+        <thead>
+          <tr style="color:var(--text3);">
+            <th style="text-align:left;padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Local</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tempo (min)</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tbn (ºC)</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tbs (ºC)</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tg (ºC)</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">M (W)</th>
+            <th style="padding:4px 6px;font-weight:600;font-size:.68rem;color:var(--orange);">IBUTG</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${s.pontos.map((p,pi) => `
+          <tr>
+            <td style="padding:3px 4px;"><input type="text" placeholder="Local/ponto" value="${p.local}"
+              oninput="updatePonto(${si},${pi},'local',this.value)"
+              style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;min-width:120px;"></td>
+            <td style="padding:3px 4px;"><input type="number" value="${p.tempo}" min="1"
+              oninput="updatePonto(${si},${pi},'tempo',this.value)"
+              style="width:70px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
+            <td style="padding:3px 4px;"><input type="number" step="0.1" placeholder="0.0" value="${p.tbn}"
+              oninput="updatePonto(${si},${pi},'tbn',this.value)"
+              style="width:68px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
+            <td style="padding:3px 4px;"><input type="number" step="0.1" placeholder="0.0" value="${p.tbs}"
+              oninput="updatePonto(${si},${pi},'tbs',this.value)"
+              style="width:68px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
+            <td style="padding:3px 4px;"><input type="number" step="0.1" placeholder="0.0" value="${p.tg}"
+              oninput="updatePonto(${si},${pi},'tg',this.value)"
+              style="width:68px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
+            <td style="padding:3px 4px;"><input type="number" value="${p.M}" min="1"
+              oninput="updatePonto(${si},${pi},'M',this.value)"
+              style="width:68px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
+            <td style="padding:3px 6px;color:var(--orange);font-weight:600;white-space:nowrap;font-size:.75rem;" id="ibutg-${si}-${pi}"></td>
+            <td style="padding:3px 2px;">${s.pontos.length>1?`<button onclick="remPonto(${si},${pi})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;padding:4px;">✕</button>`:''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+
+      <button onclick="addPonto(${si})" class="btn-add" style="font-size:.78rem;padding:6px 14px;">+ Ponto</button>
+      <div id="setor-res-${si}"></div>
+    </div>
+  `).join('');
+
+  // Recalc after render
+  setores.forEach((_,si) => recalcSetor(si));
+}
+
+async function gerarCalor() {
+  const nome = document.getElementById('c-nome').value.trim();
+  if (!nome) { showCalorStatus('Informe a Razão Social.','err'); return; }
+  if (!setores.length) { showCalorStatus('Adicione pelo menos um setor.','err'); return; }
+  const semPontos = setores.some(s => !s.pontos.length || s.pontos.some(p => !p.tbn||!p.tg));
+  if (semPontos) { showCalorStatus('Preencha Tbn e Tg em todos os pontos.','err'); return; }
+
+  const btn = document.getElementById('btn-calor');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Gerando...';
+  showCalorStatus('Gerando laudo, aguarde...','loading');
+
+  const payload = {
+    empresa: {
+      razaoSocial: nome,
+      cnpj: document.getElementById('c-cnpj').value,
+      endereco: document.getElementById('c-end').value,
+      cep: document.getElementById('c-cep').value,
+      bairro: document.getElementById('c-bairro').value,
+      cidade: document.getElementById('c-cidade').value || 'Belo Horizonte',
+      uf: document.getElementById('c-uf').value,
+      cnae: document.getElementById('c-cnae').value,
+      grauRisco: document.getElementById('c-gr').value,
+      descricaoCnae: document.getElementById('c-cnae-desc').value,
+      contato: document.getElementById('c-contato').value,
+      telefone: document.getElementById('c-tel').value,
+      email: document.getElementById('c-email').value,
+    },
+    avaliacao: {
+      dataAvaliacao: document.getElementById('c-data').value,
+      cidadeCarta: document.getElementById('c-carta').value,
+      equipamento: document.getElementById('c-equip').value,
+      certNo: document.getElementById('c-cert').value,
+      dataCalib: document.getElementById('c-calib').value,
+    },
+    setores: setores.map(s => ({
+      nome: s.nome,
+      horario: s.horario,
+      vestimenta: s.vestimenta,
+      pontos: s.pontos.map(p => ({
+        local: p.local, tempo: +p.tempo,
+        tbn: +p.tbn, tbs: +p.tbs, tg: +p.tg,
+        atividade: p.atividade, M: +p.M
+      }))
+    }))
+  };
+
+  try {
+    const resp = await fetch('/gerar_calor', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro||'Erro desconhecido'); }
+    const blob = await resp.blob();
+    const cd = resp.headers.get('Content-Disposition')||'';
+    const m = cd.match(/filename="(.+)"/);
+    baixarUrl(URL.createObjectURL(blob), m ? m[1] : `Laudo de Calor - ${nome}.docx`);
+    showCalorStatus('Laudo gerado com sucesso. Download iniciado automaticamente.','ok');
+  } catch(e) {
+    showCalorStatus('Erro: '+e.message,'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg> Gerar Laudo de Calor`;
+  }
+}
+
+function showCalorStatus(msg, type) {
+  const el = document.getElementById('status-calor');
+  el.className = 'status ' + type;
+  el.innerHTML = msg;
+}
+
+// Init laudo calor with one empty sector
+renderSetores();
 </script>
 </body>
 </html>
