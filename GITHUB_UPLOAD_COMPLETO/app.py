@@ -1,4 +1,4 @@
-import os, re, shutil, zipfile, io, tempfile, random
+import os, re, shutil, zipfile, io, tempfile
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template
 import xml.etree.ElementTree as ET
@@ -36,7 +36,6 @@ GHE_SEM_DATA = {
     "SERVICOS_GERAIS",
     "ASSIST_TEC_ELETRICA",
     "ASSIST_TEC_ESPEC",
-    "MAQUINAS_PEQUENO_PORTE",
 }
 
 GHE_AGENTES = {
@@ -81,10 +80,10 @@ GHE_AGENTES = {
         ('acid','Objetos Perfurocortantes','Risco Baixo'),
         ('acid','Queda de Objetos','Risco Moderado'),
     ],
-    # Ruído 83,15 Moderado | Poeira Madeira 0,37 | PNOS 0,74 | Posturas | Perfurocortantes | Queda
+    # Ruído 84,47 Moderado | Poeira Madeira 0,40 | PNOS 0,23 | Posturas | Perfurocortantes | Queda — Parque Canoas 2025
     "CARPINTARIA":[
         ('ruido','84,47 dB(A)','Moderado',True,False),
-        ('quant','Poeira de Madeira','Químico','1','0,5','0,33 mg/m³','Risco Baixo',False),
+        ('quant','Poeira de Madeira','Químico','1','0,5','0,40 mg/m³','Risco Baixo',False),
         ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,23 mg/m³','Risco Baixo',False),
         ('ergon','Posturas Incomodas','Risco Baixo'),
         ('acid','Objetos Perfurocortantes','Risco Baixo'),
@@ -132,10 +131,10 @@ GHE_AGENTES = {
         ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,74 mg/m³','Risco Baixo',False),
         ('ergon','Postura Sentada','Risco Baixo'),
     ],
-    # Ruído 76,78 Baixo | Vibração | PNOS 0,20 | Postura Sentada — NOVO
+    # Ruído 88,48 Alto | Vibração AREN 0,86/VDVR 18,3 Moderado | PNOS 0,78 | Postura Sentada — Parque Canoas 2025
     "MAQUINAS_PEQUENO_PORTE":[
-        ('ruido','76,78 dB(A)','Baixo',False,False),
-        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,20 mg/m³','Risco Baixo',False),
+        ('ruido','88,48 dB(A)','Alto',True,True),
+        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,78 mg/m³','Risco Baixo',False),
         ('ergon','Postura Sentada','Risco Baixo'),
     ],
     # Ruído 78,48 Baixo | PNOS 0,17 | Posturas | Queda
@@ -153,10 +152,9 @@ GHE_AGENTES = {
         ('ergon','Posturas Incomodas','Risco Baixo'),
         ('acid','Queda de Objetos','Risco Moderado'),
     ],
-    # Paisagismo — NOVO: Ruído 68,94 Baixo | PNOS 0,10 | Posturas | Queda
+    # Paisagismo — Ruído 64,79 Baixo | Posturas | Queda — Parque Canoas 2025 (sem PNOS medido)
     "PAISAGISMO":[
-        ('ruido','68,94 dB(A)','Baixo',False,False),
-        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,10 mg/m³','Risco Baixo',False),
+        ('ruido','64,79 dB(A)','Baixo',False,False),
         ('ergon','Posturas Incomodas','Risco Baixo'),
         ('acid','Queda de Objetos','Risco Moderado'),
     ],
@@ -202,82 +200,68 @@ GHE_AGENTES = {
         ('ergon','Posturas Incomodas','Risco Baixo'),
         ('acid','Queda de Objetos','Risco Moderado'),
     ],
-    # Assistência Técnica Elétrica — NOVO: Ruído 82,09 | PNOS 0,38 | Posturas | Eletricidade
+    # Assistência Técnica Elétrica — Ruído 84,52 | PNOS 0,05 | Posturas | Eletricidade — Parque Canoas 2025
     "ASSIST_TEC_ELETRICA":[
-        ('ruido','82,09 dB(A)','Moderado',True,False),
-        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,38 mg/m³','Risco Baixo',False),
+        ('ruido','84,52 dB(A)','Moderado',True,False),
+        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,05 mg/m³','Risco Baixo',False),
         ('ergon','Posturas Incomodas','Risco Baixo'),
         ('acid','Eletricidade','Risco Baixo'),
     ],
-    # Assistência Técnica Especializada — NOVO: Ruído 82,79 | PNOS 0,83 | Posturas
+    # Assistência Técnica Especializada — Ruído 84,52 | PNOS 0,05 | Posturas — Parque Canoas 2025
     "ASSIST_TEC_ESPEC":[
-        ('ruido','82,79 dB(A)','Moderado',True,False),
-        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,83 mg/m³','Risco Baixo',False),
+        ('ruido','84,52 dB(A)','Moderado',True,False),
+        ('quant','Poeira não Fibrogênica (PNOS-Respirável)','Químico','2.640','1.320','0,05 mg/m³','Risco Baixo',False),
         ('ergon','Posturas Incomodas','Risco Baixo'),
     ],
 }
 
-CARGOS_SUGESTOES = [
-    # Alvenaria / Estrutura
-    "Pedreiro","Pedreiro Pleno","Pedreiro I","Meio Oficial Pedreiro","Meio Oficial",
-    "Oficial","Oficial Pleno","Auxiliar Pedreiro",
-    # Operacional
-    "Servente","Ajudante Pratico","Ajudante Geral","Auxiliar Obras","Auxiliar Producao",
-    "Auxiliar de Limpeza","Auxiliar de Servicos Gerais","Auxiliar Limpeza",
-    "Faxineiro",
-    # Pintura
-    "Pintor","Pintor Pleno","Meio Oficial Pintor","Auxiliar Pintor",
-    # Armação
-    "Armador","Armador Pleno","Meio Oficial Armador","Auxiliar Armador",
-    "Ajudante Armador","Ferreiro","Auxiliar Ferreiro",
-    # Carpintaria
-    "Carpinteiro","Carpinteiro Pleno","Carpinteiro Forma","Carpinteiro Polivalente",
-    "Carpinteiro Serrador","Marceneiro","Meio Oficial Carpinteiro","Auxiliar Carpinteiro",
-    # Elétrica
-    "Eletricista","Eletricista Pleno","Eletricista Instalador Predial","Eletricista Pos Entrega",
-    "Meio Oficial Eletricista","Auxiliar Eletricista","Ajudante Eletricista",
-    # Gesso/Rejunte/Acabamento
-    "Gesseiro","Meio Oficial Gesseiro","Rejuntador","Azulejista","Meio Oficial Azulejista","Ladrilheiro",
-    # Hidráulica
-    "Bombeiro Hidraulico","Bombeiro Pleno","Meio Oficial Bombeiro",
-    "Encanador","Meio Oficial Encanador","Auxiliar Encanador","Auxiliar Bombeiro Hidraulico",
-    # Montadores / Estrutura Parede
-    "Montador","Montador de Forma Metalica","Montador Formas Metalicas Pleno",
+CARGOS_SUGESTOES = sorted([
+    "Ajudante Armador","Ajudante Eletricista","Ajudante Geral","Ajudante Pratico",
+    "Almoxarife","Almoxarife Pleno","Analista Administrativo","Apontador",
+    "Armador","Armador Pleno","Assistente Administrativo",
+    "Assistente Tecnico Edificacoes","Assistente Tecnico Seguranca Trabalho",
+    "Auxiliar Administrativo","Auxiliar Almoxarife","Auxiliar Armador",
+    "Auxiliar Bombeiro Hidraulico","Auxiliar Carpinteiro",
+    "Auxiliar de Limpeza","Auxiliar de Servicos Gerais",
+    "Auxiliar Eletricista","Auxiliar Encanador","Auxiliar Engenharia",
+    "Auxiliar Ferreiro","Auxiliar Limpeza","Auxiliar Montador",
+    "Auxiliar Montador Formas Metalicas","Auxiliar Obras","Auxiliar Pedreiro",
+    "Auxiliar Pintor","Auxiliar Producao","Auxiliar Seguranca Trabalho",
+    "Auxiliar Tecnico Seguranca Trabalho","Azulejista",
+    "Bombeiro Hidraulico","Bombeiro Pleno","Cabo Turma",
+    "Carpinteiro","Carpinteiro Forma","Carpinteiro Pleno","Carpinteiro Polivalente",
+    "Carpinteiro Serrador","Contra Mestre",
+    "Eletricista","Eletricista Instalador Predial","Eletricista Pleno",
+    "Eletricista Pos Entrega","Encanador",
+    "Encarregado","Encarregado Acabamento","Encarregado Almoxarife",
+    "Encarregado Armador","Encarregado Carpintaria","Encarregado de Obras",
+    "Encarregado Eletrica","Encarregado Forma","Encarregado Geral",
+    "Encarregado Geral Instalacoes","Encarregado Geral Obras",
+    "Encarregado Hidraulica","Encarregado Instalacoes","Encarregado Obras Forma",
+    "Encarregado Obras Instalacoes","Encarregado Turma",
+    "Engenheiro","Engenheiro Junior","Engenheiro Pleno","Engenheiro Senior",
+    "Estagiario","Faxineiro","Ferramenteiro","Ferreiro",
+    "Gesseiro","Gesseiro Pleno","Guariteiro","Jardineiro","Ladrilheiro","Marceneiro",
+    "Meio Oficial","Meio Oficial Armador","Meio Oficial Azulejista",
+    "Meio Oficial Bombeiro","Meio Oficial Carpinteiro","Meio Oficial Eletricista",
+    "Meio Oficial Encanador","Meio Oficial Ferreiro","Meio Oficial Gesseiro",
     "Meio Oficial Montador","Meio Oficial Montador Formas Metalicas",
-    "Auxiliar Montador","Auxiliar Montador Formas Metalicas",
-    "Montador Andaimes","Montador Esquadrias",
-    # Supervisão / Encarregados
-    "Encarregado","Encarregado de Obras","Encarregado Geral","Encarregado Forma",
-    "Encarregado Instalacoes","Encarregado Eletrica","Encarregado Hidraulica",
-    "Encarregado Acabamento","Encarregado Carpintaria","Encarregado Armador",
-    "Encarregado Obras Forma","Encarregado Turma","Cabo Turma",
-    "Mestre Obras","Mestre Geral Obras","Supervisor Instalacoes","Profissional Lider",
-    # Portaria
-    "Porteiro","Vigia","Vigia Noturno","Guariteiro",
-    # Administrativo / Engenharia
-    "Engenheiro","Engenheiro Pleno","Engenheiro Senior","Engenheiro Junior",
-    "Topografo","Apontador","Analista Administrativo","Assistente Administrativo",
-    "Auxiliar Administrativo","Auxiliar Engenharia",
-    # Almoxarifado
-    "Almoxarife","Almoxarife Pleno","Auxiliar Almoxarife","Ferramenteiro",
-    # Apoio / Técnicos
-    "Tecnico Edificacoes","Tecnico Seguranca Trabalho I","Tecnico Seguranca Trabalho II",
-    "Estagiario","Assistente Tecnico Edificacoes","Auxiliar Seguranca Trabalho",
-    # Máquinas
-    "Operador Betoneira","Operador Cremalheira","Operador Grua","Operador Guincho",
-    "Operador Elevador Carga","Sinaleiro",
-    "Operador Maquinas Geral","Operador Maquinas Pesadas","Operador Maquinas Leves",
-    "Operador Equipamentos",
-    # Serralheria
-    "Serralheiro","Soldador",
-    # Pós-entrega / Assistência técnica
+    "Meio Oficial Pedreiro","Meio Oficial Pintor","Meio Oficial Pos Entrega",
+    "Mestre Geral Obras","Mestre Obras",
+    "Montador","Montador Andaimes","Montador de Forma Metalica",
+    "Montador Esquadrias","Montador Formas Metalicas Pleno",
+    "Oficial","Oficial Pleno","Oficial Polivalente",
+    "Operador Betoneira","Operador Cremalheira","Operador Elevador Carga",
+    "Operador Equipamentos","Operador Grua","Operador Guincho",
+    "Operador Maquinas Geral","Operador Maquinas Leves","Operador Maquinas Pesadas",
+    "Pedreiro","Pedreiro Acabamento","Pedreiro I","Pedreiro Pleno",
+    "Pintor","Pintor Pleno","Porteiro","Profissional Lider",
     "Profissional Pos Entrega","Profissional Pos Entrega Polivalente",
-    "Meio Oficial Pos Entrega","Eletricista Pos Entrega",
-    # Paisagismo
-    "Jardineiro",
-    # Polivalente
-    "Oficial Polivalente",
-]
+    "Rejuntador","Serralheiro","Servente","Sinaleiro","Soldador",
+    "Supervisor Instalacoes","Tecnico Ambiental","Tecnico Edificacoes",
+    "Tecnico Instalacoes","Tecnico Seguranca Trabalho I","Tecnico Seguranca Trabalho II",
+    "Topografo","Vigia","Vigia Noturno",
+], key=str.lower)
 
 def get_ghe(cargo):
     """Retorna o GHE do cargo (Mata das Borboletas) ou None se não reconhecido."""
@@ -288,7 +272,8 @@ def get_ghe(cargo):
     if any(x in c for x in ["GESSEIRO","REJUNT"]): return "GESSO_REJUNTE"
     # Administrativo
     if any(x in c for x in ["ADMIN","ANALISTA","ENGENHEIRO","TOPOGRAFO","APONTADOR","APRENDIZ"]): return "ADMINISTRATIVO"
-    # Almoxarifado (inclui ferramenteiro)
+    # Almoxarifado (inclui ferramenteiro — mas Encarregado Almoxarife vai pra Supervisão)
+    if "ENCARREGADO ALMOXARIFE" in c: return "SUPERVISAO"
     if any(x in c for x in ["ALMOXARIFE","FERRAMENTEIRO"]): return "ALMOXARIFADO"
     # Apoio Produção (técnicos, estagiários, segurança do trabalho)
     if any(x in c for x in ["TECNICO EDIF","TECNICO SEGUR","TECNICO AMBI","TECNICO INSTAL",
@@ -417,21 +402,6 @@ def load_tpl(name):
 def xs(s): return s.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')
 def spacer(): return '\n    <w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p>\n'
 
-def _new_para_id():
-    """Gera um paraId/textId único de 8 dígitos hex (evita 00000000 e 77777777)."""
-    while True:
-        v = random.randint(1, 0xFFFFFFFE)
-        if v != 0x77777777:
-            return '%08X' % v
-
-def _uniquify_ids(xml):
-    """Substitui todos w14:paraId e w14:textId por valores únicos."""
-    xml = re.sub(r'w14:paraId="[0-9A-Fa-f]{8}"',
-                 lambda m: f'w14:paraId="{_new_para_id()}"', xml)
-    xml = re.sub(r'w14:textId="[0-9A-Fa-f]{8}"',
-                 lambda m: f'w14:textId="{_new_para_id()}"', xml)
-    return xml
-
 def _replace_run_text(xml, old_text, new_text):
     """Substitui texto dentro de um run XML, respeitando espaços trailing."""
     return xml.replace(f'>{old_text}<', f'>{new_text}<')
@@ -554,8 +524,7 @@ def build_cargo_section(cargo, cidade, uf):
             _, nome_ag, nr = ag
             risk += adapt_acid(nome_ag, nr) + spacer()
 
-    section = sc + titulo + risk
-    return _uniquify_ids(section)
+    return sc + titulo + risk
 
 def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, uf, cargos):
     data_atual = mes_ano()
@@ -584,7 +553,6 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         para = tpl_idx.replace('>Cargo: Pedreiro<', f'>Cargo: {xs(cargo)}<')
         new_id = '%08X' % (0x762D6EE3 + i + 1)
         para = para.replace('762D6EE3', new_id)
-        para = _uniquify_ids(para)
         idx_novo += para + '\n'
     if tpl_idx in p1:
         p1 = p1.replace(tpl_idx, idx_novo, 1)
@@ -597,47 +565,19 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         shutil.copytree(MODEL_DIR, os.path.join(work_dir, 'doc'))
         with open(os.path.join(work_dir, 'doc', 'word', 'document.xml'), 'w', encoding='utf-8') as f:
             f.write(new_xml)
-        _RELS_CONTENT = (
-            '<?xml version="1.0" encoding="utf-8"?>\n'
-            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
-            '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>\n'
-            '  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>\n'
-            '  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>\n'
-            '</Relationships>'
-        )
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-            added = set()
             for root, dirs, files in os.walk(os.path.join(work_dir, 'doc')):
                 for file in files:
                     abs_path = os.path.join(root, file)
                     rel_path = os.path.relpath(abs_path, os.path.join(work_dir, 'doc'))
                     zf.write(abs_path, rel_path)
-                    added.add(rel_path)
-            # Garantir que _rels/.rels sempre está presente
-            if '_rels/.rels' not in added:
-                zf.writestr('_rels/.rels', _RELS_CONTENT)
         buf.seek(0)
         return buf.getvalue()
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 
 # ── Extração de PDF ───────────────────────────────────────────────
-_LABELS_PAT = re.compile(
-    r'^(ENDERE[CÇ]O|LOGRADOURO|N[UÚ]MERO|BAIRRO|DISTRITO|CEP|COMPLEMENTO'
-    r'|MUNIC[IÍ]PIO|CIDADE|UF|RAZ[ÃA]O SOCIAL|CNPJ|INSCRI[CÇ][ÃA]O'
-    r'|DATA|CONTATO|RESPONS[AÁ]VEL|FISCAL|CARGOS)\b',
-    re.I
-)
-
-def _next_val(lines, idx):
-    """Próximo valor não-vazio e não-label após a linha idx (busca até 6 linhas)."""
-    for j in range(idx + 1, min(idx + 7, len(lines))):
-        v = lines[j].strip()
-        if v and not _LABELS_PAT.match(v):
-            return v
-    return ''
-
 def extrair_pdf(file_bytes):
     dados = {"nome":"","cnpj":"","rua":"","numero":"","complemento":"","cep":"","bairro":"","cidade":"","uf":"MG","cargos":[]}
     if not PDF_OK:
@@ -647,186 +587,27 @@ def extrair_pdf(file_bytes):
         texto = pdf_extract(buf)
     except:
         return dados
-    if not texto or not texto.strip():
-        return dados
-
-    full  = ' '.join(l.strip() for l in texto.split('\n') if l.strip())
+    full = ' '.join(l.strip() for l in texto.split('\n') if l.strip())
     lines = [l.strip() for l in texto.split('\n') if l.strip()]
-
-    UFS = r'AC|AL|AM|AP|BA|CE|DF|ES|GO|MA|MG|MS|MT|PA|PB|PE|PI|PR|RJ|RN|RO|RR|RS|SC|SE|SP|TO'
-
-    # ── CNPJ ─────────────────────────────────────────────────────────
-    cnpj_m = re.search(r'\d{2}[.\s]?\d{3}[.\s]?\d{3}[/\s]?\d{4}[-\s]?\d{2}', full)
-    if cnpj_m:
-        dados['cnpj'] = re.sub(r'\s', '', cnpj_m.group())
-
-    # ── Razão Social ──────────────────────────────────────────────────
-    nome = ''
-    for i, l in enumerate(lines):
-        if re.search(r'RAZ[ÃA]O SOCIAL|NOME EMPRESARIAL|EMPREGADOR', l, re.I):
-            # Only look 2 lines ahead — beyond that we'd hit address fields
-            for j in range(i + 1, min(i + 3, len(lines))):
-                v = lines[j].strip()
-                if v and not _LABELS_PAT.match(v) and not re.match(r'\d{2}[.\s]?\d{3}', v):
-                    nome = v
-                    break
-            break
-    # Fallback: linha imediatamente anterior ao CNPJ (formato MEI)
-    if not nome and cnpj_m:
-        for i, l in enumerate(lines):
-            if cnpj_m.group().replace(' ', '') in l.replace(' ', ''):
-                if i > 0:
-                    cand = lines[i - 1].strip()
-                    if len(cand) > 5 and not re.match(r'^\d{2}/\d{2}/\d{4}', cand):
-                        # Strip leading CPF/doc number prefix e.g. "62.238.342 NOME"
-                        cand = re.sub(r'^\d{2}[\d.]+\s+', '', cand).strip()
-                        if cand:
-                            nome = cand
-                break
-    if not nome and cnpj_m:
+    cnpj_m = re.search(r'\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[/\s]?\d{4}[-\s]?\d{2}', full)
+    if cnpj_m: dados['cnpj'] = re.sub(r'\s','',cnpj_m.group())
+    for i,l in enumerate(lines):
+        if re.search(r'RAZ[ÃA]O SOCIAL|NOME EMPRES', l, re.I) and i+1<len(lines):
+            dados['nome'] = lines[i+1].strip(); break
+    if not dados['nome'] and cnpj_m:
         idx = full.find(cnpj_m.group())
         before = full[:idx].strip().split()
-        if before:
-            nome = ' '.join(before[-8:]).strip()
-    dados['nome'] = nome
-
-    # ── CEP ───────────────────────────────────────────────────────────
+        if before: dados['nome'] = ' '.join(before[-8:]).strip()
     cep_m = re.search(r'\d{5}-?\d{3}', full)
-    if cep_m:
-        dados['cep'] = cep_m.group()
-
-    # ── UF ────────────────────────────────────────────────────────────
-    uf_m = re.search(rf'\b({UFS})\b', full)
-    if uf_m:
-        dados['uf'] = uf_m.group()
-
-    # ── Cidade ────────────────────────────────────────────────────────
-    cidade = ''
-    # Search line-by-line to avoid greedy cross-label matches
-    for l in lines:
-        # Formato com espaço duplo: "RIBEIRÃO DAS NEVES  MG"
-        m = re.match(rf'^([A-ZÇÃÕÀÁÉÍÓÚ][A-ZÇÃÕÀÁÉÍÓÚ ]{{2,30}})\s{{2,}}({UFS})\s*$', l)
-        if m:
-            cidade = m.group(1).strip().title()
-            dados['uf'] = m.group(2)
-            break
-        # Formato "CIDADE / MG" ou "CIDADE - MG"
-        m = re.match(rf'^([A-ZÇÃÕÀÁÉÍÓÚ][A-ZÇÃÕÀÁÉÍÓÚ ]{{2,30}})\s*[/\-]\s*({UFS})\s*$', l)
-        if m:
-            cidade = m.group(1).strip().title()
-            dados['uf'] = m.group(2)
-            break
-    # Fallback via label
-    if not cidade:
-        for i, l in enumerate(lines):
-            if re.search(r'MUNIC[IÍ]PIO|CIDADE', l, re.I):
-                v = _next_val(lines, i)
-                v = re.sub(rf'\s*[/\-\s]{{1,3}}(?:{UFS})\b.*', '', v).strip()
-                if len(v) > 3:
-                    cidade = v.title()
-                break
-    dados['cidade'] = cidade
-
-    # ── Bairro ────────────────────────────────────────────────────────
-    for i, l in enumerate(lines):
-        if re.match(r'^BAIRRO\b', l, re.I):
-            v = _next_val(lines, i)
-            if v:
-                dados['bairro'] = v.title()
-            break
-
-    # ── Endereço, Número, Complemento ────────────────────────────────
-    rua = numero = complemento = ''
-
-    for i, l in enumerate(lines):
-        # Caso A: linha com logradouro completo "RUA DAS FLORES, 250, APTO 10"
-        if re.match(r'^(RUA|AV\.?\s|AVENIDA|ALAMEDA|ESTRADA|ROD\.?\s|RODOVIA|TRAVESSA|PRA[CÇ]A)\s+\S', l, re.I):
-            partes = [p.strip() for p in l.split(',')]
-            rua = partes[0]
-            if len(partes) > 1 and re.match(r'^\d+', partes[1]):
-                numero = partes[1]
-                complemento = ', '.join(partes[2:]) if len(partes) > 2 else ''
-            break
-        # Caso B: label "RUA  " ou "ENDEREÇO" sozinho → valor na linha seguinte
-        if re.match(r'^(RUA|ENDERE[CÇ]O|LOGRADOURO)\s*:?\s*$', l, re.I):
-            v = _next_val(lines, i)
-            if v:
-                partes = [p.strip() for p in v.split(',')]
-                rua = partes[0]
-                if len(partes) > 1 and re.match(r'^\d+', partes[1]):
-                    numero = partes[1]
-                    complemento = ', '.join(partes[2:]) if len(partes) > 2 else ''
-            break
-        # Caso C: "ENDEREÇO: RUA X, 123"
-        m2 = re.match(r'(?:ENDERE[CÇ]O|LOGRADOURO)\s*:\s*(.+)', l, re.I)
-        if m2:
-            partes = [p.strip() for p in m2.group(1).split(',')]
-            rua = partes[0]
-            if len(partes) > 1 and re.match(r'^\d+', partes[1]):
-                numero = partes[1]
-                complemento = ', '.join(partes[2:]) if len(partes) > 2 else ''
-            break
-
-    # Número em campo separado (se ainda não encontrado)
-    if not numero:
-        for i, l in enumerate(lines):
-            if re.match(r'^N[UÚ]MERO\b', l, re.I):
-                v = _next_val(lines, i)
-                if v and re.match(r'^\d', v):
-                    numero = v
-                break
-
-    # Complemento em campo separado
-    if not complemento:
-        for i, l in enumerate(lines):
-            if re.match(r'^COMPLEMENTO\b', l, re.I):
-                v = _next_val(lines, i)
-                if v:
-                    complemento = v
-                break
-
-    dados['rua'] = rua
-    dados['numero'] = numero
-    dados['complemento'] = complemento
-
-    # ── Cargos ────────────────────────────────────────────────────────
-    cargos_encontrados = []
-    texto_norm = re.sub(r'[^\w\s]', ' ', full, flags=re.UNICODE)
-    texto_restante = texto_norm
-    for cargo in sorted(CARGOS_SUGESTOES, key=len, reverse=True):
-        pat = r'\b' + re.escape(cargo) + r'\b'
-        if re.search(pat, texto_restante, re.I):
-            cargos_encontrados.append(cargo)
-            # Erase matched occurrences so shorter substrings don't re-match within them
-            texto_restante = re.sub(pat, ' ' * len(cargo), texto_restante, flags=re.I)
-    dados['cargos'] = cargos_encontrados
-
-    # ── Possíveis cargos não reconhecidos na base de dados ────────────
-    _stop = {'de','do','da','dos','das','em','no','na','nos','nas','e','a','o',
-             'para','com','por','que','se','ao','as','um','uma','ou','são',
-             'foi','ter','ser','pelo','pela','entre','sobre','após','até'}
-    potenciais_raw = re.findall(
-        r'\b([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+){0,2})\b',
-        texto_restante
-    )
-    vistos = set()
-    potenciais = []
-    for term in potenciais_raw:
-        t = term.strip()
-        if t in vistos or len(t) < 4:
-            continue
-        vistos.add(t)
-        words = t.split()
-        if len(words) > 3 or re.search(r'\d', t):
-            continue
-        meaningful = [w for w in words if w.lower() not in _stop and len(w) > 2]
-        if not meaningful:
-            continue
-        # Only include if the term appears at least twice in the full text
-        if len(re.findall(r'\b' + re.escape(t) + r'\b', full, re.I)) >= 2:
-            potenciais.append(t)
-    dados['possiveis_nao_reconhecidos'] = potenciais[:15]
-
+    if cep_m: dados['cep'] = cep_m.group()
+    uf_m = re.search(r'\b(MG|SP|RJ|ES|GO|BA|PR|SC|RS|DF|MT|MS|AM|PA|CE|PE|MA|RN|PB|AL|SE|PI|TO|RO|AC|RR|AP|GO)\b', full)
+    if uf_m: dados['uf'] = uf_m.group()
+    for i,l in enumerate(lines):
+        if re.search(r'(RUA|AV\.|AVENIDA|LOGRADOURO|ENDERE)', l, re.I) and len(l) > 5:
+            dados['rua'] = l; break
+    for cargo in ["Pedreiro","Servente","Pintor","Meio Oficial Pintor","Armador","Eletricista","Carpinteiro","Gesseiro","Rejuntador","Azulejista","Bombeiro Hidraulico","Encarregado","Montador","Meio Oficial Pedreiro","Meio Oficial Eletricista","Auxiliar de Limpeza","Porteiro","Vigia","Topografo","Auxiliar Administrativo","Engenheiro"]:
+        if re.search(re.escape(cargo), full, re.I):
+            dados['cargos'].append(cargo)
     return dados
 
 # ── Rotas ─────────────────────────────────────────────────────────
@@ -924,389 +705,6 @@ def ghe_info(cargo):
         return jsonify({'ghe': 'NÃO_RECONHECIDO', 'agentes': 0, 'aviso': True})
     agentes = GHE_AGENTES.get(ghe, [])
     return jsonify({'ghe': ghe, 'agentes': len(agentes)})
-
-# ══════════════════════════════════════════════════════════════════════
-# LAUDO DE CALOR
-# ══════════════════════════════════════════════════════════════════════
-
-_CALOR_TPL = os.path.join(BASE_DIR, 'modelo_laudo_calor', 'template_ocupacional.docx')
-
-def _ensure_calor_template():
-    """Reconstruct template DOCX from base64 parts if not present on disk."""
-    if os.path.exists(_CALOR_TPL):
-        return
-    import base64 as _b64
-    os.makedirs(os.path.dirname(_CALOR_TPL), exist_ok=True)
-    parts = []
-    for i in range(1, 9):
-        part_path = os.path.join(os.path.dirname(_CALOR_TPL), f'.template_part_{i}.b64')
-        if not os.path.exists(part_path):
-            raise RuntimeError(f'Template part {i} nao encontrado: {part_path}')
-        with open(part_path) as fp:
-            parts.append(fp.read().strip())
-    with open(_CALOR_TPL, 'wb') as fp:
-        fp.write(_b64.b64decode(''.join(parts)))
-
-
-# Tabela NR-15 Anexo 3 Quadro 1 (M em W → IBUTG_máx em ºC) — interpolação linear
-_NR15 = [
-    (100,33.7),(102,33.6),(104,33.5),(106,33.4),(108,33.3),(110,33.2),
-    (112,33.1),(115,33.0),(117,32.9),(119,32.8),(122,32.7),(124,32.6),
-    (127,32.5),(129,32.4),(132,32.3),(135,32.2),(137,32.1),(140,32.0),
-    (143,31.9),(146,31.8),(149,31.7),(152,31.6),(155,31.5),(158,31.4),
-    (161,31.3),(165,31.2),(168,31.1),(171,31.0),(175,30.9),(178,30.8),
-    (182,30.7),(186,30.6),(189,30.5),(193,30.4),(197,30.3),(201,30.2),
-    (205,30.1),(209,30.0),(214,29.9),(218,29.8),(222,29.7),(227,29.6),
-    (231,29.5),(236,29.4),(241,29.3),(246,29.2),(251,29.1),(256,29.0),
-    (261,28.9),(266,28.8),(272,28.7),(277,28.6),(283,28.5),(289,28.4),
-    (294,28.3),(300,28.2),(306,28.1),(313,28.0),(319,27.9),(325,27.8),
-    (332,27.7),(339,27.6),(346,27.5),
-]
-
-def _nr15_limite(m):
-    if m <= _NR15[0][0]:  return _NR15[0][1]
-    if m >= _NR15[-1][0]: return _NR15[-1][1]
-    for i in range(len(_NR15)-1):
-        m1,l1 = _NR15[i]; m2,l2 = _NR15[i+1]
-        if m1 <= m <= m2:
-            return round(l1 + (l2-l1)*(m-m1)/(m2-m1), 1)
-    return _NR15[-1][1]
-
-def _xe(s):
-    return str(s).replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;')
-
-def _fc(v, decimals=2):
-    """Format float with comma decimal separator, stripping trailing zeros."""
-    s = f'{float(v):.{decimals}f}'.rstrip('0').rstrip('.')
-    if '.' not in f'{float(v):.{decimals}f}':
-        s = s
-    else:
-        s = f'{float(v):.{decimals}f}'.rstrip('0').rstrip('.')
-    if not s or s == '-':
-        s = '0'
-    return s.replace('.', ',')
-
-def _make_foto_xml(rid, pic_id, cx=1800000, cy=1800000):
-    """Build OOXML inline-image run for a photo placeholder."""
-    return (
-        f'<w:r><w:drawing>'
-        f'<wp:inline distT="0" distB="0" distL="0" distR="0"'
-        f' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">'
-        f'<wp:extent cx="{cx}" cy="{cy}"/>'
-        f'<wp:effectExtent l="0" t="0" r="0" b="0"/>'
-        f'<wp:docPr id="{pic_id}" name="Foto {pic_id}"/>'
-        f'<wp:cNvGraphicFramePr>'
-        f'<a:graphicFrameLocks'
-        f' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
-        f' noChangeAspect="1"/>'
-        f'</wp:cNvGraphicFramePr>'
-        f'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
-        f'<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
-        f'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
-        f'<pic:nvPicPr>'
-        f'<pic:cNvPr id="{pic_id}" name="Foto {pic_id}"/>'
-        f'<pic:cNvPicPr/>'
-        f'</pic:nvPicPr>'
-        f'<pic:blipFill>'
-        f'<a:blip r:embed="{rid}"'
-        f' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>'
-        f'<a:stretch><a:fillRect/></a:stretch>'
-        f'</pic:blipFill>'
-        f'<pic:spPr>'
-        f'<a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
-        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
-        f'</pic:spPr>'
-        f'</pic:pic>'
-        f'</a:graphicData>'
-        f'</a:graphic>'
-        f'</wp:inline>'
-        f'</w:drawing></w:r>'
-    )
-
-
-def _calor_row(local, tempo, tbn, tbs, tg, ibutg, is_last):
-    """Build one measurement data row XML for the Laudo de Calor table."""
-    pid = _new_para_id
-    bot = '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-    top = '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-    lft = '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-    rgt = '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
-
-    def bdr_side(with_bot=False):
-        return f'<w:tcBorders>{lft}{"" if not with_bot else bot}{rgt}</w:tcBorders>'
-
-    def bdr_all():
-        return f'<w:tcBorders>{top}{lft}{bot}{rgt}</w:tcBorders>'
-
-    def para(text, bold=False, center=True):
-        b = '<w:b/>' if bold else ''
-        jc = f'<w:jc w:val="center"/>' if center else ''
-        return (f'<w:p w14:paraId="{pid()}" w14:textId="77777777">'
-                f'<w:pPr><w:pStyle w:val="CORPODETEXTO"/><w:ind w:firstLine="0"/>{jc}'
-                f'<w:rPr><w:noProof w:val="0"/><w:position w:val="2"/><w:sz w:val="18"/></w:rPr></w:pPr>'
-                f'<w:r><w:rPr>{b}<w:noProof w:val="0"/><w:position w:val="2"/><w:sz w:val="18"/></w:rPr>'
-                f'<w:t xml:space="preserve">{_xe(text)}</w:t></w:r></w:p>')
-
-    def cell(w, text, bold=False, center=True, span=1, borders='', fill=''):
-        sp = f'<w:gridSpan w:val="{span}"/>' if span > 1 else ''
-        sh = f'<w:shd w:val="clear" w:color="auto" w:fill="{fill}"/>' if fill else ''
-        return (f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{sp}'
-                f'{borders}{sh}<w:vAlign w:val="center"/></w:tcPr>'
-                f'{para(text, bold=bold, center=center)}</w:tc>')
-
-    tbn_s = _fc(tbn); tbs_s = _fc(tbs); tg_s = _fc(tg); ibutg_s = _fc(ibutg)
-    formula = f'IBUTG = (0,7 x {tbn_s}) + (0,3 x {tg_s})'
-
-    return (f'<w:tr w14:paraId="{pid()}" w14:textId="77777777">'
-            f'<w:trPr><w:cantSplit/></w:trPr>'
-            + cell(1985, local, bold=True, center=False,
-                   borders=bdr_side(is_last), fill='FFFFFF')
-            + cell(1062, str(tempo), center=True,
-                   borders=bdr_side(is_last), fill='FFFFFF')
-            + cell(921, tbn_s, span=3, borders=bdr_all())
-            + cell(921, tbs_s, borders=bdr_all())
-            + cell(921, tg_s, borders=bdr_all())
-            + cell(2622, formula, span=2, borders=bdr_all())
-            + cell(2623, ibutg_s, borders=bdr_all())
-            + '</w:tr>')
-
-def _calor_build_sector_block_dahana(tpl_block, setor, num):
-    """Clone and fill a Dahana-template sector block for the given sector."""
-    blk = _uniquify_ids(tpl_block)
-
-    # ── Sector title ──────────────────────────────────────────────
-    blk = blk.replace(
-        '>Avaliação 01 – Departamento: PADARIA<',
-        f'>Avaliação {num:02d} – Departamento: {_xe(setor["nome"])}<', 1
-    )
-
-    # ── Data rows: replace template rows with generated rows ──────
-    local_pos = blk.find('>Local<')
-    header_end = blk.find('</w:tr>', local_pos) + len('</w:tr>')
-    ibutg_med_pos = blk.find('>IBUTG (Médio)')
-    ibutg_tr_start = blk.rfind('<w:tr ', 0, ibutg_med_pos)
-
-    pontos = setor['pontos']
-    n = len(pontos)
-    data_rows = ''
-    for idx, p in enumerate(pontos):
-        tbn = float(p['tbn']); tg = float(p['tg'])
-        ibutg_val = round(0.7 * tbn + 0.3 * tg, 2)
-        data_rows += _calor_row(
-            p['local'], p['tempo'], tbn, float(p['tbs']), tg, ibutg_val,
-            is_last=(idx == n - 1)
-        )
-
-    blk = blk[:header_end] + data_rows + blk[ibutg_tr_start:]
-
-    # ── Statistics ────────────────────────────────────────────────
-    total_t = sum(float(p['tempo']) for p in pontos)
-    ibutg_medio = sum((0.7*float(p['tbn'])+0.3*float(p['tg']))*float(p['tempo']) for p in pontos) / total_t
-    m_medio = sum(float(p.get('M', 198))*float(p['tempo']) for p in pontos) / total_t
-    ibutg_lim = _nr15_limite(m_medio)
-    im_s = _fc(ibutg_medio, 1)
-    mm_s = str(round(m_medio))
-    lim_s = _fc(ibutg_lim, 1)
-
-    # ── IBUTG médio row ───────────────────────────────────────────
-    blk = blk.replace('>IBUTG (Médio) = 21,7 ºC<', f'>IBUTG (Médio) = {_xe(im_s)} ºC<')
-
-    # ── M values in activity rows ─────────────────────────────────
-    blk = blk.replace('>198 W<', f'>{_xe(mm_s)} W<', 1)   # row 5: single run
-    blk = blk.replace('>198<', f'>{_xe(mm_s)}<', 2)        # rows 6,7: split run
-    blk = blk.replace('>198 W<', f'>{_xe(mm_s)} W<')       # row 8: remainder
-
-    # ── Horário and vestimenta ────────────────────────────────────
-    blk = blk.replace('>08:50 – 10:01<', f'>{_xe(setor.get("horario", ""))}<')
-    blk = blk.replace('>Uniforme de Trabalho (0)<',
-                       f'>{_xe(setor.get("vestimenta", "Uniforme de Trabalho (0)"))}<')
-
-    # ── Conclusion ────────────────────────────────────────────────
-    aceitavel = ibutg_medio <= ibutg_lim
-    status_txt = 'não ultrapassando' if aceitavel else 'ultrapassando'
-    blk = blk.replace(
-        'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, '
-        'do Anexo Nº 3, na NR-09, para uma taxa de metabolismo média de 198 W é de 30,2 IBUTG.',
-        f'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, '
-        f'do Anexo Nº 3, na NR-09, para uma taxa de metabolismo média de '
-        f'{_xe(mm_s)} W é de {_xe(lim_s)} IBUTG.'
-    )
-    blk = blk.replace(
-        'O IBUTG médio encontrado foi de 21,7 ºC, não ultrapassando o limite de tolerância.',
-        f'O IBUTG médio encontrado foi de {_xe(im_s)} ºC, {status_txt} o limite de tolerância.'
-    )
-
-    # ── Photo rIds: rename to per-sector unique IDs ───────────────
-    blk = blk.replace('r:embed="rId18"', f'r:embed="rIdS{num}P1"')
-    blk = blk.replace('r:embed="rId19"', f'r:embed="rIdS{num}P2"')
-    blk = blk.replace('r:embed="rId20"', f'r:embed="rIdS{num}P3"')
-
-    return blk
-
-def gerar_laudo_calor_bytes(empresa, avaliacao, setores):
-    """Generate Laudo de Calor DOCX bytes from Dahana-based template."""
-    _ensure_calor_template()
-    import base64 as _b64
-    _img_type = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'
-
-    with zipfile.ZipFile(_CALOR_TPL, 'r') as ztpl:
-        xml = ztpl.read('word/document.xml').decode('utf-8')
-        rels_xml = ztpl.read('word/_rels/document.xml.rels').decode('utf-8')
-
-        # ── Company replacements ──────────────────────────────────
-        nome = empresa.get('razaoSocial', '')
-        xml = xml.replace('>COMERCIAL DAHANA LTDA<', f'>{_xe(nome)}<')
-        xml = xml.replace('>00.070.509/0034-79<', f'>{_xe(empresa.get("cnpj", ""))}<')
-        xml = xml.replace('>Av. General Olímpio Mourão Filho, 717<',
-                          f'>{_xe(empresa.get("endereco", ""))}<')
-        xml = xml.replace('>31710-690<', f'>{_xe(empresa.get("cep", ""))}<')
-        xml = xml.replace('>Planalto<', f'>{_xe(empresa.get("bairro", ""))}<')
-        xml = xml.replace('>47.11-3-02<', f'>{_xe(empresa.get("cnae", ""))}<')
-        xml = xml.replace('>Thais Taveira<', f'>{_xe(empresa.get("contato", ""))}<')
-        xml = xml.replace('>thais.conde@supernosso.com.br<',
-                          f'>{_xe(empresa.get("email", ""))}<')
-        xml = xml.replace('>(31)3359-3389<', f'>{_xe(empresa.get("telefone", ""))}<')
-        # City: only first occurrence (company table)
-        xml = xml.replace('>Belo Horizonte<', f'>{_xe(empresa.get("cidade", ""))}<', 1)
-
-        # ── Carta date ────────────────────────────────────────────
-        cidade_carta = avaliacao.get('cidadeCarta', 'BELO HORIZONTE, MAIO DE 2026.')
-        if not cidade_carta.endswith('.'):
-            cidade_carta += '.'
-        xml = xml.replace('>BELO HORIZONTE, MAIO DE 2026.<', f'>{_xe(cidade_carta)}<')
-
-        # ── Equipment ────────────────────────────────────────────
-        equip_sn  = avaliacao.get('equipSN', 'IBU0000000209')
-        dcal      = avaliacao.get('dataCalib', '24/03/2026')
-        cert_no   = avaliacao.get('certNo', '180.646')
-        equip_txt = (
-            f'Termômetro de Globo Net.Temp – Chrompack Smart TEMP | '
-            f'S/N: {equip_sn} | Calibração: {dcal} | Certificado Nº {cert_no}'
-        )
-        xml = xml.replace(
-            '>Termômetro de Globo Net.Temp – Chrompack Smart TEMP | '
-            'S/N: IBU0000000209 | Calibração: 24/03/2026 | Certificado Nº 180.646<',
-            f'>{_xe(equip_txt)}<'
-        )
-
-        # ── Update TOC sector names (first occurrence of each) ───
-        _toc_depts = ['PADARIA', 'COZINHA', 'SUSHI']
-        for i, dept in enumerate(_toc_depts):
-            new_name = setores[i]['nome'] if i < len(setores) else dept
-            xml = xml.replace(
-                f'>Avaliação {i+1:02d} – Departamento: {dept}<',
-                f'>Avaliação {i+1:02d} – Departamento: {_xe(new_name)}<', 1
-            )
-
-        # ── Locate sector block boundaries dynamically ────────────
-        def find_2nd(s, sub):
-            p = s.find(sub)
-            if p == -1: return -1
-            return s.find(sub, p + 1)
-
-        av1 = find_2nd(xml, 'Avaliação 01 – Departamento:')
-        av2 = find_2nd(xml, 'Avaliação 02 – Departamento:')
-        av3 = find_2nd(xml, 'Avaliação 03 – Departamento:')
-
-        s1_para = xml.rfind('<w:p ', 0, av1)
-        s2_para = xml.rfind('<w:p ', 0, av2)
-        s3_para = xml.rfind('<w:p ', 0, av3)
-
-        # S1 template block: title para + PADARIA table
-        s1_tbl_end = xml.rfind('</w:tbl>', 0, s2_para) + len('</w:tbl>')
-        # Page break paragraph between sectors
-        page_break_para = xml[s1_tbl_end:s2_para]
-        # S3 table end: find table containing SUSHI photos (rId24)
-        rid24_pos = xml.find('r:embed="rId24"')
-        s3_tbl_end = xml.find('</w:tbl>', rid24_pos) + len('</w:tbl>')
-
-        pre_xml  = xml[:s1_para]
-        tpl_block = xml[s1_para:s1_tbl_end]
-        post_xml = xml[s3_tbl_end:]
-
-        # ── Build all sector blocks ───────────────────────────────
-        sector_xml = ''
-        for i, setor in enumerate(setores):
-            if i > 0:
-                sector_xml += page_break_para
-            sector_xml += _calor_build_sector_block_dahana(tpl_block, setor, i + 1)
-
-        xml = pre_xml + sector_xml + post_xml
-
-        # ── Photo handling ────────────────────────────────────────
-        extra_media = {}
-        new_rels = []
-        for i, setor in enumerate(setores):
-            fotos = setor.get('fotos') or []
-            for k in range(3):
-                rid = f'rIdS{i+1}P{k+1}'
-                foto = fotos[k] if k < len(fotos) else None
-                if foto:
-                    raw = foto.split(',')[-1]
-                    img_bytes = _b64.b64decode(raw)
-                    ext = 'png' if 'image/png' in foto[:40] else 'jpg'
-                    mname = f'foto_{i+1}_{k+1}.{ext}'
-                    extra_media[f'word/media/{mname}'] = img_bytes
-                    new_rels.append(
-                        f'<Relationship Id="{rid}" Type="{_img_type}"'
-                        f' Target="media/{mname}"/>'
-                    )
-                else:
-                    new_rels.append(
-                        f'<Relationship Id="{rid}" Type="{_img_type}"'
-                        f' Target="media/image7.png"/>'
-                    )
-
-        rels_xml = rels_xml.replace(
-            '</Relationships>', ''.join(new_rels) + '</Relationships>'
-        )
-
-        # ── Repack DOCX ───────────────────────────────────────────
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zout:
-            for item in ztpl.namelist():
-                if item == 'word/document.xml':
-                    zout.writestr(item, xml.encode('utf-8'))
-                elif item == 'word/_rels/document.xml.rels':
-                    zout.writestr(item, rels_xml.encode('utf-8'))
-                else:
-                    zout.writestr(item, ztpl.read(item))
-            for path, data in extra_media.items():
-                zout.writestr(path, data)
-        buf.seek(0)
-        return buf.getvalue()
-
-
-@app.route('/gerar_calor', methods=['POST'])
-def gerar_calor():
-    data = request.json or {}
-    empresa = data.get('empresa', {})
-    avaliacao = data.get('avaliacao', {})
-    setores = data.get('setores', [])
-
-    if not empresa.get('razaoSocial','').strip():
-        return jsonify({'erro': 'Informe a Razão Social'}), 400
-    if not setores:
-        return jsonify({'erro': 'Adicione pelo menos um setor'}), 400
-    for s in setores:
-        if not s.get('pontos'):
-            return jsonify({'erro': f'Setor "{s.get("nome","")}" sem pontos de medição'}), 400
-
-    try:
-        docx_bytes = gerar_laudo_calor_bytes(empresa, avaliacao, setores)
-        nome = empresa.get('razaoSocial','Empresa')
-        nome_safe = re.sub(r'[/\\:*?"<>|]','_', nome)
-        filename = f"Laudo de Calor - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
-        return send_file(
-            io.BytesIO(docx_bytes),
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-    except Exception as e:
-        import traceback; traceback.print_exc()
-        return jsonify({'erro': f'Erro interno: {str(e)}'}), 500
-
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
