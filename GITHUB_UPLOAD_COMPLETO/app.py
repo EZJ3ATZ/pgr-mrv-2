@@ -1788,7 +1788,7 @@ def _r_row2(label, value, lw=3500, vw=6967, lbold=True, size=18):
     vpr = f'<w:tcPr><w:tcW w:w="{vw}" w:type="dxa"/><w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/>{borders}</w:tcPr>'
     lp  = f'<w:p><w:r><w:rPr>{"<w:b/>" if lbold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t>{_r_esc(label)}</w:t></w:r></w:p>'
     vp  = f'<w:p><w:r><w:rPr><w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t xml:space="preserve">{_r_esc(value)}</w:t></w:r></w:p>'
-    return f'<w:tr>{lpr}{lp}</w:tc>{vpr}{vp}</w:tc></w:tr>'
+    return f'<w:tr><w:tc>{lpr}{lp}</w:tc><w:tc>{vpr}{vp}</w:tc></w:tr>'
 
 
 def _r_row_header(text, fill='1F497D', color='FFFFFF', span=2):
