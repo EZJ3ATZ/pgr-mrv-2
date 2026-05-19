@@ -1730,6 +1730,505 @@ def api_parse_cadeia():
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
 
 
+# ════════════════════════════════════════════════════════════════════
+# GERADOR DE LAUDO DE RUÍDO
+# ════════════════════════════════════════════════════════════════════
+
+RUIDO_TECNICOS = {
+    'kelly':   {'nome': 'KELLY ELISSAMA FIRMINO',          'mte': '0072372-MG'},
+    'helbert': {'nome': 'HELBERT GONÇALVES DE OLIVEIRA',   'mte': '45376/MG'},
+    'matheus': {'nome': 'MATHEUS COSTA',                   'mte': ''},
+}
+
+TPL_RUIDO = os.path.join(BASE_DIR, 'template_ruido.docx')
+
+
+def _r_esc(s):
+    """Escapa XML básico para inserção no documento."""
+    return str(s).replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;')
+
+
+def _r_p(text, bold=False, size=18, color=None, center=False, fill=None):
+    """Parágrafo simples de uma corrida."""
+    ppr = '<w:pPr>'
+    if center:
+        ppr += '<w:jc w:val="center"/>'
+    ppr += '</w:pPr>' if ppr != '<w:pPr>' else ''
+    if ppr == '<w:pPr></w:pPr>':
+        ppr = '<w:pPr/>'
+    rpr = f'<w:rPr>{"<w:b/>" if bold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/>'
+    if color:
+        rpr += f'<w:color w:val="{color}"/>'
+    rpr += '</w:rPr>'
+    return f'<w:p>{ppr}<w:r>{rpr}<w:t xml:space="preserve">{_r_esc(text)}</w:t></w:r></w:p>'
+
+
+def _r_cell(text, width=None, bold=False, fill=None, span=None, center=False, size=18):
+    """Célula de tabela."""
+    tcp = '<w:tcPr>'
+    if width:
+        tcp += f'<w:tcW w:w="{width}" w:type="dxa"/>'
+    if span:
+        tcp += f'<w:gridSpan w:val="{span}"/>'
+    if fill:
+        tcp += f'<w:shd w:val="clear" w:fill="{fill}" w:color="auto"/>'
+    tcp += '</w:tcPr>'
+    return f'<w:tc>{tcp}{_r_p(text, bold=bold, center=center, size=size)}</w:tc>'
+
+
+def _r_row2(label, value, lw=3500, vw=6967, lbold=True, size=18):
+    """Linha 2-colunas: label | valor."""
+    borders = ('<w:tcBorders>'
+               '<w:top w:val="single" w:sz="4" w:color="AAAAAA"/>'
+               '<w:bottom w:val="single" w:sz="4" w:color="AAAAAA"/>'
+               '<w:left w:val="single" w:sz="4" w:color="AAAAAA"/>'
+               '<w:right w:val="single" w:sz="4" w:color="AAAAAA"/>'
+               '</w:tcBorders>')
+    lpr = f'<w:tcPr><w:tcW w:w="{lw}" w:type="dxa"/><w:shd w:val="clear" w:fill="EEEEEE" w:color="auto"/>{borders}</w:tcPr>'
+    vpr = f'<w:tcPr><w:tcW w:w="{vw}" w:type="dxa"/><w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/>{borders}</w:tcPr>'
+    lp  = f'<w:p><w:r><w:rPr>{"<w:b/>" if lbold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t>{_r_esc(label)}</w:t></w:r></w:p>'
+    vp  = f'<w:p><w:r><w:rPr><w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t xml:space="preserve">{_r_esc(value)}</w:t></w:r></w:p>'
+    return f'<w:tr>{lpr}{lp}</w:tc>{vpr}{vp}</w:tc></w:tr>'
+
+
+def _r_row_header(text, fill='1F497D', color='FFFFFF', span=2):
+    """Linha de cabeçalho que ocupa toda a largura."""
+    borders = ('<w:tcBorders>'
+               '<w:top w:val="single" w:sz="6" w:color="000000"/>'
+               '<w:bottom w:val="single" w:sz="6" w:color="000000"/>'
+               '</w:tcBorders>')
+    tcp = f'<w:tcPr><w:gridSpan w:val="{span}"/><w:shd w:val="clear" w:fill="{fill}" w:color="auto"/>{borders}</w:tcPr>'
+    rpr = f'<w:rPr><w:b/><w:color w:val="{color}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
+    return f'<w:tr><w:tc>{tcp}<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>{rpr}<w:t>{_r_esc(text)}</w:t></w:r></w:p></w:tc></w:tr>'
+
+
+def _r_row_sub(text, span=2, fill='D9D9D9'):
+    """Sub-cabeçalho de seção dentro da tabela (Q3, Q5, etc.)."""
+    tcp = f'<w:tcPr><w:gridSpan w:val="{span}"/><w:shd w:val="clear" w:fill="{fill}" w:color="auto"/></w:tcPr>'
+    rpr = '<w:rPr><w:b/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+    return f'<w:tr><w:tc>{tcp}<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>{rpr}<w:t>{_r_esc(text)}</w:t></w:r></w:p></w:tc></w:tr>'
+
+
+def _r_img_para(rid, iid, cx, cy):
+    """Parágrafo com imagem inline centralizada."""
+    return (
+        '<w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+        f'<w:r><w:rPr/><w:drawing>'
+        f'<wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing">'
+        f'<wp:extent cx="{cx}" cy="{cy}"/>'
+        f'<wp:docPr id="{iid}" name="img{iid}"/>'
+        f'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+        f'<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        f'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        f'<pic:nvPicPr><pic:cNvPr id="{iid}" name="img{iid}"/><pic:cNvPicPr/></pic:nvPicPr>'
+        f'<pic:blipFill><a:blip r:embed="{rid}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/>'
+        f'<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+        f'</pic:pic></a:graphicData></a:graphic>'
+        f'</wp:inline></w:drawing></w:r></w:p>'
+    )
+
+
+def _r_page_break():
+    return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+
+
+def _build_ruido_aval(av, idx, img_rids):
+    """
+    Constrói o bloco XML de uma avaliação (RESULTADOS + QUADRO RESUMO).
+    img_rids = {'tabela': rid, 'histograma': rid}
+    """
+    n = idx + 1
+    cargo = av.get('cargo','')
+    setor = av.get('setor','')
+    trabalhador = av.get('trabalhador','')
+
+    # ── Título do bloco de RESULTADOS ────────────────────────────────
+    tbl_tbl = (
+        '<w:tbl>'
+        '<w:tblPr>'
+        '<w:tblW w:w="10467" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="1F497D" w:color="auto"/>'
+        '</w:tblPr>'
+        '<w:tblGrid><w:gridCol w:w="10467"/></w:tblGrid>'
+        '<w:tr><w:tc>'
+        '<w:tcPr><w:tcW w:w="10467" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="1F497D" w:color="auto"/></w:tcPr>'
+        '<w:p><w:pPr><w:pStyle w:val="hil1"/></w:pPr>'
+        f'<w:r><w:t>RESULTADOS – AVALIAÇÃO {n:02d}</w:t></w:r>'
+        '</w:p></w:tc></w:tr></w:tbl>'
+    )
+
+    # ── Imagens do dosímetro ─────────────────────────────────────────
+    W = 5486400   # ~15.2cm em EMU
+    H_tab = 4200000
+    H_hist = 5400000
+
+    imgs_xml = ''
+    if img_rids.get('tabela'):
+        imgs_xml += _r_img_para(img_rids['tabela'], n*10+1, W, H_tab)
+    if img_rids.get('histograma'):
+        imgs_xml += _r_img_para(img_rids['histograma'], n*10+2, W, H_hist)
+
+    # ── Título QUADRO RESUMO ─────────────────────────────────────────
+    tbl_q = (
+        '<w:tbl>'
+        '<w:tblPr>'
+        '<w:tblW w:w="10467" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="1F497D" w:color="auto"/>'
+        '</w:tblPr>'
+        '<w:tblGrid><w:gridCol w:w="10467"/></w:tblGrid>'
+        '<w:tr><w:tc>'
+        '<w:tcPr><w:tcW w:w="10467" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="1F497D" w:color="auto"/></w:tcPr>'
+        '<w:p><w:pPr><w:pStyle w:val="hil1"/></w:pPr>'
+        f'<w:r><w:t>QUADRO RESUMO – AVALIAÇÃO {n:02d}</w:t></w:r>'
+        '</w:p></w:tc></w:tr></w:tbl>'
+    )
+
+    # ── Tabela de dados ──────────────────────────────────────────────
+    TOTAL = 10467
+    LW, VW = 3500, 6967
+
+    tbl_grid = f'<w:tblGrid><w:gridCol w:w="{LW}"/><w:gridCol w:w="{VW}"/></w:tblGrid>'
+    tbl_pr   = (f'<w:tblPr>'
+                f'<w:tblStyle w:val="Tabelacomgrade"/>'
+                f'<w:tblW w:w="{TOTAL}" w:type="dxa"/>'
+                f'<w:tblLayout w:type="fixed"/>'
+                f'</w:tblPr>')
+
+    rows = _r_row_header(f'AVALIAÇÃO {n:02d} — {cargo.upper()} / {setor.upper()}')
+    rows += _r_row2('Setor',                   setor)
+    rows += _r_row2('Cargo',                   cargo)
+    rows += _r_row2('Funcionário(a)',           trabalhador)
+    rows += _r_row2('Data da Avaliação',        av.get('dataColeta',''))
+    rows += _r_row2('Horário Início / Fim',     f"{av.get('horaInicio','')} / {av.get('horaFim','')}")
+    rows += _r_row2('Jornada de Trabalho',      av.get('jornada',''))
+    rows += _r_row2('N° Série Dosímetro',       av.get('serie',''))
+    rows += _r_row2('Fonte(s) Geradora(s)',     av.get('fontes',''))
+    rows += _r_row2('Descrição das Atividades', av.get('atividades',''))
+    rows += _r_row2('Medidas de Controle Col.', av.get('controleColetivo', 'N.A.'))
+    rows += _r_row2('EPI Utilizado',            av.get('epi', 'Protetor Auditivo'))
+    rows += _r_row_sub('Q = 3 dB / Dosimetria NHO-01 — Exposição Ocupacional')
+    rows += _r_row2('LAVG',                    f"{av.get('lavgQ3','')} dB(A)")
+    rows += _r_row2('NEN',                     f"{av.get('nenQ3','')} dB")
+    rows += _r_row2('DOSE',                    f"{av.get('doseQ3','')} %")
+    rows += _r_row_sub('Q = 5 dB / Dosimetria NR-15 — Legislação Trabalhista')
+    rows += _r_row2('TWA',                     f"{av.get('twaQ5','')} dB(A)")
+    rows += _r_row2('LAVG',                    f"{av.get('lavgQ5','')} dB(A)")
+    rows += _r_row2('DOSE',                    f"{av.get('doseQ5','')} %")
+    rows += _r_row_sub('Q = 5* dB / NEN INSS — Legislação Previdenciária')
+    rows += _r_row2('NE',                      f"{av.get('neQ5','')} dB")
+    rows += _r_row2('NEN',                     f"{av.get('nenQ5','')} dB")
+
+    # Conclusão automática baseada nos valores
+    try:
+        lavg = float(str(av.get('lavgQ3',0)).replace(',','.').replace(' dB(A)',''))
+        if lavg >= 85:
+            conclusao = (f"O resultado da avaliação de ruído para o cargo de {cargo} ultrapassou "
+                         f"o LIMITE DE TOLERÂNCIA de 85,0 dB(A), sendo necessário adotar "
+                         f"medidas de controle coletivas e/ou individuais.")
+            row_color = 'FFD0D0'
+        elif lavg >= 80:
+            conclusao = (f"O resultado da avaliação de ruído para o cargo de {cargo} está acima "
+                         f"do NÍVEL DE AÇÃO de 80,0 dB(A), necessitando de adoção de medidas "
+                         f"de controle visando à redução da exposição.")
+            row_color = 'FFFACC'
+        else:
+            conclusao = (f"O resultado da avaliação de ruído para o cargo de {cargo} não "
+                         f"ultrapassou o limite de tolerância de 85,0 dB(A) estabelecido "
+                         f"pela NR-15, Anexo 1.")
+            row_color = 'D0FFD0'
+    except:
+        conclusao = av.get('conclusao', '')
+        row_color = 'FFFFFF'
+
+    rows += _r_row_header('CONCLUSÃO', fill=row_color, color='000000')
+    rows += (f'<w:tr><w:tc>'
+             f'<w:tcPr><w:gridSpan w:val="2"/>'
+             f'<w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/></w:tcPr>'
+             f'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+             f'<w:t xml:space="preserve">{_r_esc(conclusao)}</w:t>'
+             f'</w:r></w:p></w:tc></w:tr>')
+
+    tbl_dados = f'<w:tbl>{tbl_pr}{tbl_grid}{rows}</w:tbl>'
+
+    return tbl_tbl + imgs_xml + _r_page_break() + tbl_q + tbl_dados + _r_page_break()
+
+
+def _find_section_tbl(xml, heading_text):
+    """Encontra tabela que contém hil1 + heading_text, retorna (start, end)."""
+    import re as _re
+    for m in _re.finditer(r'<w:tbl[ >]', xml):
+        ts = m.start()
+        te_m = xml.find('</w:tbl>', ts)
+        if te_m < 0:
+            continue
+        te = te_m + len('</w:tbl>')
+        chunk = xml[ts:te]
+        if 'hil1' in chunk and heading_text in chunk:
+            return ts, te
+    return None, None
+
+
+def gerar_ruido_bytes(d):
+    emp       = d.get('empresa', {})
+    avals     = d.get('avaliacoes', [])
+    tecnico   = d.get('tecnico', 'kelly')
+    data_laud = d.get('dataLaudo', datetime.now().strftime('%d/%m/%Y'))
+
+    tec = RUIDO_TECNICOS.get(tecnico, RUIDO_TECNICOS['kelly'])
+
+    with open(TPL_RUIDO, 'rb') as f:
+        tpl_bytes = f.read()
+
+    zin = zipfile.ZipFile(io.BytesIO(tpl_bytes))
+    zout_buf = io.BytesIO()
+    zout = zipfile.ZipFile(zout_buf, 'w', zipfile.ZIP_DEFLATED)
+
+    extra_media = {}
+    extra_rels  = {}
+    next_rid    = [30]
+
+    def _new_rid():
+        r = f'rId{next_rid[0]}'
+        next_rid[0] += 1
+        return r
+
+    def _add_img_b64(b64str):
+        rid = _new_rid()
+        if ',' in b64str:
+            b64str = b64str.split(',', 1)[1]
+        data = base64.b64decode(b64str)
+        name = f'image_ruido_{next_rid[0]-1}.jpeg'
+        extra_media[f'word/media/{name}'] = data
+        extra_rels[rid] = f'../media/{name}'
+        return rid
+
+    # Copia arquivos originais do template
+    doc_xml  = None
+    rels_xml = None
+    ct_xml   = None
+
+    for item in zin.namelist():
+        data = zin.read(item)
+        if item == 'word/document.xml':
+            doc_xml = data.decode('utf-8')
+        elif item == 'word/_rels/document.xml.rels':
+            rels_xml = data.decode('utf-8')
+        elif item == '[Content_Types].xml':
+            ct_xml = data.decode('utf-8')
+        else:
+            zout.writestr(item, data)
+
+    # ── Substitui dados da empresa ────────────────────────────────────
+    replacements = {
+        'Helisul Taxi Aéreo LTDA':       emp.get('razaoSocial', ''),
+        'HELISUL TAXI AERIO LTDA':       emp.get('razaoSocial', '').upper(),
+        'Rua Gardênia N.º 165':          emp.get('endereco', ''),
+        '11.483.174/0004-11':            emp.get('cnpj', ''),
+        '32150-190':                     emp.get('cep', ''),
+        'Contagem':                      emp.get('cidade', ''),
+        'Chácara Boa Vista':             emp.get('bairro', ''),
+        '56.11-2':                       emp.get('cnae', ''),
+        'Restaurantes e outros':         emp.get('descricaoCnae', ''),
+        'Wilde José Silva de Abreu':     emp.get('responsavel', ''),
+        '31 3213-3089':                  emp.get('telefone', ''),
+        'bionatural@ymail.com':          emp.get('email', ''),
+    }
+    if emp.get('grauRisco'):
+        doc_xml = doc_xml.replace('>2<', f'>{emp["grauRisco"]}<', 1)
+    for old, new in replacements.items():
+        if new:
+            doc_xml = doc_xml.replace(_r_esc(old), _r_esc(new))
+
+    # ── Substitui responsável técnica ─────────────────────────────────
+    doc_xml = doc_xml.replace('Sued Iagor', tec['nome'].title())
+    doc_xml = doc_xml.replace('SUED IAGOR', tec['nome'].upper())
+    doc_xml = doc_xml.replace('0065338-MG', tec['mte'])
+
+    # ── Monta seção de avaliações ─────────────────────────────────────
+    aval_xml = ''
+    for i, av in enumerate(avals):
+        img_rids = {}
+        if av.get('tabelaImg'):
+            img_rids['tabela'] = _add_img_b64(av['tabelaImg'])
+        if av.get('histogramaImg'):
+            img_rids['histograma'] = _add_img_b64(av['histogramaImg'])
+        aval_xml += _build_ruido_aval(av, i, img_rids)
+
+    # ── Seção de certificados ─────────────────────────────────────────
+    cert_imgs_xml = ''
+    for av in avals:
+        for ci, c in enumerate(av.get('certImgs', [])):
+            crid = _add_img_b64(c)
+            cert_imgs_xml += _r_img_para(crid, next_rid[0], 4800000, 6900000)
+            cert_imgs_xml += _r_page_break()
+
+    # ── Localiza seções no template XML e substitui ────────────────────
+    res_ts,  res_te  = _find_section_tbl(doc_xml, 'RESULTADOS')
+    cert_ts, cert_te = _find_section_tbl(doc_xml, 'CERTIFICADO DE CALIBRA')
+
+    if res_ts is not None and cert_ts is not None:
+        # Tudo entre fim da seção RESULTADOS (incluso) e início de CERTIFICADO
+        # é substituído pelas avaliações geradas
+        doc_xml = (doc_xml[:res_ts] +
+                   aval_xml +
+                   doc_xml[cert_ts:cert_te] +
+                   cert_imgs_xml +
+                   doc_xml[cert_te:])
+    else:
+        # Fallback: appende antes do </w:body>
+        doc_xml = doc_xml.replace('</w:body>', aval_xml + cert_imgs_xml + '</w:body>')
+
+    # ── Adiciona relacionamentos das imagens geradas ───────────────────
+    for rid, target in extra_rels.items():
+        rels_xml = rels_xml.replace(
+            '</Relationships>',
+            f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="{target}"/></Relationships>'
+        )
+
+    # Adiciona Content-Type para JPEG se não existir
+    if 'image/jpeg' not in ct_xml:
+        ct_xml = ct_xml.replace(
+            '</Types>',
+            '<Default Extension="jpeg" ContentType="image/jpeg"/></Types>'
+        )
+
+    zout.writestr('word/document.xml', doc_xml.encode('utf-8'))
+    zout.writestr('word/_rels/document.xml.rels', rels_xml.encode('utf-8'))
+    zout.writestr('[Content_Types].xml', ct_xml.encode('utf-8'))
+    for path, data in extra_media.items():
+        zout.writestr(path, data)
+
+    zout.close()
+    return zout_buf.getvalue()
+
+
+# ── API: Parse dosimeter PDF ──────────────────────────────────────────
+@app.route('/api/parse_dosimetro', methods=['POST'])
+def api_parse_dosimetro():
+    try:
+        import fitz
+    except ImportError:
+        return jsonify({'erro': 'pymupdf nao instalado'}), 500
+    try:
+        import re as _re
+        f = request.files.get('file')
+        if not f:
+            return jsonify({'erro': 'Nenhum arquivo'}), 400
+        raw = f.read()
+        doc = fitz.open(stream=raw, filetype='pdf')
+
+        page0 = doc[0]
+        text  = page0.get_text()
+
+        # Tabela: página 0 em resolução media
+        pix0 = page0.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+        tabela_img = 'data:image/jpeg;base64,' + base64.b64encode(pix0.tobytes('jpeg')).decode()
+
+        # Histograma: página 1
+        histograma_img = ''
+        if doc.page_count > 1:
+            pix1 = doc[1].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+            histograma_img = 'data:image/jpeg;base64,' + base64.b64encode(pix1.tobytes('jpeg')).decode()
+
+        doc.close()
+
+        def _g(patterns):
+            for pat in patterns:
+                m = _re.search(pat, text, _re.IGNORECASE | _re.MULTILINE)
+                if m:
+                    return m.group(1).strip()
+            return ''
+
+        serie      = _g([r'nº de série[:\s]+(\w+)'])
+        avaliado   = _g([r'Avaliado\(a\):\n([^\n]+)'])
+        funcao     = _g([r'Função\s*:\n([^\n]+)'])
+        depto      = _g([r'Departamento:\n([^\n]+)'])
+        data_med   = _g([r'Data da Medição:\n(\d{2}/\d{2}/\d{4})'])
+        hora_ini   = _g([r'Início:\s*([\d:]+)'])
+        hora_fim   = _g([r'Final:\s*([\d:]+)'])
+        # Jornada aparece depois do primeiro "Slow"
+        jornada    = _g([r'Slow\n(\d{1,2}:\d{2})\n'])
+        calib_data = _g([r'Calibração do audiodosímetro: Data:\s*(\d{2}/\d{2}/\d{4})'])
+        empresa_cli = _g([r'Dados da Avaliada\nEmpresa:\nEndereço:\n([^\n]+)'])
+        cnpj_cli   = _g([r'CNPJ:\s*([\d\.\-/]+)'])
+        endereco_cli = _g([r'Dados da Avaliada\nEmpresa:\nEndereço:\n[^\n]+\n([^\n]+)'])
+        # Tempo de amostragem: após "Final: HH:MM:SS\n"
+        tempo_amos = _g([r'Final:\s*[\d:]+\n([\d:]+)\n'])
+
+        # Extrair valores numéricos da tabela
+        # Localiza o trecho de valores (antes das labels LAVG, LEQ, etc.)
+        col_lbl_pos = text.find('LAVG\n')
+        val_section = text[:col_lbl_pos] if col_lbl_pos > 0 else text
+
+        # Todos os pares (número, %) na seção de valores
+        all_vals = _re.findall(r'([\d]+,[\d]+)\s*(%?)', val_section[-600:])
+        plain = [v for v, p in all_vals if not p]  # dB values
+        pcts  = [v for v, p in all_vals if p]       # dose values (%)
+
+        # Mapeamento por posição (ordem do display do dosímetro):
+        # [0] LAVG Dos01, [1] LAVG Dos02
+        # [2] LEQ Dos01,  [3] LEQ Dos02
+        # ...mais adiante: [8] NEN Dos01, [9] NEN Dos02, [10] TWA Dos01, [11] TWA Dos02
+        lavg_q3 = plain[0]  if len(plain) > 0  else ''
+        lavg_q5 = plain[1]  if len(plain) > 1  else ''
+        dose_q3 = pcts[0]   if len(pcts) > 0   else ''
+        dose_q5 = pcts[1]   if len(pcts) > 1   else ''
+        nen_q3  = plain[8]  if len(plain) > 8  else ''
+        twa_q5  = plain[9]  if len(plain) > 9  else ''
+
+        dados = {k: v for k, v in {
+            'serie':       serie,
+            'trabalhador': avaliado,
+            'cargo':       funcao,
+            'setor':       depto,
+            'dataColeta':  data_med,
+            'horaInicio':  hora_ini,
+            'horaFim':     hora_fim,
+            'jornada':     jornada,
+            'calibData':   calib_data,
+            'empresaCli':  empresa_cli,
+            'cnpjCli':     cnpj_cli,
+            'enderecoCli': endereco_cli,
+            'tempoAmos':   tempo_amos,
+            'lavgQ3':      lavg_q3,
+            'nenQ3':       nen_q3,
+            'doseQ3':      dose_q3,
+            'twaQ5':       twa_q5,
+            'lavgQ5':      lavg_q5,
+            'doseQ5':      dose_q5,
+        }.items() if v}
+
+        return jsonify({'dados': dados, 'tabela': tabela_img, 'histograma': histograma_img})
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
+
+
+# ── Rota: Gerar laudo de ruído ────────────────────────────────────────
+@app.route('/gerar-ruido', methods=['POST'])
+def gerar_ruido():
+    try:
+        d = request.get_json(force=True)
+        docx_bytes = gerar_ruido_bytes(d)
+        emp   = d.get('empresa', {})
+        nome  = emp.get('nomeFantasia') or emp.get('razaoSocial') or 'Empresa'
+        fname = re.sub(r'[^\w\s-]', '', nome)[:40].strip().replace(' ', '_')
+        fname = f'Laudo_Ruido_{fname}.docx'
+        return send_file(
+            io.BytesIO(docx_bytes),
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=fname
+        )
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
