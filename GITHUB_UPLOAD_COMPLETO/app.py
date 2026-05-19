@@ -579,6 +579,26 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         shutil.rmtree(work_dir, ignore_errors=True)
 
 # ── Extração de PDF ───────────────────────────────────────────────
+_LABEL_PAT = re.compile(
+    r'^(CNPJ|INSCRI|ENDERE|N[UÚ]MERO|COMPLEMENTO|CEP|BAIRRO|MUNIC[IÍ]P|UF\b|DATA|FISCAL|'
+    r'CARGOS|CONTATO|ESTA FICHA|AP[OÓ]S|NOVA EMPREI|Kelly|suporte|engenharia)',
+    re.I
+)
+_ADDR_PAT = re.compile(r'^(RUA\b|R\s|AV\b|AVENIDA\b|AL\s|ALAMEDA\b|PC[AÇ]|TRAV|VIA\s)', re.I)
+_DATE_PAT = re.compile(r'^\d{2}[/\-]\d{2}[/\-]\d{4}$|^\d{2}\s+\w+[,\s]+\d{4}')
+_NUM_PAT  = re.compile(r'^\d{2}[\.\d/\-\s]+$')
+
+def _is_label(s):
+    return bool(_LABEL_PAT.match(s)) or (s.endswith(':') and len(s) < 40)
+
+def _nome_valido(s):
+    if not s or len(s) <= 3: return False
+    if _is_label(s): return False
+    if _ADDR_PAT.match(s): return False
+    if _DATE_PAT.match(s): return False
+    if _NUM_PAT.match(s): return False
+    return True
+
 def extrair_pdf(file_bytes):
     dados = {"nome":"","cnpj":"","rua":"","numero":"","complemento":"","cep":"","bairro":"","cidade":"","uf":"MG","cargos":[]}
     if not PDF_OK:
@@ -590,23 +610,85 @@ def extrair_pdf(file_bytes):
         return dados
     full = ' '.join(l.strip() for l in texto.split('\n') if l.strip())
     lines = [l.strip() for l in texto.split('\n') if l.strip()]
+
+    # CNPJ — primeiro match no texto
     cnpj_m = re.search(r'\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[/\s]?\d{4}[-\s]?\d{2}', full)
-    if cnpj_m: dados['cnpj'] = re.sub(r'\s','',cnpj_m.group())
-    for i,l in enumerate(lines):
-        if re.search(r'RAZ[ÃA]O SOCIAL|NOME EMPRES', l, re.I) and i+1<len(lines):
-            dados['nome'] = lines[i+1].strip(); break
+    if cnpj_m:
+        dados['cnpj'] = re.sub(r'\s', '', cnpj_m.group())
+
+    # Estratégia 1: linha após "RAZÃO SOCIAL:" (funciona quando pdfminer extrai par label→valor)
+    for i, l in enumerate(lines):
+        if not re.search(r'RAZ[ÃA]O SOCIAL|NOME EMPRES', l, re.I):
+            continue
+        # inline: "RAZÃO SOCIAL: NOME AQUI"
+        inline = re.split(r'RAZ[ÃA]O SOCIAL[\s:]*|NOME EMPRES[A-Z]*[\s:]*', l, flags=re.I)
+        c = inline[-1].strip() if len(inline) > 1 else ''
+        if _nome_valido(c):
+            dados['nome'] = c
+            break
+        # próxima linha que não é label
+        for j in range(i + 1, min(i + 3, len(lines))):
+            c = lines[j].strip()
+            # Remove data do início da linha se concatenada (ex: "08/04/2026NomeDaEmpresa")
+            c = re.sub(r'^(\d{2}[/\-]\d{2}[/\-]\d{4}|\d{2}\s+\w+[,\s]+\d{4})\s*', '', c).strip()
+            if _nome_valido(c):
+                dados['nome'] = c
+                break
+        break
+
+    # Estratégia 2: linha(s) imediatamente antes do CNPJ (funciona quando pdfminer extrai por bloco)
     if not dados['nome'] and cnpj_m:
-        idx = full.find(cnpj_m.group())
-        before = full[:idx].strip().split()
-        if before: dados['nome'] = ' '.join(before[-8:]).strip()
+        cnpj_raw = re.sub(r'[\s\.]', '', cnpj_m.group())
+        for j, ln in enumerate(lines):
+            ln_norm = re.sub(r'[\s\.]', '', ln)
+            # CNPJ está nesta linha (exato ou embutido numa linha longa)
+            if cnpj_raw == ln_norm or cnpj_raw in re.sub(r'[\s\.]', '', ln):
+                if cnpj_raw == ln_norm:
+                    # Linha própria — busca nas linhas anteriores
+                    for k in range(j - 1, max(-1, j - 10), -1):
+                        if _nome_valido(lines[k]):
+                            dados['nome'] = lines[k]
+                            break
+                else:
+                    # Linha longa com tudo concatenado — extrai texto entre data e CNPJ completo
+                    idx_cnpj = ln.find(cnpj_m.group())
+                    if idx_cnpj < 0:
+                        idx_cnpj = ln.find(cnpj_m.group().split('/')[0])
+                    if idx_cnpj > 0:
+                        trecho = ln[:idx_cnpj].strip()
+                        # Remove data do início (ex: "07 abril, 2026" ou "08/04/2026")
+                        trecho = re.sub(r'^(\d{2}[/\-]\d{2}[/\-]\d{4}|\d{2}\s+\w+[,\s]+\d{4})\s*', '', trecho).strip()
+                        if _nome_valido(trecho):
+                            dados['nome'] = trecho
+                break
+
+    # CEP
     cep_m = re.search(r'\d{5}-?\d{3}', full)
-    if cep_m: dados['cep'] = cep_m.group()
-    uf_m = re.search(r'\b(MG|SP|RJ|ES|GO|BA|PR|SC|RS|DF|MT|MS|AM|PA|CE|PE|MA|RN|PB|AL|SE|PI|TO|RO|AC|RR|AP|GO)\b', full)
-    if uf_m: dados['uf'] = uf_m.group()
-    for i,l in enumerate(lines):
-        if re.search(r'(RUA|AV\.|AVENIDA|LOGRADOURO|ENDERE)', l, re.I) and len(l) > 5:
-            dados['rua'] = l; break
-    for cargo in ["Pedreiro","Servente","Pintor","Meio Oficial Pintor","Armador","Eletricista","Carpinteiro","Gesseiro","Rejuntador","Azulejista","Bombeiro Hidraulico","Encarregado","Montador","Meio Oficial Pedreiro","Meio Oficial Eletricista","Auxiliar de Limpeza","Porteiro","Vigia","Topografo","Auxiliar Administrativo","Engenheiro"]:
+    if cep_m:
+        dados['cep'] = cep_m.group()
+
+    # UF
+    uf_m = re.search(r'\b(MG|SP|RJ|ES|GO|BA|PR|SC|RS|DF|MT|MS|AM|PA|CE|PE|MA|RN|PB|AL|SE|PI|TO|RO|AC|RR|AP)\b', full)
+    if uf_m:
+        dados['uf'] = uf_m.group()
+
+    # Endereço — ignora linhas que são só o label "ENDEREÇO:" sem valor
+    for i, l in enumerate(lines):
+        if re.match(r'^(RUA|AV\b|AVENIDA|LOGRADOURO|R\s)', l, re.I) and len(l) > 5:
+            dados['rua'] = l
+            break
+        if re.match(r'^ENDERE', l, re.I):
+            for j in range(i + 1, min(i + 5, len(lines))):
+                candidate = lines[j].strip()
+                if re.match(r'^(RUA|AV\b|AVENIDA|R\s)', candidate, re.I) and len(candidate) > 5:
+                    dados['rua'] = candidate
+                    break
+
+    # Cargos
+    for cargo in ["Pedreiro","Servente","Pintor","Meio Oficial Pintor","Armador","Eletricista",
+                  "Carpinteiro","Gesseiro","Rejuntador","Azulejista","Bombeiro Hidraulico",
+                  "Encarregado","Montador","Meio Oficial Pedreiro","Meio Oficial Eletricista",
+                  "Auxiliar de Limpeza","Porteiro","Vigia","Topografo","Auxiliar Administrativo","Engenheiro"]:
         if re.search(re.escape(cargo), full, re.I):
             dados['cargos'].append(cargo)
     return dados
