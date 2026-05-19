@@ -747,6 +747,18 @@ def gerar_calor_bytes(d):
     xml = zin.read('word/document.xml').decode('utf-8')
     rels_xml = zin.read('word/_rels/document.xml.rels').decode('utf-8')
 
+    # ── Logo da empresa ──────────────────────────────────────────────
+    # image1.png (rId8) = logo da empresa na capa; substitui ou limpa
+    BLANK_PNG = base64.b64decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQ'
+        'AABjkB6QAAAABJRU5ErkJggg==')
+    logo_b64 = emp.get('logo','')
+    if logo_b64:
+        _hdr, _dat = logo_b64.split(',',1) if ',' in logo_b64 else ('', logo_b64)
+        logo_bytes = base64.b64decode(_dat)
+    else:
+        logo_bytes = BLANK_PNG
+
     # ── Company replacements (Dahana template) ───────────────────────
     razao = emp.get('razaoSocial','')
     xml = xml.replace('COMERCIAL DAHANA LTDA', _xe(razao))
@@ -1010,6 +1022,8 @@ def gerar_calor_bytes(d):
                 zw.writestr(item, xml.encode('utf-8'))
             elif item.filename == 'word/_rels/document.xml.rels':
                 zw.writestr(item, rels_xml.encode('utf-8'))
+            elif item.filename == 'word/media/image1.png':
+                zw.writestr(item, logo_bytes)
             else:
                 zw.writestr(item, zin.read(item.filename))
         for path, data in extra_media.items():
