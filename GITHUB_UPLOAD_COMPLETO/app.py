@@ -770,6 +770,155 @@ def _ri(bxml, label, val):
     nr   = f'<w:r>{rpr}<w:t xml:space="preserve">{_xe(val)}</w:t></w:r>'
     return bxml[:re_e] + nr + bxml[pe:]
 
+# ══════════════════════════════════════════════════════════════════
+# Quimico — constants & helpers
+# ══════════════════════════════════════════════════════════════════
+import json as _json
+
+CERTS_DIR = os.path.join(BASE_DIR, 'static', 'certs')
+_GUIA_PATH = os.path.join(BASE_DIR, 'guia_metodos.json')
+
+_PUMP_SN = {
+    'bdx':     ['38356', '38357', '38358', '38359'],
+    'airlite': ['A060502', 'A061553', 'A061585', 'A062462', 'A63555'],
+    'turam':   ['2420120549', '2420120550', '2420120551'],
+    'inlite':  ['25040902602B', '25040903102B', '25040907102B'],
+}
+_PUMP_CERT_PAGES = {
+    'bdx':     {'38356': 2, '38357': 2, '38358': 2, '38359': 2},
+    'airlite': {'A060502': 2, 'A061553': 4, 'A061585': 2, 'A062462': 2, 'A63555': 2},
+    'turam':   {'2420120549': 1, '2420120550': 1, '2420120551': 1},
+    'inlite':  {'25040902602B': 2, '25040903102B': 2, '25040907102B': 2},
+}
+_PUMP_NAMES = {
+    'bdx': 'BDX II – GILLIAN', 'airlite': 'AIRLITE – SKC',
+    'turam': 'FORMIS – TURAM',  'inlite':  'INLITE VENTUSPRO',
+}
+_CALIB_CERT_PAGES = {'defender510m': 2, 'tsi4143f': 2}
+_CALIB_NAMES = {'defender510m': 'DEFENDER 510M', 'tsi4143f': 'TSI 4143F'}
+
+
+def _q_img_para(rid, iid, cx=6858000, cy=9693700):
+    """Inline image paragraph — full-page sized by default."""
+    ah = f'{(iid * 0x1F3A + 0x3456) & 0xFFFFFFFE:08X}'
+    return (
+        f'<w:p w14:paraId="{ah}" w14:textId="77777777">'
+        '<w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
+        f'<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">'
+        f'<wp:extent cx="{cx}" cy="{cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>'
+        f'<wp:docPr id="{iid}" name="qimg{iid}"/>'
+        '<wp:cNvGraphicFramePr><a:graphicFrameLocks '
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/>'
+        '</wp:cNvGraphicFramePr>'
+        '<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+        '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        f'<pic:nvPicPr><pic:cNvPr id="{iid}" name="qimg{iid}.jpg"/><pic:cNvPicPr/></pic:nvPicPr>'
+        f'<pic:blipFill><a:blip r:embed="{rid}"/>'
+        '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+        '</pic:pic></a:graphicData></a:graphic>'
+        '</wp:inline></w:drawing></w:r></w:p>'
+    )
+
+
+def _q_add_file(path, extra_rels, extra_media, ctr):
+    ctr[0] += 1
+    rid = f'rId{ctr[0]}'; iid = ctr[0]
+    fname = f'media/qf_{ctr[0]}.jpg'
+    extra_rels.append(
+        f'<Relationship Id="{rid}" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+        f'Target="{fname}"/>')
+    with open(path, 'rb') as f:
+        extra_media[f'word/{fname}'] = f.read()
+    return rid, iid
+
+
+def _q_add_b64(b64str, extra_rels, extra_media, ctr):
+    ctr[0] += 1
+    rid = f'rId{ctr[0]}'; iid = ctr[0]
+    if ',' in b64str:
+        hdr, data = b64str.split(',', 1)
+        ext = 'jpeg' if ('jpeg' in hdr or 'jpg' in hdr) else 'png'
+    else:
+        data, ext = b64str, 'jpeg'
+    fname = f'media/qu_{ctr[0]}.{ext}'
+    extra_rels.append(
+        f'<Relationship Id="{rid}" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+        f'Target="{fname}"/>')
+    extra_media[f'word/{fname}'] = base64.b64decode(data)
+    return rid, iid
+
+
+def _q_sec_head(xml, text):
+    """Return (tbl_start, tbl_end) of the table that contains this section heading
+    (second occurrence — first is TOC)."""
+    p1 = xml.find(text)
+    pos = xml.find(text, p1 + 1) if p1 != -1 else p1
+    if pos == -1:
+        return -1, -1
+    para = max(xml.rfind('<w:p ', 0, pos), xml.rfind('<w:p>', 0, pos))
+    ts   = xml.rfind('<w:tbl>', 0, para)
+    te   = xml.find('</w:tbl>', pos) + 8
+    return ts, te
+
+
+def _build_ix_xml(evals):
+    """Build section IX Quadro Resumo table from evaluations."""
+    cws   = [2500, 2500, 2500, 1860]
+    total = sum(cws)
+    bdr   = ('<w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
+             '<w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
+             '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
+             '<w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>')
+
+    def _tc(txt, w, bold=False, fill='FFFFFF'):
+        b = '<w:b/><w:bCs/>' if bold else ''
+        return (f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>'
+                f'<w:tcBorders>{bdr}</w:tcBorders>'
+                f'<w:shd w:val="clear" w:color="auto" w:fill="{fill}"/></w:tcPr>'
+                f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+                f'<w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/>{b}</w:rPr>'
+                f'<w:t>{_xe(txt)}</w:t></w:r></w:p></w:tc>')
+
+    def _tr(*cells):
+        return '<w:tr>' + ''.join(cells) + '</w:tr>'
+
+    grid = ''.join(f'<w:gridCol w:w="{w}"/>' for w in cws)
+    hdr  = _tr(_tc('SETOR', cws[0], bold=True, fill='BDD7EE'),
+               _tc('CARGO', cws[1], bold=True, fill='BDD7EE'),
+               _tc('AGENTE AVALIADO', cws[2], bold=True, fill='BDD7EE'),
+               _tc('RESULTADO', cws[3], bold=True, fill='BDD7EE'))
+    rows = ''
+    for ev in evals:
+        conc = ev.get('concentracao', 'N.D.')
+        lt   = ev.get('ltNR15', '') or ev.get('ltTWA', '')
+        try:
+            cv  = float(str(conc).split()[0].replace(',', '.')) if conc not in ('', 'N.D.') else None
+            ltv = float(str(lt).split()[0].replace(',', '.')) if lt else None
+            if cv is not None and ltv is not None:
+                if cv < ltv:
+                    fill, res = 'C6EFCE', f'{conc} (REGULAR)'
+                else:
+                    fill, res = 'FFC7CE', f'{conc} (IRREGULAR)'
+            else:
+                fill, res = 'FFFFFF', conc or 'N.D.'
+        except Exception:
+            fill, res = 'FFFFFF', conc or 'N.D.'
+        rows += _tr(_tc(ev.get('setor', ''), cws[0]),
+                    _tc(ev.get('cargo', ''), cws[1]),
+                    _tc(ev.get('agente', ''), cws[2]),
+                    _tc(res, cws[3], fill=fill))
+    return (f'<w:tbl><w:tblPr><w:tblW w:w="{total}" w:type="dxa"/>'
+            f'<w:tblBorders>{bdr}</w:tblBorders></w:tblPr>'
+            f'<w:tblGrid>{grid}</w:tblGrid>'
+            + hdr + rows + '</w:tbl>'
+            '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>')
+
+
 def gerar_calor_bytes(d):
     emp  = d.get('empresa',{})
     aval = d.get('avaliacao',{})
@@ -1096,15 +1245,37 @@ def gerar_calor():
         return jsonify({'erro': f'Erro interno: {str(e)}'}), 500
 
 def gerar_quimico_bytes(d):
-    emp   = d.get('empresa', {})
-    evals = d.get('avaliacoes', [])
+    emp        = d.get('empresa', {})
+    evals      = d.get('avaliacoes', [])
+    conf       = d.get('config', {})
+    pump       = conf.get('bomba', '')
+    pump_sn    = conf.get('bombaSN', '')
+    calibrad   = conf.get('calibrador', '')
+    fotos_viii = conf.get('fotosVIII', [])   # [{img: b64, desc: str}]
+    laudo_imgs = conf.get('laudoImgs', [])   # [b64]  — pages of lab result PDF
+    logo_b64   = emp.get('logo', '')
+
+    img_ctr    = [60]
+    extra_rels = []
+    extra_media= {}
 
     tpl = os.path.join(BASE_DIR, 'template_quimico.docx')
     with open(tpl, 'rb') as f: raw = f.read()
     zin = zipfile.ZipFile(io.BytesIO(raw))
-    xml = zin.read('word/document.xml').decode('utf-8')
+    xml      = zin.read('word/document.xml').decode('utf-8')
+    rels_xml = zin.read('word/_rels/document.xml.rels').decode('utf-8')
 
-    # ── Company replacements ────────────────────────────────────────────
+    # ── Logo (replace image1.png — company logo on cover) ────────────
+    BLANK_PNG = base64.b64decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQ'
+        'AABjkB6QAAAABJRU5ErkJggg==')
+    if logo_b64:
+        hdr, dat = logo_b64.split(',', 1) if ',' in logo_b64 else ('', logo_b64)
+        logo_bytes = base64.b64decode(dat)
+    else:
+        logo_bytes = None
+
+    # ── Company replacements ─────────────────────────────────────────
     xml = xml.replace('UNIMED BELO HORIZONTE COOPERATIVA DE TRABALHO MEDICO',
                       _xe(emp.get('razaoSocial', '')))
     tit = _xe(emp.get('titulo', emp.get('razaoSocial', '')))
@@ -1120,7 +1291,14 @@ def gerar_quimico_bytes(d):
     xml = xml.replace('65.50-2-00', _xe(emp.get('cnae', '')))
     xml = xml.replace('Planos de saúde', _xe(emp.get('descricaoCnae', '')))
 
-    # ── Locate Section VI boundaries ───────────────────────────────────
+    # ── Pump/calibrator name substitution in methodology section ─────
+    if pump and pump_sn:
+        bomb_str = f'{_PUMP_NAMES.get(pump, pump)} — S/N: {pump_sn}'
+        xml = xml.replace('AIRLITE – A060502', _xe(bomb_str))  # template placeholder
+    if calibrad:
+        xml = xml.replace('DEFENDER 510-M', _xe(_CALIB_NAMES.get(calibrad, calibrad)))
+
+    # ── Section VI: eval blocks ──────────────────────────────────────
     pos1   = xml.find('DADOS DA AMOSTRAGEM')
     pos2   = xml.find('DADOS DA AMOSTRAGEM', pos1 + 1)
     tbl1_s = xml.rfind('<w:tbl>', 0, pos1)
@@ -1129,18 +1307,13 @@ def gerar_quimico_bytes(d):
     pos8   = xml.find('VIII', tbl2_e)
     sec6_e = xml.rfind('</w:tbl>', tbl2_e, pos8) + 8
 
-    eval_tpl = xml[tbl1_s:tbl2_s]   # full eval-1 unit (outer table + results)
-
-    OLD_CONC = ('conclуímos que C &lt; LT, a concentração é menor que o LT.'
+    eval_tpl = xml[tbl1_s:tbl2_s]
+    OLD_CONC = ('concluímos que C &lt; LT, a concentração é menor que o LT.'
                 ' Logo a situação é considerada regular em função da baixa concentração.')
-    # Simpler: find the actual string in xml
-    OLD_CONC = 'concluímos que C &lt; LT, a concentração é menor que o LT. Logo a situação é considerada regular em função da baixa concentração.'
 
     blocks = []
     for i, ev in enumerate(evals):
         b = eval_tpl
-
-        # DADOS DA AMOSTRAGEM
         b = _rr(b, 'Cargo',                    ev.get('cargo', ''))
         b = _rr(b, 'Trabalhador',              ev.get('trabalhador', ''))
         b = _rr(b, 'Setor',                    ev.get('setor', ''))
@@ -1150,35 +1323,25 @@ def gerar_quimico_bytes(d):
         b = _rr(b, 'Agentes Analisados (CAS)', ev.get('agente', ''))
         b = _rr(b, 'Fonte Geradora:',          ev.get('fonte', ''))
         b = _rr(b, 'Filtro Número',            ev.get('filtroNumero', ''))
-
-        # Memória de Campo (inline label + value in same cell)
         b = _ri(b, 'Vazão Inicial (L/min): ',  ev.get('vazaoInicial', ''))
         b = _ri(b, 'Vazão Fina (L/min): ',     ev.get('vazaoFinal', ''))
         b = _ri(b, 'Tempo de Coleta (Min): ',  ev.get('tempoColeta', ''))
         b = _ri(b, 'Volume Amostrado (L):  ',  ev.get('volume', ''))
         b = _ri(b, 'Tempo de exposição ao agente durante a jornada de trabalho: ',
-                   ev.get('tempoExposicao', ''))
+                ev.get('tempoExposicao', ''))
         b = _ri(b, 'Acessórios utilizados: ',  ev.get('acessorios', ''))
-
-        # Results – LT / NA (nth=1 NR-15, nth=2 TWA, nth=3 STEL)
         if ev.get('ltNR15'):  b = _rr(b, 'Limite de Tolerância ', ev['ltNR15'], nth=1)
         if ev.get('naNR15'):  b = _rr(b, 'Nível de Ação ',        ev['naNR15'], nth=1)
         if ev.get('ltTWA'):   b = _rr(b, 'Limite de Tolerância ', ev['ltTWA'],  nth=2)
         if ev.get('naTWA'):   b = _rr(b, 'Nível de Ação ',        ev['naTWA'],  nth=2)
         if ev.get('ltSTEL'):  b = _rr(b, 'Limite de Tolerância ', ev['ltSTEL'], nth=3)
-
-        # Concentration (same value appears 3× – NR-15, TWA, STEL)
         conc = ev.get('concentracao', '')
         if conc:
             b = _rr(b, 'Concentração (PPM)', conc, nth=1)
             b = _rr(b, 'Concentração (PPM)', conc, nth=2)
             b = _rr(b, 'Concentração (PPM)', conc, nth=3)
-
-        # Conclusão
         new_conc = ev.get('conclusao', '') or OLD_CONC
         b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
-
-        # Unique paraIds per block
         b = re.sub(r'w14:paraId="([0-9A-Fa-f]{8})"',
                    lambda m, ii=i: f'w14:paraId="{(int(m.group(1),16)+(ii+1)*0x10000)&0xFFFFFFFE:08X}"',
                    b)
@@ -1186,13 +1349,87 @@ def gerar_quimico_bytes(d):
 
     xml = xml[:tbl1_s] + ''.join(blocks) + xml[sec6_e:]
 
+    # ── Section bounds (after eval replacement) ──────────────────────
+    viii_ts, viii_te = _q_sec_head(xml, 'MEMORIAL FOTOGR')
+    ix_ts,   ix_te   = _q_sec_head(xml, 'QUADRO RESUMO')
+    x_ts,    x_te    = _q_sec_head(xml, 'RESULTADOS DAS AN')
+    xi_ts,   xi_te   = _q_sec_head(xml, 'CERTIFICADO DE CALIBRA')
+    xii_ts,  _       = _q_sec_head(xml, 'RESPONSABILIDADE T')
+
+    # ── Build section VIII: Memorial Fotográfico ─────────────────────
+    if fotos_viii:
+        viii_new = ''
+        for fi, foto in enumerate(fotos_viii):
+            img = foto.get('img', '')
+            desc= foto.get('desc', '')
+            if not img:
+                continue
+            rid, iid = _q_add_b64(img, extra_rels, extra_media, img_ctr)
+            viii_new += _q_img_para(rid, iid, cx=5400040, cy=3628800)
+            if desc:
+                pid = f'{(fi * 0x1000 + 0x770000) & 0xFFFFFFFE:08X}'
+                viii_new += (f'<w:p w14:paraId="{pid}" w14:textId="77777777">'
+                             '<w:pPr><w:jc w:val="center"/></w:pPr>'
+                             f'<w:r><w:t>{_xe(desc)}</w:t></w:r></w:p>')
+    else:
+        viii_new = xml[viii_te:ix_ts]
+
+    # ── Build section IX: Quadro Resumo ──────────────────────────────
+    ix_new = _build_ix_xml(evals) if evals else xml[ix_te:x_ts]
+
+    # ── Build section X: Resultados laboratoriais ────────────────────
+    if laudo_imgs:
+        x_new = ''
+        for li, img in enumerate(laudo_imgs):
+            if not img:
+                continue
+            rid, iid = _q_add_b64(img, extra_rels, extra_media, img_ctr)
+            x_new += _q_img_para(rid, iid, cx=6858000, cy=4857750)
+    else:
+        x_new = xml[x_te:xi_ts]
+
+    # ── Build section XI: Certificado de Calibração ──────────────────
+    xi_new = ''
+    if pump and pump_sn and pump in _PUMP_CERT_PAGES and pump_sn in _PUMP_CERT_PAGES[pump]:
+        for pg in range(1, _PUMP_CERT_PAGES[pump][pump_sn] + 1):
+            path = os.path.join(CERTS_DIR, f'cert_{pump}_{pump_sn}_p{pg}.jpg')
+            if os.path.exists(path):
+                rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
+                xi_new += _q_img_para(rid, iid)
+    if calibrad and calibrad in _CALIB_CERT_PAGES:
+        for pg in range(1, _CALIB_CERT_PAGES[calibrad] + 1):
+            path = os.path.join(CERTS_DIR, f'cert_{calibrad}_p{pg}.jpg')
+            if os.path.exists(path):
+                rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
+                xi_new += _q_img_para(rid, iid)
+    if not xi_new:
+        xi_new = xml[xi_te:xii_ts]
+
+    # ── Assemble final XML ────────────────────────────────────────────
+    xml = (xml[:viii_te] + viii_new +
+           xml[ix_ts:ix_te] + ix_new +
+           xml[x_ts:x_te]  + x_new  +
+           xml[xi_ts:xi_te] + xi_new +
+           xml[xii_ts:])
+
+    # ── Relationships & output ────────────────────────────────────────
+    if extra_rels:
+        rels_xml = rels_xml.replace('</Relationships>',
+                                    '\n'.join(extra_rels) + '</Relationships>')
+
     zout = io.BytesIO()
     with zipfile.ZipFile(zout, 'w', zipfile.ZIP_DEFLATED) as zw:
         for item in zin.infolist():
             if item.filename == 'word/document.xml':
                 zw.writestr(item, xml.encode('utf-8'))
+            elif item.filename == 'word/_rels/document.xml.rels':
+                zw.writestr(item, rels_xml.encode('utf-8'))
+            elif item.filename == 'word/media/image1.png' and logo_bytes:
+                zw.writestr(item, logo_bytes)
             else:
                 zw.writestr(item, zin.read(item.filename))
+        for path, data in extra_media.items():
+            zw.writestr(path, data)
     zin.close()
     return zout.getvalue()
 
@@ -1215,6 +1452,103 @@ def gerar_quimico():
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': f'Erro interno: {str(e)}'}), 500
+
+
+# ── API: Guia de Métodos lookup ──────────────────────────────────────
+@app.route('/api/metodos')
+def api_metodos():
+    try:
+        with open(_GUIA_PATH, encoding='utf-8') as f:
+            return _json.dumps(_json.load(f), ensure_ascii=False), 200, {'Content-Type': 'application/json'}
+    except Exception:
+        return jsonify({'by_cas': {}, 'by_name': {}}), 200
+
+
+# ── API: Pump serial numbers ─────────────────────────────────────────
+@app.route('/api/pump_sns')
+def api_pump_sns():
+    pump = request.args.get('model', '')
+    return jsonify(_PUMP_SN.get(pump, []))
+
+
+# ── API: Convert lab result PDF to base64 JPG images ─────────────────
+@app.route('/api/convert_laudo', methods=['POST'])
+def api_convert_laudo():
+    try:
+        import fitz
+    except ImportError:
+        return jsonify({'erro': 'pymupdf não instalado'}), 500
+    try:
+        f = request.files.get('file')
+        if not f:
+            return jsonify({'erro': 'Nenhum arquivo'}), 400
+        data = f.read()
+        doc = fitz.open(stream=data, filetype='pdf')
+        imgs = []
+        for page in doc:
+            mat = fitz.Matrix(2, 2)
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes('jpeg')
+            imgs.append('data:image/jpeg;base64,' + base64.b64encode(img_bytes).decode())
+        doc.close()
+        return jsonify({'paginas': imgs})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+# ── API: Parse chain of custody Excel ────────────────────────────────
+@app.route('/api/parse_cadeia', methods=['POST'])
+def api_parse_cadeia():
+    try:
+        import openpyxl
+    except ImportError:
+        return jsonify({'erro': 'openpyxl não instalado'}), 500
+    try:
+        f = request.files.get('file')
+        if not f:
+            return jsonify({'erro': 'Nenhum arquivo'}), 400
+        wb = openpyxl.load_workbook(io.BytesIO(f.read()), data_only=True)
+        ws = wb.active
+        rows = []
+        headers = []
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i == 0:
+                headers = [str(c).strip() if c else '' for c in row]
+                continue
+            if not any(row):
+                continue
+            obj = {}
+            for j, val in enumerate(row):
+                if j < len(headers) and headers[j]:
+                    obj[headers[j]] = str(val).strip() if val is not None else ''
+            rows.append(obj)
+        # Try to map common field names to our schema
+        mapped = []
+        field_map = {
+            'trabalhador': ['nome', 'trabalhador', 'funcionário', 'funcionario', 'colaborador'],
+            'cargo':       ['cargo', 'função', 'funcao', 'ocupação', 'ocupacao'],
+            'setor':       ['setor', 'departamento', 'área', 'area', 'local'],
+            'filtroNumero':['filtro', 'filtro nº', 'filtro numero', 'número filtro'],
+            'vazaoInicial':['vazão inicial', 'vazao inicial', 'qi', 'q inicial'],
+            'vazaoFinal':  ['vazão final', 'vazao final', 'qf', 'q final'],
+            'tempoColeta': ['tempo de coleta', 'tempo coleta', 'duração', 'duracao'],
+            'volume':      ['volume', 'volume amostrado'],
+            'agente':      ['agente', 'substância', 'substancia', 'produto'],
+            'dataColeta':  ['data da coleta', 'data coleta', 'data amostragem'],
+        }
+        for row in rows:
+            ev = {}
+            row_lower = {k.lower(): v for k, v in row.items()}
+            for field, aliases in field_map.items():
+                for alias in aliases:
+                    if alias in row_lower and row_lower[alias]:
+                        ev[field] = row_lower[alias]
+                        break
+            if ev:
+                mapped.append(ev)
+        return jsonify({'linhas': rows, 'avaliacoes': mapped, 'headers': headers})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
 
 
 if __name__ == '__main__':
