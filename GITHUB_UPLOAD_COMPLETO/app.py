@@ -736,6 +736,40 @@ def _xe(s):
     import html as _h
     return _h.escape(str(s))
 
+def _rr(bxml, label, val, nth=1):
+    """Replace last cell of nth table row containing label text."""
+    pos = -1
+    for _ in range(nth):
+        nxt = bxml.find(f'>{label}</', pos + 1)
+        if nxt == -1: return bxml
+        pos = nxt
+    tr_s = bxml.rfind('<w:tr ', 0, pos)
+    tr_e = bxml.find('</w:tr>', pos) + 7
+    row  = bxml[tr_s:tr_e]
+    tcs  = [m.start() for m in re.finditer('<w:tc>', row)]
+    if len(tcs) < 2: return bxml
+    lts = tcs[-1]; lte = row.rfind('</w:tc>') + 7
+    vc  = row[lts:lte]
+    def g(pat, default=''):
+        m = re.search(pat, vc, re.DOTALL); return m.group(0) if m else default
+    tcp = g(r'<w:tcPr>.*?</w:tcPr>')
+    ppr = g(r'<w:pPr>.*?</w:pPr>')
+    rpr = g(r'<w:rPr>.*?</w:rPr>')
+    pm  = re.search(r'<w:p ([^>]*?)>', vc); pa = pm.group(1) if pm else ''
+    nc  = f'<w:tc>{tcp}<w:p {pa}>{ppr}<w:r>{rpr}<w:t xml:space="preserve">{_xe(val)}</w:t></w:r></w:p></w:tc>'
+    return bxml[:tr_s] + row[:lts] + nc + row[lte:] + bxml[tr_e:]
+
+def _ri(bxml, label, val):
+    """Replace value runs after inline label in same paragraph."""
+    pos = bxml.find(f'>{label}</')
+    if pos == -1: return bxml
+    re_e = bxml.find('</w:r>', pos) + 6
+    pe   = bxml.find('</w:p>', re_e)
+    m    = re.search(r'<w:rPr>.*?</w:rPr>', bxml[re_e:pe], re.DOTALL)
+    rpr  = m.group(0) if m else ''
+    nr   = f'<w:r>{rpr}<w:t xml:space="preserve">{_xe(val)}</w:t></w:r>'
+    return bxml[:re_e] + nr + bxml[pe:]
+
 def gerar_calor_bytes(d):
     emp  = d.get('empresa',{})
     aval = d.get('avaliacao',{})
@@ -1049,6 +1083,128 @@ def gerar_calor():
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': f'Erro interno: {str(e)}'}), 500
+
+def gerar_quimico_bytes(d):
+    emp   = d.get('empresa', {})
+    evals = d.get('avaliacoes', [])
+
+    tpl = os.path.join(BASE_DIR, 'template_quimico.docx')
+    with open(tpl, 'rb') as f: raw = f.read()
+    zin = zipfile.ZipFile(io.BytesIO(raw))
+    xml = zin.read('word/document.xml').decode('utf-8')
+
+    # ── Company replacements ────────────────────────────────────────────
+    xml = xml.replace('UNIMED BELO HORIZONTE COOPERATIVA DE TRABALHO MEDICO',
+                      _xe(emp.get('razaoSocial', '')))
+    tit = _xe(emp.get('titulo', emp.get('razaoSocial', '')))
+    xml = xml.replace('CENTRO DE PROMOÇÃO DA SAÚDE UNIMED - UNIDADE BETIM', tit)
+    xml = xml.replace('HOSPITAL UNIMED - UNIDADE CONTORNO', tit)
+    xml = xml.replace('Av. Gov. Valadares, ', _xe(emp.get('endereco', '')))
+    xml = xml.replace('>619<', f'>{_xe(emp.get("numero",""))}<')
+    xml = xml.replace('16.513.178/0036-04', _xe(emp.get('cnpj', '')))
+    xml = xml.replace('30130-040', _xe(emp.get('cep', '')))
+    xml = xml.replace('>Betim <', f'>{_xe(emp.get("cidade",""))}<')
+    xml = xml.replace('>Centro<', f'>{_xe(emp.get("bairro",""))}<')
+    xml = xml.replace('>MG<', f'>{_xe(emp.get("uf","MG"))}<')
+    xml = xml.replace('65.50-2-00', _xe(emp.get('cnae', '')))
+    xml = xml.replace('Planos de saúde', _xe(emp.get('descricaoCnae', '')))
+
+    # ── Locate Section VI boundaries ───────────────────────────────────
+    pos1   = xml.find('DADOS DA AMOSTRAGEM')
+    pos2   = xml.find('DADOS DA AMOSTRAGEM', pos1 + 1)
+    tbl1_s = xml.rfind('<w:tbl>', 0, pos1)
+    tbl2_s = xml.rfind('<w:tbl>', 0, pos2)
+    tbl2_e = xml.find('</w:tbl>', tbl2_s) + 8
+    pos8   = xml.find('VIII', tbl2_e)
+    sec6_e = xml.rfind('</w:tbl>', tbl2_e, pos8) + 8
+
+    eval_tpl = xml[tbl1_s:tbl2_s]   # full eval-1 unit (outer table + results)
+
+    OLD_CONC = ('conclуímos que C &lt; LT, a concentração é menor que o LT.'
+                ' Logo a situação é considerada regular em função da baixa concentração.')
+    # Simpler: find the actual string in xml
+    OLD_CONC = 'concluímos que C &lt; LT, a concentração é menor que o LT. Logo a situação é considerada regular em função da baixa concentração.'
+
+    blocks = []
+    for i, ev in enumerate(evals):
+        b = eval_tpl
+
+        # DADOS DA AMOSTRAGEM
+        b = _rr(b, 'Cargo',                    ev.get('cargo', ''))
+        b = _rr(b, 'Trabalhador',              ev.get('trabalhador', ''))
+        b = _rr(b, 'Setor',                    ev.get('setor', ''))
+        b = _rr(b, 'Jornada de trabalho',      ev.get('jornada', ''))
+        b = _rr(b, 'Data da coleta',           ev.get('dataColeta', ''))
+        b = _rr(b, 'Data da análise',          ev.get('dataAnalise', ''))
+        b = _rr(b, 'Agentes Analisados (CAS)', ev.get('agente', ''))
+        b = _rr(b, 'Fonte Geradora:',          ev.get('fonte', ''))
+        b = _rr(b, 'Filtro Número',            ev.get('filtroNumero', ''))
+
+        # Memória de Campo (inline label + value in same cell)
+        b = _ri(b, 'Vazão Inicial (L/min): ',  ev.get('vazaoInicial', ''))
+        b = _ri(b, 'Vazão Fina (L/min): ',     ev.get('vazaoFinal', ''))
+        b = _ri(b, 'Tempo de Coleta (Min): ',  ev.get('tempoColeta', ''))
+        b = _ri(b, 'Volume Amostrado (L):  ',  ev.get('volume', ''))
+        b = _ri(b, 'Tempo de exposição ao agente durante a jornada de trabalho: ',
+                   ev.get('tempoExposicao', ''))
+        b = _ri(b, 'Acessórios utilizados: ',  ev.get('acessorios', ''))
+
+        # Results – LT / NA (nth=1 NR-15, nth=2 TWA, nth=3 STEL)
+        if ev.get('ltNR15'):  b = _rr(b, 'Limite de Tolerância ', ev['ltNR15'], nth=1)
+        if ev.get('naNR15'):  b = _rr(b, 'Nível de Ação ',        ev['naNR15'], nth=1)
+        if ev.get('ltTWA'):   b = _rr(b, 'Limite de Tolerância ', ev['ltTWA'],  nth=2)
+        if ev.get('naTWA'):   b = _rr(b, 'Nível de Ação ',        ev['naTWA'],  nth=2)
+        if ev.get('ltSTEL'):  b = _rr(b, 'Limite de Tolerância ', ev['ltSTEL'], nth=3)
+
+        # Concentration (same value appears 3× – NR-15, TWA, STEL)
+        conc = ev.get('concentracao', '')
+        if conc:
+            b = _rr(b, 'Concentração (PPM)', conc, nth=1)
+            b = _rr(b, 'Concentração (PPM)', conc, nth=2)
+            b = _rr(b, 'Concentração (PPM)', conc, nth=3)
+
+        # Conclusão
+        new_conc = ev.get('conclusao', '') or OLD_CONC
+        b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
+
+        # Unique paraIds per block
+        b = re.sub(r'w14:paraId="([0-9A-Fa-f]{8})"',
+                   lambda m, ii=i: f'w14:paraId="{(int(m.group(1),16)+(ii+1)*0x10000)&0xFFFFFFFE:08X}"',
+                   b)
+        blocks.append(b)
+
+    xml = xml[:tbl1_s] + ''.join(blocks) + xml[sec6_e:]
+
+    zout = io.BytesIO()
+    with zipfile.ZipFile(zout, 'w', zipfile.ZIP_DEFLATED) as zw:
+        for item in zin.infolist():
+            if item.filename == 'word/document.xml':
+                zw.writestr(item, xml.encode('utf-8'))
+            else:
+                zw.writestr(item, zin.read(item.filename))
+    zin.close()
+    return zout.getvalue()
+
+
+@app.route('/gerar_quimico', methods=['POST'])
+def gerar_quimico():
+    data = request.json
+    if not data or not data.get('empresa', {}).get('razaoSocial', '').strip():
+        return jsonify({'erro': 'Informe a Razão Social'}), 400
+    if not data.get('avaliacoes'):
+        return jsonify({'erro': 'Adicione pelo menos uma avaliação'}), 400
+    try:
+        docx_bytes = gerar_quimico_bytes(data)
+        nome = data['empresa']['razaoSocial']
+        nome_safe = re.sub(r'[/\\:*?"<>|]', '_', nome)
+        filename = f"Análise Química - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
+        return send_file(io.BytesIO(docx_bytes), as_attachment=True,
+                         download_name=filename,
+                         mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': f'Erro interno: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
