@@ -532,7 +532,6 @@
       <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
     </svg>
     Laudo de Ruído
-    <span class="tab-badge">EM BREVE</span>
   </div>
   <div class="tab" onclick="switchTab('quimico', this)">
     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -807,13 +806,83 @@
 <!-- ══ Painel Laudo de Ruído ════════════════════════════════════════════ -->
 <div id="tab-ruido" class="tab-panel">
 <div class="page">
-  <div class="page-head"><div class="page-title">Laudo de Ruído</div><div class="page-sub">NR-15 Anexo 1 — Em desenvolvimento.</div></div>
-  <div class="coming-soon">
-    <span class="soon-badge">EM BREVE</span>
-    <div class="coming-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/></svg></div>
-    <div class="coming-title">Laudo de Ruído — NR-15 Anexo 1</div>
-    <div class="coming-desc">Em desenvolvimento. Disponível em breve.</div>
+
+  <div class="page-head">
+    <div class="page-title">Laudo de Ruído — NR-15 Anexo 1</div>
+    <div class="page-sub">Importe o PDF do dosímetro CHROMPACK SmartdB para cada avaliação e gere o laudo completo.</div>
   </div>
+
+  <!-- Empresa -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4"/></svg></div>
+      <div><div class="card-title">Dados da Empresa</div><div class="card-desc">Razão social, CNPJ, endereço</div></div>
+    </div>
+    <div class="grid2 field">
+      <div><label>Razão Social</label><input type="text" id="r-razao" placeholder="Nome completo da empresa"></div>
+      <div><label>Nome Fantasia <span style="font-weight:400;color:var(--text3)">(aparece no cabeçalho)</span></label><input type="text" id="r-fantasia" placeholder="Nome do estabelecimento"></div>
+    </div>
+    <div class="grid2 field">
+      <div><label>CNPJ</label><input type="text" id="r-cnpj" placeholder="00.000.000/0001-00"></div>
+      <div><label>CEP</label><input type="text" id="r-cep" placeholder="00000-000"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>Endereço</label><input type="text" id="r-end" placeholder="Rua / Avenida, Nº"></div>
+      <div><label>Bairro</label><input type="text" id="r-bairro" placeholder="Bairro"></div>
+      <div><label>Cidade</label><input type="text" id="r-cidade" value="Belo Horizonte"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>CNAE</label><input type="text" id="r-cnae" placeholder="00.00-0/00"></div>
+      <div><label>Grau de Risco</label>
+        <select id="r-gr"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+      </div>
+      <div><label>Descrição CNAE</label><input type="text" id="r-cnae-desc" placeholder="Atividade econômica principal"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>Responsável</label><input type="text" id="r-responsavel" placeholder="Nome do responsável"></div>
+      <div><label>Telefone</label><input type="text" id="r-tel" placeholder="(00) 00000-0000"></div>
+      <div><label>E-mail</label><input type="text" id="r-email" placeholder="email@empresa.com"></div>
+    </div>
+  </div>
+
+  <!-- Técnico e data -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
+      <div><div class="card-title">Técnico Responsável</div><div class="card-desc">Responsável pela avaliação e data do laudo</div></div>
+    </div>
+    <div class="grid2 field">
+      <div>
+        <label>Técnico(a)</label>
+        <select id="r-tecnico">
+          <option value="kelly">Kelly Elissama Firmino — MTE 0072372-MG</option>
+          <option value="helbert">Helbert Gonçalves de Oliveira — MTE 45376/MG</option>
+          <option value="matheus">Matheus Costa</option>
+        </select>
+      </div>
+      <div>
+        <label>Data do Laudo</label>
+        <input type="text" id="r-data-laudo" placeholder="dd/mm/aaaa">
+      </div>
+    </div>
+  </div>
+
+  <!-- Avaliações -->
+  <div class="card" id="card-r-avals">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/></svg></div>
+      <div style="flex:1"><div class="card-title">Avaliações</div><div class="card-desc">Uma avaliação por trabalhador / dosímetro</div></div>
+      <button class="btn-add" onclick="rAddAval()">+ Avaliação</button>
+    </div>
+    <div id="r-avals-list"></div>
+  </div>
+
+  <button class="btn-gerar" id="btn-ruido" onclick="gerarRuido()">
+    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+    Gerar Laudo de Ruído
+  </button>
+  <div class="status" id="status-ruido"></div>
+
 </div>
 </div>
 
@@ -1772,6 +1841,223 @@ function showQStatus(msg, type) {
 qAvals.push(qNewAval());
 qRenderAvals();
 qRenderFotos();
+
+// ══════════════════════════════════════════════════════════════
+// LAUDO DE RUÍDO
+// ══════════════════════════════════════════════════════════════
+
+let rAvals = [];
+
+function rNewAval() {
+  return {
+    setor:'', cargo:'', trabalhador:'', dataColeta:'',
+    horaInicio:'', horaFim:'', jornada:'',
+    serie:'', fontes:'', atividades:'',
+    controleColetivo:'N.A.', epi:'Protetor Auditivo',
+    lavgQ3:'', nenQ3:'', doseQ3:'',
+    twaQ5:'', lavgQ5:'', doseQ5:'',
+    neQ5:'', nenQ5:'',
+    tabelaImg:'', histogramaImg:'',
+    certImgs:[]
+  };
+}
+
+function rAddAval() { rAvals.push(rNewAval()); rRenderAvals(); }
+function rRemAval(i) { rAvals.splice(i, 1); rRenderAvals(); }
+
+async function rImportDosimetro(i) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.pdf';
+  inp.onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    const statusEl = document.getElementById(`r-dos-status-${i}`);
+    statusEl.textContent = 'Lendo PDF...';
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const r = await fetch('/api/parse_dosimetro', { method:'POST', body:fd });
+      const d = await r.json();
+      if (d.erro) throw new Error(d.erro);
+      if (d.dados)      Object.assign(rAvals[i], d.dados);
+      if (d.tabela)     rAvals[i].tabelaImg    = d.tabela;
+      if (d.histograma) rAvals[i].histogramaImg = d.histograma;
+      rRenderAvals();
+      statusEl.textContent = `✓ Dados extraídos (${rAvals[i].trabalhador || file.name})`;
+    } catch(err) {
+      statusEl.textContent = 'Erro: ' + err.message;
+    }
+  };
+  inp.click();
+}
+
+function rAddCerts(i) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = e => {
+    const files = Array.from(e.target.files);
+    let loaded = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        rAvals[i].certImgs.push(ev.target.result);
+        loaded++;
+        if (loaded === files.length) rRenderAvals();
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+  inp.click();
+}
+
+function rRemCert(i, ci) { rAvals[i].certImgs.splice(ci, 1); rRenderAvals(); }
+
+function rEsc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function rRenderAvals() {
+  const c = document.getElementById('r-avals-list');
+  if (!rAvals.length) {
+    c.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Clique em "+ Avaliação" para adicionar.</div>';
+    return;
+  }
+  c.innerHTML = rAvals.map((av, i) => `
+    <div style="border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-weight:700;font-size:.95rem;color:var(--orange);">Avaliação ${i+1}</span>
+        <div style="display:flex;gap:8px;">
+          <button onclick="rImportDosimetro(${i})" style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:6px;color:var(--blue);padding:5px 12px;cursor:pointer;font-family:inherit;font-size:.82rem;">📥 Importar PDF do dosímetro</button>
+          <button onclick="rRemAval(${i})" style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);padding:4px 12px;cursor:pointer;font-family:inherit;font-size:.8rem;">Remover</button>
+        </div>
+      </div>
+      <div id="r-dos-status-${i}" style="font-size:.8rem;color:var(--text3);margin-bottom:8px;"></div>
+
+      ${av.tabelaImg || av.histogramaImg ? `
+      <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-start;">
+        ${av.tabelaImg    ? `<div><div style="font-size:.7rem;color:var(--text3);margin-bottom:3px;">Tabela de dados</div><img src="${av.tabelaImg}"    style="max-height:130px;border:1px solid var(--border);border-radius:4px;"></div>` : ''}
+        ${av.histogramaImg? `<div><div style="font-size:.7rem;color:var(--text3);margin-bottom:3px;">Histograma</div><img src="${av.histogramaImg}" style="max-height:130px;border:1px solid var(--border);border-radius:4px;"></div>` : ''}
+      </div>` : ''}
+
+      <div class="grid3 field">
+        <div><label>Setor</label><input type="text" value="${rEsc(av.setor)}" onchange="rAvals[${i}].setor=this.value"></div>
+        <div><label>Cargo</label><input type="text" value="${rEsc(av.cargo)}" onchange="rAvals[${i}].cargo=this.value"></div>
+        <div><label>Funcionário(a)</label><input type="text" value="${rEsc(av.trabalhador)}" onchange="rAvals[${i}].trabalhador=this.value"></div>
+      </div>
+      <div class="grid3 field">
+        <div><label>Data da Medição</label><input type="text" value="${rEsc(av.dataColeta)}" placeholder="dd/mm/aaaa" onchange="rAvals[${i}].dataColeta=this.value"></div>
+        <div><label>Hora Início</label><input type="text" value="${rEsc(av.horaInicio)}" placeholder="08:00" onchange="rAvals[${i}].horaInicio=this.value"></div>
+        <div><label>Hora Fim</label><input type="text" value="${rEsc(av.horaFim)}" placeholder="17:00" onchange="rAvals[${i}].horaFim=this.value"></div>
+      </div>
+      <div class="grid2 field">
+        <div><label>Jornada de Trabalho</label><input type="text" value="${rEsc(av.jornada)}" placeholder="08:00 / 08 horas" onchange="rAvals[${i}].jornada=this.value"></div>
+        <div><label>N° Série Dosímetro</label><input type="text" value="${rEsc(av.serie)}" onchange="rAvals[${i}].serie=this.value"></div>
+      </div>
+      <div class="field">
+        <label>Fonte(s) Geradora(s) de Ruído</label>
+        <input type="text" value="${rEsc(av.fontes)}" placeholder="Ex: Máquinas de construção civil, betoneira" onchange="rAvals[${i}].fontes=this.value">
+      </div>
+      <div class="field">
+        <label>Descrição das Atividades</label>
+        <input type="text" value="${rEsc(av.atividades)}" placeholder="Ex: Operação de equipamentos, trabalho em canteiro" onchange="rAvals[${i}].atividades=this.value">
+      </div>
+      <div class="grid2 field">
+        <div><label>Medidas de Controle Coletivo</label><input type="text" value="${rEsc(av.controleColetivo||'N.A.')}" onchange="rAvals[${i}].controleColetivo=this.value"></div>
+        <div><label>EPI Utilizado</label><input type="text" value="${rEsc(av.epi||'Protetor Auditivo')}" onchange="rAvals[${i}].epi=this.value"></div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.78rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">Q = 3 dB — NHO-01 (Exposição Ocupacional)</div>
+      <div class="grid3 field">
+        <div><label>LAVG [dB(A)]</label><input type="text" value="${rEsc(av.lavgQ3)}" placeholder="82,5" onchange="rAvals[${i}].lavgQ3=this.value"></div>
+        <div><label>NEN [dB]</label><input type="text" value="${rEsc(av.nenQ3)}" placeholder="85,0" onchange="rAvals[${i}].nenQ3=this.value"></div>
+        <div><label>DOSE [%]</label><input type="text" value="${rEsc(av.doseQ3)}" placeholder="75,2" onchange="rAvals[${i}].doseQ3=this.value"></div>
+      </div>
+      <div style="font-size:.78rem;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px;">Q = 5 dB — NR-15 (Legislação Trabalhista)</div>
+      <div class="grid3 field">
+        <div><label>TWA [dB(A)]</label><input type="text" value="${rEsc(av.twaQ5)}" onchange="rAvals[${i}].twaQ5=this.value"></div>
+        <div><label>LAVG [dB(A)]</label><input type="text" value="${rEsc(av.lavgQ5)}" onchange="rAvals[${i}].lavgQ5=this.value"></div>
+        <div><label>DOSE [%]</label><input type="text" value="${rEsc(av.doseQ5)}" onchange="rAvals[${i}].doseQ5=this.value"></div>
+      </div>
+      <div style="font-size:.78rem;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px;">Q = 5* dB — INSS (Legislação Previdenciária)</div>
+      <div class="grid2 field">
+        <div><label>NE [dB]</label><input type="text" value="${rEsc(av.neQ5)}" onchange="rAvals[${i}].neQ5=this.value"></div>
+        <div><label>NEN [dB]</label><input type="text" value="${rEsc(av.nenQ5)}" onchange="rAvals[${i}].nenQ5=this.value"></div>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:.78rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">CERTIFICADO DE CALIBRAÇÃO</span>
+          <button onclick="rAddCerts(${i})" class="btn-add" style="font-size:.75rem;padding:4px 12px;">+ Foto do Certificado</button>
+        </div>
+        ${av.certImgs && av.certImgs.length ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${av.certImgs.map((img, ci) => `
+            <div style="position:relative;">
+              <img src="${img}" style="height:80px;border:1px solid var(--border);border-radius:4px;">
+              <button onclick="rRemCert(${i},${ci})" style="position:absolute;top:-5px;right:-5px;background:var(--surface2);border:1px solid var(--border2);border-radius:50%;color:var(--text3);cursor:pointer;font-size:.6rem;width:16px;height:16px;line-height:1;padding:0;">✕</button>
+            </div>`).join('')}
+        </div>` : '<div style="font-size:.8rem;color:var(--text3);">Nenhuma foto. Clique em "+ Foto do Certificado".</div>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function gerarRuido() {
+  const razao = document.getElementById('r-razao').value.trim();
+  if (!razao) { showRuidoStatus('Informe a Razão Social.', 'err'); return; }
+  if (!rAvals.length) { showRuidoStatus('Adicione pelo menos uma avaliação.', 'err'); return; }
+
+  const btn = document.getElementById('btn-ruido');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Gerando...';
+  showRuidoStatus('Gerando laudo, aguarde...', 'loading');
+
+  const payload = {
+    empresa: {
+      razaoSocial:   razao,
+      nomeFantasia:  document.getElementById('r-fantasia').value,
+      cnpj:          document.getElementById('r-cnpj').value,
+      cep:           document.getElementById('r-cep').value,
+      endereco:      document.getElementById('r-end').value,
+      bairro:        document.getElementById('r-bairro').value,
+      cidade:        document.getElementById('r-cidade').value || 'Belo Horizonte',
+      cnae:          document.getElementById('r-cnae').value,
+      descricaoCnae: document.getElementById('r-cnae-desc').value,
+      grauRisco:     document.getElementById('r-gr').value,
+      responsavel:   document.getElementById('r-responsavel').value,
+      telefone:      document.getElementById('r-tel').value,
+      email:         document.getElementById('r-email').value,
+    },
+    tecnico:    document.getElementById('r-tecnico').value,
+    dataLaudo:  document.getElementById('r-data-laudo').value,
+    avaliacoes: rAvals.map(av => ({...av})),
+  };
+
+  try {
+    const resp = await fetch('/gerar-ruido', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro || 'Erro'); }
+    const blob = await resp.blob();
+    const cd = resp.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="(.+)"/);
+    baixarUrl(URL.createObjectURL(blob), m ? m[1] : `Laudo_Ruido_${razao}.docx`);
+    showRuidoStatus('Laudo gerado com sucesso! Download iniciado.', 'ok');
+  } catch(err) {
+    showRuidoStatus('Erro: ' + err.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg> Gerar Laudo de Ruído`;
+  }
+}
+
+function showRuidoStatus(msg, type) {
+  const el = document.getElementById('status-ruido');
+  el.className = 'status ' + type;
+  el.innerHTML = msg;
+}
+
+// Init ruído
+rAvals.push(rNewAval());
+rRenderAvals();
 </script>
 </body>
 </html>
