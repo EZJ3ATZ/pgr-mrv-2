@@ -875,25 +875,25 @@ def gerar_calor_bytes(d):
     }
 
     def _photo_rows(si, pontos):
-        batch = [(pi, p) for pi, p in enumerate(pontos) if p.get('foto')]
-        if not batch: return []
+        # Each ponto has up to 3 fotos → one photo row per ponto (3 cells)
         rows = []
-        for bi in range(0, len(batch), 3):
-            grp = batch[bi:bi+3]
-            n   = len(grp)
-            spc = _photo_specs.get(n, _photo_specs[3])
+        spc = _photo_specs[3]  # always 3 cells: (3683,4), (3686,4), (3686,2)
+        for pi, p in enumerate(pontos):
+            fotos = p.get('fotos') or []
+            # Pad/trim to exactly 3 slots
+            fotos = (list(fotos) + [None, None, None])[:3]
+            if not any(fotos): continue  # skip row if no photos at all
+            cap = p.get('local', '')
             cells = []
-            for ci, (pi, p) in enumerate(grp):
-                cw, gs = spc[ci]
-                pid = (si * 0x100000 + pi * 0x1000 + bi + ci + 0x500000) & 0xFFFFFFF
-                b64 = p.get('foto','')
-                cap = p.get('local','')
+            for fi, b64 in enumerate(fotos):
+                cw, gs = spc[fi]
+                pid = (si * 0x100000 + pi * 0x1000 + fi + 0x500000) & 0xFFFFFFF
                 if b64:
                     rid, iid = _add_image(b64)
                     cells.append(_photo_cell(rid, iid, cap, cw, gs, pid))
                 else:
-                    cells.append(_empty_cell(cap, cw, gs, pid))
-            tr_pid = (si * 0x100000 + bi + 0x600000) & 0xFFFFFFF
+                    cells.append(_empty_cell('', cw, gs, pid))
+            tr_pid = (si * 0x100000 + pi * 0x1000 + 0x600000) & 0xFFFFFFF
             rows.append(
                 f'<w:tr w14:paraId="{tr_pid:08X}" w14:textId="77777777">'
                 f'<w:trPr><w:cantSplit/><w:trHeight w:val="3500"/></w:trPr>'
