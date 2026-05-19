@@ -1061,7 +1061,7 @@ let setores = [];
 
 function addSetor() {
   setores.push({ nome:'', horario:'', vestimenta:'Uniforme de Trabalho (0)', pontos:[
-    { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198 }
+    { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198, foto:null }
   ]});
   renderSetores();
 }
@@ -1069,9 +1069,23 @@ function addSetor() {
 function remSetor(si) { setores.splice(si,1); renderSetores(); }
 
 function addPonto(si) {
-  setores[si].pontos.push({ local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198 });
+  setores[si].pontos.push({ local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198, foto:null });
   renderSetores();
 }
+
+function selectFoto(si, pi) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { setores[si].pontos[pi].foto = ev.target.result; renderSetores(); };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+
+function removeFoto(si, pi) { setores[si].pontos[pi].foto = null; renderSetores(); }
 
 function remPonto(si, pi) { setores[si].pontos.splice(pi,1); renderSetores(); }
 
@@ -1128,6 +1142,9 @@ function renderSetores() {
         <input type="text" placeholder="Horário (ex: 08:30 – 10:00)" value="${s.horario}"
           oninput="updateSetor(${si},'horario',this.value)"
           style="flex:1.5;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.84rem;font-family:inherit;outline:none;">
+        <input type="text" placeholder="Vestimenta (ex: Uniforme de Trabalho (0))" value="${s.vestimenta}"
+          oninput="updateSetor(${si},'vestimenta',this.value)"
+          style="flex:2;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.84rem;font-family:inherit;outline:none;">
         <button onclick="remSetor(${si})" class="btn-rem" style="padding:6px 10px;font-size:.8rem;border:1px solid var(--border2);border-radius:6px;color:var(--text3);background:none;cursor:pointer;">✕ Remover</button>
       </div>
 
@@ -1141,6 +1158,7 @@ function renderSetores() {
             <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tg (ºC)</th>
             <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">M (W)</th>
             <th style="padding:4px 6px;font-weight:600;font-size:.68rem;color:var(--orange);">IBUTG</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Foto</th>
             <th></th>
           </tr>
         </thead>
@@ -1166,6 +1184,15 @@ function renderSetores() {
               oninput="updatePonto(${si},${pi},'M',this.value)"
               style="width:68px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:6px 8px;color:var(--text);font-size:.8rem;font-family:inherit;outline:none;text-align:center;"></td>
             <td style="padding:3px 6px;color:var(--orange);font-weight:600;white-space:nowrap;font-size:.75rem;" id="ibutg-${si}-${pi}"></td>
+            <td style="padding:3px 4px;text-align:center;">
+              ${p.foto
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;">
+                    <img src="${p.foto}" style="height:28px;width:38px;object-fit:cover;border-radius:3px;border:1px solid var(--border);" title="${p.local||'foto'}">
+                    <button onclick="removeFoto(${si},${pi})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.8rem;padding:2px;">✕</button>
+                  </span>`
+                : `<button onclick="selectFoto(${si},${pi})" style="background:var(--surface);border:1px dashed var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;font-size:.72rem;padding:4px 8px;white-space:nowrap;">📷 Foto</button>`
+              }
+            </td>
             <td style="padding:3px 2px;">${s.pontos.length>1?`<button onclick="remPonto(${si},${pi})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.85rem;padding:4px;">✕</button>`:''}</td>
           </tr>`).join('')}
         </tbody>
@@ -1222,7 +1249,8 @@ async function gerarCalor() {
       pontos: s.pontos.map(p => ({
         local: p.local, tempo: +p.tempo,
         tbn: +p.tbn, tbs: +p.tbs, tg: +p.tg,
-        atividade: p.atividade, M: +p.M
+        atividade: p.atividade, M: +p.M,
+        foto: p.foto || null
       }))
     }))
   };
