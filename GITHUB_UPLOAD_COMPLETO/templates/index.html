@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gerador de PGR — MRV</title>
+  <title>Ferramentas SST — Grupo Ocupacional</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -500,10 +500,10 @@
 <!-- ══ Header ══════════════════════════════════════════════════════════ -->
 <header>
   <div class="logo">
-    <div class="logo-badge">MRV</div>
+    <div class="logo-badge">GO</div>
     <div>
-      <div class="logo-label">Gerador de PGR</div>
-      <div class="logo-sub">Medicina do Trabalho · Segurança Ocupacional</div>
+      <div class="logo-label">Ferramentas SST</div>
+      <div class="logo-sub">Higiene Ocupacional · Segurança do Trabalho</div>
     </div>
   </div>
   <div class="header-right">
@@ -538,8 +538,7 @@
     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
     </svg>
-    Laudo Químico
-    <span class="tab-badge">EM BREVE</span>
+    Análise Química
   </div>
 </nav>
 
@@ -814,22 +813,78 @@
 </div>
 </div>
 
-<!-- ══ Painel Laudo Químico ═════════════════════════════════════════════ -->
+<!-- ══ Painel Análise Química ════════════════════════════════════════════ -->
 <div id="tab-quimico" class="tab-panel">
 <div class="page">
-  <div class="page-head"><div class="page-title">Laudo Químico</div><div class="page-sub">NR-15 Agentes Químicos — Em desenvolvimento.</div></div>
-  <div class="coming-soon">
-    <span class="soon-badge">EM BREVE</span>
-    <div class="coming-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/></svg></div>
-    <div class="coming-title">Laudo Químico</div>
-    <div class="coming-desc">Em desenvolvimento. Disponível em breve.</div>
+
+  <div class="page-head">
+    <div class="page-title">Análise Química — NR-15 Agentes Químicos</div>
+    <div class="page-sub">Preencha os dados da empresa e adicione as avaliações por cargo.</div>
   </div>
+
+  <!-- Dados da Empresa -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4"/></svg></div>
+      <div><div class="card-title">Dados da Empresa</div><div class="card-desc">Razão social, CNPJ, endereço</div></div>
+    </div>
+    <div class="field">
+      <label>Razão Social</label>
+      <input type="text" id="q-razao" placeholder="Nome completo da empresa">
+    </div>
+    <div class="field">
+      <label>Título / Nome de Fantasia</label>
+      <input type="text" id="q-titulo" placeholder="Nome do estabelecimento (aparece no cabeçalho)">
+    </div>
+    <div class="grid2 field">
+      <div><label>CNPJ</label><input type="text" id="q-cnpj" placeholder="00.000.000/0001-00"></div>
+      <div><label>CEP</label><input type="text" id="q-cep" placeholder="00000-000"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>Endereço</label><input type="text" id="q-end" placeholder="Rua / Avenida"></div>
+      <div><label>Número</label><input type="text" id="q-num" placeholder="Nº"></div>
+      <div><label>Bairro</label><input type="text" id="q-bairro" placeholder="Bairro"></div>
+    </div>
+    <div class="grid3 field">
+      <div><label>Cidade</label><input type="text" id="q-cidade" value="Betim"></div>
+      <div><label>UF</label>
+        <select id="q-uf">
+          <option value="MG" selected>MG</option><option value="SP">SP</option><option value="RJ">RJ</option>
+          <option value="ES">ES</option><option value="GO">GO</option><option value="BA">BA</option>
+          <option value="PR">PR</option><option value="SC">SC</option><option value="RS">RS</option>
+          <option value="DF">DF</option>
+        </select>
+      </div>
+      <div><label>CNAE</label><input type="text" id="q-cnae" placeholder="00.00-0/00"></div>
+    </div>
+    <div class="field">
+      <label>Descrição CNAE</label>
+      <input type="text" id="q-cnae-desc" placeholder="Atividade econômica principal">
+    </div>
+  </div>
+
+  <!-- Avaliações -->
+  <div class="card" id="card-q-avals">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/></svg></div>
+      <div style="flex:1"><div class="card-title">Avaliações</div><div class="card-desc">Uma avaliação por cargo / trabalhador</div></div>
+      <button class="btn-add" onclick="qAddAval()">+ Avaliação</button>
+    </div>
+    <div id="q-avals-list"></div>
+  </div>
+
+  <button class="btn-gerar" id="btn-quimico" onclick="gerarQuimico()">
+    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+    Gerar Análise Química
+  </button>
+  <div class="status" id="status-quimico"></div>
+
 </div>
 </div>
 
 <!-- ══ Footer ═══════════════════════════════════════════════════════════ -->
 <footer>
-  MRV Engenharia · Medicina do Trabalho · Segurança Ocupacional
+  Grupo Ocupacional · Higiene Ocupacional · Segurança do Trabalho
 </footer>
 
 <script>
@@ -1323,6 +1378,149 @@ function showCalorStatus(msg, type) {
 
 // Init laudo calor with one empty sector
 renderSetores();
+
+// ── Análise Química ──────────────────────────────────────────────────
+let qAvals = [];
+
+function qNewAval() {
+  return {
+    cargo: 'Técnica de Enfermagem', trabalhador: '', setor: '',
+    jornada: '09:00H', dataColeta: '', dataAnalise: '',
+    agente: 'Isopropanol (2-Propanol)', fonte: '', filtroNumero: '',
+    vazaoInicial: '0,2000', vazaoFinal: '0,1910',
+    tempoColeta: '15', volume: '2,933',
+    tempoExposicao: '18 Min', acessorios: 'Redutor de vazão',
+    ltNR15: '310 PPM', naNR15: '155 PPM', concentracao: '',
+    ltTWA: '200 ppm', naTWA: '100 ppm', ltSTEL: '400 PPM', conclusao: ''
+  };
+}
+
+function qAddAval() { qAvals.push(qNewAval()); qRenderAvals(); }
+function qRemoveAval(i) { qAvals.splice(i, 1); qRenderAvals(); }
+
+function qEsc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function qRenderAvals() {
+  const c = document.getElementById('q-avals-list');
+  if (!qAvals.length) {
+    c.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);">Nenhuma avaliação. Clique em "+ Avaliação".</div>';
+    return;
+  }
+  c.innerHTML = qAvals.map((av, i) => `
+    <div style="border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <span style="font-weight:700;font-size:.95rem;color:var(--orange);">Avaliação ${i+1}</span>
+        <button onclick="qRemoveAval(${i})" style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:6px;color:var(--red);padding:4px 12px;cursor:pointer;font-family:inherit;font-size:.8rem;">Remover</button>
+      </div>
+      <div class="grid2 field">
+        <div><label>Cargo</label><input type="text" value="${qEsc(av.cargo)}" onchange="qAvals[${i}].cargo=this.value"></div>
+        <div><label>Trabalhador(a)</label><input type="text" value="${qEsc(av.trabalhador)}" placeholder="Nome completo" onchange="qAvals[${i}].trabalhador=this.value"></div>
+      </div>
+      <div class="grid3 field">
+        <div><label>Setor</label><input type="text" value="${qEsc(av.setor)}" onchange="qAvals[${i}].setor=this.value"></div>
+        <div><label>Jornada</label><input type="text" value="${qEsc(av.jornada)}" placeholder="09:00H" onchange="qAvals[${i}].jornada=this.value"></div>
+        <div><label>Filtro Nº</label><input type="text" value="${qEsc(av.filtroNumero)}" placeholder="TCP1234AV5" onchange="qAvals[${i}].filtroNumero=this.value"></div>
+      </div>
+      <div class="grid2 field">
+        <div><label>Data da Coleta</label><input type="text" value="${qEsc(av.dataColeta)}" placeholder="dd/mm/aaaa" onchange="qAvals[${i}].dataColeta=this.value"></div>
+        <div><label>Data da Análise</label><input type="text" value="${qEsc(av.dataAnalise)}" placeholder="dd/mm/aaaa" onchange="qAvals[${i}].dataAnalise=this.value"></div>
+      </div>
+      <div class="field">
+        <label>Agente Químico (CAS)</label>
+        <input type="text" value="${qEsc(av.agente)}" onchange="qAvals[${i}].agente=this.value">
+      </div>
+      <div class="field">
+        <label>Fonte Geradora</label>
+        <input type="text" value="${qEsc(av.fonte)}" placeholder="Ex: Limpeza e esterilização de peças cirúrgicas" onchange="qAvals[${i}].fonte=this.value">
+      </div>
+      <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">MEMÓRIA DE CAMPO</div>
+      <div class="grid3 field">
+        <div><label>Vazão Inicial (L/min)</label><input type="text" value="${qEsc(av.vazaoInicial)}" onchange="qAvals[${i}].vazaoInicial=this.value"></div>
+        <div><label>Vazão Final (L/min)</label><input type="text" value="${qEsc(av.vazaoFinal)}" onchange="qAvals[${i}].vazaoFinal=this.value"></div>
+        <div><label>Tempo de Coleta (min)</label><input type="text" value="${qEsc(av.tempoColeta)}" onchange="qAvals[${i}].tempoColeta=this.value"></div>
+      </div>
+      <div class="grid3 field">
+        <div><label>Volume Amostrado (L)</label><input type="text" value="${qEsc(av.volume)}" onchange="qAvals[${i}].volume=this.value"></div>
+        <div><label>Tempo de Exposição</label><input type="text" value="${qEsc(av.tempoExposicao)}" placeholder="Ex: 18 Min" onchange="qAvals[${i}].tempoExposicao=this.value"></div>
+        <div><label>Acessórios</label><input type="text" value="${qEsc(av.acessorios)}" onchange="qAvals[${i}].acessorios=this.value"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">RESULTADOS</div>
+      <div class="grid3 field">
+        <div><label>Concentração</label><input type="text" value="${qEsc(av.concentracao)}" placeholder="Ex: 0,4324 PPM" onchange="qAvals[${i}].concentracao=this.value"></div>
+        <div><label>LT NR-15</label><input type="text" value="${qEsc(av.ltNR15)}" onchange="qAvals[${i}].ltNR15=this.value"></div>
+        <div><label>NA NR-15</label><input type="text" value="${qEsc(av.naNR15)}" onchange="qAvals[${i}].naNR15=this.value"></div>
+      </div>
+      <div class="grid3 field">
+        <div><label>LT ACGIH TWA</label><input type="text" value="${qEsc(av.ltTWA)}" onchange="qAvals[${i}].ltTWA=this.value"></div>
+        <div><label>NA ACGIH TWA</label><input type="text" value="${qEsc(av.naTWA)}" onchange="qAvals[${i}].naTWA=this.value"></div>
+        <div><label>LT ACGIH STEL</label><input type="text" value="${qEsc(av.ltSTEL)}" onchange="qAvals[${i}].ltSTEL=this.value"></div>
+      </div>
+      <div class="field">
+        <label>Conclusão <span style="font-size:.75rem;color:var(--text3)">(deixe vazio para usar o texto padrão)</span></label>
+        <textarea rows="2" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:8px;font-family:inherit;font-size:.85rem;resize:vertical;" onchange="qAvals[${i}].conclusao=this.value">${qEsc(av.conclusao)}</textarea>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function gerarQuimico() {
+  const razao = document.getElementById('q-razao').value.trim();
+  if (!razao) { showQStatus('Informe a Razão Social.', 'err'); return; }
+  if (!qAvals.length) { showQStatus('Adicione pelo menos uma avaliação.', 'err'); return; }
+  const semConc = qAvals.some(a => !a.concentracao.trim());
+  if (semConc) { showQStatus('Preencha a Concentração em todas as avaliações.', 'err'); return; }
+
+  const btn = document.getElementById('btn-quimico');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Gerando...';
+  showQStatus('Gerando laudo, aguarde...', 'loading');
+
+  const payload = {
+    empresa: {
+      razaoSocial: razao,
+      titulo: document.getElementById('q-titulo').value,
+      cnpj: document.getElementById('q-cnpj').value,
+      cep: document.getElementById('q-cep').value,
+      endereco: document.getElementById('q-end').value,
+      numero: document.getElementById('q-num').value,
+      bairro: document.getElementById('q-bairro').value,
+      cidade: document.getElementById('q-cidade').value,
+      uf: document.getElementById('q-uf').value,
+      cnae: document.getElementById('q-cnae').value,
+      descricaoCnae: document.getElementById('q-cnae-desc').value,
+    },
+    avaliacoes: qAvals.map(av => ({...av}))
+  };
+
+  try {
+    const resp = await fetch('/gerar_quimico', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.erro||'Erro desconhecido'); }
+    const blob = await resp.blob();
+    const cd = resp.headers.get('Content-Disposition')||'';
+    const m = cd.match(/filename="(.+)"/);
+    baixarUrl(URL.createObjectURL(blob), m ? m[1] : `Análise Química - ${razao}.docx`);
+    showQStatus('Laudo gerado com sucesso! Download iniciado.', 'ok');
+  } catch(e) {
+    showQStatus('Erro: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg> Gerar Análise Química`;
+  }
+}
+
+function showQStatus(msg, type) {
+  const el = document.getElementById('status-quimico');
+  el.className = 'status ' + type;
+  el.innerHTML = msg;
+}
+
+// Init with one empty evaluation
+qAvals.push(qNewAval());
+qRenderAvals();
 </script>
 </body>
 </html>
