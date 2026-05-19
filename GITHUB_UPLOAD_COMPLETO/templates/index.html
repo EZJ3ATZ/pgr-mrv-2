@@ -1526,7 +1526,17 @@ async function qImportLaudo() {
     const d = await r.json();
     if (d.erro) throw new Error(d.erro);
     qLaudoImgs = d.paginas || [];
-    document.getElementById('q-laudo-status').textContent = `✓ ${qLaudoImgs.length} página(s) prontas para inserir na seção X`;
+    if (d.dadosExtraidos && Object.keys(d.dadosExtraidos).length) {
+      const fn = d.dadosExtraidos.filtroNumero;
+      let target = fn ? qAvals.find(a => a.filtroNumero === fn) : null;
+      if (!target) { target = qNewAval(); qAvals.push(target); }
+      Object.assign(target, d.dadosExtraidos);
+      qRenderAvals();
+      document.getElementById('q-laudo-status').textContent =
+        `✓ ${qLaudoImgs.length} página(s) prontas + dados extraídos (${d.dadosExtraidos.trabalhador || ''})`;
+    } else {
+      document.getElementById('q-laudo-status').textContent = `✓ ${qLaudoImgs.length} página(s) prontas para inserir na seção X`;
+    }
   } catch(e) {
     document.getElementById('q-laudo-status').textContent = 'Erro: ' + e.message;
   }
