@@ -1483,69 +1483,65 @@ def api_convert_laudo():
         f = request.files.get('file')
         if not f:
             return jsonify({'erro': 'Nenhum arquivo'}), 400
-        data = f.read()
-        doc = fitz.open(stream=data, filetype='pdf')
+        raw = f.read()
+        doc = fitz.open(stream=raw, filetype='pdf')
         imgs = []
         full_text = ''
         for page in doc:
-            mat = fitz.Matrix(2, 2)
-            pix = page.get_pixmap(matrix=mat)
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
             imgs.append('data:image/jpeg;base64,' + base64.b64encode(pix.tobytes('jpeg')).decode())
             full_text += page.get_text() + '\n'
         doc.close()
 
-        def _get(patterns):
+        def _g(patterns):
             for pat in patterns:
                 m = _re.search(pat, full_text, _re.IGNORECASE | _re.MULTILINE)
                 if m:
                     return m.group(1).strip().strip('—–-').strip()
             return ''
 
-        trabalhador = _get([
-            r'Funcion[a\xe1]rio[:\s]+([^\n\r—–\-]+?)(?:\s*[—–\-]+\s*Fun)',
-            r'FUNCION[A\xc1]RIO[:\s]+([^\n\r—–]+)',
-        ])
-        cargo = _get([
-            r'Fun[\xe7c][a\xe3]o[:\s]+([^\n\r]+)',
-            r'FUNC[\xc3A]O[:\s]+([^\n\r]+)',
-        ])
-        setor  = _get([r'Setor[:\s]+([^\n\r]+)', r'SETOR[:\s]+([^\n\r]+)'])
-        filtro = _get([
-            r'N[\xba\xba\.]\s*do\s*relat[o\xf3]rio[^:]*:\s*([A-Z]{2}\d+)',
-            r'Amostrador[^:]*:\s*([A-Z]{2}\d+)',
-            r'\b([A-Z]{2}\d{5})\b',
-        ])
-        data_col = _get([
-            r'Data\s+(?:de\s+)?amostragem[:\s]+(\d{2}/\d{2}/\d{4})',
-            r'Data[:\s]+(\d{2}/\d{2}/\d{4})',
-        ])
-        vazao_raw = _get([
-            r'Vaz[a\xe3]o\s+m[e\xe9]dia\s+da\s+bomba[:\s]+([\d,\.]+)\s*[Ll]',
-            r'VAZ[A\xc3]O[^\n\r]*?[:\s]+([\d,\.]+)\s*[Ll]',
-        ])
+        # Trabalhador: linha ALL-CAPS imediatamente antes de "Função:"
+        _CAPS = r'[A-ZÀ-ÖØ-Ý]'
+        trabalhador = _g([r'(' + _CAPS + r'[A-ZÀ-ÖØ-Ý\s\.]+?)\s*\nFun'])
+
+        # Cargo: depois de "Função:"
+        cargo = _g([r'Fun[cç][aã]o:\s*([^\n]+)'])
+
+        # Setor: linha ALL-CAPS seguida de outra linha ALL-CAPS (nome do responsável)
+        setor = ''
+        _ms = _re.search(r'\n([A-Z][A-Z\s]{2,29})\n[A-Z]+ [A-Z]+\n', full_text)
+        if _ms:
+            setor = _ms.group(1).strip()
+
+        # Nº amostrador (ex: FL22335)
+        filtro = _g([r'\b([A-Z]{2}\d{5})\b'])
+
+        # Data coleta: data na linha imediatamente anterior a "Tempo de Amostragem"
+        data_col = _g([r'(\d{2}/\d{2}/\d{4})\s*\nTempo'])
+
+        # Vazão: "2,006  L/Min" → captura o número com vírgula
+        vazao_raw = _g([r'([\d]+,[\d]+)\s+L/[Mm]in'])
         vazao_fmt = ''
         if vazao_raw:
             try:
                 vazao_fmt = '{:.4f}'.format(float(vazao_raw.replace(',', '.'))).replace('.', ',')
             except:
-                vazao_fmt = vazao_raw.replace('.', ',')
+                vazao_fmt = vazao_raw
 
-        volume_raw = _get([
-            r'Volume\s+de\s+ar\s+amostrado[:\s]+([\d,\.]+)\s*m',
-            r'Volume\s+de\s+ar\s+amostrado[:\s]+([\d,\.]+)\s*[Ll]',
-            r'VOLUME[^\n\r]*?[:\s]+([\d,\.]+)',
-        ])
+        # Volume: "Volume de Ar Amostrado: 0,0802  m³" → converte m³ → L
+        volume_raw = _g([r'Volume de Ar Amostrado:\s*([\d,]+)\s*m'])
         volume_fmt = ''
         if volume_raw:
             try:
                 v = float(volume_raw.replace(',', '.'))
-                if v < 1:  # provavelmente em m³ → converter para L
+                if v < 1:
                     v *= 1000
                 volume_fmt = '{:.3f}'.format(v).replace('.', ',')
             except:
-                volume_fmt = volume_raw.replace('.', ',')
+                volume_fmt = volume_raw
 
-        tempo_raw = _get([r'Tempo\s+de\s+amostragem[:\s]+([\d:]+)', r'TEMPO[^\n\r]*?[:\s]+([\d:]+)'])
+        # Tempo de amostragem: "Tempo de Amostragem (H): 0:40:00"
+        tempo_raw = _g([r'Tempo de Amostragem[^:]*:\s*([\d:]+)'])
         tempo_min = ''
         if tempo_raw:
             parts = tempo_raw.split(':')
@@ -1554,7 +1550,8 @@ def api_convert_laudo():
             except:
                 tempo_min = tempo_raw
 
-        agente = _get([r'Agente[:\s]+([^\n\r]+)', r'AGENTE[:\s]+([^\n\r]+)'])
+        # Agente: linha antes de "\nppm\n" na tabela de resultados
+        agente = _g([r'\n([^\n<>]+)\nppm\n'])
 
         dados = {k: v for k, v in {
             'filtroNumero': filtro,
@@ -1580,7 +1577,7 @@ def api_convert_laudo():
 def api_parse_cadeia():
     try:
         import openpyxl
-        from datetime import datetime as _dt
+        import unicodedata as _ud
     except ImportError:
         return jsonify({'erro': 'openpyxl nao instalado'}), 500
     try:
@@ -1594,12 +1591,16 @@ def api_parse_cadeia():
 
         all_rows = list(ws.iter_rows(values_only=True))
 
-        # Find header row: contains FUNCIONÁRIO or FUNÇÃO
+        def _norm(s):
+            """Remove acentos e converte para ASCII maiúsculo para comparação."""
+            return _ud.normalize('NFD', str(s)).encode('ascii', 'ignore').decode('ascii').upper()
+
+        # Find header row: normalized text contains FUNCIONARIO or FUNCAO
         header_idx = None
         header_row = []
         for i, row in enumerate(all_rows):
-            row_txt = ' '.join(str(c) for c in row if c).upper()
-            if 'FUNCION' in row_txt or 'FUN\xc7' in row_txt or 'FUNCAO' in row_txt:
+            row_txt = ' '.join(_norm(c) for c in row if c)
+            if 'FUNCIONARIO' in row_txt or 'FUNCAO' in row_txt:
                 header_idx = i
                 header_row = [str(c).strip() if c else '' for c in row]
                 break
@@ -1607,24 +1608,35 @@ def api_parse_cadeia():
         if header_idx is None:
             return jsonify({'erro': 'Cabecalho nao encontrado (nenhuma coluna FUNCIONARIO/FUNCAO)'}), 400
 
+        # find_col: compara com texto normalizado (sem acentos)
+        header_norm = [_norm(h) for h in header_row]
+
         def find_col(keywords):
-            for j, h in enumerate(header_row):
-                h_up = h.upper()
+            for j, hn in enumerate(header_norm):
                 for kw in keywords:
-                    if kw.upper() in h_up:
+                    if _norm(kw) in hn:
                         return j
             return None
 
-        col_id      = find_col(['AMOSTRADOR (CLIENTE)', 'N\xba DO AMOSTRADOR'])
+        col_id      = find_col(['AMOSTRADOR (CLIENTE)', 'NUMERO DO AMOSTRADOR (CLIENTE)'])
         col_data    = find_col(['DATA AMOSTRAGEM', 'DATA DE AMOSTRAGEM'])
-        col_nome    = find_col(['NOME DO FUNCION', 'FUNCION\xc1RIO', 'FUNCIONARIO'])
-        col_funcao  = find_col(['FUN\xc7\xc3O', 'FUNCAO', 'CARGO'])
+        col_nome    = find_col(['NOME DO FUNCIONARIO', 'FUNCIONARIO'])
+        col_funcao  = find_col(['FUNCAO', 'CARGO'])
         col_setor   = find_col(['SETOR'])
-        col_vazao   = find_col(['VAZ\xc3O M\xc9DIA', 'VAZAO MEDIA', 'VAZ\xc3O'])
+        col_vazao   = find_col(['VAZAO MEDIA', 'VAZAO'])
         col_volume  = find_col(['VOLUME AMOSTRADO', 'VOLUME'])
-        col_inicio  = find_col(['IN\xcdCIO DA AMOSTRAGEM', 'INICIO DA AMOSTRAGEM'])
-        col_termino = find_col(['T\xc9RMINO DA AMOSTRAGEM', 'TERMINO DA AMOSTRAGEM'])
-        agente_cols = [j for j, h in enumerate(header_row) if 'AGENTE' in h.upper()]
+        col_inicio  = find_col(['INICIO DA AMOSTRAGEM'])
+        col_termino = find_col(['TERMINO DA AMOSTRAGEM'])
+        agente_cols = [j for j, hn in enumerate(header_norm) if 'AGENTE' in hn]
+
+        # col_funcao não pode ser igual a col_nome — se for, refinar busca
+        if col_funcao is not None and col_funcao == col_nome:
+            # Busca pela coluna que seja EXATAMENTE "FUNCAO" (sem "FUNCIONARIO" no meio)
+            for j, hn in enumerate(header_norm):
+                stripped = hn.replace('(*)', '').strip()
+                if stripped == 'FUNCAO' or stripped == 'CARGO':
+                    col_funcao = j
+                    break
 
         def _cv(row, col):
             if col is None or col >= len(row):
