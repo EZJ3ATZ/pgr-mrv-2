@@ -1211,19 +1211,29 @@
         </select>
       </div>
       <div>
-        <label>Bomba</label>
-        <input type="text" id="ctrl-bx-bomba" placeholder="AIRLITE A060502">
+        <label>Modelo da Bomba</label>
+        <select id="ctrl-bx-bomba-modelo" onchange="ctrlPreencherSNs(this.value)">
+          <option value="">— Selecione bomba —</option>
+        </select>
       </div>
     </div>
     <div class="row2">
       <div>
-        <label>Vazão Calibrada (L/min)</label>
-        <input type="number" step="0.001" id="ctrl-bx-vazao" placeholder="0.150" oninput="ctrlCalcTempo()">
+        <label>N° Série Bomba</label>
+        <select id="ctrl-bx-bomba-sn">
+          <option value="">— SN —</option>
+        </select>
       </div>
       <div>
         <label>Data da Medição</label>
         <input type="date" id="ctrl-bx-data">
       </div>
+    </div>
+    <div>
+      <label>Vazão Calibrada (L/min)
+        <button type="button" onclick="ctrlSugerirVazao()" style="margin-left:8px; background:#0a7; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">⚡ Usar média do método</button>
+      </label>
+      <input type="number" step="0.001" id="ctrl-bx-vazao" placeholder="0.150" oninput="ctrlCalcTempo()">
     </div>
 
     <div class="ctrl-tempo-calc" id="ctrl-bx-tempo" style="display:none;">
@@ -2773,6 +2783,8 @@ async function ctrlAbrirBaixaDemand(demId) {
   document.getElementById('ctrl-baixa-overlay').classList.add('show');
 }
 
+window._ctrlBombas = null;
+
 async function _ctrlPrepararBaixa() {
   // Carregar demandas pendentes no select
   const demandas = ctrlDemandCache.length ? ctrlDemandCache :
@@ -2788,6 +2800,15 @@ async function _ctrlPrepararBaixa() {
   selAm.innerHTML = '<option value="">— Selecione amostrador —</option>' +
     amostr.map(a => `<option value="${a.id}" data-tipo="${a.tipo}">${a.tipo} ${a.codigo}</option>`).join('');
 
+  // Carregar bombas
+  if (!window._ctrlBombas) {
+    try { window._ctrlBombas = await ctrlFetch('/controle/bombas'); } catch(e) { window._ctrlBombas = {modelos:[]}; }
+  }
+  const selBomba = document.getElementById('ctrl-bx-bomba-modelo');
+  selBomba.innerHTML = '<option value="">— Selecione bomba —</option>' +
+    window._ctrlBombas.modelos.map(b => `<option value="${b.id}">${b.nome}</option>`).join('');
+  document.getElementById('ctrl-bx-bomba-sn').innerHTML = '<option value="">— SN —</option>';
+
   // Carregar guia de métodos
   if (!ctrlMetodosCache) {
     try { ctrlMetodosCache = await ctrlFetch('/api/metodos'); } catch(e) { ctrlMetodosCache = {}; }
@@ -2798,9 +2819,30 @@ async function _ctrlPrepararBaixa() {
   document.getElementById('ctrl-bx-metodo-info').style.display = 'none';
   document.getElementById('ctrl-bx-tempo').style.display = 'none';
   document.getElementById('ctrl-bx-vazao').value = '';
-  document.getElementById('ctrl-bx-bomba').value = '';
   document.getElementById('ctrl-bx-obs').value = '';
   document.getElementById('ctrl-bx-avisos').innerHTML = '';
+}
+
+function ctrlPreencherSNs(modeloId) {
+  const sel = document.getElementById('ctrl-bx-bomba-sn');
+  if (!modeloId) { sel.innerHTML = '<option value="">— SN —</option>'; return; }
+  const b = (window._ctrlBombas?.modelos || []).find(x => x.id === modeloId);
+  if (!b) return;
+  sel.innerHTML = '<option value="">— SN —</option>' +
+    b.sns.map(sn => `<option value="${sn}">${sn}</option>`).join('');
+}
+
+function ctrlSugerirVazao() {
+  const m = window._ctrlMetodoSel || {};
+  if (!m.vazao_min || !m.vazao_max) {
+    _showToast('⚠ Selecione primeiro o agente para puxar a vazão do método', 'warn');
+    return;
+  }
+  // Média entre min e max
+  const sugerida = (m.vazao_min + m.vazao_max) / 2;
+  document.getElementById('ctrl-bx-vazao').value = sugerida.toFixed(3);
+  ctrlCalcTempo();
+  _showToast(`✓ Vazão recomendada: ${sugerida.toFixed(3)} L/min`, 'success');
 }
 
 async function ctrlLoadMedicoesDoBaixa(demId) {
@@ -2886,13 +2928,23 @@ async function ctrlConfirmarBaixa() {
   const medId = +document.getElementById('ctrl-bx-medicao').value;
   const amId  = +document.getElementById('ctrl-bx-amostr').value;
   if (!medId || !amId) { alert('Selecione OS, agente e amostrador'); return; }
+  const vazao = parseFloat(document.getElementById('ctrl-bx-vazao').value||0);
+  if (!vazao || vazao <= 0) { alert('Informe a vazão calibrada (use ⚡ se preferir a recomendada)'); return; }
+
+  // Montar string da bomba (modelo + SN)
+  const modeloEl = document.getElementById('ctrl-bx-bomba-modelo');
+  const snEl = document.getElementById('ctrl-bx-bomba-sn');
+  const modeloNome = modeloEl.selectedOptions[0]?.textContent || '';
+  const sn = snEl.value || '';
+  const bombaStr = (modeloNome && sn) ? `${modeloNome} — S/N: ${sn}` : (modeloNome || sn || '');
+
   const m = window._ctrlMetodoSel || {};
   const payload = {
     medicao_id: medId,
     amostrador_id: amId,
     avaliador: document.getElementById('ctrl-bx-avaliador').value,
-    bomba: document.getElementById('ctrl-bx-bomba').value,
-    vazao_calibrada: parseFloat(document.getElementById('ctrl-bx-vazao').value||0),
+    bomba: bombaStr,
+    vazao_calibrada: vazao,
     vazao_min: m.vazao_min||0,
     vazao_max: m.vazao_max||0,
     volume_min: m.volume_min||0,
@@ -2905,7 +2957,14 @@ async function ctrlConfirmarBaixa() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
-    _showToast(`✓ Baixa registrada — Tempo coleta: ${r.tempo_min}–${r.tempo_max} min`, 'success');
+    const msg = `✓ Baixa registrada
+` +
+                `• Amostrador vinculado à empresa da OS
+` +
+                `• Medição incrementada
+` +
+                `• Tempo de coleta: ${r.tempo_min}–${r.tempo_max} min`;
+    _showToast(msg, 'success');
     ctrlCloseBaixa();
     ctrlLoadStats();
     ctrlLoadAmostr();
