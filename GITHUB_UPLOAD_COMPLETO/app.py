@@ -16,6 +16,16 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 TPL_DIR    = os.path.join(BASE_DIR, 'tpl')
 MODEL_DIR  = os.path.join(BASE_DIR, 'modelo_unpacked')
 
+# ── Modulo Controle de Medicoes e Amostradores (isolado via Blueprint) ─
+try:
+    from controle import controle_bp, init_db as _controle_init_db
+    app.register_blueprint(controle_bp)
+    _controle_init_db()
+except Exception as _e:
+    import traceback
+    print(f'[controle] erro ao carregar modulo: {_e}')
+    traceback.print_exc()
+
 MESES_PT = {1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",
             7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro"}
 
