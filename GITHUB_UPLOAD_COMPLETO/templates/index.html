@@ -539,6 +539,12 @@
     </svg>
     Análise Química
   </div>
+  <div class="tab" onclick="switchTab('controle', this); ctrlInit();">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
+    </svg>
+    Controle de Medições
+  </div>
 </nav>
 
 <!-- ══ Painel PGR ═══════════════════════════════════════════════════════ -->
@@ -1032,6 +1038,210 @@
   <div class="status" id="status-quimico"></div>
 
 </div>
+</div>
+
+<!-- ══ Painel CONTROLE DE MEDIÇÕES E AMOSTRADORES ═══════════════════════ -->
+<div id="tab-controle" class="tab-panel">
+<style>
+  .ctrl-page { max-width: 1400px; margin: 0 auto; padding: 24px 20px; }
+  .ctrl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+  .ctrl-title { font-size:1.4rem; font-weight:700; color:var(--text); }
+  .ctrl-subtabs { display:flex; gap:4px; background:var(--surface); padding:4px; border-radius:8px; border:1px solid var(--border); }
+  .ctrl-subtab { padding:8px 16px; border-radius:6px; cursor:pointer; font-size:.85rem; color:var(--text3); font-weight:500; transition:all .15s; }
+  .ctrl-subtab.active { background:var(--orange); color:#fff; }
+  .ctrl-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+  .ctrl-stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 16px; }
+  .ctrl-stat-label { font-size:.7rem; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .ctrl-stat-value { font-size:1.5rem; font-weight:700; color:var(--text); margin-top:4px; }
+  .ctrl-stat.green .ctrl-stat-value { color:#0a7; }
+  .ctrl-stat.blue .ctrl-stat-value { color:#39f; }
+  .ctrl-stat.yellow .ctrl-stat-value { color:#f80; }
+  .ctrl-stat.red .ctrl-stat-value { color:#e22; }
+  .ctrl-filters { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .ctrl-filters input, .ctrl-filters select { background:var(--surface); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; min-width:140px; outline:none; }
+  .ctrl-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .ctrl-table { width:100%; border-collapse:collapse; font-size:.8rem; }
+  .ctrl-table th { background:rgba(255,255,255,.04); padding:10px 12px; text-align:left; font-weight:600; color:var(--text3); text-transform:uppercase; font-size:.7rem; letter-spacing:.04em; border-bottom:1px solid var(--border); position:sticky; top:0; }
+  .ctrl-table td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--text); }
+  .ctrl-table tr:hover td { background:rgba(255,165,0,.04); }
+  .ctrl-badge { display:inline-block; padding:3px 9px; border-radius:4px; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .ctrl-badge.estoque { background:rgba(0,170,119,.15); color:#0a7; }
+  .ctrl-badge.laboratorio { background:rgba(57,153,255,.15); color:#39f; }
+  .ctrl-badge.reservado { background:rgba(255,136,0,.15); color:#f80; }
+  .ctrl-badge.devolvido { background:rgba(150,150,150,.15); color:#999; }
+  .ctrl-badge.pendente { background:rgba(226,34,34,.15); color:#e22; }
+  .ctrl-badge.parcial { background:rgba(255,136,0,.15); color:#f80; }
+  .ctrl-badge.realizado, .ctrl-badge.concluida { background:rgba(0,170,119,.15); color:#0a7; }
+  .ctrl-btn-baixa { background:var(--orange); color:#fff; border:none; padding:5px 12px; border-radius:4px; cursor:pointer; font-size:.72rem; font-weight:600; }
+  .ctrl-btn-baixa:hover { opacity:.9; }
+  .ctrl-import-area { background:var(--surface); border:2px dashed var(--border); border-radius:8px; padding:20px; text-align:center; margin-bottom:14px; }
+  .ctrl-import-btn { background:#06f; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:.85rem; font-weight:600; margin:0 4px; }
+  .ctrl-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:9998; align-items:center; justify-content:center; }
+  .ctrl-overlay.show { display:flex; }
+  .ctrl-modal { background:var(--bg); border:1.5px solid var(--border); border-radius:10px; max-width:680px; width:92%; max-height:88vh; overflow:auto; padding:24px; }
+  .ctrl-modal h3 { margin:0 0 14px; color:var(--text); }
+  .ctrl-modal label { display:block; font-size:.72rem; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:3px; }
+  .ctrl-modal input, .ctrl-modal select { width:100%; background:var(--surface); border:1.5px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-size:.85rem; margin-bottom:10px; outline:none; }
+  .ctrl-modal .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ctrl-info-box { background:rgba(57,153,255,.08); border-left:3px solid #39f; padding:10px 12px; border-radius:6px; margin:10px 0; font-size:.8rem; }
+  .ctrl-warn-box { background:rgba(255,136,0,.1); border-left:3px solid #f80; padding:10px 12px; border-radius:6px; margin:10px 0; font-size:.8rem; color:#fc9; }
+  .ctrl-tempo-calc { display:flex; gap:14px; margin-top:10px; padding:10px; background:rgba(0,170,119,.08); border-radius:6px; }
+  .ctrl-tempo-calc div { flex:1; text-align:center; }
+  .ctrl-tempo-calc strong { display:block; font-size:1.2rem; color:#0a7; }
+  .ctrl-actions { display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
+  .ctrl-actions button { padding:9px 18px; border-radius:6px; border:none; cursor:pointer; font-size:.85rem; font-weight:600; }
+  .ctrl-btn-cancel { background:transparent; color:var(--text3); border:1px solid var(--border) !important; }
+  .ctrl-btn-ok { background:#0a7; color:#fff; }
+  .ctrl-empty { padding:40px; text-align:center; color:var(--text3); }
+</style>
+
+<div class="ctrl-page">
+  <div class="ctrl-head">
+    <div>
+      <div class="ctrl-title">Controle de Medições e Amostradores</div>
+      <div style="color:var(--text3); font-size:.85rem; margin-top:4px;">Gestão integrada — substitui as planilhas atuais</div>
+    </div>
+    <div class="ctrl-subtabs">
+      <div class="ctrl-subtab active" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar Planilhas</div>
+    </div>
+  </div>
+
+  <div class="ctrl-stats" id="ctrl-stats"></div>
+
+  <!-- Sub: Amostradores -->
+  <div id="ctrl-sub-amostr">
+    <div class="ctrl-filters">
+      <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
+      <select id="ctrl-f-status" onchange="ctrlLoadAmostr()">
+        <option value="">— Status —</option>
+        <option>Estoque</option>
+        <option>Laboratorio</option>
+        <option>Reservado</option>
+        <option>Devolvido</option>
+      </select>
+      <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()">
+        <option value="">— Tipo —</option>
+      </select>
+      <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
+      <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
+    </div>
+    <div class="ctrl-table-wrap">
+      <table class="ctrl-table">
+        <thead>
+          <tr>
+            <th>Status</th><th>Tipo</th><th>Código</th><th>Entrada</th>
+            <th>Empresa</th><th>Avaliador</th><th>Data Medição</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="ctrl-tb-amostr"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sub: Demandas -->
+  <div id="ctrl-sub-demand" style="display:none;">
+    <div class="ctrl-filters">
+      <input type="text" id="ctrl-fd-os" placeholder="Número OS..." oninput="ctrlLoadDemand()">
+      <input type="text" id="ctrl-fd-empresa" placeholder="Empresa..." oninput="ctrlLoadDemand()">
+      <select id="ctrl-fd-status" onchange="ctrlLoadDemand()">
+        <option value="">— Status —</option>
+        <option value="pendente">Pendente</option>
+        <option value="concluida">Concluída</option>
+      </select>
+    </div>
+    <div class="ctrl-table-wrap">
+      <table class="ctrl-table">
+        <thead>
+          <tr>
+            <th>OS</th><th>Empresa</th><th>Medições</th><th>Status</th><th>Prazo</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="ctrl-tb-demand"><tr><td colspan="6" class="ctrl-empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sub: Importar -->
+  <div id="ctrl-sub-import" style="display:none;">
+    <div class="ctrl-import-area">
+      <h4 style="margin:0 0 10px; color:var(--text);">Planilha de Amostradores</h4>
+      <p style="color:var(--text3); font-size:.82rem; margin:0 0 12px;">Selecione "CONTROLE AMOSTRADORES 2026" (.xlsx). Atualiza por código + tipo.</p>
+      <input type="file" id="ctrl-imp-amostr" accept=".xlsx,.xls" style="display:none;" onchange="ctrlImportar('amostradores', this)">
+      <button class="ctrl-import-btn" onclick="document.getElementById('ctrl-imp-amostr').click()">Escolher arquivo de Amostradores</button>
+    </div>
+    <div class="ctrl-import-area">
+      <h4 style="margin:0 0 10px; color:var(--text);">Planilha de Medições</h4>
+      <p style="color:var(--text3); font-size:.82rem; margin:0 0 12px;">Selecione "Controle de Medições - Helbert e Wesley" (.xlsx). Cria demandas e medições por agente.</p>
+      <input type="file" id="ctrl-imp-med" accept=".xlsx,.xls" style="display:none;" onchange="ctrlImportar('medicoes', this)">
+      <button class="ctrl-import-btn" onclick="document.getElementById('ctrl-imp-med').click()">Escolher arquivo de Medições</button>
+    </div>
+    <div id="ctrl-import-msg" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- Modal Dar Baixa -->
+<div class="ctrl-overlay" id="ctrl-baixa-overlay" onclick="if(event.target===this) ctrlCloseBaixa()">
+  <div class="ctrl-modal">
+    <h3>Dar Baixa em Amostrador</h3>
+
+    <label>Demanda / OS</label>
+    <select id="ctrl-bx-demand" onchange="ctrlLoadMedicoesDoBaixa(this.value)">
+      <option value="">— Selecione a OS —</option>
+    </select>
+
+    <label>Medição (agente)</label>
+    <select id="ctrl-bx-medicao" onchange="ctrlAplicarMetodo(this)">
+      <option value="">— Selecione primeiro a OS —</option>
+    </select>
+
+    <div class="ctrl-info-box" id="ctrl-bx-metodo-info" style="display:none;"></div>
+
+    <label>Amostrador (disponível)</label>
+    <select id="ctrl-bx-amostr">
+      <option value="">— Selecione um amostrador —</option>
+    </select>
+
+    <div class="row2">
+      <div>
+        <label>Avaliador</label>
+        <select id="ctrl-bx-avaliador">
+          <option>Wesley</option><option>Helbert</option><option>Matheus</option><option>Kelly</option>
+        </select>
+      </div>
+      <div>
+        <label>Bomba</label>
+        <input type="text" id="ctrl-bx-bomba" placeholder="AIRLITE A060502">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>Vazão Calibrada (L/min)</label>
+        <input type="number" step="0.001" id="ctrl-bx-vazao" placeholder="0.150" oninput="ctrlCalcTempo()">
+      </div>
+      <div>
+        <label>Data da Medição</label>
+        <input type="date" id="ctrl-bx-data">
+      </div>
+    </div>
+
+    <div class="ctrl-tempo-calc" id="ctrl-bx-tempo" style="display:none;">
+      <div><strong id="ctrl-bx-tmin">—</strong><span style="font-size:.7rem; color:var(--text3);">TEMPO MIN (min)</span></div>
+      <div><strong id="ctrl-bx-tmax">—</strong><span style="font-size:.7rem; color:var(--text3);">TEMPO MAX (min)</span></div>
+    </div>
+    <div id="ctrl-bx-avisos"></div>
+
+    <label>Observação</label>
+    <input type="text" id="ctrl-bx-obs">
+
+    <div class="ctrl-actions">
+      <button class="ctrl-btn-cancel" onclick="ctrlCloseBaixa()">Cancelar</button>
+      <button class="ctrl-btn-ok" onclick="ctrlConfirmarBaixa()">✓ Confirmar Baixa</button>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <!-- ══ Footer ═══════════════════════════════════════════════════════════ -->
@@ -2379,6 +2589,331 @@ document.addEventListener('click', (e) => {
     }, 100);
   }
 });
+
+/* ════════════════════════════════════════════════════════════════════
+   CONTROLE DE MEDIÇÕES E AMOSTRADORES
+   ════════════════════════════════════════════════════════════════════ */
+
+let ctrlInitialized = false;
+let ctrlAmostrCache = [];
+let ctrlDemandCache = [];
+let ctrlMetodosCache = null;
+
+async function ctrlFetch(url, opt = {}) {
+  const r = await fetch(url, opt);
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error(`${r.status}: ${txt.slice(0,150)}`);
+  }
+  return r.json();
+}
+
+function ctrlInit() {
+  if (ctrlInitialized) {
+    ctrlLoadStats();
+    ctrlLoadAmostr();
+    return;
+  }
+  ctrlInitialized = true;
+  ctrlLoadStats();
+  ctrlLoadAmostr();
+  ctrlLoadDemand();
+}
+
+function ctrlSwitchSub(name, el) {
+  document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['amostr','demand','import'].forEach(s => {
+    document.getElementById('ctrl-sub-'+s).style.display = (s===name?'block':'none');
+  });
+  if (name === 'demand') ctrlLoadDemand();
+}
+
+async function ctrlLoadStats() {
+  try {
+    const s = await ctrlFetch('/controle/stats');
+    document.getElementById('ctrl-stats').innerHTML = `
+      <div class="ctrl-stat green"><div class="ctrl-stat-label">Em Estoque</div><div class="ctrl-stat-value">${s.estoque||0}</div></div>
+      <div class="ctrl-stat blue"><div class="ctrl-stat-label">Laboratório</div><div class="ctrl-stat-value">${s.laboratorio||0}</div></div>
+      <div class="ctrl-stat yellow"><div class="ctrl-stat-label">Reservados</div><div class="ctrl-stat-value">${s.reservados||0}</div></div>
+      <div class="ctrl-stat"><div class="ctrl-stat-label">Total Amostradores</div><div class="ctrl-stat-value">${s.total_amostradores||0}</div></div>
+      <div class="ctrl-stat red"><div class="ctrl-stat-label">Demandas Pendentes</div><div class="ctrl-stat-value">${s.demandas_pendentes||0}</div></div>
+      <div class="ctrl-stat green"><div class="ctrl-stat-label">Demandas Concluídas</div><div class="ctrl-stat-value">${s.demandas_concluidas||0}</div></div>
+    `;
+  } catch(e) { console.error('stats', e); }
+}
+
+async function ctrlLoadAmostr() {
+  const q = new URLSearchParams();
+  const codigo = document.getElementById('ctrl-f-codigo').value;
+  const status = document.getElementById('ctrl-f-status').value;
+  const tipo   = document.getElementById('ctrl-f-tipo').value;
+  const empresa = document.getElementById('ctrl-f-empresa').value;
+  if (codigo) q.set('codigo', codigo);
+  if (status) q.set('status', status);
+  if (tipo)   q.set('tipo', tipo);
+  if (empresa) q.set('empresa', empresa);
+
+  const tb = document.getElementById('ctrl-tb-amostr');
+  tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr>';
+  try {
+    const data = await ctrlFetch('/controle/amostradores?' + q.toString());
+    ctrlAmostrCache = data;
+    // Popular tipos uniques
+    const tipos = [...new Set(data.map(a=>a.tipo).filter(Boolean))].sort();
+    const sel = document.getElementById('ctrl-f-tipo');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Tipo —</option>' +
+      tipos.map(t => `<option ${t===cur?'selected':''}>${t}</option>`).join('');
+
+    if (!data.length) {
+      tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Nenhum amostrador encontrado. Use "Importar Planilhas" para carregar.</td></tr>';
+      return;
+    }
+    tb.innerHTML = data.map(a => `
+      <tr>
+        <td><span class="ctrl-badge ${(a.status||'').toLowerCase()}">${a.status||'—'}</span></td>
+        <td><b>${a.tipo||'—'}</b></td>
+        <td>${a.codigo||'—'}</td>
+        <td>${(a.data_entrada||'').slice(0,10)}</td>
+        <td>${a.empresa_nome||'—'}</td>
+        <td>${a.avaliador||'—'}</td>
+        <td>${(a.data_medicao||'').slice(0,10)}</td>
+        <td>${a.status==='Estoque' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : ''}</td>
+      </tr>`).join('');
+    ctrlLoadStats();
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="8" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function ctrlLoadDemand() {
+  const q = new URLSearchParams();
+  const os = document.getElementById('ctrl-fd-os').value;
+  const emp = document.getElementById('ctrl-fd-empresa').value;
+  const st  = document.getElementById('ctrl-fd-status').value;
+  if (os) q.set('os', os);
+  if (emp) q.set('empresa', emp);
+  if (st) q.set('status', st);
+
+  const tb = document.getElementById('ctrl-tb-demand');
+  tb.innerHTML = '<tr><td colspan="6" class="ctrl-empty">Carregando...</td></tr>';
+  try {
+    const data = await ctrlFetch('/controle/demandas?' + q.toString());
+    ctrlDemandCache = data;
+    if (!data.length) {
+      tb.innerHTML = '<tr><td colspan="6" class="ctrl-empty">Nenhuma demanda. Use "Importar Planilhas".</td></tr>';
+      return;
+    }
+    tb.innerHTML = data.map(d => {
+      const pct = d.total_medicoes>0 ? Math.round((d.realizadas/d.total_medicoes)*100) : 0;
+      const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#666';
+      return `
+      <tr>
+        <td><b>${d.numero_os||'—'}</b></td>
+        <td>${d.empresa_nome||'—'}</td>
+        <td>
+          ${d.realizadas}/${d.total_medicoes}
+          <div style="width:100%; height:5px; background:rgba(255,255,255,.06); border-radius:3px; margin-top:3px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:${corBar};"></div>
+          </div>
+        </td>
+        <td><span class="ctrl-badge ${d.status||'pendente'}">${d.status||'pendente'}</span></td>
+        <td>${d.prazo||'—'}</td>
+        <td><button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="6" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function ctrlImportar(tipo, input) {
+  const f = input.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('file', f);
+  const msg = document.getElementById('ctrl-import-msg');
+  msg.innerHTML = `<div class="ctrl-info-box">⏳ Importando ${f.name}...</div>`;
+  try {
+    const r = await ctrlFetch(`/controle/import/${tipo}`, { method:'POST', body: fd });
+    let txt = '';
+    if (tipo === 'amostradores') {
+      txt = `✅ Importados: <b>${r.inserted}</b> novos, <b>${r.updated}</b> atualizados`;
+    } else {
+      txt = `✅ Importadas: <b>${r.demandas_inseridas}</b> demandas, <b>${r.medicoes_inseridas}</b> medições`;
+    }
+    msg.innerHTML = `<div class="ctrl-info-box">${txt}</div>`;
+    ctrlLoadStats();
+    ctrlLoadAmostr();
+    ctrlLoadDemand();
+  } catch(e) {
+    msg.innerHTML = `<div class="ctrl-warn-box">❌ Erro: ${e.message}</div>`;
+  }
+  input.value = '';
+}
+
+async function ctrlExportAmostr() {
+  window.open('/controle/export/amostradores', '_blank');
+}
+
+/* ── Modal Dar Baixa ───────────────────────────────────────── */
+async function ctrlAbrirBaixa(amostrId) {
+  await _ctrlPrepararBaixa();
+  if (amostrId) document.getElementById('ctrl-bx-amostr').value = amostrId;
+  document.getElementById('ctrl-bx-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-baixa-overlay').classList.add('show');
+}
+
+async function ctrlAbrirBaixaDemand(demId) {
+  await _ctrlPrepararBaixa();
+  document.getElementById('ctrl-bx-demand').value = demId;
+  await ctrlLoadMedicoesDoBaixa(demId);
+  document.getElementById('ctrl-bx-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-baixa-overlay').classList.add('show');
+}
+
+async function _ctrlPrepararBaixa() {
+  // Carregar demandas pendentes no select
+  const demandas = ctrlDemandCache.length ? ctrlDemandCache :
+    await ctrlFetch('/controle/demandas?status=pendente');
+  const selDem = document.getElementById('ctrl-bx-demand');
+  selDem.innerHTML = '<option value="">— Selecione a OS —</option>' +
+    demandas.filter(d=>d.status!=='concluida')
+            .map(d => `<option value="${d.id}">${d.numero_os||'(s/OS)'} — ${(d.empresa_nome||'').slice(0,40)}</option>`).join('');
+
+  // Carregar amostradores em estoque
+  const amostr = await ctrlFetch('/controle/amostradores?status=Estoque');
+  const selAm = document.getElementById('ctrl-bx-amostr');
+  selAm.innerHTML = '<option value="">— Selecione amostrador —</option>' +
+    amostr.map(a => `<option value="${a.id}" data-tipo="${a.tipo}">${a.tipo} ${a.codigo}</option>`).join('');
+
+  // Carregar guia de métodos
+  if (!ctrlMetodosCache) {
+    try { ctrlMetodosCache = await ctrlFetch('/api/metodos'); } catch(e) { ctrlMetodosCache = {}; }
+  }
+
+  // Limpar campos
+  document.getElementById('ctrl-bx-medicao').innerHTML = '<option>— Selecione primeiro a OS —</option>';
+  document.getElementById('ctrl-bx-metodo-info').style.display = 'none';
+  document.getElementById('ctrl-bx-tempo').style.display = 'none';
+  document.getElementById('ctrl-bx-vazao').value = '';
+  document.getElementById('ctrl-bx-bomba').value = '';
+  document.getElementById('ctrl-bx-obs').value = '';
+  document.getElementById('ctrl-bx-avisos').innerHTML = '';
+}
+
+async function ctrlLoadMedicoesDoBaixa(demId) {
+  const sel = document.getElementById('ctrl-bx-medicao');
+  if (!demId) { sel.innerHTML='<option>—</option>'; return; }
+  try {
+    const d = await ctrlFetch('/controle/demandas/' + demId);
+    sel.innerHTML = '<option value="">— Selecione o agente —</option>' +
+      (d.medicoes||[]).filter(m=>m.status!=='realizado').map(m =>
+        `<option value="${m.id}" data-agente="${m.agente}" data-tipo="${m.tipo_amostrador||''}">${m.agente} (${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</option>`
+      ).join('');
+  } catch(e) { console.error(e); }
+}
+
+window._ctrlMetodoSel = {};
+
+async function ctrlAplicarMetodo(sel) {
+  const opt = sel.selectedOptions[0];
+  const agente = opt ? opt.dataset.agente : '';
+  const info = document.getElementById('ctrl-bx-metodo-info');
+  if (!agente) { info.style.display='none'; window._ctrlMetodoSel = {}; return; }
+  // Buscar no guia de métodos
+  const m = ctrlMetodosCache;
+  let metodo = null;
+  if (m && m.by_name) {
+    const k = Object.keys(m.by_name).find(k => k.toLowerCase() === agente.toLowerCase());
+    if (k) metodo = m.by_name[k][0];
+  }
+  if (!metodo) {
+    info.style.display = 'block';
+    info.innerHTML = `<b>${agente}</b> — método não encontrado na guia. Preencha vazão manualmente.`;
+    window._ctrlMetodoSel = {};
+    return;
+  }
+  // Parsear vazão e volume
+  const vazRange = ctrlParseRange(metodo.vazao);
+  const volRange = ctrlParseRange(metodo.volume);
+  window._ctrlMetodoSel = { vazao_min: vazRange[0], vazao_max: vazRange[1], volume_min: volRange[0], volume_max: volRange[1] };
+  info.style.display = 'block';
+  info.innerHTML = `
+    <div><b>${agente}</b> · ${metodo.metodoCod||''}</div>
+    <div style="margin-top:6px; font-size:.75rem;">
+      Vazão: <b>${metodo.vazao||'—'}</b> · Volume: <b>${metodo.volume||'—'}</b> · Amostrador: <b>${metodo.amostradorCod||'—'}</b>
+    </div>`;
+  ctrlCalcTempo();
+}
+
+function ctrlParseRange(s) {
+  if (!s) return [0,0];
+  const txt = String(s).replace(',', '.').toUpperCase();
+  const nums = [...txt.matchAll(/(\d+\.?\d*)/g)].map(m => parseFloat(m[1]));
+  if (!nums.length) return [0,0];
+  if (nums.length === 1) return [nums[0], nums[0]];
+  return [Math.min(...nums), Math.max(...nums)];
+}
+
+function ctrlCalcTempo() {
+  const vc = parseFloat(document.getElementById('ctrl-bx-vazao').value || 0);
+  const m = window._ctrlMetodoSel || {};
+  const box = document.getElementById('ctrl-bx-tempo');
+  const avisos = document.getElementById('ctrl-bx-avisos');
+  avisos.innerHTML = '';
+  if (vc <= 0) { box.style.display='none'; return; }
+  if (!m.volume_min) { box.style.display='none'; return; }
+  const tmin = m.volume_min / vc;
+  const tmax = m.volume_max / vc;
+  document.getElementById('ctrl-bx-tmin').textContent = tmin.toFixed(1);
+  document.getElementById('ctrl-bx-tmax').textContent = tmax.toFixed(1);
+  box.style.display = 'flex';
+  const av = [];
+  if (m.vazao_min && vc < m.vazao_min)
+    av.push(`Vazão ${vc} L/min está ABAIXO do mínimo (${m.vazao_min}) do método`);
+  if (m.vazao_max && vc > m.vazao_max)
+    av.push(`Vazão ${vc} L/min está ACIMA do máximo (${m.vazao_max}) do método`);
+  if (av.length) avisos.innerHTML = av.map(a=>`<div class="ctrl-warn-box">⚠ ${a}</div>`).join('');
+}
+
+function ctrlCloseBaixa() {
+  document.getElementById('ctrl-baixa-overlay').classList.remove('show');
+}
+
+async function ctrlConfirmarBaixa() {
+  const medId = +document.getElementById('ctrl-bx-medicao').value;
+  const amId  = +document.getElementById('ctrl-bx-amostr').value;
+  if (!medId || !amId) { alert('Selecione OS, agente e amostrador'); return; }
+  const m = window._ctrlMetodoSel || {};
+  const payload = {
+    medicao_id: medId,
+    amostrador_id: amId,
+    avaliador: document.getElementById('ctrl-bx-avaliador').value,
+    bomba: document.getElementById('ctrl-bx-bomba').value,
+    vazao_calibrada: parseFloat(document.getElementById('ctrl-bx-vazao').value||0),
+    vazao_min: m.vazao_min||0,
+    vazao_max: m.vazao_max||0,
+    volume_min: m.volume_min||0,
+    volume_max: m.volume_max||0,
+    data_medicao: document.getElementById('ctrl-bx-data').value,
+    observacao: document.getElementById('ctrl-bx-obs').value,
+  };
+  try {
+    const r = await ctrlFetch('/controle/baixa', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    _showToast(`✓ Baixa registrada — Tempo coleta: ${r.tempo_min}–${r.tempo_max} min`, 'success');
+    ctrlCloseBaixa();
+    ctrlLoadStats();
+    ctrlLoadAmostr();
+    ctrlLoadDemand();
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
+}
 </script>
 </body>
 </html>
