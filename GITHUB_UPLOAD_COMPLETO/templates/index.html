@@ -2058,6 +2058,327 @@ function showRuidoStatus(msg, type) {
 // Init ruído
 rAvals.push(rNewAval());
 rRenderAvals();
+
+/* ════════════════════════════════════════════════════════════════════
+   AUTOMAÇÕES — BrasilAPI, Cache de Empresas, Calor M auto, Preview
+   ════════════════════════════════════════════════════════════════════ */
+
+// ── Mapeamento de campos de empresa por gerador ───────────────────────
+const EMPRESA_FIELDS = {
+  pgr:    { nome:'f-nome', cnpj:'f-cnpj', cep:'f-cep', rua:'f-rua', numero:'f-num', compl:'f-compl', bairro:'f-bairro', cidade:'f-cidade', uf:'f-uf' },
+  calor:  { nome:'c-nome', cnpj:'c-cnpj', cep:'c-cep', end:'c-end', bairro:'c-bairro', cidade:'c-cidade', uf:'c-uf', cnae:'c-cnae', cnaeDesc:'c-cnae-desc' },
+  ruido:  { nome:'r-razao', fantasia:'r-fantasia', cnpj:'r-cnpj', cep:'r-cep', end:'r-end', bairro:'r-bairro', cidade:'r-cidade', cnae:'r-cnae', cnaeDesc:'r-cnae-desc' },
+  quim:   { nome:'q-razao', titulo:'q-titulo', cnpj:'q-cnpj', cep:'q-cep', end:'q-end', numero:'q-num', bairro:'q-bairro', cidade:'q-cidade', uf:'q-uf', cnae:'q-cnae', cnaeDesc:'q-cnae-desc' }
+};
+
+function _setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && (val !== undefined && val !== null)) el.value = val;
+}
+function _getVal(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+// ── BrasilAPI: buscar CNPJ ────────────────────────────────────────────
+async function _fetchCNPJ(cnpj) {
+  const clean = (cnpj || '').replace(/\D/g, '');
+  if (clean.length !== 14) return null;
+  try {
+    const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${clean}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+function _formatCNPJ(c) {
+  c = (c||'').replace(/\D/g,'').padStart(14,'0').slice(-14);
+  return c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+}
+function _formatCEP(c) {
+  c = (c||'').replace(/\D/g,'').padStart(8,'0').slice(-8);
+  return c.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+}
+
+function _preencherEmpresa(prefix, data) {
+  const F = EMPRESA_FIELDS[prefix];
+  if (!F || !data) return;
+  const razao = data.razao_social || data.nome || '';
+  const fantasia = data.nome_fantasia || razao;
+  const enderecoCompleto = [data.descricao_tipo_de_logradouro, data.logradouro].filter(Boolean).join(' ');
+  const enderecoComNum = enderecoCompleto + (data.numero ? `, ${data.numero}` : '');
+
+  if (F.nome) _setVal(F.nome, razao);
+  if (F.fantasia) _setVal(F.fantasia, fantasia);
+  if (F.titulo) _setVal(F.titulo, fantasia);
+  if (F.cnpj) _setVal(F.cnpj, _formatCNPJ(data.cnpj || ''));
+  if (F.cep) _setVal(F.cep, _formatCEP(data.cep || ''));
+  if (F.rua) _setVal(F.rua, enderecoCompleto);
+  if (F.end) _setVal(F.end, prefix==='calor' || prefix==='ruido' ? enderecoComNum : enderecoCompleto);
+  if (F.numero) _setVal(F.numero, data.numero || '');
+  if (F.bairro) _setVal(F.bairro, data.bairro || '');
+  if (F.cidade) _setVal(F.cidade, data.municipio || '');
+  if (F.uf) _setVal(F.uf, data.uf || 'MG');
+  if (F.cnae && data.cnae_fiscal) {
+    const c = String(data.cnae_fiscal).padStart(7,'0');
+    _setVal(F.cnae, c.replace(/^(\d{2})(\d{3})(\d{1})(\d{1})$/, '$1.$2-$3/$4'));
+  }
+  if (F.cnaeDesc) _setVal(F.cnaeDesc, data.cnae_fiscal_descricao || '');
+}
+
+async function _onCNPJBlur(prefix) {
+  const F = EMPRESA_FIELDS[prefix];
+  const cnpj = _getVal(F.cnpj);
+  const clean = cnpj.replace(/\D/g, '');
+  if (clean.length !== 14) return;
+
+  // 1. tentar cache local
+  const cached = _empresaCacheGet(clean);
+  if (cached) {
+    _preencherEmpresa(prefix, cached);
+    _showToast(`✓ Empresa carregada do cache: ${cached.razao_social || cached.nome}`);
+    return;
+  }
+
+  // 2. buscar BrasilAPI
+  _showToast('Buscando CNPJ na Receita Federal...');
+  const data = await _fetchCNPJ(clean);
+  if (data) {
+    _preencherEmpresa(prefix, data);
+    _empresaCacheSet(clean, data);
+    _showToast(`✓ Empresa carregada: ${data.razao_social}`);
+  } else {
+    _showToast('⚠ CNPJ não encontrado — preencher manualmente', 'warn');
+  }
+}
+
+// ── Cache de empresas (localStorage) ──────────────────────────────────
+const _CACHE_KEY = 'pgr_empresas_cache_v1';
+
+function _empresaCacheAll() {
+  try { return JSON.parse(localStorage.getItem(_CACHE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function _empresaCacheGet(cnpj) {
+  return _empresaCacheAll()[cnpj] || null;
+}
+function _empresaCacheSet(cnpj, data) {
+  const all = _empresaCacheAll();
+  all[cnpj] = { ...data, _cachedAt: Date.now() };
+  try { localStorage.setItem(_CACHE_KEY, JSON.stringify(all)); } catch(e) {}
+}
+function _empresaCacheLista() {
+  return Object.values(_empresaCacheAll())
+    .sort((a,b) => (b._cachedAt||0) - (a._cachedAt||0));
+}
+
+function _renderEmpresaCacheDropdown(prefix) {
+  const empresas = _empresaCacheLista();
+  if (empresas.length === 0) return '';
+  const opts = empresas.map(e =>
+    `<option value="${(e.cnpj||'').replace(/\D/g,'')}">${(e.razao_social || e.nome || 'Sem nome').slice(0,60)}</option>`
+  ).join('');
+  return `
+    <div style="margin:10px 0 14px;padding:10px 12px;background:rgba(0,150,255,.06);border-left:3px solid #06f;border-radius:6px;">
+      <label style="display:block;font-size:.72rem;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;">⚡ Empresa Salva (${empresas.length})</label>
+      <select onchange="_carregarEmpresaCache('${prefix}', this.value); this.selectedIndex=0;"
+        style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.85rem;outline:none;cursor:pointer;">
+        <option value="">— Carregar empresa salva —</option>
+        ${opts}
+      </select>
+    </div>`;
+}
+function _carregarEmpresaCache(prefix, cnpj) {
+  if (!cnpj) return;
+  const data = _empresaCacheGet(cnpj);
+  if (data) {
+    _preencherEmpresa(prefix, data);
+    _showToast(`✓ Carregada: ${data.razao_social || data.nome}`);
+  }
+}
+
+// Injetar dropdown nos 4 geradores
+function _injetarCacheDropdowns() {
+  const map = [
+    { pref:'pgr',   anchor:'f-nome' },
+    { pref:'calor', anchor:'c-nome' },
+    { pref:'ruido', anchor:'r-razao' },
+    { pref:'quim',  anchor:'q-razao' },
+  ];
+  map.forEach(({pref, anchor}) => {
+    const el = document.getElementById(anchor);
+    if (!el || el.dataset._cacheInjected) return;
+    const wrapper = el.closest('.field') || el.parentElement;
+    if (!wrapper) return;
+    const div = document.createElement('div');
+    div.innerHTML = _renderEmpresaCacheDropdown(pref);
+    if (div.firstElementChild) wrapper.parentElement.insertBefore(div.firstElementChild, wrapper);
+    el.dataset._cacheInjected = '1';
+  });
+}
+
+// ── Hook nos campos CNPJ ──────────────────────────────────────────────
+function _hookCNPJs() {
+  Object.entries(EMPRESA_FIELDS).forEach(([prefix, F]) => {
+    if (!F.cnpj) return;
+    const el = document.getElementById(F.cnpj);
+    if (!el || el.dataset._cnpjHooked) return;
+    el.addEventListener('blur', () => _onCNPJBlur(prefix));
+    el.dataset._cnpjHooked = '1';
+  });
+}
+
+// ── Toast simples ─────────────────────────────────────────────────────
+function _showToast(msg, type='info') {
+  let t = document.getElementById('_auto-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_auto-toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;font-size:.85rem;font-weight:500;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.3);opacity:0;transition:opacity .2s;pointer-events:none;max-width:340px;';
+    document.body.appendChild(t);
+  }
+  const colors = { info:'#06f', warn:'#f80', error:'#f44', success:'#0a0' };
+  t.style.background = colors[type] || colors.info;
+  t.style.color = '#fff';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3500);
+}
+
+// ── CALOR: Atividade → M automático (NR-15 Anexo 3) ───────────────────
+const ATIVIDADES_NR15 = [
+  { label:'Sentado em repouso',                                              M:100 },
+  { label:'Trabalho leve sentado, movimentos moderados c/ braços e tronco',  M:125 },
+  { label:'Trabalho leve sentado, movimentos moderados c/ braços e pernas',  M:150 },
+  { label:'Trabalho leve de pé, c/ braços (máq. ou bancada)',                M:150 },
+  { label:'Trabalho leve de pé, c/ alguma movimentação',                     M:175 },
+  { label:'Trabalho Moderado – De pé, com os braços e tronco',               M:198 },
+  { label:'Trabalho moderado de pé, c/ máq. ou bancada e movimentação',      M:220 },
+  { label:'Em movimento – trabalho moderado de levantar/empurrar',           M:300 },
+  { label:'Trabalho intermitente de levantar/empurrar/arrastar',             M:440 },
+  { label:'Trabalho fatigante',                                              M:550 },
+];
+
+window.ATIVIDADES_NR15 = ATIVIDADES_NR15;
+window.aplicarAtividade = function(si, pi, label) {
+  const it = ATIVIDADES_NR15.find(a => a.label === label);
+  if (!it) return;
+  if (typeof setores !== 'undefined' && setores[si] && setores[si].pontos[pi]) {
+    setores[si].pontos[pi].atividade = it.label;
+    setores[si].pontos[pi].M = it.M;
+    if (typeof renderSetores === 'function') renderSetores();
+  }
+};
+
+// Injetar dropdown de atividade após renderSetores
+function _injetarAtividadeDropdown() {
+  if (typeof setores === 'undefined') return;
+  document.querySelectorAll('input[type="number"]').forEach(inp => {
+    const m = (inp.getAttribute('oninput')||'').match(/updatePonto\((\d+),(\d+),'M',/);
+    if (!m || inp.dataset._atvInjected) return;
+    const si = +m[1], pi = +m[2];
+    const cur = setores[si] && setores[si].pontos[pi] ? setores[si].pontos[pi].atividade : '';
+    const sel = document.createElement('select');
+    sel.title = 'Selecione atividade (NR-15) — preenche M automaticamente';
+    sel.style.cssText = 'margin-left:4px;background:var(--surface);border:1.5px solid var(--border);border-radius:5px;padding:4px 6px;color:var(--text);font-size:.7rem;font-family:inherit;outline:none;max-width:24px;cursor:pointer;';
+    sel.innerHTML = '<option value="">⚙</option>' +
+      ATIVIDADES_NR15.map(a => `<option value="${a.label}" ${a.label===cur?'selected':''}>${a.M}W — ${a.label}</option>`).join('');
+    sel.onchange = (e) => window.aplicarAtividade(si, pi, e.target.value);
+    inp.parentElement.appendChild(sel);
+    inp.dataset._atvInjected = '1';
+  });
+}
+
+// Hook no renderSetores original
+if (typeof renderSetores === 'function') {
+  const _origRender = renderSetores;
+  window.renderSetores = function() {
+    _origRender.apply(this, arguments);
+    setTimeout(_injetarAtividadeDropdown, 10);
+    setTimeout(_atualizarPreviewCalor, 20);
+  };
+}
+
+// ── PREVIEW EM TELA: Calor ────────────────────────────────────────────
+function _atualizarPreviewCalor() {
+  if (typeof setores === 'undefined' || typeof getLimiteNR15 !== 'function') return;
+  setores.forEach((s, si) => {
+    const totalT = s.pontos.reduce((a,p) => a + (+p.tempo||0), 0) || 1;
+    const ibutgMed = s.pontos.reduce((a,p) => a + (0.7*(+p.tbn||0) + 0.3*(+p.tg||0))*(+p.tempo||0), 0) / totalT;
+    const mMed = s.pontos.reduce((a,p) => a + (+p.M||0)*(+p.tempo||0), 0) / totalT;
+    const limite = getLimiteNR15(mMed);
+    const status = ibutgMed <= limite ? 'ACEITÁVEL' : 'ACIMA DO LIMITE';
+    const cor = ibutgMed <= limite ? '#0a7' : '#e22';
+    let badge = document.getElementById(`_preview-calor-${si}`);
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = `_preview-calor-${si}`;
+      badge.style.cssText = 'display:inline-block;margin-left:12px;padding:4px 10px;border-radius:6px;color:#fff;font-size:.72rem;font-weight:600;vertical-align:middle;';
+      const card = document.querySelector(`[data-si="${si}"] .card-title, .setor-card-${si} h3, #setor-${si}`);
+      // Tentar achar onde injetar — usa heurística
+      const setoresCards = document.querySelectorAll('.card');
+      if (setoresCards[si+1]) setoresCards[si+1].querySelector('.card-title')?.appendChild(badge);
+    }
+    if (badge) {
+      badge.style.background = cor;
+      badge.textContent = isFinite(ibutgMed) && totalT > 0
+        ? `IBUTG ${ibutgMed.toFixed(1)} / Limite ${limite.toFixed(1)} → ${status}`
+        : 'Preencha os pontos';
+    }
+  });
+}
+
+// ── PREVIEW EM TELA: Ruído ────────────────────────────────────────────
+function _atualizarPreviewRuido() {
+  if (typeof rAvals === 'undefined') return;
+  rAvals.forEach((av, i) => {
+    const lavg = parseFloat(String(av.lavgQ3||'').replace(',','.'));
+    let cor, txt;
+    if (isNaN(lavg)) { cor='#888'; txt='— sem dado'; }
+    else if (lavg >= 85) { cor='#e22'; txt=`${lavg.toFixed(1)} dB → ULTRAPASSOU LT (85)`; }
+    else if (lavg >= 80) { cor='#f80'; txt=`${lavg.toFixed(1)} dB → ACIMA NÍVEL DE AÇÃO (80)`; }
+    else { cor='#0a7'; txt=`${lavg.toFixed(1)} dB → DENTRO DO LIMITE`; }
+    let badge = document.getElementById(`_preview-ruido-${i}`);
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = `_preview-ruido-${i}`;
+      badge.style.cssText = 'margin:8px 0;padding:6px 12px;border-radius:6px;color:#fff;font-size:.78rem;font-weight:600;display:inline-block;';
+      const card = document.querySelector(`#r-aval-${i}`) || document.querySelectorAll('.r-aval-card')[i];
+      if (card) card.appendChild(badge);
+    }
+    if (badge) { badge.style.background = cor; badge.textContent = txt; }
+  });
+}
+
+if (typeof rRenderAvals === 'function') {
+  const _origRR = rRenderAvals;
+  window.rRenderAvals = function() {
+    _origRR.apply(this, arguments);
+    setTimeout(_atualizarPreviewRuido, 10);
+  };
+}
+
+// ── Inicialização ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    _hookCNPJs();
+    _injetarCacheDropdowns();
+    _injetarAtividadeDropdown();
+    _atualizarPreviewCalor();
+    _atualizarPreviewRuido();
+  }, 200);
+});
+
+// Reaplicar quando troca de aba (caso a aba só renderiza ao clicar)
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.tab, .nav-tab, [data-tab]')) {
+    setTimeout(() => {
+      _hookCNPJs();
+      _injetarCacheDropdowns();
+    }, 100);
+  }
+});
 </script>
 </body>
 </html>
