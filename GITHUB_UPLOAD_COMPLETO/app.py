@@ -1053,6 +1053,8 @@ def gerar_calor_bytes(d):
     xml = xml.replace('Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - supermercados', _xe(emp.get('descricaoCnae','')))
     xml = xml.replace('>Thais Taveira<', f'>{_xe(emp.get("contato",""))}<')
     xml = xml.replace('(31)3359-3389', _xe(emp.get('telefone','')))
+    # 2º telefone do template (Dahana tem dois) — remove se empresa só forneceu um
+    xml = xml.replace('(31)98743-8342', _xe(emp.get('telefone2','') or ''))
     xml = xml.replace('thais.conde@supernosso.com.br', _xe(emp.get('email','')))
     xml = xml.replace('BELO HORIZONTE, MAIO DE 2026.', _xe(aval.get('cidadeCarta','BELO HORIZONTE, MAIO DE 2026')) + '.')
     equip_old = 'Net.Temp – Chrompack Smart TEMP | S/N: IBU0000000209 | Calibração: 24/03/2026 | Certificado Nº 180.646'
@@ -1393,11 +1395,14 @@ def gerar_quimico_bytes(d):
         logo_bytes = BLANK_PNG
 
     # ── Company replacements ─────────────────────────────────────────
-    xml = xml.replace('UNIMED BELO HORIZONTE COOPERATIVA DE TRABALHO MEDICO',
-                      _xe(emp.get('razaoSocial', '')))
+    # Ordem importa: substituir a string MAIS LONGA primeiro
+    razao_full = _xe(emp.get('razaoSocial', ''))
+    xml = xml.replace('UNIMED BELO HORIZONTE COOPERATIVA DE TRABALHO MEDICO', razao_full)
     tit = _xe(emp.get('titulo', emp.get('razaoSocial', '')))
     xml = xml.replace('CENTRO DE PROMOÇÃO DA SAÚDE UNIMED - UNIDADE BETIM', tit)
     xml = xml.replace('HOSPITAL UNIMED - UNIDADE CONTORNO', tit)
+    # Cabeçalho que aparece na faixa superior das tabelas (sem COOPERATIVA)
+    xml = xml.replace('UNIMED BELO HORIZONTE', tit)
     xml = xml.replace('Av. Gov. Valadares, ', _xe(emp.get('endereco', '')))
     xml = xml.replace('>619<', f'>{_xe(emp.get("numero",""))}<')
     xml = xml.replace('16.513.178/0036-04', _xe(emp.get('cnpj', '')))
@@ -1489,7 +1494,10 @@ def gerar_quimico_bytes(d):
                              '<w:pPr><w:jc w:val="center"/></w:pPr>'
                              f'<w:r><w:t>{_xe(desc)}</w:t></w:r></w:p>')
     else:
-        viii_new = xml[viii_te:ix_ts]
+        # Sem fotos: parágrafo vazio (evita legendas-fantasma do template)
+        viii_new = ('<w:p w14:paraId="77000001" w14:textId="77777777">'
+                    '<w:pPr><w:jc w:val="center"/></w:pPr>'
+                    '<w:r><w:t></w:t></w:r></w:p>')
 
     # ── Build section IX: Quadro Resumo ──────────────────────────────
     ix_new = _build_ix_xml(evals) if evals else xml[ix_te:x_ts]
