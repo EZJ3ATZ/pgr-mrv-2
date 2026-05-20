@@ -196,13 +196,18 @@ def dar_baixa():
             (medicao_id, amostrador_id, avaliador, bomba, vazao_calibrada,
              vol_recomendado, tempo_min, tempo_max, data_medicao, obs))
 
-        # Atualizar amostrador
+        # Buscar empresa da demanda para vincular ao amostrador
+        empresa_id = conn.execute(
+            'SELECT empresa_id FROM demandas WHERE id=?',
+            (me['demanda_id'],)).fetchone()['empresa_id']
+
+        # Atualizar amostrador: muda status, vincula empresa, avaliador e data
         conn.execute("""
             UPDATE amostradores
-            SET status='Laboratorio', avaliador=?, data_medicao=?,
+            SET status='Laboratorio', empresa_id=?, avaliador=?, data_medicao=?,
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?""",
-            (avaliador, data_medicao, amostrador_id))
+            (empresa_id, avaliador, data_medicao, amostrador_id))
 
         # Incrementar pontos realizados da medicao
         nova_qtd = (me['qtd_pontos_feita'] or 0) + 1
@@ -226,6 +231,35 @@ def dar_baixa():
         'tempo_min': round(tempo_min, 2),
         'tempo_max': round(tempo_max, 2),
         'avisos': avisos
+    })
+
+
+# ── Bombas disponiveis (reusa cadastro do quimico) ────────────────────
+@controle_bp.route('/bombas')
+def get_bombas():
+    """Retorna lista de bombas + numeros de serie cadastrados."""
+    try:
+        # Importar do app principal sem causar import circular
+        import sys
+        app_mod = sys.modules.get('app')
+        if app_mod and hasattr(app_mod, '_PUMP_SN') and hasattr(app_mod, '_PUMP_NAMES'):
+            return jsonify({
+                'modelos': [
+                    {'id': k, 'nome': app_mod._PUMP_NAMES.get(k, k),
+                     'sns': app_mod._PUMP_SN.get(k, [])}
+                    for k in app_mod._PUMP_SN
+                ]
+            })
+    except Exception as e:
+        print(f'[controle] /bombas erro: {e}')
+    # Fallback hardcoded
+    return jsonify({
+        'modelos': [
+            {'id': 'airlite', 'nome': 'AIRLITE – SKC', 'sns': ['A060502', 'A061553', 'A061585', 'A062462', 'A63555']},
+            {'id': 'bdx',     'nome': 'BDX II – GILLIAN', 'sns': ['38356', '38357', '38358', '38359']},
+            {'id': 'turam',   'nome': 'FORMIS – TURAM', 'sns': ['2420120549', '2420120550', '2420120551']},
+            {'id': 'inlite',  'nome': 'INLITE VENTUSPRO', 'sns': ['25040902602B', '25040903102B', '25040907102B']},
+        ]
     })
 
 
