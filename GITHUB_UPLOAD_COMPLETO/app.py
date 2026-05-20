@@ -1307,6 +1307,13 @@ def gerar_calor_bytes(d):
         rels_xml = rels_xml.replace('</Relationships>',
                                     '\n'.join(extra_rels) + '</Relationships>')
 
+    # Fix IDs duplicados
+    _idc = [1]
+    def _nwid(m):
+        _idc[0] += 1
+        return f'w:id="{_idc[0]}"'
+    xml = re.sub(r'w:id="\d+"', _nwid, xml)
+
     zout = io.BytesIO()
     with zipfile.ZipFile(zout,'w',zipfile.ZIP_DEFLATED) as zw:
         for item in zin.infolist():
@@ -1514,6 +1521,13 @@ def gerar_quimico_bytes(d):
     if extra_rels:
         rels_xml = rels_xml.replace('</Relationships>',
                                     '\n'.join(extra_rels) + '</Relationships>')
+
+    # Fix IDs duplicados
+    _idc = [1]
+    def _nwid(m):
+        _idc[0] += 1
+        return f'w:id="{_idc[0]}"'
+    xml = re.sub(r'w:id="\d+"', _nwid, xml)
 
     zout = io.BytesIO()
     with zipfile.ZipFile(zout, 'w', zipfile.ZIP_DEFLATED) as zw:
@@ -2193,6 +2207,13 @@ def gerar_ruido_bytes(d):
             '</Types>',
             '<Default Extension="jpeg" ContentType="image/jpeg"/></Types>'
         )
+
+    # Fix IDs duplicados
+    _idc2 = [1]
+    def _nwid2(m):
+        _idc2[0] += 1
+        return f'w:id="{_idc2[0]}"'
+    doc_xml = re.sub(r'w:id="\d+"', _nwid2, doc_xml)
 
     zout.writestr('word/document.xml', doc_xml.encode('utf-8'))
     zout.writestr('word/_rels/document.xml.rels', rels_xml.encode('utf-8'))
