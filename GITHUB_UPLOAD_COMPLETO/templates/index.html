@@ -1150,15 +1150,21 @@
         <option value="pendente">Pendente</option>
         <option value="concluida">Concluída</option>
       </select>
+      <select id="ctrl-fd-urg" onchange="ctrlLoadDemand()">
+        <option value="">— Urgência —</option>
+        <option value="atrasada">⚠ Atrasadas (>7d parada)</option>
+      </select>
     </div>
     <div class="ctrl-table-wrap">
       <table class="ctrl-table">
         <thead>
           <tr>
-            <th>OS</th><th>Empresa</th><th>Medições</th><th>Status</th><th>Prazo</th><th></th>
+            <th style="width:30px;"></th>
+            <th>OS</th><th>Empresa</th><th>Progresso</th>
+            <th>Pendente</th><th>Parada</th><th>Status</th><th></th>
           </tr>
         </thead>
-        <tbody id="ctrl-tb-demand"><tr><td colspan="6" class="ctrl-empty">Carregando...</td></tr></tbody>
+        <tbody id="ctrl-tb-demand"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -2702,39 +2708,119 @@ async function ctrlLoadDemand() {
   const os = document.getElementById('ctrl-fd-os').value;
   const emp = document.getElementById('ctrl-fd-empresa').value;
   const st  = document.getElementById('ctrl-fd-status').value;
+  const urg = document.getElementById('ctrl-fd-urg').value;
   if (os) q.set('os', os);
   if (emp) q.set('empresa', emp);
   if (st) q.set('status', st);
+  if (urg) q.set('urgencia', urg);
 
   const tb = document.getElementById('ctrl-tb-demand');
-  tb.innerHTML = '<tr><td colspan="6" class="ctrl-empty">Carregando...</td></tr>';
+  tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr>';
   try {
     const data = await ctrlFetch('/controle/demandas?' + q.toString());
     ctrlDemandCache = data;
     if (!data.length) {
-      tb.innerHTML = '<tr><td colspan="6" class="ctrl-empty">Nenhuma demanda. Use "Importar Planilhas".</td></tr>';
+      tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Nenhuma demanda encontrada.</td></tr>';
       return;
     }
     tb.innerHTML = data.map(d => {
       const pct = d.total_medicoes>0 ? Math.round((d.realizadas/d.total_medicoes)*100) : 0;
       const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#666';
+      const dias = d.dias_aberta || 0;
+      // Para concluida, mostrar dias até finalizar (esverdeado neutro)
+      let corDias, lblDias;
+      if (d.status === 'concluida') {
+        corDias = '#0a7'; lblDias = `✓ ${dias}d`;
+      } else if (dias > 14) {
+        corDias = '#e22'; lblDias = `${dias}d ⚠`;
+      } else if (dias > 7) {
+        corDias = '#f80'; lblDias = `${dias}d`;
+      } else if (dias > 3) {
+        corDias = '#fc6'; lblDias = `${dias}d`;
+      } else {
+        corDias = '#999'; lblDias = `${dias}d`;
+      }
+      const agentesPend = d.agentes_pendentes || '';
+      const agentesList = agentesPend ? agentesPend.split(' | ').filter(Boolean) : [];
+      const pendCount = d.pendentes || 0;
       return `
-      <tr>
+      <tr style="cursor:pointer;" onclick="ctrlToggleExpand(${d.id})">
+        <td><span id="ctrl-arrow-${d.id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
         <td><b>${d.numero_os||'—'}</b></td>
         <td>${d.empresa_nome||'—'}</td>
         <td>
-          ${d.realizadas}/${d.total_medicoes}
+          ${d.realizadas}/${d.total_medicoes} (${pct}%)
           <div style="width:100%; height:5px; background:rgba(255,255,255,.06); border-radius:3px; margin-top:3px; overflow:hidden;">
             <div style="height:100%; width:${pct}%; background:${corBar};"></div>
           </div>
         </td>
+        <td>${pendCount > 0 ? `<span style="color:#f80;">${pendCount} pendente${pendCount>1?'s':''}</span>` : '<span style="color:#0a7;">—</span>'}</td>
+        <td><span style="color:${corDias}; font-weight:600;">${lblDias}</span></td>
         <td><span class="ctrl-badge ${d.status||'pendente'}">${d.status||'pendente'}</span></td>
-        <td>${d.prazo||'—'}</td>
-        <td><button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button></td>
+        <td onclick="event.stopPropagation()">${d.status!=='concluida' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>` : ''}</td>
+      </tr>
+      <tr id="ctrl-exp-${d.id}" style="display:none;">
+        <td colspan="8" style="background:rgba(255,255,255,.02); padding:14px 24px;">
+          <div id="ctrl-exp-content-${d.id}" style="color:var(--text3); font-size:.78rem;">Carregando detalhes...</div>
+        </td>
       </tr>`;
     }).join('');
   } catch(e) {
-    tb.innerHTML = `<tr><td colspan="6" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="8" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function ctrlToggleExpand(demId) {
+  const row = document.getElementById('ctrl-exp-'+demId);
+  const arrow = document.getElementById('ctrl-arrow-'+demId);
+  if (row.style.display === 'none') {
+    row.style.display = '';
+    arrow.style.transform = 'rotate(90deg)';
+    // Carregar detalhes
+    const cont = document.getElementById('ctrl-exp-content-'+demId);
+    try {
+      const d = await ctrlFetch('/controle/demandas/' + demId);
+      const meds = d.medicoes || [];
+      if (!meds.length) { cont.innerHTML = '<i>Sem medições.</i>'; return; }
+      cont.innerHTML = `
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border); text-align:left;">
+              <th style="padding:6px 8px;">Agente</th>
+              <th style="padding:6px 8px;">Amostr.</th>
+              <th style="padding:6px 8px;">Pontos</th>
+              <th style="padding:6px 8px;">Status</th>
+              <th style="padding:6px 8px;">Parado há</th>
+              <th style="padding:6px 8px;">Laudo</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${meds.map(m => {
+              const isDone = m.status === 'realizado';
+              const isParcial = m.status === 'parcial';
+              const cor = isDone ? '#0a7' : (isParcial ? '#f80' : '#e22');
+              // dias parado: usa criado_em da medicao
+              const dt = m.criado_em ? new Date(m.criado_em) : null;
+              const dias = dt ? Math.round((Date.now() - dt.getTime()) / 86400000) : 0;
+              const corDias = isDone ? '#0a7' : (dias > 14 ? '#e22' : dias > 7 ? '#f80' : '#999');
+              return `<tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 8px;"><b>${m.agente||'—'}</b></td>
+                <td style="padding:6px 8px; color:#999;">${m.tipo_amostrador||'—'}</td>
+                <td style="padding:6px 8px;">${m.qtd_pontos_feita}/${m.qtd_pontos_prevista}</td>
+                <td style="padding:6px 8px;"><span style="color:${cor}; font-weight:600;">${m.status||'—'}</span></td>
+                <td style="padding:6px 8px;"><span style="color:${corDias};">${isDone ? '✓' : dias+'d'}</span></td>
+                <td style="padding:6px 8px;">${m.necessita_laudo === 'S' ? '<span style="color:#fc6;">📄 Sim</span>' : '—'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    } catch(e) {
+      cont.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`;
+    }
+  } else {
+    row.style.display = 'none';
+    arrow.style.transform = 'rotate(0)';
   }
 }
 
