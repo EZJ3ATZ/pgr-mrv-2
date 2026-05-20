@@ -1313,6 +1313,15 @@ def gerar_calor_bytes(d):
         _idc[0] += 1
         return f'w:id="{_idc[0]}"'
     xml = re.sub(r'w:id="\d+"', _nwid, xml)
+    _pseen = set()
+    def _npar(m):
+        import random
+        v = m.group(1)
+        while v in _pseen:
+            v = '%08X' % random.randint(1, 0x7FFFFFFE)
+        _pseen.add(v)
+        return f'w14:paraId="{v}"'
+    xml = re.sub(r'w14:paraId="([^"]+)"', _npar, xml)
 
     zout = io.BytesIO()
     with zipfile.ZipFile(zout,'w',zipfile.ZIP_DEFLATED) as zw:
@@ -2135,9 +2144,22 @@ def gerar_ruido_bytes(d):
             zout.writestr(item, data)
 
     # ── Substitui dados da empresa ────────────────────────────────────
+    razao = emp.get('razaoSocial', '')
+    # Remove sufixos comuns para casar com runs quebrados pelo Word
+    razao_curta = re.sub(r'\s+(LTDA|S\.?A\.?|EIRELI|ME|EPP|S/A)\s*$', '', razao, flags=re.I).strip()
+    razao_upper = razao.upper()
+    razao_curta_upper = razao_curta.upper()
     replacements = {
-        'Helisul Taxi Aéreo LTDA':       emp.get('razaoSocial', ''),
-        'HELISUL TAXI AERIO LTDA':       emp.get('razaoSocial', '').upper(),
+        # Variações com LTDA (texto completo)
+        'Helisul Taxi Aéreo LTDA':       razao,
+        'HELISUL TAXI AERIO LTDA':       razao_upper,
+        # Variações sem LTDA (texto quebrado em runs pelo Word)
+        'Helisul Taxi Aéreo ':           razao_curta + ' ',
+        'HELISUL TAXI AERIO ':           razao_curta_upper + ' ',
+        'HELISUL TAXI AERIO':            razao_curta_upper,
+        # Alt-text de imagens (descr=)
+        'Helisul Taxi Aereo':            razao_curta,
+        # Outros campos
         'Rua Gardênia N.º 165':          emp.get('endereco', ''),
         '11.483.174/0004-11':            emp.get('cnpj', ''),
         '32150-190':                     emp.get('cep', ''),
