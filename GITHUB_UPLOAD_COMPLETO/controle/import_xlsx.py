@@ -116,34 +116,66 @@ def importar_amostradores(file_bytes):
     return {'inserted': inserted, 'updated': updated, 'errors': errors}
 
 
+def _is_finalizada(cell):
+    """Detecta se a celula tem fundo VERDE (= demanda finalizada).
+    Considera verde:
+      - Theme 9 (accent6) qualquer tint - padrao do template "Verde - Accent 6"
+      - Theme 6 (accent3) qualquer tint - verde escuro
+      - RGB direto com componente G dominante (G alto, R e B baixos)
+    """
+    try:
+        fill = cell.fill
+        if not fill or fill.patternType != 'solid':
+            return False
+        fg = fill.fgColor
+        if fg.type == 'theme' and fg.theme in (6, 9):
+            return True
+        if fg.type == 'rgb' and fg.rgb:
+            rgb = str(fg.rgb)
+            if len(rgb) == 8: rgb = rgb[2:]  # remove alpha
+            if len(rgb) == 6:
+                r = int(rgb[0:2], 16); g = int(rgb[2:4], 16); b = int(rgb[4:6], 16)
+                # Verde: G alto, R e B menores
+                if g > 150 and g > r + 30 and g > b + 30:
+                    return True
+    except Exception:
+        pass
+    return False
+
+
 def importar_medicoes(file_bytes):
     """Importa planilha Controle de Medicoes - Helbert e Wesley.
     Cada linha eh um agente de uma OS. Agrupa por (OS, empresa) em demandas
     e cria 1 medicao por agente.
+
+    DETECCAO DE COR: Se a celula da UNIDADE estiver pintada de VERDE,
+    a medicao eh marcada como 'realizado' (demanda ja foi finalizada).
     """
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     inserted_demandas = 0
     inserted_medicoes = 0
+    finalizadas_por_cor = 0
     errors = []
 
     for sheet_name in wb.sheetnames:
         if _norm(sheet_name) in ('DADOS',):
             continue
         ws = wb[sheet_name]
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows: continue
+        # Pegar rows como CELULAS (nao values_only) para ler formato
+        all_cells = list(ws.iter_rows(values_only=False))
+        if not all_cells: continue
 
-        # Detectar cabecalho (primeira linha com UNIDADE/AGENTE)
+        # Detectar cabecalho
         header_idx = None
-        for i, row in enumerate(rows):
-            txt = ' '.join(_norm(c) for c in row if c)
+        for i, cells in enumerate(all_cells):
+            txt = ' '.join(_norm(c.value) for c in cells if c.value is not None)
             if 'UNIDADE' in txt and 'AGENTE' in txt:
                 header_idx = i
                 break
         if header_idx is None:
             continue
 
-        header_norm = [_norm(c) for c in rows[header_idx]]
+        header_norm = [_norm(c.value) for c in all_cells[header_idx]]
         def col_idx(*kws):
             for j, h in enumerate(header_norm):
                 for kw in kws:
@@ -164,18 +196,29 @@ def importar_medicoes(file_bytes):
         # Cache de demandas por (empresa_id, os)
         demanda_cache = {}
 
-        for row in rows[header_idx + 1:]:
-            unidade = _str(row[c_unid])   if c_unid   is not None else ''
-            os_num  = _str(row[c_os])     if c_os     is not None else ''
-            agente  = _str(row[c_agente]) if c_agente is not None else ''
+        for cells in all_cells[header_idx + 1:]:
+            def cv(idx):
+                if idx is None or idx >= len(cells): return ''
+                return _str(cells[idx].value)
+            unidade = cv(c_unid)
+            os_num  = cv(c_os)
+            agente  = cv(c_agente)
             if not (unidade or os_num) or not agente:
                 continue
-            resp    = _str(row[c_resp])   if c_resp   is not None else ''
-            amostr  = _str(row[c_amostr]) if c_amostr is not None else ''
-            pontos  = _to_int(row[c_pontos] if c_pontos is not None else None, 1)
-            aval    = _to_int(row[c_aval]   if c_aval   is not None else None, 0)
-            laudar  = _str(row[c_laudar]) if c_laudar is not None else ''
-            obs     = _str(row[c_obs])    if c_obs    is not None else ''
+            resp    = cv(c_resp)
+            amostr  = cv(c_amostr)
+            pontos  = _to_int(cells[c_pontos].value if c_pontos is not None and c_pontos < len(cells) else None, 1)
+            aval    = _to_int(cells[c_aval].value if c_aval is not None and c_aval < len(cells) else None, 0)
+            laudar  = cv(c_laudar)
+            obs     = cv(c_obs)
+
+            # DETECCAO DE COR VERDE = finalizada
+            # Checa varias celulas da linha (unidade, agente, amostrador, pontos)
+            verde = False
+            for ci in (c_unid, c_agente, c_amostr, c_pontos):
+                if ci is not None and ci < len(cells) and _is_finalizada(cells[ci]):
+                    verde = True
+                    break
 
             # Parse responsavel: nome (tel) email
             contato = resp.split('(')[0].strip() if resp else ''
@@ -208,7 +251,21 @@ def importar_medicoes(file_bytes):
                         inserted_demandas += 1
 
             # Insere medicao
-            status_med = 'realizado' if aval >= pontos and pontos > 0 else 'pendente'
+            # Status: verde (planilha) > aval==pontos > parcial > pendente
+            if verde:
+                status_med = 'realizado'
+                qtd_feita = pontos if pontos > 0 else 1
+                finalizadas_por_cor += 1
+            elif aval >= pontos and pontos > 0:
+                status_med = 'realizado'
+                qtd_feita = aval
+            elif aval > 0:
+                status_med = 'parcial'
+                qtd_feita = aval
+            else:
+                status_med = 'pendente'
+                qtd_feita = 0
+
             tipo_amostr = ''
             am = re.search(r'\b([A-Z]{2,5})\b', amostr.upper()) if amostr else None
             if am: tipo_amostr = am.group(1)
@@ -219,12 +276,27 @@ def importar_medicoes(file_bytes):
                         (demanda_id, agente, tipo_amostrador, qtd_pontos_prevista,
                          qtd_pontos_feita, necessita_laudo, status, observacao)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (demanda_cache[key], agente, tipo_amostr, pontos, aval,
+                    (demanda_cache[key], agente, tipo_amostr, pontos, qtd_feita,
                      laudar[:1] if laudar else '', status_med, obs))
                 inserted_medicoes += 1
+
+    # Atualizar status das demandas: se TODAS medicoes realizadas -> concluida
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE demandas SET status='concluida'
+            WHERE id IN (
+                SELECT d.id FROM demandas d
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM medicoes m
+                    WHERE m.demanda_id = d.id AND m.status != 'realizado'
+                )
+                AND EXISTS (SELECT 1 FROM medicoes m WHERE m.demanda_id = d.id)
+            )
+        """)
 
     return {
         'demandas_inseridas': inserted_demandas,
         'medicoes_inseridas': inserted_medicoes,
+        'finalizadas_por_cor_verde': finalizadas_por_cor,
         'errors': errors
     }
