@@ -16441,7 +16441,7 @@
           <w:headerReference w:type="first" r:id="rId32"/>
           <w:footerReference w:type="first" r:id="rId33"/>
           <w:pgSz w:w="11906" w:h="16838" w:code="9"/>
-          <w:pgMar w:top="2268" w:right="1701" w:bottom="2268" w:left="1701" w:header="709" w:footer="709" w:gutter="0"/>
+          <w:pgMar w:top="2268" w:right="720" w:bottom="2268" w:left="720" w:header="709" w:footer="709" w:gutter="0"/>
           <w:cols w:space="708"/>
           <w:vAlign w:val="center"/>
           <w:titlePg/>
@@ -17327,7 +17327,7 @@
       <w:headerReference w:type="first" r:id="rId36"/>
       <w:footerReference w:type="first" r:id="rId37"/>
       <w:pgSz w:w="11906" w:h="16838" w:code="9"/>
-      <w:pgMar w:top="2268" w:right="1701" w:bottom="2268" w:left="1701" w:header="709" w:footer="709" w:gutter="0"/>
+      <w:pgMar w:top="2268" w:right="720" w:bottom="2268" w:left="720" w:header="709" w:footer="709" w:gutter="0"/>
       <w:cols w:space="708"/>
       <w:vAlign w:val="center"/>
       <w:titlePg/>
