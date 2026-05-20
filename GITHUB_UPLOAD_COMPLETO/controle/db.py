@@ -1,0 +1,220 @@
+# -*- coding: utf-8 -*-
+"""SQLite database para Controle de Medicoes e Amostradores."""
+import os
+import sqlite3
+from datetime import datetime
+from contextlib import contextmanager
+
+# Pasta /data e dela tira o controle.db (volume persistente do Railway)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.environ.get('CONTROLE_DATA_DIR', os.path.join(BASE_DIR, 'data'))
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, 'controle.db')
+
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS empresas (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    cnpj        TEXT UNIQUE,
+    nome        TEXT NOT NULL,
+    unidade     TEXT,
+    contato     TEXT,
+    telefone    TEXT,
+    email       TEXT,
+    cidade      TEXT,
+    uf          TEXT,
+    criado_em   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS demandas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero_os       TEXT,
+    empresa_id      INTEGER NOT NULL,
+    prazo           TEXT,
+    status          TEXT DEFAULT 'pendente',
+    observacao      TEXT,
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+
+CREATE TABLE IF NOT EXISTS amostradores (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    tipo            TEXT NOT NULL,
+    status          TEXT DEFAULT 'Estoque',
+    data_entrada    TEXT,
+    empresa_id      INTEGER,
+    avaliador       TEXT,
+    data_medicao    TEXT,
+    observacao      TEXT,
+    atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_amostr_codigo ON amostradores(codigo);
+CREATE INDEX IF NOT EXISTS idx_amostr_status ON amostradores(status);
+CREATE INDEX IF NOT EXISTS idx_amostr_tipo   ON amostradores(tipo);
+
+CREATE TABLE IF NOT EXISTS medicoes (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id          INTEGER NOT NULL,
+    agente              TEXT NOT NULL,
+    tipo_amostrador     TEXT,
+    qtd_pontos_prevista INTEGER DEFAULT 1,
+    qtd_pontos_feita    INTEGER DEFAULT 0,
+    necessita_laudo     TEXT,
+    status              TEXT DEFAULT 'pendente',
+    observacao          TEXT,
+    criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (demanda_id) REFERENCES demandas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_med_demanda ON medicoes(demanda_id);
+CREATE INDEX IF NOT EXISTS idx_med_status  ON medicoes(status);
+
+CREATE TABLE IF NOT EXISTS baixas (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    medicao_id          INTEGER NOT NULL,
+    amostrador_id       INTEGER NOT NULL,
+    avaliador           TEXT,
+    bomba               TEXT,
+    vazao_calibrada     REAL,
+    volume_recomendado  REAL,
+    tempo_calculado_min REAL,
+    tempo_calculado_max REAL,
+    data_medicao        TEXT,
+    observacao          TEXT,
+    criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (medicao_id)    REFERENCES medicoes(id),
+    FOREIGN KEY (amostrador_id) REFERENCES amostradores(id)
+);
+"""
+
+
+def _connect():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON')
+    return conn
+
+
+@contextmanager
+def get_db():
+    conn = _connect()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_db():
+    """Cria tabelas se nao existirem. Idempotente."""
+    with get_db() as conn:
+        conn.executescript(SCHEMA)
+
+
+# ── Helpers de CRUD comuns ────────────────────────────────────────────
+
+def row_to_dict(row):
+    return dict(row) if row else None
+
+
+def list_amostradores(filtros=None):
+    sql = """
+        SELECT a.*, e.nome AS empresa_nome
+        FROM amostradores a
+        LEFT JOIN empresas e ON e.id = a.empresa_id
+        WHERE 1=1
+    """
+    params = []
+    f = filtros or {}
+    if f.get('status'):
+        sql += ' AND a.status = ?'; params.append(f['status'])
+    if f.get('tipo'):
+        sql += ' AND a.tipo = ?'; params.append(f['tipo'])
+    if f.get('codigo'):
+        sql += ' AND a.codigo LIKE ?'; params.append(f'%{f["codigo"]}%')
+    if f.get('empresa'):
+        sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
+    sql += ' ORDER BY a.atualizado_em DESC LIMIT 2000'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def list_demandas(filtros=None):
+    sql = """
+        SELECT d.*, e.nome AS empresa_nome, e.cnpj AS empresa_cnpj,
+               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id) AS total_medicoes,
+               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas
+        FROM demandas d
+        JOIN empresas e ON e.id = d.empresa_id
+        WHERE 1=1
+    """
+    params = []
+    f = filtros or {}
+    if f.get('status'):
+        sql += ' AND d.status = ?'; params.append(f['status'])
+    if f.get('empresa'):
+        sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
+    if f.get('os'):
+        sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
+    sql += ' ORDER BY d.criado_em DESC LIMIT 2000'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def get_demanda_completa(demanda_id):
+    with get_db() as conn:
+        d = conn.execute("""
+            SELECT d.*, e.nome AS empresa_nome, e.cnpj AS empresa_cnpj
+            FROM demandas d JOIN empresas e ON e.id = d.empresa_id
+            WHERE d.id = ?
+        """, (demanda_id,)).fetchone()
+        if not d: return None
+        d = row_to_dict(d)
+        d['medicoes'] = [row_to_dict(r) for r in conn.execute(
+            'SELECT * FROM medicoes WHERE demanda_id = ? ORDER BY id',
+            (demanda_id,)).fetchall()]
+        return d
+
+
+def upsert_empresa(cnpj, nome, **extra):
+    """Insere ou atualiza empresa por CNPJ. Retorna id."""
+    cnpj = (cnpj or '').strip()
+    nome = (nome or '').strip()
+    if not nome: return None
+    with get_db() as conn:
+        if cnpj:
+            r = conn.execute('SELECT id FROM empresas WHERE cnpj = ?', (cnpj,)).fetchone()
+            if r:
+                return r['id']
+        cur = conn.execute(
+            'INSERT INTO empresas (cnpj, nome, unidade, contato, telefone, email, cidade, uf) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (cnpj or None, nome, extra.get('unidade'), extra.get('contato'),
+             extra.get('telefone'), extra.get('email'), extra.get('cidade'), extra.get('uf'))
+        )
+        return cur.lastrowid
+
+
+def stats_dashboard():
+    """Estatisticas rapidas para a tela principal."""
+    with get_db() as conn:
+        stats = {}
+        stats['total_amostradores'] = conn.execute(
+            'SELECT COUNT(*) AS c FROM amostradores').fetchone()['c']
+        stats['estoque'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Estoque'").fetchone()['c']
+        stats['laboratorio'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Laboratorio'").fetchone()['c']
+        stats['reservados'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Reservado'").fetchone()['c']
+        stats['demandas_pendentes'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE status!='concluida'").fetchone()['c']
+        stats['demandas_concluidas'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE status='concluida'").fetchone()['c']
+        stats['medicoes_pendentes'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM medicoes WHERE status='pendente'").fetchone()['c']
+        return stats
