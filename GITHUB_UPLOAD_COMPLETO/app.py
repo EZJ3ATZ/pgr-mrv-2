@@ -1385,9 +1385,12 @@ def gerar_quimico_bytes(d):
         'AABjkB6QAAAABJRU5ErkJggg==')
     if logo_b64:
         hdr, dat = logo_b64.split(',', 1) if ',' in logo_b64 else ('', logo_b64)
-        logo_bytes = base64.b64decode(dat)
+        try:
+            logo_bytes = base64.b64decode(dat)
+        except Exception:
+            logo_bytes = BLANK_PNG
     else:
-        logo_bytes = None
+        logo_bytes = BLANK_PNG
 
     # ── Company replacements ─────────────────────────────────────────
     xml = xml.replace('UNIMED BELO HORIZONTE COOPERATIVA DE TRABALHO MEDICO',
@@ -1545,7 +1548,7 @@ def gerar_quimico_bytes(d):
                 zw.writestr(item, xml.encode('utf-8'))
             elif item.filename == 'word/_rels/document.xml.rels':
                 zw.writestr(item, rels_xml.encode('utf-8'))
-            elif item.filename == 'word/media/image1.png' and logo_bytes:
+            elif item.filename == 'word/media/image1.png':
                 zw.writestr(item, logo_bytes)
             else:
                 zw.writestr(item, zin.read(item.filename))
@@ -2127,7 +2130,21 @@ def gerar_ruido_bytes(d):
         extra_rels[rid] = f'../media/{name}'
         return rid
 
-    # Copia arquivos originais do template
+    # ── Logo (substitui image1.png pelo logo da empresa, ou em branco) ─
+    BLANK_PNG = base64.b64decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQ'
+        'AABjkB6QAAAABJRU5ErkJggg==')
+    logo_b64 = emp.get('logo', '')
+    if logo_b64:
+        _hdr, _dat = logo_b64.split(',', 1) if ',' in logo_b64 else ('', logo_b64)
+        try:
+            logo_bytes_ruido = base64.b64decode(_dat)
+        except Exception:
+            logo_bytes_ruido = BLANK_PNG
+    else:
+        logo_bytes_ruido = BLANK_PNG
+
+    # Copia arquivos originais do template (substituindo image1.png pelo logo)
     doc_xml  = None
     rels_xml = None
     ct_xml   = None
@@ -2140,6 +2157,8 @@ def gerar_ruido_bytes(d):
             rels_xml = data.decode('utf-8')
         elif item == '[Content_Types].xml':
             ct_xml = data.decode('utf-8')
+        elif item == 'word/media/image1.png':
+            zout.writestr(item, logo_bytes_ruido)
         else:
             zout.writestr(item, data)
 
@@ -2166,7 +2185,7 @@ def gerar_ruido_bytes(d):
         'Contagem':                      emp.get('cidade', ''),
         'Chácara Boa Vista':             emp.get('bairro', ''),
         '56.11-2':                       emp.get('cnae', ''),
-        'Restaurantes e outros':         emp.get('descricaoCnae', ''),
+        'Restaurantes e outros estabelecimentos de serviços de alimentação e bebida': emp.get('descricaoCnae', ''),
         'Wilde José Silva de Abreu':     emp.get('responsavel', ''),
         '31 3213-3089':                  emp.get('telefone', ''),
         'bionatural@ymail.com':          emp.get('email', ''),
