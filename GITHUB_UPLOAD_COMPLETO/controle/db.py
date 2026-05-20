@@ -147,7 +147,12 @@ def list_demandas(filtros=None):
     sql = """
         SELECT d.*, e.nome AS empresa_nome, e.cnpj AS empresa_cnpj,
                (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id) AS total_medicoes,
-               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas
+               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas,
+               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='pendente') AS pendentes,
+               (SELECT GROUP_CONCAT(m.agente, ' | ') FROM medicoes m WHERE m.demanda_id = d.id AND m.status!='realizado' LIMIT 5) AS agentes_pendentes,
+               CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta,
+               (SELECT MAX(b.criado_em) FROM baixas b
+                 JOIN medicoes m ON m.id = b.medicao_id WHERE m.demanda_id = d.id) AS ultima_baixa
         FROM demandas d
         JOIN empresas e ON e.id = d.empresa_id
         WHERE 1=1
@@ -160,7 +165,12 @@ def list_demandas(filtros=None):
         sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
     if f.get('os'):
         sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
-    sql += ' ORDER BY d.criado_em DESC LIMIT 2000'
+    if f.get('urgencia') == 'atrasada':
+        sql += " AND d.status != 'concluida' AND julianday('now') - julianday(d.criado_em) > 7"
+    # Ordenar: pendentes mais antigas primeiro
+    sql += """ ORDER BY
+        CASE WHEN d.status='concluida' THEN 1 ELSE 0 END,
+        d.criado_em ASC LIMIT 2000"""
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
