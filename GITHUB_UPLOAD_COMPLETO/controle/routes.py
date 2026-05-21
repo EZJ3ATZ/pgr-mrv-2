@@ -234,6 +234,156 @@ def dar_baixa():
     })
 
 
+# ── Empresas ──────────────────────────────────────────────────────────
+@controle_bp.route('/empresas')
+def get_empresas():
+    """Lista/busca empresas. Param ?q= filtra por nome ou CNPJ."""
+    init_db()
+    q = request.args.get('q', '').strip()
+    sql = "SELECT id, nome, cnpj, contato, telefone, email, cidade, uf FROM empresas WHERE 1=1"
+    params = []
+    if q:
+        sql += " AND (nome LIKE ? OR cnpj LIKE ?)"
+        params.extend([f'%{q}%', f'%{q}%'])
+    sql += " ORDER BY nome LIMIT 100"
+    with get_db() as conn:
+        return jsonify([row_to_dict(r) for r in conn.execute(sql, params).fetchall()])
+
+
+@controle_bp.route('/empresas', methods=['POST'])
+def cria_empresa():
+    init_db()
+    d = request.json or {}
+    nome = (d.get('nome') or '').strip()
+    cnpj = (d.get('cnpj') or '').strip()
+    if not nome:
+        return jsonify({'erro': 'nome obrigatorio'}), 400
+    # Verificar duplicacao por nome ou CNPJ
+    with get_db() as conn:
+        if cnpj:
+            dup = conn.execute(
+                'SELECT id, nome FROM empresas WHERE cnpj=?', (cnpj,)).fetchone()
+            if dup:
+                return jsonify({'erro': f'CNPJ ja cadastrado em "{dup["nome"]}"', 'id_existente': dup['id']}), 409
+        # Nome parecido
+        similar = conn.execute(
+            'SELECT id, nome FROM empresas WHERE LOWER(nome) = LOWER(?)',
+            (nome,)).fetchone()
+        if similar:
+            return jsonify({'erro': f'Nome ja cadastrado: "{similar["nome"]}"', 'id_existente': similar['id']}), 409
+    eid = upsert_empresa(cnpj, nome,
+        contato=d.get('contato'), telefone=d.get('telefone'),
+        email=d.get('email'), cidade=d.get('cidade'), uf=d.get('uf'))
+    return jsonify({'ok': True, 'id': eid})
+
+
+# ── PDF de campo (kit de coleta) ──────────────────────────────────────
+@controle_bp.route('/cadeia_pdf', methods=['POST'])
+def gerar_cadeia_pdf():
+    """Gera PDF com lista de medicoes a fazer em campo.
+    Payload: {
+      empresa: { nome, cnpj, contato },
+      data_medicao: 'dd/mm/aaaa',
+      avaliador: str,
+      itens: [{ agente, bomba_modelo, bomba_sn, amostrador_tipo, amostrador_codigo,
+                vazao_calibrada, tempo_min, tempo_max, observacao }]
+    }
+    """
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    except ImportError:
+        return jsonify({'erro': 'reportlab nao instalado'}), 500
+
+    d = request.json or {}
+    empresa = d.get('empresa', {})
+    data_med = d.get('data_medicao', datetime.now().strftime('%d/%m/%Y'))
+    avaliador = d.get('avaliador', '')
+    itens = d.get('itens', [])
+    if not itens:
+        return jsonify({'erro': 'sem itens'}), 400
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+        leftMargin=1.5*cm, rightMargin=1.5*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm)
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle('h1', parent=styles['Title'], fontSize=14, alignment=TA_CENTER, spaceAfter=6)
+    h2 = ParagraphStyle('h2', parent=styles['Heading2'], fontSize=10, spaceAfter=4)
+    body = ParagraphStyle('body', parent=styles['BodyText'], fontSize=9)
+    elements = []
+
+    elements.append(Paragraph(f'<b>FICHA DE CAMPO — COLETA AMBIENTAL</b>', h1))
+    elements.append(Paragraph(f'<b>Empresa:</b> {empresa.get("nome","-")}', body))
+    if empresa.get('cnpj'):
+        elements.append(Paragraph(f'<b>CNPJ:</b> {empresa["cnpj"]}', body))
+    if empresa.get('contato'):
+        elements.append(Paragraph(f'<b>Contato:</b> {empresa["contato"]}', body))
+    elements.append(Paragraph(f'<b>Data da medição:</b> {data_med}    <b>Avaliador:</b> {avaliador}', body))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph(f'<b>Total de pontos:</b> {len(itens)}', body))
+    elements.append(Spacer(1, 8))
+
+    # Tabela
+    head = ['#', 'Agente', 'Amostrador', 'Bomba (S/N)', 'Vazão (L/min)', 'Tempo (min)', 'Função/Setor']
+    data = [head]
+    for i, it in enumerate(itens, 1):
+        bomba = f'{it.get("bomba_modelo","")} {it.get("bomba_sn","")}'.strip() or '—'
+        amostr = f'{it.get("amostrador_tipo","")} {it.get("amostrador_codigo","")}'.strip() or '—'
+        tempo = ''
+        if it.get('tempo_min') and it.get('tempo_max'):
+            tempo = f'{it["tempo_min"]:.0f}–{it["tempo_max"]:.0f}'
+        elif it.get('tempo_min'):
+            tempo = f'{it["tempo_min"]:.0f}'
+        data.append([
+            str(i),
+            it.get('agente','—'),
+            amostr,
+            bomba,
+            str(it.get('vazao_calibrada','—')),
+            tempo,
+            it.get('funcao','') or it.get('observacao','')
+        ])
+
+    tbl = Table(data, repeatRows=1, colWidths=[0.8*cm, 4*cm, 3*cm, 3.5*cm, 2.2*cm, 2*cm, 3*cm])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2E75B6')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('GRID', (0,0), (-1,-1), 0.4, colors.grey),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (0,0), (0,-1), 'CENTER'),
+        ('ALIGN', (4,0), (5,-1), 'CENTER'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F5F5F5')]),
+    ]))
+    elements.append(tbl)
+    elements.append(Spacer(1, 14))
+
+    # Checklist conferencia
+    elements.append(Paragraph('<b>Conferência (assinar ao final):</b>', h2))
+    elements.append(Paragraph('☐ Todas as bombas calibradas e com bateria carregada', body))
+    elements.append(Paragraph('☐ Amostradores rotulados com numero do filtro', body))
+    elements.append(Paragraph('☐ Cronometro/relogio ajustado', body))
+    elements.append(Paragraph('☐ EPI completo (luvas, oculos, mascara)', body))
+    elements.append(Paragraph('☐ Cadeia de custodia preenchida', body))
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph('Assinatura do avaliador: _____________________________________', body))
+
+    doc.build(elements)
+    buf.seek(0)
+    nome_safe = re.sub(r'[^\w-]', '_', empresa.get('nome', 'empresa'))[:40]
+    return send_file(buf, as_attachment=True,
+        download_name=f'ficha_campo_{nome_safe}_{data_med.replace("/","-")}.pdf',
+        mimetype='application/pdf')
+
+
 # ── Bombas disponiveis (reusa cadastro do quimico) ────────────────────
 @controle_bp.route('/bombas')
 def get_bombas():
