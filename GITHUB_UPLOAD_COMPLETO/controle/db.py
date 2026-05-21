@@ -110,9 +110,48 @@ def get_db():
 
 
 def init_db():
-    """Cria tabelas se nao existirem. Idempotente."""
+    """Cria tabelas se nao existirem. Idempotente.
+    Se o banco estiver vazio, faz auto-seed importando as planilhas
+    em controle/seed/ (garante que dados sobrevivem a redeploy).
+    """
+    is_new = not os.path.exists(DB_PATH)
     with get_db() as conn:
         conn.executescript(SCHEMA)
+        # Verificar se ja tem dados
+        count = conn.execute('SELECT COUNT(*) c FROM amostradores').fetchone()['c']
+    if count == 0:
+        _auto_seed()
+
+
+def _auto_seed():
+    """Importa planilhas seed se existirem, populando DB vazio."""
+    seed_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'seed')
+    if not os.path.isdir(seed_dir):
+        return
+    try:
+        from .import_xlsx import importar_amostradores, importar_medicoes
+    except Exception as e:
+        print(f'[controle] auto_seed import erro: {e}')
+        return
+
+    amostr_path = os.path.join(seed_dir, 'amostradores.xlsx')
+    med_path    = os.path.join(seed_dir, 'medicoes.xlsx')
+
+    if os.path.exists(amostr_path):
+        try:
+            with open(amostr_path, 'rb') as f:
+                res = importar_amostradores(f.read())
+            print(f'[controle] seed amostradores: {res}')
+        except Exception as e:
+            print(f'[controle] seed amostradores erro: {e}')
+
+    if os.path.exists(med_path):
+        try:
+            with open(med_path, 'rb') as f:
+                res = importar_medicoes(f.read())
+            print(f'[controle] seed medicoes: {res}')
+        except Exception as e:
+            print(f'[controle] seed medicoes erro: {e}')
 
 
 # ── Helpers de CRUD comuns ────────────────────────────────────────────
