@@ -1104,6 +1104,7 @@
     <div class="ctrl-subtabs">
       <div class="ctrl-subtab active" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:#0a7; color:#fff;">+ Nova Medição</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar Planilhas</div>
     </div>
   </div>
@@ -1166,6 +1167,144 @@
         </thead>
         <tbody id="ctrl-tb-demand"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Sub: Nova Medição (workflow completo) -->
+  <div id="ctrl-sub-nova" style="display:none;">
+
+    <!-- Passo 1: Empresa -->
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:14px;">
+      <div style="font-size:.95rem; font-weight:600; color:var(--text); margin-bottom:10px;">1. Empresa / OS</div>
+      <div style="position:relative;">
+        <input type="text" id="ctrl-nv-empresa" placeholder="Digite nome ou CNPJ da empresa..."
+          oninput="ctrlNvBuscarEmpresa(this.value)" autocomplete="off"
+          style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:9px 12px; color:var(--text); font-size:.9rem; outline:none;">
+        <div id="ctrl-nv-empresa-list" style="position:absolute; top:100%; left:0; right:0; background:var(--bg); border:1px solid var(--border); border-radius:6px; margin-top:2px; max-height:220px; overflow-y:auto; z-index:10; display:none;"></div>
+      </div>
+      <div id="ctrl-nv-empresa-status" style="margin-top:8px; font-size:.82rem;"></div>
+      <div class="row2" style="margin-top:8px;">
+        <div>
+          <label style="font-size:.7rem; color:var(--text3);">Número da OS</label>
+          <input type="text" id="ctrl-nv-os" placeholder="opcional"
+            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.7rem; color:var(--text3);">Data prevista da coleta</label>
+          <input type="date" id="ctrl-nv-data"
+            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <label style="font-size:.7rem; color:var(--text3);">Avaliador responsável</label>
+        <select id="ctrl-nv-avaliador" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+          <option>Wesley</option><option>Helbert</option><option>Matheus</option><option>Kelly</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Passo 2: Adicionar agentes -->
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:14px;">
+      <div style="font-size:.95rem; font-weight:600; color:var(--text); margin-bottom:10px;">2. Adicionar agente a medir</div>
+
+      <div style="margin-bottom:8px;">
+        <label style="font-size:.7rem; color:var(--text3);">Agente / Função</label>
+        <input type="text" id="ctrl-nv-agente" placeholder="Ex: Acetona, Ruído, Calor..."
+          oninput="ctrlNvBuscarAgente(this.value)" autocomplete="off" list="ctrl-nv-agente-dl"
+          style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+        <datalist id="ctrl-nv-agente-dl"></datalist>
+      </div>
+
+      <div id="ctrl-nv-metodo-info" style="display:none; padding:8px 10px; background:rgba(57,153,255,.08); border-left:3px solid #39f; border-radius:5px; font-size:.78rem; margin-bottom:8px;"></div>
+
+      <div class="row2">
+        <div>
+          <label style="font-size:.7rem; color:var(--text3);">Modelo da Bomba</label>
+          <select id="ctrl-nv-bomba-modelo" onchange="ctrlNvPreencherSNs(this.value)"
+            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+            <option value="">— Selecione —</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.7rem; color:var(--text3);">N° Série</label>
+          <select id="ctrl-nv-bomba-sn"
+            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+            <option value="">— SN —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row2" style="margin-top:8px;">
+        <div>
+          <label style="font-size:.7rem; color:var(--text3);">Amostrador (tipo + código)</label>
+          <input type="text" id="ctrl-nv-amostr" placeholder="Ex: TCP 123U45 (vazio se não usar)"
+            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.7rem; color:var(--text3);">Função / Setor</label>
+          <input type="text" id="ctrl-nv-funcao" placeholder="Ex: Operador / Britagem"
+            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <label style="font-size:.7rem; color:var(--text3);">Vazão Calibrada (L/min)
+          <button type="button" onclick="ctrlNvUsarVazaoMedia()" style="margin-left:8px; background:#0a7; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">⚡ Usar média do método</button>
+        </label>
+        <input type="number" step="0.001" id="ctrl-nv-vazao" placeholder="0.150"
+          oninput="ctrlNvCalcTempoPreview()"
+          style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+      </div>
+
+      <div id="ctrl-nv-tempo-preview" style="display:none; margin-top:8px; padding:8px; background:rgba(0,170,119,.08); border-radius:5px; font-size:.82rem; text-align:center;"></div>
+      <div id="ctrl-nv-vazao-aviso"></div>
+
+      <button onclick="ctrlNvAdicionarItem()"
+        style="margin-top:12px; width:100%; background:#06f; color:#fff; border:none; padding:10px; border-radius:6px; font-size:.9rem; font-weight:600; cursor:pointer;">
+        + Adicionar à lista
+      </button>
+    </div>
+
+    <!-- Passo 3: Lista de itens + ações -->
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-size:.95rem; font-weight:600; color:var(--text);">3. Lista de medições <span id="ctrl-nv-count" style="color:var(--text3); font-weight:400;">(0)</span></div>
+        <div>
+          <button onclick="ctrlNvGerarPDF()" style="background:#e22; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer; margin-right:6px;">📄 Gerar Ficha de Campo</button>
+          <button onclick="ctrlNvSalvarComoDemanda()" style="background:#0a7; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">💾 Salvar como Demanda</button>
+        </div>
+      </div>
+      <div id="ctrl-nv-lista" style="min-height:60px;">
+        <div style="color:var(--text3); text-align:center; padding:20px; font-size:.85rem;">Nenhum agente adicionado. Use o formulário acima para incluir.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: cadastrar nova empresa -->
+  <div class="ctrl-overlay" id="ctrl-nv-empresa-modal-overlay" onclick="if(event.target===this) ctrlNvFecharCadEmpresa()">
+    <div class="ctrl-modal" style="max-width:540px;">
+      <h3>Cadastrar Nova Empresa</h3>
+      <div class="ctrl-info-box" style="background:rgba(255,136,0,.08); border-left-color:#f80;">
+        ⚠ Antes de cadastrar, confira se a empresa já existe na lista. Empresas duplicadas geram dados não confiáveis nos indicadores.
+      </div>
+      <label>Razão Social *</label>
+      <input type="text" id="ctrl-nv-cad-nome" placeholder="Nome completo">
+      <label>CNPJ</label>
+      <input type="text" id="ctrl-nv-cad-cnpj" placeholder="00.000.000/0001-00">
+      <div class="row2">
+        <div><label>Contato</label><input type="text" id="ctrl-nv-cad-contato"></div>
+        <div><label>Telefone</label><input type="text" id="ctrl-nv-cad-tel"></div>
+      </div>
+      <label>E-mail</label>
+      <input type="email" id="ctrl-nv-cad-email">
+      <div class="row2">
+        <div><label>Cidade</label><input type="text" id="ctrl-nv-cad-cidade"></div>
+        <div><label>UF</label><input type="text" id="ctrl-nv-cad-uf" value="MG" maxlength="2"></div>
+      </div>
+      <div class="ctrl-actions">
+        <button class="ctrl-btn-cancel" onclick="ctrlNvFecharCadEmpresa()">Cancelar</button>
+        <button class="ctrl-btn-ok" onclick="ctrlNvSalvarCadEmpresa()">✓ Cadastrar</button>
+      </div>
     </div>
   </div>
 
@@ -2639,10 +2778,341 @@ function ctrlInit() {
 function ctrlSwitchSub(name, el) {
   document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  ['amostr','demand','import'].forEach(s => {
-    document.getElementById('ctrl-sub-'+s).style.display = (s===name?'block':'none');
+  ['amostr','demand','nova','import'].forEach(s => {
+    const div = document.getElementById('ctrl-sub-'+s);
+    if (div) div.style.display = (s===name?'block':'none');
   });
   if (name === 'demand') ctrlLoadDemand();
+  if (name === 'nova') ctrlNvInit();
+}
+
+/* ── NOVA MEDIÇÃO — workflow completo ────────────────────────────── */
+window._ctrlNvEmpresa = null;
+window._ctrlNvItens = [];
+window._ctrlNvMetodoAtual = null;
+window._ctrlNvBombasCache = null;
+
+async function ctrlNvInit() {
+  // Data hoje
+  document.getElementById('ctrl-nv-data').value = new Date().toISOString().slice(0,10);
+  // Carregar bombas
+  if (!window._ctrlNvBombasCache) {
+    try { window._ctrlNvBombasCache = await ctrlFetch('/controle/bombas'); }
+    catch(e) { window._ctrlNvBombasCache = {modelos:[]}; }
+  }
+  const sel = document.getElementById('ctrl-nv-bomba-modelo');
+  sel.innerHTML = '<option value="">— Selecione —</option>' +
+    window._ctrlNvBombasCache.modelos.map(b => `<option value="${b.id}">${b.nome}</option>`).join('');
+  // Carregar métodos (uma vez)
+  if (!ctrlMetodosCache) {
+    try { ctrlMetodosCache = await ctrlFetch('/api/metodos'); } catch(e) { ctrlMetodosCache = {}; }
+  }
+  // Datalist de agentes
+  const dl = document.getElementById('ctrl-nv-agente-dl');
+  const nomes = ctrlMetodosCache && ctrlMetodosCache.by_name ? Object.keys(ctrlMetodosCache.by_name) : [];
+  // Adiciona Ruído e Calor que não estão na guia de químicos
+  const todos = ['Ruído', 'Calor', 'Vibração de Corpo Inteiro', 'Vibração Localizada - Mãos e Braços', ...nomes];
+  dl.innerHTML = todos.map(n => `<option value="${n}">`).join('');
+}
+
+async function ctrlNvBuscarEmpresa(q) {
+  const list = document.getElementById('ctrl-nv-empresa-list');
+  const status = document.getElementById('ctrl-nv-empresa-status');
+  window._ctrlNvEmpresa = null;
+  if (!q || q.length < 2) {
+    list.style.display = 'none';
+    status.innerHTML = '';
+    return;
+  }
+  try {
+    const empresas = await ctrlFetch('/controle/empresas?q=' + encodeURIComponent(q));
+    if (!empresas.length) {
+      list.style.display = 'none';
+      status.innerHTML = `<span style="color:#f80;">⚠ Empresa não cadastrada.</span>
+        <button onclick="ctrlNvAbrirCadEmpresa('${q.replace(/'/g,"\\'")}')"
+          style="margin-left:8px; background:#0a7; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.75rem; cursor:pointer;">+ Cadastrar "${q.slice(0,40)}"</button>`;
+      return;
+    }
+    list.innerHTML = empresas.slice(0, 8).map(e =>
+      `<div onclick="ctrlNvSelecionarEmpresa(${e.id}, '${(e.nome||'').replace(/'/g,"\\'")}', '${e.cnpj||''}', '${(e.contato||'').replace(/'/g,"\\'")}')"
+        style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:.85rem;"
+        onmouseover="this.style.background='rgba(255,165,0,.08)'" onmouseout="this.style.background=''">
+        <b>${e.nome}</b> ${e.cnpj ? `<span style="color:var(--text3); font-size:.75rem;">— ${e.cnpj}</span>` : ''}
+      </div>`
+    ).join('');
+    list.style.display = 'block';
+    status.innerHTML = '';
+  } catch(e) { status.innerHTML = `<span style="color:#e22;">${e.message}</span>`; }
+}
+
+async function ctrlNvSelecionarEmpresa(id, nome, cnpj, contato) {
+  window._ctrlNvEmpresa = { id, nome, cnpj, contato };
+  document.getElementById('ctrl-nv-empresa').value = nome;
+  document.getElementById('ctrl-nv-empresa-list').style.display = 'none';
+  // Verificar se já tem demanda aberta
+  try {
+    const dems = await ctrlFetch('/controle/demandas?empresa=' + encodeURIComponent(nome));
+    const abertas = dems.filter(d => d.status !== 'concluida');
+    if (abertas.length > 0) {
+      document.getElementById('ctrl-nv-empresa-status').innerHTML =
+        `<span style="color:#39f;">ℹ ${abertas.length} demanda(s) já aberta(s) para esta empresa.</span>`;
+    } else {
+      document.getElementById('ctrl-nv-empresa-status').innerHTML =
+        `<span style="color:#0a7;">✓ Empresa selecionada — sem demandas pendentes</span>`;
+    }
+  } catch(e) {}
+}
+
+function ctrlNvAbrirCadEmpresa(nome) {
+  document.getElementById('ctrl-nv-empresa-modal-overlay').classList.add('show');
+  document.getElementById('ctrl-nv-cad-nome').value = nome || '';
+  ['cnpj','contato','tel','email','cidade'].forEach(f =>
+    document.getElementById('ctrl-nv-cad-' + f).value = '');
+}
+
+function ctrlNvFecharCadEmpresa() {
+  document.getElementById('ctrl-nv-empresa-modal-overlay').classList.remove('show');
+}
+
+async function ctrlNvSalvarCadEmpresa() {
+  const payload = {
+    nome:    document.getElementById('ctrl-nv-cad-nome').value.trim(),
+    cnpj:    document.getElementById('ctrl-nv-cad-cnpj').value.trim(),
+    contato: document.getElementById('ctrl-nv-cad-contato').value.trim(),
+    telefone:document.getElementById('ctrl-nv-cad-tel').value.trim(),
+    email:   document.getElementById('ctrl-nv-cad-email').value.trim(),
+    cidade:  document.getElementById('ctrl-nv-cad-cidade').value.trim(),
+    uf:      document.getElementById('ctrl-nv-cad-uf').value.trim(),
+  };
+  if (!payload.nome) { alert('Razão social obrigatória'); return; }
+  try {
+    const r = await fetch('/controle/empresas', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (r.status === 409) {
+      if (confirm(`${data.erro}\n\nUsar a empresa existente?`)) {
+        await ctrlNvSelecionarEmpresa(data.id_existente, payload.nome, payload.cnpj, payload.contato);
+        ctrlNvFecharCadEmpresa();
+      }
+      return;
+    }
+    if (!r.ok) { alert('Erro: ' + (data.erro || r.status)); return; }
+    await ctrlNvSelecionarEmpresa(data.id, payload.nome, payload.cnpj, payload.contato);
+    ctrlNvFecharCadEmpresa();
+    _showToast(`✓ Empresa "${payload.nome}" cadastrada`, 'success');
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function ctrlNvBuscarAgente(nome) {
+  const info = document.getElementById('ctrl-nv-metodo-info');
+  window._ctrlNvMetodoAtual = null;
+  if (!nome) { info.style.display = 'none'; return; }
+  // Buscar no guia
+  const m = ctrlMetodosCache;
+  let metodo = null;
+  if (m && m.by_name) {
+    const k = Object.keys(m.by_name).find(k => k.toLowerCase() === nome.toLowerCase());
+    if (k) metodo = m.by_name[k][0];
+  }
+  if (!metodo) {
+    // Agentes físicos (ruído, calor, vibração) não têm método na guia química
+    const nl = nome.toLowerCase();
+    if (nl.includes('ruído') || nl.includes('ruido') || nl.includes('calor') || nl.includes('vibra')) {
+      info.style.display = 'block';
+      info.innerHTML = `<b>${nome}</b> — Agente físico (sem bomba/amostrador química, mas registrar tempo da medição)`;
+    } else {
+      info.style.display = 'block';
+      info.innerHTML = `<b>${nome}</b> — não encontrado na guia. Vazão e tipo de amostrador devem ser informados manualmente.`;
+    }
+    return;
+  }
+  const vazRange = ctrlParseRange(metodo.vazao);
+  const volRange = ctrlParseRange(metodo.volume);
+  window._ctrlNvMetodoAtual = {
+    nome: nome,
+    vazao_min: vazRange[0], vazao_max: vazRange[1],
+    volume_min: volRange[0], volume_max: volRange[1],
+    metodoCod: metodo.metodoCod, amostradorCod: metodo.amostradorCod,
+    amostradorDesc: metodo.amostradorDesc,
+  };
+  info.style.display = 'block';
+  info.innerHTML = `
+    <div><b>${nome}</b> · ${metodo.metodoCod||''}</div>
+    <div style="margin-top:4px; font-size:.75rem;">
+      Vazão: <b>${metodo.vazao||'—'}</b> · Volume: <b>${metodo.volume||'—'}</b> · Amostrador: <b>${metodo.amostradorCod||'—'}</b>
+    </div>`;
+}
+
+function ctrlNvPreencherSNs(modeloId) {
+  const sel = document.getElementById('ctrl-nv-bomba-sn');
+  if (!modeloId) { sel.innerHTML = '<option value="">— SN —</option>'; return; }
+  const b = (window._ctrlNvBombasCache?.modelos || []).find(x => x.id === modeloId);
+  if (!b) return;
+  sel.innerHTML = '<option value="">— SN —</option>' +
+    b.sns.map(sn => `<option value="${sn}">${sn}</option>`).join('');
+}
+
+function ctrlNvUsarVazaoMedia() {
+  const m = window._ctrlNvMetodoAtual;
+  if (!m || !m.vazao_min) { _showToast('⚠ Selecione um agente com método cadastrado', 'warn'); return; }
+  const sugerida = (m.vazao_min + m.vazao_max) / 2;
+  document.getElementById('ctrl-nv-vazao').value = sugerida.toFixed(3);
+  ctrlNvCalcTempoPreview();
+  _showToast(`✓ Vazão: ${sugerida.toFixed(3)} L/min`, 'success');
+}
+
+function ctrlNvCalcTempoPreview() {
+  const vc = parseFloat(document.getElementById('ctrl-nv-vazao').value || 0);
+  const m = window._ctrlNvMetodoAtual;
+  const box = document.getElementById('ctrl-nv-tempo-preview');
+  const av = document.getElementById('ctrl-nv-vazao-aviso');
+  av.innerHTML = '';
+  if (vc <= 0 || !m || !m.volume_min) { box.style.display = 'none'; return; }
+  const tmin = m.volume_min / vc;
+  const tmax = m.volume_max / vc;
+  box.style.display = 'block';
+  box.innerHTML = `<b>Tempo de coleta:</b> <span style="color:#0a7;">${tmin.toFixed(1)} – ${tmax.toFixed(1)} min</span>`;
+  const av_msgs = [];
+  if (m.vazao_min && vc < m.vazao_min)
+    av_msgs.push(`Vazão ${vc} L/min está ABAIXO do mínimo (${m.vazao_min})`);
+  if (m.vazao_max && vc > m.vazao_max)
+    av_msgs.push(`Vazão ${vc} L/min está ACIMA do máximo (${m.vazao_max})`);
+  if (av_msgs.length) av.innerHTML = av_msgs.map(s =>
+    `<div style="margin-top:6px; padding:6px 10px; background:rgba(226,34,34,.1); border-left:3px solid #e22; border-radius:4px; font-size:.75rem; color:#fcc;">⚠ ${s}</div>`).join('');
+}
+
+function ctrlNvAdicionarItem() {
+  if (!window._ctrlNvEmpresa) { alert('Selecione uma empresa primeiro'); return; }
+  const agente = document.getElementById('ctrl-nv-agente').value.trim();
+  if (!agente) { alert('Informe o agente'); return; }
+  const vazao = parseFloat(document.getElementById('ctrl-nv-vazao').value || 0);
+  const m = window._ctrlNvMetodoAtual;
+  const modeloEl = document.getElementById('ctrl-nv-bomba-modelo');
+  const item = {
+    agente: agente,
+    bomba_modelo: modeloEl.selectedOptions[0]?.textContent.startsWith('—') ? '' : modeloEl.selectedOptions[0]?.textContent || '',
+    bomba_modelo_id: modeloEl.value,
+    bomba_sn: document.getElementById('ctrl-nv-bomba-sn').value,
+    amostrador: document.getElementById('ctrl-nv-amostr').value.trim(),
+    funcao: document.getElementById('ctrl-nv-funcao').value.trim(),
+    vazao_calibrada: vazao || null,
+    tempo_min: (vazao > 0 && m?.volume_min) ? (m.volume_min / vazao) : null,
+    tempo_max: (vazao > 0 && m?.volume_max) ? (m.volume_max / vazao) : null,
+    metodo_cod: m?.metodoCod || '',
+    amostrador_recomendado: m?.amostradorCod || '',
+  };
+  window._ctrlNvItens.push(item);
+  // Limpar form de agente
+  document.getElementById('ctrl-nv-agente').value = '';
+  document.getElementById('ctrl-nv-vazao').value = '';
+  document.getElementById('ctrl-nv-amostr').value = '';
+  document.getElementById('ctrl-nv-funcao').value = '';
+  document.getElementById('ctrl-nv-metodo-info').style.display = 'none';
+  document.getElementById('ctrl-nv-tempo-preview').style.display = 'none';
+  document.getElementById('ctrl-nv-vazao-aviso').innerHTML = '';
+  window._ctrlNvMetodoAtual = null;
+  ctrlNvRenderLista();
+}
+
+function ctrlNvRemoverItem(idx) {
+  window._ctrlNvItens.splice(idx, 1);
+  ctrlNvRenderLista();
+}
+
+function ctrlNvRenderLista() {
+  const cont = document.getElementById('ctrl-nv-lista');
+  const cnt = document.getElementById('ctrl-nv-count');
+  cnt.textContent = `(${window._ctrlNvItens.length})`;
+  if (!window._ctrlNvItens.length) {
+    cont.innerHTML = '<div style="color:var(--text3); text-align:center; padding:20px; font-size:.85rem;">Nenhum agente adicionado.</div>';
+    return;
+  }
+  cont.innerHTML = `
+    <table class="ctrl-table">
+      <thead><tr>
+        <th>#</th><th>Agente</th><th>Bomba</th><th>Vazão</th><th>Tempo (min)</th><th>Função/Setor</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${window._ctrlNvItens.map((it, i) => `<tr>
+          <td>${i+1}</td>
+          <td><b>${it.agente}</b><div style="color:var(--text3); font-size:.7rem;">${it.metodo_cod||''}</div></td>
+          <td>${it.bomba_modelo||'—'}<div style="color:var(--text3); font-size:.7rem;">${it.bomba_sn||''}</div></td>
+          <td>${it.vazao_calibrada ? it.vazao_calibrada.toFixed(3) + ' L/min' : '—'}</td>
+          <td>${it.tempo_min ? `${it.tempo_min.toFixed(0)}–${it.tempo_max.toFixed(0)}` : '—'}</td>
+          <td>${it.funcao||'—'}</td>
+          <td><button onclick="ctrlNvRemoverItem(${i})" style="background:transparent; color:#e22; border:1px solid #e22; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:.75rem;">×</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function ctrlNvGerarPDF() {
+  if (!window._ctrlNvEmpresa) { alert('Selecione uma empresa'); return; }
+  if (!window._ctrlNvItens.length) { alert('Adicione pelo menos um agente'); return; }
+  const payload = {
+    empresa: {
+      nome: window._ctrlNvEmpresa.nome,
+      cnpj: window._ctrlNvEmpresa.cnpj,
+      contato: window._ctrlNvEmpresa.contato,
+    },
+    data_medicao: document.getElementById('ctrl-nv-data').value.split('-').reverse().join('/'),
+    avaliador: document.getElementById('ctrl-nv-avaliador').value,
+    itens: window._ctrlNvItens.map(it => ({
+      agente: it.agente,
+      bomba_modelo: it.bomba_modelo,
+      bomba_sn: it.bomba_sn,
+      amostrador_tipo: it.amostrador.split(' ')[0] || '',
+      amostrador_codigo: it.amostrador.split(' ').slice(1).join(' ') || '',
+      vazao_calibrada: it.vazao_calibrada,
+      tempo_min: it.tempo_min,
+      tempo_max: it.tempo_max,
+      funcao: it.funcao,
+    }))
+  };
+  try {
+    const r = await fetch('/controle/cadeia_pdf', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) { const t = await r.text(); alert('Erro: ' + t.slice(0,200)); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `ficha_campo_${window._ctrlNvEmpresa.nome.slice(0,30)}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    _showToast('✓ Ficha de Campo PDF gerada', 'success');
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function ctrlNvSalvarComoDemanda() {
+  if (!window._ctrlNvEmpresa) { alert('Selecione uma empresa'); return; }
+  if (!window._ctrlNvItens.length) { alert('Adicione pelo menos um agente'); return; }
+  const payload = {
+    empresa: window._ctrlNvEmpresa.nome,
+    cnpj: window._ctrlNvEmpresa.cnpj,
+    numero_os: document.getElementById('ctrl-nv-os').value.trim(),
+    prazo: document.getElementById('ctrl-nv-data').value,
+    status: 'pendente',
+    medicoes: window._ctrlNvItens.map(it => ({
+      agente: it.agente,
+      tipo_amostrador: it.amostrador.split(' ')[0] || it.amostrador_recomendado,
+      qtd_pontos_prevista: 1,
+      observacao: `Bomba: ${it.bomba_modelo} ${it.bomba_sn} | Vazão: ${it.vazao_calibrada||'-'} | Função: ${it.funcao||'-'}`,
+    }))
+  };
+  try {
+    const r = await ctrlFetch('/controle/demandas', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    _showToast(`✓ Demanda criada (#${r.id}) com ${window._ctrlNvItens.length} medições`, 'success');
+    window._ctrlNvItens = [];
+    ctrlNvRenderLista();
+    ctrlLoadStats();
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 async function ctrlLoadStats() {
