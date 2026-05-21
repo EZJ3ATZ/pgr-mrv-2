@@ -86,7 +86,33 @@ CREATE TABLE IF NOT EXISTS baixas (
     FOREIGN KEY (medicao_id)    REFERENCES medicoes(id),
     FOREIGN KEY (amostrador_id) REFERENCES amostradores(id)
 );
+
+CREATE TABLE IF NOT EXISTS sync_log (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo            TEXT NOT NULL,  -- 'amostradores', 'medicoes', 'planner'
+    arquivo_nome    TEXT,
+    registros_novos INTEGER DEFAULT 0,
+    registros_atu   INTEGER DEFAULT 0,
+    usuario         TEXT,
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
+
+
+def registrar_sync(tipo, arquivo_nome, novos=0, atualizados=0, usuario='Matheus'):
+    """Registra uma sincronizacao no log."""
+    with get_db() as conn:
+        conn.execute(
+            'INSERT INTO sync_log (tipo, arquivo_nome, registros_novos, registros_atu, usuario) '
+            'VALUES (?, ?, ?, ?, ?)',
+            (tipo, arquivo_nome, novos, atualizados, usuario))
+
+
+def list_sync_log(limit=20):
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(
+            'SELECT * FROM sync_log ORDER BY criado_em DESC LIMIT ?',
+            (limit,)).fetchall()]
 
 
 def _connect():
