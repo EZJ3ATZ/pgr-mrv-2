@@ -10,7 +10,8 @@ from flask import Blueprint, request, jsonify, send_file
 from .db import (
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
-    registrar_sync, list_sync_log
+    registrar_sync, list_sync_log,
+    list_demandas_por_empresa, get_empresa_demandas
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -141,6 +142,52 @@ def delete_amostrador(aid):
 def get_demandas():
     init_db()
     return jsonify(list_demandas(request.args.to_dict()))
+
+
+@controle_bp.route('/demandas_por_empresa')
+def get_demandas_por_empresa():
+    """Demandas agrupadas por empresa, com progresso total da empresa."""
+    init_db()
+    return jsonify(list_demandas_por_empresa(request.args.to_dict()))
+
+
+@controle_bp.route('/empresa/<int:eid>/demandas')
+def get_empresa(eid):
+    init_db()
+    d = get_empresa_demandas(eid)
+    return (jsonify(d), 200) if d else (jsonify({'erro': 'nao encontrada'}), 404)
+
+
+@controle_bp.route('/demanda/<int:did>/contato', methods=['POST'])
+def marcar_contato(did):
+    """Marca que o contato com cliente foi feito (SLA)."""
+    init_db()
+    d = request.json or {}
+    feito = 1 if d.get('feito', True) else 0
+    user = d.get('por', 'Matheus')
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE demandas SET contato_feito=?, contato_feito_em=CURRENT_TIMESTAMP,
+                                contato_feito_por=?
+            WHERE id=?""", (feito, user, did))
+    return jsonify({'ok': True, 'contato_feito': bool(feito)})
+
+
+@controle_bp.route('/empresa/<int:eid>/contato', methods=['POST'])
+def marcar_contato_empresa(eid):
+    """Marca contato feito em TODAS as demandas pendentes da empresa."""
+    init_db()
+    d = request.json or {}
+    feito = 1 if d.get('feito', True) else 0
+    user = d.get('por', 'Matheus')
+    with get_db() as conn:
+        cur = conn.execute("""
+            UPDATE demandas SET contato_feito=?, contato_feito_em=CURRENT_TIMESTAMP,
+                                contato_feito_por=?
+            WHERE empresa_id=? AND status != 'concluida'""",
+            (feito, user, eid))
+        afetadas = cur.rowcount
+    return jsonify({'ok': True, 'afetadas': afetadas})
 
 
 @controle_bp.route('/demandas/<int:did>')
@@ -487,8 +534,13 @@ def gerar_cadeia_pdf():
     elements.append(Paragraph(f'<b>Total de pontos:</b> {len(itens)}', body))
     elements.append(Spacer(1, 8))
 
-    # Tabela
-    head = ['#', 'Agente', 'Amostrador', 'Bomba (S/N)', 'Vazão (L/min)', 'Tempo (min)', 'Função/Setor']
+    # Tabela com Paragraph para word-wrap em colunas largas
+    cell_style = ParagraphStyle('cell', parent=body, fontSize=8, leading=10)
+    cell_bold  = ParagraphStyle('cellb', parent=cell_style, fontName='Helvetica-Bold')
+    def P(txt):
+        return Paragraph(str(txt) if txt is not None else '—', cell_style)
+
+    head = ['#', 'Agente', 'Amostrador', 'Bomba (S/N)', 'Vazão\n(L/min)', 'Tempo\n(min)', 'Função/Setor']
     data = [head]
     for i, it in enumerate(itens, 1):
         bomba = f'{it.get("bomba_modelo","")} {it.get("bomba_sn","")}'.strip() or '—'
@@ -500,40 +552,43 @@ def gerar_cadeia_pdf():
             tempo = f'{it["tempo_min"]:.0f}'
         data.append([
             str(i),
-            it.get('agente','—'),
-            amostr,
-            bomba,
+            P(it.get('agente','—')),         # word-wrap
+            P(amostr),
+            P(bomba),
             str(it.get('vazao_calibrada','—')),
             tempo,
-            it.get('funcao','') or it.get('observacao','')
+            P(it.get('funcao','') or it.get('observacao','')),
         ])
 
-    tbl = Table(data, repeatRows=1, colWidths=[0.8*cm, 4*cm, 3*cm, 3.5*cm, 2.2*cm, 2*cm, 3*cm])
+    # Larguras ajustadas: agente e função maiores, vazão/tempo menores
+    tbl = Table(data, repeatRows=1,
+        colWidths=[0.7*cm, 4.5*cm, 2.8*cm, 3.2*cm, 1.7*cm, 1.6*cm, 3.5*cm])
     tbl.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2E75B6')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('FONTSIZE', (0,0), (-1,0), 8),
+        ('FONTSIZE', (0,1), (-1,-1), 8),
         ('GRID', (0,0), (-1,-1), 0.4, colors.grey),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('ALIGN', (0,0), (0,-1), 'CENTER'),
         ('ALIGN', (4,0), (5,-1), 'CENTER'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F5F5F5')]),
     ]))
     elements.append(tbl)
     elements.append(Spacer(1, 14))
 
     # Checklist conferencia
-    elements.append(Paragraph('<b>Conferência (assinar ao final):</b>', h2))
+    elements.append(Paragraph('<b>Conferência antes da coleta:</b>', h2))
     elements.append(Paragraph('☐ Todas as bombas calibradas e com bateria carregada', body))
     elements.append(Paragraph('☐ Amostradores rotulados com numero do filtro', body))
     elements.append(Paragraph('☐ Cronometro/relogio ajustado', body))
     elements.append(Paragraph('☐ EPI completo (luvas, oculos, mascara)', body))
     elements.append(Paragraph('☐ Cadeia de custodia preenchida', body))
     elements.append(Spacer(1, 24))
-    elements.append(Paragraph('Assinatura do avaliador: _____________________________________', body))
+    elements.append(Paragraph('<i>Assinatura do avaliador:</i> _____________________________________', body))
 
     doc.build(elements)
     buf.seek(0)
