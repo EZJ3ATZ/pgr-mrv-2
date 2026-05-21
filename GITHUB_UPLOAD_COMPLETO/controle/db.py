@@ -65,6 +65,11 @@ CREATE TABLE IF NOT EXISTS amostradores (
     data_medicao    TEXT,
     observacao      TEXT,
     atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP,
+    -- Controle de vencimento (laboratorio cobra apos N dias)
+    data_envio_lab  TEXT,
+    dias_validade   INTEGER DEFAULT 30,
+    lote            TEXT,
+    observacao_venc TEXT,
     FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 );
 CREATE INDEX IF NOT EXISTS idx_amostr_codigo ON amostradores(codigo);
@@ -170,8 +175,9 @@ def init_db():
 
 def _migrate(conn):
     """Adiciona colunas novas a tabelas existentes (idempotente)."""
+    # ── demandas ──
     cols = [r['name'] for r in conn.execute('PRAGMA table_info(demandas)').fetchall()]
-    novas = {
+    novas_demandas = {
         'nome_tarefa':     'TEXT',
         'data_conclusao':  'TEXT',
         'responsavel':     'TEXT',
@@ -188,12 +194,27 @@ def _migrate(conn):
         'contato_feito_em':    'TEXT',
         'contato_feito_por':   'TEXT',
     }
-    for col, tipo in novas.items():
+    for col, tipo in novas_demandas.items():
         if col not in cols:
             try:
                 conn.execute(f'ALTER TABLE demandas ADD COLUMN {col} {tipo}')
             except Exception as e:
-                print(f'[migrate] {col}: {e}')
+                print(f'[migrate] demandas.{col}: {e}')
+
+    # ── amostradores: controle de vencimento no laboratorio ──
+    cols_am = [r['name'] for r in conn.execute('PRAGMA table_info(amostradores)').fetchall()]
+    novas_amostr = {
+        'data_envio_lab':  'TEXT',    # quando foi enviado pro laboratorio
+        'dias_validade':   'INTEGER DEFAULT 30',  # padrao 30 dias antes da cobranca
+        'lote':            'TEXT',    # lote/serie do amostrador
+        'observacao_venc': 'TEXT',
+    }
+    for col, tipo in novas_amostr.items():
+        if col not in cols_am:
+            try:
+                conn.execute(f'ALTER TABLE amostradores ADD COLUMN {col} {tipo}')
+            except Exception as e:
+                print(f'[migrate] amostradores.{col}: {e}')
 
 
 def _auto_seed():
@@ -386,6 +407,51 @@ def upsert_empresa(cnpj, nome, **extra):
         return cur.lastrowid
 
 
+def list_amostradores_vencendo(dias_alerta=7):
+    """Lista amostradores com data_envio_lab definida, calculando dias para vencer.
+    Retorna ordenados pelo mais urgente.
+    """
+    sql = """
+        SELECT a.*, e.nome AS empresa_nome,
+               CAST(julianday(a.data_envio_lab) + COALESCE(a.dias_validade,30)
+                    - julianday('now') AS INTEGER) AS dias_para_vencer,
+               CAST(julianday('now') - julianday(a.data_envio_lab) AS INTEGER) AS dias_no_lab
+        FROM amostradores a
+        LEFT JOIN empresas e ON e.id = a.empresa_id
+        WHERE a.data_envio_lab IS NOT NULL
+          AND a.data_envio_lab != ''
+          AND a.status != 'Devolvido'
+        ORDER BY dias_para_vencer ASC
+        LIMIT 500
+    """
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql).fetchall()]
+
+
+def contar_vencendo():
+    """Conta amostradores em 4 faixas: vencido, urgente (<=3d), alerta (<=7d), ok."""
+    sql = """
+        SELECT
+          SUM(CASE WHEN julianday('now') > julianday(data_envio_lab) + COALESCE(dias_validade,30) THEN 1 ELSE 0 END) AS vencidos,
+          SUM(CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,30) - 3
+                                AND julianday(data_envio_lab) + COALESCE(dias_validade,30) THEN 1 ELSE 0 END) AS urgente,
+          SUM(CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,30) - 7
+                                AND julianday(data_envio_lab) + COALESCE(dias_validade,30) - 4 THEN 1 ELSE 0 END) AS alerta,
+          COUNT(*) AS total_no_lab
+        FROM amostradores
+        WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
+          AND status != 'Devolvido'
+    """
+    with get_db() as conn:
+        r = conn.execute(sql).fetchone()
+        return {
+            'vencidos': r['vencidos'] or 0,
+            'urgente':  r['urgente']  or 0,
+            'alerta':   r['alerta']   or 0,
+            'total_no_lab': r['total_no_lab'] or 0,
+        }
+
+
 def stats_dashboard():
     """Estatisticas rapidas para a tela principal."""
     with get_db() as conn:
@@ -404,4 +470,12 @@ def stats_dashboard():
             "SELECT COUNT(*) AS c FROM demandas WHERE status='concluida'").fetchone()['c']
         stats['medicoes_pendentes'] = conn.execute(
             "SELECT COUNT(*) AS c FROM medicoes WHERE status='pendente'").fetchone()['c']
+        # Vencimento de amostradores no laboratorio
+        venc = contar_vencendo()
+        stats.update({
+            'venc_vencidos':     venc['vencidos'],
+            'venc_urgente':      venc['urgente'],
+            'venc_alerta':       venc['alerta'],
+            'venc_total_no_lab': venc['total_no_lab'],
+        })
         return stats
