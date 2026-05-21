@@ -116,10 +116,25 @@ def importar_amostradores(file_bytes):
     return {'inserted': inserted, 'updated': updated, 'errors': errors}
 
 
+def _extrair_nome_empresa(nome_tarefa):
+    """Extrai nome da empresa de 'MEDIÇÕES - OS - Empresa LTDA' ou 'OS - Empresa'."""
+    if not nome_tarefa: return ''
+    s = nome_tarefa.strip()
+    # Remover prefixos comuns
+    for prefix in ['MEDIÇÕES - ', 'MEDICOES - ', 'MEDIÇÃO - ']:
+        if s.upper().startswith(prefix.upper()):
+            s = s[len(prefix):]
+    # Tirar OS no inicio (numero + hifen ou espaco)
+    s = re.sub(r'^\d{4,8}\s*[-–]\s*', '', s)
+    s = re.sub(r'^\d{4,8}\s+', '', s)
+    # Tirar restos
+    s = re.sub(r'\s+\-\s+MEDI[CÇÃ]', ' ', s, flags=re.I)
+    return s.strip(' -,;')
+
+
 def importar_demandas_planner(file_bytes):
-    """Importa formato 'Demandas_Medicoes' extraido do Microsoft Planner.
-    Colunas: Nome da Empresa (OS, NOME) | Data de Criacao | Prazo | Responsaveis
-    Atualiza demandas existentes (match por numero_os) ou cria novas.
+    """Importa formato 'Demandas_Medicoes_Completo' (16 colunas) do Microsoft Planner.
+    Aceita tambem formato antigo (4 colunas) por retrocompat.
     """
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     inseridas = 0
@@ -135,7 +150,7 @@ def importar_demandas_planner(file_bytes):
         header_idx = None
         for i, row in enumerate(rows):
             txt = ' '.join(_norm(c) for c in row if c)
-            if 'EMPRESA' in txt and ('CRIACAO' in txt or 'PREVISAO' in txt or 'RESPONSAVEIS' in txt):
+            if ('NOME' in txt or 'EMPRESA' in txt) and ('CRIACAO' in txt or 'PRAZO' in txt or 'STATUS' in txt):
                 header_idx = i; break
         if header_idx is None: continue
 
@@ -147,52 +162,100 @@ def importar_demandas_planner(file_bytes):
                         return j
             return None
 
-        c_emp = col_idx('NOME DA EMPRESA', 'EMPRESA')
-        c_cri = col_idx('DATA DE CRIACAO', 'CRIACAO')
-        c_pra = col_idx('PREVISAO', 'PRAZO', 'CONCLUSAO')
-        c_res = col_idx('RESPONSAVEIS', 'RESPONSAVEL')
+        c_nome    = col_idx('NOME DA TAREFA', 'NOME DA EMPRESA', 'NOME')
+        c_os      = col_idx('OS', 'NUMERO OS')
+        c_cri     = col_idx('DATA DE CRIACAO', 'CRIACAO')
+        c_prazo   = col_idx('DATA DE PRAZO', 'PRAZO', 'PREVISAO')
+        c_concl   = col_idx('DATA DE CONCLUSAO', 'CONCLUSAO')
+        c_resp    = col_idx('RESPONSAVEL', 'RESPONSAVEIS')
+        c_status  = col_idx('STATUS')
+        c_prog    = col_idx('PROGRESSO')
+        c_check   = col_idx('CHECKLIST', 'CHECKLIST PROGRESSO')
+        c_checkp  = None
+        for j, h in enumerate(header_norm):
+            if 'CHECKLIST' in h and 'PROGRESSO' in h:
+                c_checkp = j; break
+        c_bucket  = col_idx('BUCKET', 'GRUPO')
+        c_etiq    = col_idx('ETIQUETAS')
+        c_desc    = col_idx('DESCRICAO')
+        c_cnpj    = col_idx('CNPJ')
+        c_com     = col_idx('COMENTARIOS', 'TEM COMENTARIOS')
 
         for row in rows[header_idx + 1:]:
-            if not row or not row[c_emp]: continue
-            raw = _str(row[c_emp])
-            # Parse "OS, NOME EMPRESA"
-            os_num, nome = '', raw
-            if ',' in raw:
-                parts = raw.split(',', 1)
-                if parts[0].strip().isdigit():
-                    os_num = parts[0].strip()
-                    nome = parts[1].strip()
-            data_cri = _str(row[c_cri]) if c_cri is not None else ''
-            prazo    = _str(row[c_pra]) if c_pra is not None else ''
-            resp     = _str(row[c_res]) if c_res is not None else ''
-            if not nome: continue
+            if not row or (c_nome is not None and not row[c_nome]): continue
+            nome_tarefa = _str(row[c_nome]) if c_nome is not None else ''
+            os_num      = _str(row[c_os])      if c_os      is not None else ''
+            data_cri    = _str(row[c_cri])     if c_cri     is not None else ''
+            prazo       = _str(row[c_prazo])   if c_prazo   is not None else ''
+            data_concl  = _str(row[c_concl])   if c_concl   is not None else ''
+            resp        = _str(row[c_resp])    if c_resp    is not None else ''
+            status_p    = _str(row[c_status])  if c_status  is not None else ''
+            try:
+                prog    = int(float(_str(row[c_prog]) or '0')) if c_prog is not None else 0
+            except: prog = 0
+            checklist   = _str(row[c_check])   if c_check   is not None else ''
+            check_prog  = _str(row[c_checkp])  if c_checkp  is not None else ''
+            bucket      = _str(row[c_bucket])  if c_bucket  is not None else ''
+            etiq        = _str(row[c_etiq])    if c_etiq    is not None else ''
+            desc        = _str(row[c_desc])    if c_desc    is not None else ''
+            cnpj_val    = _str(row[c_cnpj])    if c_cnpj    is not None else ''
+            tem_com     = _str(row[c_com])     if c_com     is not None else ''
+            tem_com_int = 1 if tem_com and tem_com.lower() not in ('nao', 'no', '-', '0', '') else 0
 
-            empresa_id = upsert_empresa('', nome, contato=resp)
+            if cnpj_val == '-': cnpj_val = ''
+
+            # Limpar
+            for x in ['nome_tarefa','os_num','data_cri','prazo','data_concl','resp','status_p','checklist','check_prog','bucket','etiq','desc','cnpj_val']:
+                pass
+
+            # Extrair nome empresa do nome da tarefa
+            nome_empresa = _extrair_nome_empresa(nome_tarefa)
+            if not nome_empresa: continue
+
+            # Status interno (concluido vs pendente)
+            status_interno = 'concluida' if (status_p.lower().startswith('conclu') or prog >= 100) else 'pendente'
+
+            empresa_id = upsert_empresa(cnpj_val, nome_empresa, contato=resp)
             if not empresa_id: continue
 
             with get_db() as conn:
+                # Atualiza CNPJ na empresa se vier do Planner
+                if cnpj_val:
+                    conn.execute('UPDATE empresas SET cnpj=? WHERE id=? AND (cnpj IS NULL OR cnpj=\"\")',
+                                 (cnpj_val, empresa_id))
+
                 # Match por OS
                 existing = None
-                if os_num:
-                    existing = conn.execute(
-                        'SELECT id FROM demandas WHERE numero_os = ?',
-                        (os_num,)).fetchone()
+                if os_num and os_num not in ('-', ''):
+                    existing = conn.execute('SELECT id FROM demandas WHERE numero_os=?', (os_num,)).fetchone()
+                if not existing and nome_tarefa:
+                    existing = conn.execute('SELECT id FROM demandas WHERE nome_tarefa=?', (nome_tarefa,)).fetchone()
+
+                params = (
+                    nome_tarefa, os_num or '', empresa_id, prazo, data_concl, resp, status_p,
+                    prog, checklist, check_prog, bucket, etiq, desc, cnpj_val, tem_com_int,
+                    status_interno, _parse_data(data_cri) or None,
+                )
                 if existing:
                     conn.execute("""
-                        UPDATE demandas
-                        SET empresa_id=?, prazo=?, observacao=COALESCE(observacao,'') || ' | Responsavel: ' || ?,
-                            criado_em=COALESCE(NULLIF(?, ''), criado_em)
+                        UPDATE demandas SET
+                          nome_tarefa=?, numero_os=?, empresa_id=?, prazo=?,
+                          data_conclusao=?, responsavel=?, status_planner=?,
+                          progresso=?, checklist=?, checklist_prog=?, bucket=?,
+                          etiquetas=?, descricao=?, cnpj=?, tem_comentarios=?,
+                          status=?, criado_em=COALESCE(NULLIF(?, ''), criado_em)
                         WHERE id=?""",
-                        (empresa_id, prazo, resp, _parse_data(data_cri), existing['id']))
+                        params + (existing['id'],))
                     atualizadas += 1
                 else:
                     conn.execute("""
                         INSERT INTO demandas
-                            (numero_os, empresa_id, prazo, status, observacao, criado_em)
-                        VALUES (?, ?, ?, 'pendente', ?, ?)""",
-                        (os_num, empresa_id, prazo,
-                         f'Responsavel: {resp}',
-                         _parse_data(data_cri) or None))
+                          (nome_tarefa, numero_os, empresa_id, prazo, data_conclusao,
+                           responsavel, status_planner, progresso, checklist,
+                           checklist_prog, bucket, etiquetas, descricao, cnpj,
+                           tem_comentarios, status, criado_em)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        params)
                     inseridas += 1
 
     return {'demandas_inseridas': inseridas, 'demandas_atualizadas': atualizadas, 'errors': erros}
