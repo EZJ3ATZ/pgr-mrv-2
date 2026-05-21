@@ -1103,6 +1103,7 @@
     </div>
     <div class="ctrl-subtabs">
       <div class="ctrl-subtab active" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('venc', this)">⏱ Vencimento</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('empresa', this)">Por Empresa</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:#0a7; color:#fff;">+ Nova Medição</div>
@@ -1139,6 +1140,80 @@
         </thead>
         <tbody id="ctrl-tb-amostr"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Sub: Vencimento (controle de cobrança do laboratório) -->
+  <div id="ctrl-sub-venc" style="display:none;">
+    <div style="background:rgba(255,136,0,.06); border-left:3px solid #f80; padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:.82rem;">
+      <b>⏱ Controle de vencimento:</b> O laboratório começa a cobrar após N dias do envio do amostrador.
+      Esta tela ajuda a identificar amostradores próximos do vencimento para retornar antes da cobrança extra.
+    </div>
+
+    <!-- Cards de alerta -->
+    <div class="ctrl-stats" id="ctrl-venc-stats"></div>
+
+    <!-- Filtros + ações -->
+    <div class="ctrl-filters">
+      <select id="ctrl-fv-faixa" onchange="ctrlLoadVencendo()">
+        <option value="">— Todos no lab —</option>
+        <option value="vencidos">🔴 Vencidos</option>
+        <option value="urgente">🟠 Urgente (≤3d)</option>
+        <option value="alerta">🟡 Alerta (≤7d)</option>
+      </select>
+      <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
+    </div>
+
+    <div class="ctrl-table-wrap">
+      <table class="ctrl-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Tipo</th>
+            <th>Código</th>
+            <th>Empresa</th>
+            <th>Enviado ao lab</th>
+            <th>Validade</th>
+            <th>Vencimento</th>
+            <th>Situação</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ctrl-tb-venc"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal: registrar envio ao laboratório -->
+  <div class="ctrl-overlay" id="ctrl-envio-lab-overlay" onclick="if(event.target===this) ctrlFecharEnvioLab()">
+    <div class="ctrl-modal" style="max-width:560px;">
+      <h3>⏱ Registrar Envio ao Laboratório</h3>
+      <div class="ctrl-info-box" style="background:rgba(255,136,0,.08); border-left-color:#f80;">
+        Marque os amostradores que foram enviados ao laboratório hoje. A contagem de vencimento começa a partir da data informada.
+      </div>
+      <label>Data do envio</label>
+      <input type="date" id="ctrl-el-data">
+
+      <div class="row2">
+        <div>
+          <label>Validade (dias)</label>
+          <input type="number" id="ctrl-el-dias" value="30" min="1" max="365">
+        </div>
+        <div>
+          <label>Lote / N° remessa</label>
+          <input type="text" id="ctrl-el-lote" placeholder="opcional">
+        </div>
+      </div>
+
+      <label style="margin-top:6px;">Selecionar amostradores (em laboratório / utilizado)</label>
+      <div id="ctrl-el-lista" style="max-height:280px; overflow:auto; border:1px solid var(--border); border-radius:6px; padding:8px;">
+        <div style="color:var(--text3); padding:10px; text-align:center;">Carregando...</div>
+      </div>
+
+      <div class="ctrl-actions">
+        <button class="ctrl-btn-cancel" onclick="ctrlFecharEnvioLab()">Cancelar</button>
+        <button class="ctrl-btn-ok" onclick="ctrlSalvarEnvioLab()" style="background:#f80;">✓ Registrar envio</button>
+      </div>
     </div>
   </div>
 
@@ -2843,7 +2918,7 @@ function ctrlInit() {
 function ctrlSwitchSub(name, el) {
   document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  ['amostr','empresa','demand','nova','import'].forEach(s => {
+  ['amostr','venc','empresa','demand','nova','import'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
@@ -2851,6 +2926,137 @@ function ctrlSwitchSub(name, el) {
   if (name === 'empresa') ctrlLoadPorEmpresa();
   if (name === 'nova') ctrlNvInit();
   if (name === 'import') ctrlLoadSyncLog();
+  if (name === 'venc') ctrlLoadVencendo();
+}
+
+async function ctrlLoadVencendo() {
+  const tb = document.getElementById('ctrl-tb-venc');
+  const stEl = document.getElementById('ctrl-venc-stats');
+  tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr>';
+  try {
+    const data = await ctrlFetch('/controle/amostradores_vencendo');
+    const s = data.stats || {};
+    stEl.innerHTML = `
+      <div class="ctrl-stat red"><div class="ctrl-stat-label">🔴 Vencidos</div><div class="ctrl-stat-value">${s.vencidos||0}</div></div>
+      <div class="ctrl-stat yellow"><div class="ctrl-stat-label">🟠 Urgente ≤3d</div><div class="ctrl-stat-value">${s.urgente||0}</div></div>
+      <div class="ctrl-stat"><div class="ctrl-stat-label" style="color:#fc6;">🟡 Alerta ≤7d</div><div class="ctrl-stat-value" style="color:#fc6;">${s.alerta||0}</div></div>
+      <div class="ctrl-stat blue"><div class="ctrl-stat-label">📦 Total no lab</div><div class="ctrl-stat-value">${s.total_no_lab||0}</div></div>
+    `;
+    const faixa = document.getElementById('ctrl-fv-faixa').value;
+    let lista = data.amostradores || [];
+    if (faixa === 'vencidos') lista = lista.filter(a => a.dias_para_vencer < 0);
+    else if (faixa === 'urgente') lista = lista.filter(a => a.dias_para_vencer >= 0 && a.dias_para_vencer <= 3);
+    else if (faixa === 'alerta') lista = lista.filter(a => a.dias_para_vencer > 3 && a.dias_para_vencer <= 7);
+    if (!lista.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhum amostrador nessa faixa. Use "+ Registrar envio" para começar.</td></tr>';
+      return;
+    }
+    tb.innerHTML = lista.map(a => {
+      const dv = a.dias_para_vencer;
+      let cor, lbl;
+      if (dv < 0) { cor = '#e22'; lbl = `🔴 VENCIDO há ${Math.abs(dv)}d`; }
+      else if (dv <= 3) { cor = '#f80'; lbl = `🟠 ${dv}d restantes`; }
+      else if (dv <= 7) { cor = '#fc6'; lbl = `🟡 ${dv}d restantes`; }
+      else { cor = '#0a7'; lbl = `🟢 ${dv}d restantes`; }
+      return `<tr>
+        <td><span class="ctrl-badge ${(a.status||'').toLowerCase()}">${a.status||'—'}</span></td>
+        <td><b>${a.tipo||'—'}</b></td>
+        <td>${a.codigo||'—'}</td>
+        <td>${a.empresa_nome||'—'}</td>
+        <td>${(a.data_envio_lab||'').slice(0,10)} <div style="color:var(--text3); font-size:.7rem;">há ${a.dias_no_lab||0}d</div></td>
+        <td>${a.dias_validade||30}d</td>
+        <td style="color:var(--text3); font-size:.75rem;">${ctrlCalcDataVenc(a.data_envio_lab, a.dias_validade)}</td>
+        <td><span style="color:${cor}; font-weight:600; font-size:.78rem;">${lbl}</span></td>
+        <td><button onclick="ctrlEditarEnvioLab(${a.id})" style="background:transparent; color:var(--text3); border:1px solid var(--border); padding:4px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">Editar</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="9" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+function ctrlCalcDataVenc(dataEnvio, dias) {
+  if (!dataEnvio) return '—';
+  try {
+    const d = new Date(dataEnvio.split(' ')[0]);
+    d.setDate(d.getDate() + (dias || 30));
+    return d.toLocaleDateString('pt-BR');
+  } catch(_) { return '—'; }
+}
+
+async function ctrlAbrirEnvioLab() {
+  document.getElementById('ctrl-envio-lab-overlay').classList.add('show');
+  document.getElementById('ctrl-el-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-el-dias').value = 30;
+  document.getElementById('ctrl-el-lote').value = '';
+  const lista = document.getElementById('ctrl-el-lista');
+  lista.innerHTML = '<div style="color:var(--text3); padding:10px; text-align:center;">Carregando...</div>';
+  try {
+    // Pegar amostradores em Laboratorio e Utilizado (sem data_envio_lab)
+    const todos = await ctrlFetch('/controle/amostradores');
+    const candidatos = todos.filter(a => {
+      const s = (a.status||'').toLowerCase();
+      return (s.includes('lab') || s.includes('utiliz') || s.includes('reserv')) && !a.data_envio_lab;
+    });
+    if (!candidatos.length) {
+      lista.innerHTML = '<div style="color:var(--text3); padding:10px; text-align:center;">Nenhum amostrador no laboratório sem data de envio registrada.</div>';
+      return;
+    }
+    lista.innerHTML = candidatos.map(a => `
+      <label style="display:flex; align-items:center; gap:8px; padding:5px 4px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,.04);">
+        <input type="checkbox" value="${a.id}" class="ctrl-el-chk">
+        <span style="flex:1;"><b>${a.tipo}</b> ${a.codigo} <span style="color:var(--text3); font-size:.75rem;">— ${a.empresa_nome||'sem empresa'}</span></span>
+        <span class="ctrl-badge ${(a.status||'').toLowerCase()}" style="font-size:.65rem;">${a.status||'—'}</span>
+      </label>
+    `).join('') + `
+      <div style="padding:6px; border-top:1px solid var(--border); margin-top:4px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:.78rem; color:var(--text3); cursor:pointer;">
+          <input type="checkbox" onclick="document.querySelectorAll('.ctrl-el-chk').forEach(c => c.checked = this.checked)">
+          Selecionar todos (${candidatos.length})
+        </label>
+      </div>`;
+  } catch(e) {
+    lista.innerHTML = `<div style="color:#e22; padding:10px;">Erro: ${e.message}</div>`;
+  }
+}
+
+function ctrlFecharEnvioLab() {
+  document.getElementById('ctrl-envio-lab-overlay').classList.remove('show');
+}
+
+async function ctrlSalvarEnvioLab() {
+  const ids = Array.from(document.querySelectorAll('.ctrl-el-chk:checked')).map(c => +c.value);
+  if (!ids.length) { alert('Selecione pelo menos 1 amostrador'); return; }
+  const payload = {
+    ids,
+    data_envio_lab: document.getElementById('ctrl-el-data').value,
+    dias_validade: +document.getElementById('ctrl-el-dias').value || 30,
+    lote: document.getElementById('ctrl-el-lote').value.trim(),
+  };
+  try {
+    const r = await ctrlFetch('/controle/amostradores/envio_lab_lote', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    _showToast(`✓ ${r.afetados} amostrador(es) registrado(s) — contagem de vencimento iniciada`, 'success');
+    ctrlFecharEnvioLab();
+    ctrlLoadVencendo();
+    ctrlLoadStats();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function ctrlEditarEnvioLab(aid) {
+  const nova = prompt('Nova data de envio ao laboratório (YYYY-MM-DD):');
+  if (!nova) return;
+  const dias = +prompt('Validade em dias (padrão 30):', '30') || 30;
+  try {
+    await ctrlFetch(`/controle/amostradores/${aid}/envio_lab`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({data_envio_lab: nova, dias_validade: dias})
+    });
+    _showToast('✓ Data atualizada', 'success');
+    ctrlLoadVencendo();
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 async function ctrlLoadPorEmpresa() {
