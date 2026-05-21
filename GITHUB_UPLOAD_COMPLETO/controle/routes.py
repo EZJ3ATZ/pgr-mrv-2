@@ -7,7 +7,8 @@ from flask import Blueprint, request, jsonify, send_file
 
 from .db import (
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
-    get_demanda_completa, upsert_empresa, stats_dashboard
+    get_demanda_completa, upsert_empresa, stats_dashboard,
+    registrar_sync, list_sync_log
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -26,10 +27,13 @@ def stats():
 def import_amostr():
     init_db()
     f = request.files.get('file')
+    user = request.form.get('user', 'Matheus')
     if not f:
         return jsonify({'erro': 'Nenhum arquivo'}), 400
     try:
+        nome_arq = f.filename or 'arquivo.xlsx'
         res = importar_amostradores(f.read())
+        registrar_sync('amostradores', nome_arq, res.get('inserted', 0), res.get('updated', 0), user)
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
@@ -40,10 +44,13 @@ def import_amostr():
 def import_med():
     init_db()
     f = request.files.get('file')
+    user = request.form.get('user', 'Matheus')
     if not f:
         return jsonify({'erro': 'Nenhum arquivo'}), 400
     try:
+        nome_arq = f.filename or 'arquivo.xlsx'
         res = importar_medicoes(f.read())
+        registrar_sync('medicoes', nome_arq, res.get('medicoes_inseridas', 0), 0, user)
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
@@ -55,14 +62,24 @@ def import_planner():
     """Importa export do Microsoft Planner (Demandas_Medicoes_*.xlsx)."""
     init_db()
     f = request.files.get('file')
+    user = request.form.get('user', 'Matheus')
     if not f:
         return jsonify({'erro': 'Nenhum arquivo'}), 400
     try:
+        nome_arq = f.filename or 'arquivo.xlsx'
         res = importar_demandas_planner(f.read())
+        registrar_sync('planner', nome_arq, res.get('demandas_inseridas', 0), res.get('demandas_atualizadas', 0), user)
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+
+
+@controle_bp.route('/sync_log')
+def get_sync_log():
+    """Retorna historico das ultimas importacoes."""
+    init_db()
+    return jsonify(list_sync_log(limit=int(request.args.get('limit', 20))))
 
 
 # ── Amostradores ──────────────────────────────────────────────────────
