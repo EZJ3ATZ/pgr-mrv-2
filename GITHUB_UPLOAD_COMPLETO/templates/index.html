@@ -1322,6 +1322,12 @@
       <input type="file" id="ctrl-imp-med" accept=".xlsx,.xls" style="display:none;" onchange="ctrlImportar('medicoes', this)">
       <button class="ctrl-import-btn" onclick="document.getElementById('ctrl-imp-med').click()">Escolher arquivo de Medições</button>
     </div>
+    <div class="ctrl-import-area" style="border-color:#39f;">
+      <h4 style="margin:0 0 10px; color:var(--text);">📋 Export do Microsoft Planner</h4>
+      <p style="color:var(--text3); font-size:.82rem; margin:0 0 12px;">Selecione "Demandas_Medicoes_*.xlsx" extraído via Claude in Chrome do Planner. Atualiza OS, prazo real e responsável.</p>
+      <input type="file" id="ctrl-imp-planner" accept=".xlsx,.xls" style="display:none;" onchange="ctrlImportar('planner', this)">
+      <button class="ctrl-import-btn" onclick="document.getElementById('ctrl-imp-planner').click()" style="background:#39f;">Importar do Planner</button>
+    </div>
     <div id="ctrl-import-msg" style="margin-top:14px;"></div>
   </div>
 </div>
@@ -3306,6 +3312,8 @@ async function ctrlImportar(tipo, input) {
     let txt = '';
     if (tipo === 'amostradores') {
       txt = `✅ Importados: <b>${r.inserted}</b> novos, <b>${r.updated}</b> atualizados`;
+    } else if (tipo === 'planner') {
+      txt = `✅ Planner: <b>${r.demandas_inseridas}</b> novas, <b>${r.demandas_atualizadas}</b> atualizadas`;
     } else {
       txt = `✅ Importadas: <b>${r.demandas_inseridas}</b> demandas, <b>${r.medicoes_inseridas}</b> medições`;
     }
