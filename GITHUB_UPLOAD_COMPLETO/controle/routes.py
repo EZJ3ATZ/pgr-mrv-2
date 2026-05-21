@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Endpoints REST do modulo Controle de Medicoes e Amostradores."""
 import io
+import os
 import re
+import json
 from datetime import datetime
 from flask import Blueprint, request, jsonify, send_file
 
@@ -307,6 +309,131 @@ def cria_empresa():
         contato=d.get('contato'), telefone=d.get('telefone'),
         email=d.get('email'), cidade=d.get('cidade'), uf=d.get('uf'))
     return jsonify({'ok': True, 'id': eid})
+
+
+# ── Estoque de amostradores por agente ────────────────────────────────
+def _extrair_tipos_amostrador(amostrador_cod):
+    """Extrai siglas de tipo (TCP, TAS, IOL, etc) de strings como
+       'SKC 226-01 (TCP*****)' ou 'IOL E X2P' ou 'TCG E TCP'.
+    """
+    if not amostrador_cod:
+        return []
+    tipos = set()
+    s = amostrador_cod.upper()
+    # 1) Codigos entre parenteses com asteriscos: (TCP*****)
+    for m in re.findall(r'\(([A-Z][A-Z0-9]+)\*+\)', s):
+        tipos.add(m)
+    # 2) Siglas isoladas separadas por ' E ', ',', '/'
+    if not tipos:
+        for parte in re.split(r'\s+E\s+|\s*,\s*|\s*/\s*', s):
+            parte = parte.strip()
+            if re.fullmatch(r'[A-Z][A-Z0-9]{1,4}', parte):
+                tipos.add(parte)
+    return list(tipos)
+
+
+def _buscar_metodos_agente(nome_agente):
+    """Busca metodos do agente no guia_metodos.json. Aceita nome ou CAS."""
+    try:
+        guia_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  '..', 'guia_metodos.json')
+        import json
+        with open(guia_path, 'r', encoding='utf-8') as f:
+            guia = json.load(f)
+    except Exception as e:
+        print(f'[controle] erro carregando guia: {e}')
+        return []
+    chave = (nome_agente or '').strip()
+    if not chave:
+        return []
+    # Tentar como CAS
+    if chave in guia.get('by_cas', {}):
+        return guia['by_cas'][chave]
+    # Tentar como nome (uppercase)
+    key_upper = chave.upper()
+    if key_upper in guia.get('by_name', {}):
+        cas = guia['by_name'][key_upper]
+        return guia.get('by_cas', {}).get(cas, [])
+    # Busca parcial
+    for nome_upper, cas in guia.get('by_name', {}).items():
+        if key_upper in nome_upper or nome_upper in key_upper:
+            return guia.get('by_cas', {}).get(cas, [])
+    return []
+
+
+@controle_bp.route('/agente/<path:nome>/estoque')
+def estoque_para_agente(nome):
+    """Para um agente, retorna:
+      - metodos cadastrados (do guia)
+      - tipos de amostrador compativeis
+      - quantos amostradores em estoque por tipo
+      - lista de codigos disponiveis
+    """
+    init_db()
+    metodos = _buscar_metodos_agente(nome)
+    if not metodos:
+        return jsonify({
+            'agente': nome,
+            'metodos': [],
+            'tipos_compativeis': [],
+            'total_disponivel': 0,
+            'por_tipo': {},
+            'amostradores': [],
+            'aviso': 'Agente nao encontrado na guia de metodos'
+        })
+
+    tipos_set = set()
+    metodos_resumo = []
+    for m in metodos:
+        tipos_m = _extrair_tipos_amostrador(m.get('amostradorCod', ''))
+        tipos_set.update(tipos_m)
+        metodos_resumo.append({
+            'metodoCod': m.get('metodoCod', ''),
+            'vazao': m.get('vazao', ''),
+            'volume': m.get('volume', ''),
+            'amostradorCod': m.get('amostradorCod', ''),
+            'amostradorDesc': m.get('amostradorDesc', ''),
+            'tipos': tipos_m,
+        })
+    tipos = list(tipos_set)
+
+    por_tipo = {}
+    amostr = []
+    if tipos:
+        placeholders = ','.join(['?'] * len(tipos))
+        with get_db() as conn:
+            rows = conn.execute(f"""
+                SELECT a.id, a.codigo, a.tipo, a.status, a.data_entrada,
+                       e.nome AS empresa_nome
+                FROM amostradores a
+                LEFT JOIN empresas e ON e.id = a.empresa_id
+                WHERE a.tipo IN ({placeholders})
+                ORDER BY
+                  CASE WHEN a.status='Estoque' THEN 0 ELSE 1 END,
+                  a.tipo, a.codigo
+                LIMIT 500
+            """, tipos).fetchall()
+            for r in rows:
+                d = row_to_dict(r)
+                amostr.append(d)
+                t = d['tipo']
+                por_tipo.setdefault(t, {'estoque': 0, 'lab': 0, 'reservado': 0, 'total': 0})
+                por_tipo[t]['total'] += 1
+                st = (d.get('status') or '').lower()
+                if 'estoque' in st: por_tipo[t]['estoque'] += 1
+                elif 'lab' in st: por_tipo[t]['lab'] += 1
+                elif 'reserv' in st: por_tipo[t]['reservado'] += 1
+
+    total_disponivel = sum(v['estoque'] for v in por_tipo.values())
+
+    return jsonify({
+        'agente': nome,
+        'metodos': metodos_resumo,
+        'tipos_compativeis': tipos,
+        'total_disponivel': total_disponivel,
+        'por_tipo': por_tipo,
+        'amostradores': amostr,
+    })
 
 
 # ── PDF de campo (kit de coleta) ──────────────────────────────────────
