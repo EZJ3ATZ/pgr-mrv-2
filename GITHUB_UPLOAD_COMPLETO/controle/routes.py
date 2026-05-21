@@ -11,7 +11,8 @@ from .db import (
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
     registrar_sync, list_sync_log,
-    list_demandas_por_empresa, get_empresa_demandas
+    list_demandas_por_empresa, get_empresa_demandas,
+    list_amostradores_vencendo, contar_vencendo
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -135,6 +136,56 @@ def delete_amostrador(aid):
     with get_db() as conn:
         conn.execute('DELETE FROM amostradores WHERE id=?', (aid,))
     return jsonify({'ok': True})
+
+
+# ── Vencimento (laboratorio cobra apos N dias) ────────────────────────
+@controle_bp.route('/amostradores_vencendo')
+def get_vencendo():
+    init_db()
+    return jsonify({
+        'stats': contar_vencendo(),
+        'amostradores': list_amostradores_vencendo()
+    })
+
+
+@controle_bp.route('/amostradores/<int:aid>/envio_lab', methods=['POST'])
+def marcar_envio_lab(aid):
+    """Registra que o amostrador foi enviado ao laboratorio (inicia contagem)."""
+    init_db()
+    d = request.json or {}
+    data_envio = d.get('data_envio_lab') or datetime.now().strftime('%Y-%m-%d')
+    dias       = int(d.get('dias_validade', 30) or 30)
+    lote       = d.get('lote', '')
+    obs        = d.get('observacao_venc', '')
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE amostradores
+            SET data_envio_lab=?, dias_validade=?, lote=?, observacao_venc=?,
+                atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=?""",
+            (data_envio, dias, lote, obs, aid))
+    return jsonify({'ok': True})
+
+
+@controle_bp.route('/amostradores/envio_lab_lote', methods=['POST'])
+def marcar_envio_lab_lote():
+    """Registra envio ao lab em lote (varios amostradores de uma vez)."""
+    init_db()
+    d = request.json or {}
+    ids = d.get('ids', [])
+    if not ids: return jsonify({'erro': 'sem ids'}), 400
+    data_envio = d.get('data_envio_lab') or datetime.now().strftime('%Y-%m-%d')
+    dias       = int(d.get('dias_validade', 30) or 30)
+    lote       = d.get('lote', '')
+    placeholders = ','.join(['?'] * len(ids))
+    with get_db() as conn:
+        conn.execute(f"""
+            UPDATE amostradores
+            SET data_envio_lab=?, dias_validade=?, lote=?,
+                atualizado_em=CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})""",
+            [data_envio, dias, lote] + ids)
+    return jsonify({'ok': True, 'afetados': len(ids)})
 
 
 # ── Demandas ──────────────────────────────────────────────────────────
