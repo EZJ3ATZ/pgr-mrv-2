@@ -1310,6 +1310,9 @@
 
   <!-- Sub: Importar -->
   <div id="ctrl-sub-import" style="display:none;">
+    <div style="background:rgba(57,153,255,.06); border-left:3px solid #39f; padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:.82rem;">
+      <b>ℹ Sincronização de dados:</b> Esta área importa as planilhas atuais para o sistema. Enquanto não há integração direta com Planner/Maestro, o responsável pela atualização (Matheus) exporta via Claude in Chrome e sobe aqui.
+    </div>
     <div class="ctrl-import-area">
       <h4 style="margin:0 0 10px; color:var(--text);">Planilha de Amostradores</h4>
       <p style="color:var(--text3); font-size:.82rem; margin:0 0 12px;">Selecione "CONTROLE AMOSTRADORES 2026" (.xlsx). Atualiza por código + tipo.</p>
@@ -1329,6 +1332,23 @@
       <button class="ctrl-import-btn" onclick="document.getElementById('ctrl-imp-planner').click()" style="background:#39f;">Importar do Planner</button>
     </div>
     <div id="ctrl-import-msg" style="margin-top:14px;"></div>
+
+    <div style="margin-top:24px;">
+      <h4 style="margin:0 0 10px; color:var(--text); font-size:.95rem;">📜 Histórico de Sincronizações</h4>
+      <div class="ctrl-table-wrap">
+        <table class="ctrl-table">
+          <thead>
+            <tr>
+              <th>Quando</th><th>Tipo</th><th>Arquivo</th>
+              <th style="text-align:center;">Novos</th>
+              <th style="text-align:center;">Atualizados</th>
+              <th>Por</th>
+            </tr>
+          </thead>
+          <tbody id="ctrl-sync-log"><tr><td colspan="6" class="ctrl-empty">Sem importações registradas ainda.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2790,6 +2810,35 @@ function ctrlSwitchSub(name, el) {
   });
   if (name === 'demand') ctrlLoadDemand();
   if (name === 'nova') ctrlNvInit();
+  if (name === 'import') ctrlLoadSyncLog();
+}
+
+async function ctrlLoadSyncLog() {
+  const tb = document.getElementById('ctrl-sync-log');
+  try {
+    const logs = await ctrlFetch('/controle/sync_log');
+    if (!logs.length) {
+      tb.innerHTML = '<tr><td colspan="6" class="ctrl-empty">Sem importações registradas ainda.</td></tr>';
+      return;
+    }
+    const tipoLabel = { amostradores: '📦 Amostradores', medicoes: '📊 Medições', planner: '📋 Planner' };
+    const tipoCor = { amostradores: '#0a7', medicoes: '#39f', planner: '#f80' };
+    tb.innerHTML = logs.map(l => {
+      const dt = new Date(l.criado_em.replace(' ', 'T') + 'Z');
+      const horas = Math.round((Date.now() - dt.getTime()) / 3600000);
+      const quando = horas < 1 ? 'agora há pouco' : (horas < 24 ? `${horas}h atrás` : `${Math.round(horas/24)}d atrás`);
+      return `<tr>
+        <td><span style="color:var(--text); font-weight:500;">${dt.toLocaleString('pt-BR')}</span><div style="color:var(--text3); font-size:.7rem;">${quando}</div></td>
+        <td><span style="color:${tipoCor[l.tipo]||'#999'}; font-weight:600;">${tipoLabel[l.tipo]||l.tipo}</span></td>
+        <td style="color:var(--text3); font-size:.75rem;">${(l.arquivo_nome||'').slice(0,40)}</td>
+        <td style="text-align:center;"><b style="color:#0a7;">${l.registros_novos||0}</b></td>
+        <td style="text-align:center;"><b style="color:#39f;">${l.registros_atu||0}</b></td>
+        <td>${l.usuario||'—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="6" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
 }
 
 /* ── NOVA MEDIÇÃO — workflow completo ────────────────────────────── */
@@ -3305,6 +3354,7 @@ async function ctrlImportar(tipo, input) {
   if (!f) return;
   const fd = new FormData();
   fd.append('file', f);
+  fd.append('user', localStorage.getItem('ctrl_user') || 'Matheus');
   const msg = document.getElementById('ctrl-import-msg');
   msg.innerHTML = `<div class="ctrl-info-box">⏳ Importando ${f.name}...</div>`;
   try {
@@ -3321,6 +3371,7 @@ async function ctrlImportar(tipo, input) {
     ctrlLoadStats();
     ctrlLoadAmostr();
     ctrlLoadDemand();
+    ctrlLoadSyncLog();
   } catch(e) {
     msg.innerHTML = `<div class="ctrl-warn-box">❌ Erro: ${e.message}</div>`;
   }
