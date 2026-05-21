@@ -1103,9 +1103,10 @@
     </div>
     <div class="ctrl-subtabs">
       <div class="ctrl-subtab active" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('empresa', this)">Por Empresa</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:#0a7; color:#fff;">+ Nova Medição</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar Planilhas</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
     </div>
   </div>
 
@@ -1137,6 +1138,36 @@
           </tr>
         </thead>
         <tbody id="ctrl-tb-amostr"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Sub: Por Empresa (agrupado) -->
+  <div id="ctrl-sub-empresa" style="display:none;">
+    <div class="ctrl-filters">
+      <input type="text" id="ctrl-fe-nome" placeholder="Buscar empresa..." oninput="ctrlLoadPorEmpresa()">
+      <select id="ctrl-fe-status" onchange="ctrlLoadPorEmpresa()">
+        <option value="pendente">Apenas com pendências</option>
+        <option value="">Todas</option>
+        <option value="concluida">Apenas concluídas</option>
+      </select>
+    </div>
+    <div class="ctrl-table-wrap">
+      <table class="ctrl-table">
+        <thead>
+          <tr>
+            <th style="width:30px;"></th>
+            <th>Empresa</th>
+            <th>CNPJ</th>
+            <th>OSs</th>
+            <th>Progresso Total</th>
+            <th>Aberta há</th>
+            <th>Responsável</th>
+            <th>Contato cliente</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ctrl-tb-empresa"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -2812,13 +2843,153 @@ function ctrlInit() {
 function ctrlSwitchSub(name, el) {
   document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  ['amostr','demand','nova','import'].forEach(s => {
+  ['amostr','empresa','demand','nova','import'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
   if (name === 'demand') ctrlLoadDemand();
+  if (name === 'empresa') ctrlLoadPorEmpresa();
   if (name === 'nova') ctrlNvInit();
   if (name === 'import') ctrlLoadSyncLog();
+}
+
+async function ctrlLoadPorEmpresa() {
+  const q = new URLSearchParams();
+  const nome = document.getElementById('ctrl-fe-nome').value;
+  const st = document.getElementById('ctrl-fe-status').value;
+  if (nome) q.set('empresa', nome);
+  if (st) q.set('status', st);
+
+  const tb = document.getElementById('ctrl-tb-empresa');
+  tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr>';
+  try {
+    const data = await ctrlFetch('/controle/demandas_por_empresa?' + q.toString());
+    if (!data.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhuma empresa encontrada.</td></tr>';
+      return;
+    }
+    tb.innerHTML = data.map(e => {
+      const total = e.total_demandas || 0;
+      const concl = e.demandas_concluidas || 0;
+      const pend = e.demandas_pendentes || 0;
+      const pct = total > 0 ? Math.round((concl/total)*100) : 0;
+      const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#666';
+      const dias = e.dias_aberta || 0;
+      let corDias, lblDias;
+      if (pend === 0) { corDias = '#0a7'; lblDias = `✓ todas concluídas`; }
+      else if (dias > 30) { corDias = '#e22'; lblDias = `${dias}d ⚠ atrasada`; }
+      else if (dias > 14) { corDias = '#f80'; lblDias = `${dias}d ⚠`; }
+      else if (dias > 7) { corDias = '#fc6'; lblDias = `${dias}d`; }
+      else { corDias = '#999'; lblDias = `${dias}d`; }
+
+      const contato = e.contato_feito ? 1 : 0;
+      const contatoBtn = pend > 0 ? (contato
+        ? `<span style="color:#0a7; font-size:.75rem;">✓ feito</span> <button onclick="ctrlMarcarContato(${e.empresa_id}, false)" style="background:transparent; color:var(--text3); border:1px solid var(--border); padding:2px 6px; border-radius:3px; font-size:.7rem; cursor:pointer; margin-left:4px;">desfazer</button>`
+        : `<button onclick="ctrlMarcarContato(${e.empresa_id}, true)" style="background:#39f; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.72rem; cursor:pointer;">📞 Marcar contato</button>`)
+        : '<span style="color:var(--text3); font-size:.72rem;">—</span>';
+
+      return `
+      <tr style="cursor:pointer;" onclick="ctrlToggleExpandEmpresa(${e.empresa_id})">
+        <td><span id="ctrl-earrow-${e.empresa_id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
+        <td><b>${e.empresa_nome}</b></td>
+        <td style="color:var(--text3); font-size:.75rem;">${e.cnpj||'—'}</td>
+        <td><span style="color:#0a7; font-weight:600;">${concl}</span> / <span style="color:#f80;">${pend}</span> / <span style="color:var(--text3);">${total}</span></td>
+        <td>
+          <div style="font-size:.78rem; margin-bottom:3px;">${pct}% concluído</div>
+          <div style="width:100%; height:6px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:${corBar};"></div>
+          </div>
+        </td>
+        <td><span style="color:${corDias}; font-weight:600;">${lblDias}</span></td>
+        <td>${e.responsavel||'—'}</td>
+        <td onclick="event.stopPropagation()">${contatoBtn}</td>
+        <td onclick="event.stopPropagation()">${pend > 0 ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaEmpresa(${e.empresa_id})">Dar Baixa</button>` : ''}</td>
+      </tr>
+      <tr id="ctrl-eexp-${e.empresa_id}" style="display:none;">
+        <td colspan="9" style="background:rgba(255,255,255,.02); padding:14px 24px;">
+          <div id="ctrl-eexp-content-${e.empresa_id}" style="color:var(--text3); font-size:.78rem;">Carregando...</div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="9" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function ctrlMarcarContato(empresaId, feito) {
+  try {
+    await ctrlFetch(`/controle/empresa/${empresaId}/contato`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({feito, por: localStorage.getItem('ctrl_user') || 'Matheus'})
+    });
+    _showToast(feito ? '✓ Contato marcado como feito' : '↶ Contato desfeito', 'success');
+    ctrlLoadPorEmpresa();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function ctrlToggleExpandEmpresa(empresaId) {
+  const row = document.getElementById('ctrl-eexp-'+empresaId);
+  const arrow = document.getElementById('ctrl-earrow-'+empresaId);
+  if (row.style.display === 'none') {
+    row.style.display = '';
+    arrow.style.transform = 'rotate(90deg)';
+    const cont = document.getElementById('ctrl-eexp-content-'+empresaId);
+    try {
+      const e = await ctrlFetch('/controle/empresa/' + empresaId + '/demandas');
+      const dems = e.demandas || [];
+      if (!dems.length) { cont.innerHTML = '<i>Sem demandas.</i>'; return; }
+      cont.innerHTML = `
+        <table style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border); text-align:left;">
+              <th style="padding:6px 8px;">OS</th>
+              <th style="padding:6px 8px;">Tarefa</th>
+              <th style="padding:6px 8px;">Prazo</th>
+              <th style="padding:6px 8px;">Progresso</th>
+              <th style="padding:6px 8px;">Responsável</th>
+              <th style="padding:6px 8px;">Status</th>
+              <th style="padding:6px 8px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dems.map(d => {
+              const isDone = d.status === 'concluida';
+              const pct = d.total_medicoes > 0 ? Math.round((d.realizadas/d.total_medicoes)*100) : (d.progresso || 0);
+              return `<tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 8px;"><b>${d.numero_os||'—'}</b></td>
+                <td style="padding:6px 8px; font-size:.72rem; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa||'—').slice(0,50)}</td>
+                <td style="padding:6px 8px;">${d.prazo||'—'}</td>
+                <td style="padding:6px 8px;">${pct}%</td>
+                <td style="padding:6px 8px;">${d.responsavel||'—'}</td>
+                <td style="padding:6px 8px;"><span class="ctrl-badge ${isDone?'concluida':'pendente'}">${isDone?'concluída':'pendente'}</span></td>
+                <td style="padding:6px 8px;">${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    } catch(err) {
+      cont.innerHTML = `<span style="color:#e22;">Erro: ${err.message}</span>`;
+    }
+  } else {
+    row.style.display = 'none';
+    arrow.style.transform = 'rotate(0)';
+  }
+}
+
+async function ctrlAbrirBaixaEmpresa(empresaId) {
+  // Abre modal de baixa pré-selecionando a empresa
+  await _ctrlPrepararBaixa();
+  // Pegar primeira demanda pendente da empresa
+  try {
+    const e = await ctrlFetch('/controle/empresa/' + empresaId + '/demandas');
+    const pend = (e.demandas || []).find(d => d.status !== 'concluida');
+    if (pend) {
+      document.getElementById('ctrl-bx-demand').value = pend.id;
+      await ctrlLoadMedicoesDoBaixa(pend.id);
+    }
+  } catch(_) {}
+  document.getElementById('ctrl-bx-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-baixa-overlay').classList.add('show');
 }
 
 async function ctrlLoadSyncLog() {
