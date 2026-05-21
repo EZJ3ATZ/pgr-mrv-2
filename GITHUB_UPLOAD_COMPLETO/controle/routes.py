@@ -9,7 +9,7 @@ from .db import (
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard
 )
-from .import_xlsx import importar_amostradores, importar_medicoes
+from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
 controle_bp = Blueprint('controle', __name__, url_prefix='/controle')
 
@@ -44,6 +44,21 @@ def import_med():
         return jsonify({'erro': 'Nenhum arquivo'}), 400
     try:
         res = importar_medicoes(f.read())
+        return jsonify({'ok': True, **res})
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+
+
+@controle_bp.route('/import/planner', methods=['POST'])
+def import_planner():
+    """Importa export do Microsoft Planner (Demandas_Medicoes_*.xlsx)."""
+    init_db()
+    f = request.files.get('file')
+    if not f:
+        return jsonify({'erro': 'Nenhum arquivo'}), 400
+    try:
+        res = importar_demandas_planner(f.read())
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
