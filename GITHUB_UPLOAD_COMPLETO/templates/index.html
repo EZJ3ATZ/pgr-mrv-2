@@ -1234,11 +1234,19 @@
         </div>
       </div>
 
+      <div id="ctrl-nv-estoque-info" style="display:none; padding:8px 10px; background:rgba(0,170,119,.08); border-left:3px solid #0a7; border-radius:5px; font-size:.78rem; margin-bottom:8px;"></div>
+
       <div class="row2" style="margin-top:8px;">
         <div>
-          <label style="font-size:.7rem; color:var(--text3);">Amostrador (tipo + código)</label>
-          <input type="text" id="ctrl-nv-amostr" placeholder="Ex: TCP 123U45 (vazio se não usar)"
+          <label style="font-size:.7rem; color:var(--text3);">Amostrador disponível</label>
+          <select id="ctrl-nv-amostr-sel"
             style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+            <option value="">— Selecione agente primeiro —</option>
+          </select>
+          <div style="display:flex; gap:6px; margin-top:4px;">
+            <input type="text" id="ctrl-nv-amostr" placeholder="ou digite manualmente"
+              style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:.75rem; outline:none;">
+          </div>
         </div>
         <div>
           <label style="font-size:.7rem; color:var(--text3);">Função / Setor</label>
@@ -2960,44 +2968,81 @@ async function ctrlNvSalvarCadEmpresa() {
   } catch(e) { alert('Erro: ' + e.message); }
 }
 
-function ctrlNvBuscarAgente(nome) {
+async function ctrlNvBuscarAgente(nome) {
   const info = document.getElementById('ctrl-nv-metodo-info');
+  const estoqueInfo = document.getElementById('ctrl-nv-estoque-info');
+  const selAm = document.getElementById('ctrl-nv-amostr-sel');
   window._ctrlNvMetodoAtual = null;
-  if (!nome) { info.style.display = 'none'; return; }
-  // Buscar no guia
-  const m = ctrlMetodosCache;
-  let metodo = null;
-  if (m && m.by_name) {
-    const k = Object.keys(m.by_name).find(k => k.toLowerCase() === nome.toLowerCase());
-    if (k) metodo = m.by_name[k][0];
-  }
-  if (!metodo) {
-    // Agentes físicos (ruído, calor, vibração) não têm método na guia química
-    const nl = nome.toLowerCase();
-    if (nl.includes('ruído') || nl.includes('ruido') || nl.includes('calor') || nl.includes('vibra')) {
-      info.style.display = 'block';
-      info.innerHTML = `<b>${nome}</b> — Agente físico (sem bomba/amostrador química, mas registrar tempo da medição)`;
-    } else {
-      info.style.display = 'block';
-      info.innerHTML = `<b>${nome}</b> — não encontrado na guia. Vazão e tipo de amostrador devem ser informados manualmente.`;
-    }
+  if (!nome) {
+    info.style.display = 'none';
+    estoqueInfo.style.display = 'none';
+    selAm.innerHTML = '<option value="">— Selecione agente primeiro —</option>';
     return;
   }
-  const vazRange = ctrlParseRange(metodo.vazao);
-  const volRange = ctrlParseRange(metodo.volume);
-  window._ctrlNvMetodoAtual = {
-    nome: nome,
-    vazao_min: vazRange[0], vazao_max: vazRange[1],
-    volume_min: volRange[0], volume_max: volRange[1],
-    metodoCod: metodo.metodoCod, amostradorCod: metodo.amostradorCod,
-    amostradorDesc: metodo.amostradorDesc,
-  };
-  info.style.display = 'block';
-  info.innerHTML = `
-    <div><b>${nome}</b> · ${metodo.metodoCod||''}</div>
-    <div style="margin-top:4px; font-size:.75rem;">
-      Vazão: <b>${metodo.vazao||'—'}</b> · Volume: <b>${metodo.volume||'—'}</b> · Amostrador: <b>${metodo.amostradorCod||'—'}</b>
-    </div>`;
+  // Buscar estoque + métodos no backend (cruza guia com banco)
+  try {
+    const d = await ctrlFetch(`/controle/agente/${encodeURIComponent(nome)}/estoque`);
+    const metodos = d.metodos || [];
+    if (!metodos.length) {
+      const nl = nome.toLowerCase();
+      const fisico = nl.includes('ruído') || nl.includes('ruido') || nl.includes('calor') || nl.includes('vibra');
+      info.style.display = 'block';
+      info.innerHTML = fisico
+        ? `<b>${nome}</b> — Agente físico (sem bomba/amostrador química, registre apenas o tempo da medição)`
+        : `<b>${nome}</b> — não encontrado na guia. Vazão e tipo de amostrador devem ser informados manualmente.`;
+      estoqueInfo.style.display = 'none';
+      selAm.innerHTML = '<option value="">— Sem amostrador compatível na guia —</option>';
+      return;
+    }
+    // Usar o 1º método como padrão (pode ter vários)
+    const m1 = metodos[0];
+    const vazRange = ctrlParseRange(m1.vazao);
+    const volRange = ctrlParseRange(m1.volume);
+    window._ctrlNvMetodoAtual = {
+      nome: nome,
+      vazao_min: vazRange[0], vazao_max: vazRange[1],
+      volume_min: volRange[0], volume_max: volRange[1],
+      metodoCod: m1.metodoCod, amostradorCod: m1.amostradorCod,
+      amostradorDesc: m1.amostradorDesc,
+      tipos: d.tipos_compativeis || [],
+    };
+    info.style.display = 'block';
+    info.innerHTML = `
+      <div><b>${nome}</b> · ${m1.metodoCod||''}</div>
+      <div style="margin-top:4px; font-size:.75rem;">
+        Vazão: <b>${m1.vazao||'—'}</b> · Volume: <b>${m1.volume||'—'}</b> · Amostrador: <b>${m1.amostradorCod||'—'}</b>
+      </div>
+      ${metodos.length > 1 ? `<div style="margin-top:4px; font-size:.7rem; color:var(--text3);">+${metodos.length-1} métodos alternativos</div>` : ''}`;
+
+    // Box de estoque
+    const tipos = d.tipos_compativeis || [];
+    const porTipo = d.por_tipo || {};
+    const totalDisp = d.total_disponivel || 0;
+    estoqueInfo.style.display = 'block';
+    const corBorda = totalDisp > 0 ? '#0a7' : '#e22';
+    const corFundo = totalDisp > 0 ? 'rgba(0,170,119,.08)' : 'rgba(226,34,34,.08)';
+    estoqueInfo.style.background = corFundo;
+    estoqueInfo.style.borderLeftColor = corBorda;
+    const detalhes = Object.entries(porTipo)
+      .map(([t, v]) => `<b style="color:${v.estoque>0?'#0a7':'#e22'}">${t}: ${v.estoque}</b>/<span style="color:var(--text3)">${v.total}</span>`)
+      .join(' · ') || 'nenhum tipo cadastrado';
+    estoqueInfo.innerHTML = `
+      <div><b>📦 Estoque disponível:</b> ${totalDisp} amostrador${totalDisp!==1?'es':''} para coleta</div>
+      <div style="margin-top:4px; font-size:.72rem;">Tipos compatíveis: ${tipos.join(', ') || '—'} · Estoque/Total → ${detalhes}</div>`;
+
+    // Popular dropdown de amostradores compatíveis em estoque
+    const disponiveis = (d.amostradores || []).filter(a => (a.status||'').toLowerCase().includes('estoque'));
+    if (!disponiveis.length) {
+      selAm.innerHTML = `<option value="">⚠ Sem amostrador em estoque (${tipos.join(',')})</option>`;
+    } else {
+      selAm.innerHTML = '<option value="">— Selecione amostrador —</option>' +
+        disponiveis.map(a => `<option value="${a.tipo} ${a.codigo}" data-id="${a.id}">${a.tipo} ${a.codigo}</option>`).join('');
+    }
+  } catch(e) {
+    console.error('estoque agente', e);
+    info.style.display = 'block';
+    info.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`;
+  }
 }
 
 function ctrlNvPreencherSNs(modeloId) {
@@ -3045,12 +3090,17 @@ function ctrlNvAdicionarItem() {
   const vazao = parseFloat(document.getElementById('ctrl-nv-vazao').value || 0);
   const m = window._ctrlNvMetodoAtual;
   const modeloEl = document.getElementById('ctrl-nv-bomba-modelo');
+  const selAmEl = document.getElementById('ctrl-nv-amostr-sel');
+  // Prioriza select de estoque; se vazio, usa input manual
+  const amostradorTxt = (selAmEl.value || document.getElementById('ctrl-nv-amostr').value || '').trim();
+  const amostradorId = selAmEl.selectedOptions[0]?.dataset?.id || null;
   const item = {
     agente: agente,
     bomba_modelo: modeloEl.selectedOptions[0]?.textContent.startsWith('—') ? '' : modeloEl.selectedOptions[0]?.textContent || '',
     bomba_modelo_id: modeloEl.value,
     bomba_sn: document.getElementById('ctrl-nv-bomba-sn').value,
-    amostrador: document.getElementById('ctrl-nv-amostr').value.trim(),
+    amostrador: amostradorTxt,
+    amostrador_id: amostradorId,
     funcao: document.getElementById('ctrl-nv-funcao').value.trim(),
     vazao_calibrada: vazao || null,
     tempo_min: (vazao > 0 && m?.volume_min) ? (m.volume_min / vazao) : null,
@@ -3063,8 +3113,10 @@ function ctrlNvAdicionarItem() {
   document.getElementById('ctrl-nv-agente').value = '';
   document.getElementById('ctrl-nv-vazao').value = '';
   document.getElementById('ctrl-nv-amostr').value = '';
+  document.getElementById('ctrl-nv-amostr-sel').innerHTML = '<option value="">— Selecione agente primeiro —</option>';
   document.getElementById('ctrl-nv-funcao').value = '';
   document.getElementById('ctrl-nv-metodo-info').style.display = 'none';
+  document.getElementById('ctrl-nv-estoque-info').style.display = 'none';
   document.getElementById('ctrl-nv-tempo-preview').style.display = 'none';
   document.getElementById('ctrl-nv-vazao-aviso').innerHTML = '';
   window._ctrlNvMetodoAtual = null;
