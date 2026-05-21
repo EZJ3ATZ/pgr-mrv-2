@@ -34,6 +34,23 @@ CREATE TABLE IF NOT EXISTS demandas (
     status          TEXT DEFAULT 'pendente',
     observacao      TEXT,
     criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    -- Campos do Planner
+    nome_tarefa     TEXT,
+    data_conclusao  TEXT,
+    responsavel     TEXT,
+    status_planner  TEXT,
+    progresso       INTEGER DEFAULT 0,
+    checklist       TEXT,
+    checklist_prog  TEXT,
+    bucket          TEXT,
+    etiquetas       TEXT,
+    descricao       TEXT,
+    cnpj            TEXT,
+    tem_comentarios INTEGER DEFAULT 0,
+    -- SLA / contato cliente
+    contato_feito       INTEGER DEFAULT 0,
+    contato_feito_em    TEXT,
+    contato_feito_por   TEXT,
     FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 );
 
@@ -143,10 +160,40 @@ def init_db():
     is_new = not os.path.exists(DB_PATH)
     with get_db() as conn:
         conn.executescript(SCHEMA)
+        # Migration: adicionar colunas novas se nao existirem
+        _migrate(conn)
         # Verificar se ja tem dados
         count = conn.execute('SELECT COUNT(*) c FROM amostradores').fetchone()['c']
     if count == 0:
         _auto_seed()
+
+
+def _migrate(conn):
+    """Adiciona colunas novas a tabelas existentes (idempotente)."""
+    cols = [r['name'] for r in conn.execute('PRAGMA table_info(demandas)').fetchall()]
+    novas = {
+        'nome_tarefa':     'TEXT',
+        'data_conclusao':  'TEXT',
+        'responsavel':     'TEXT',
+        'status_planner':  'TEXT',
+        'progresso':       'INTEGER DEFAULT 0',
+        'checklist':       'TEXT',
+        'checklist_prog':  'TEXT',
+        'bucket':          'TEXT',
+        'etiquetas':       'TEXT',
+        'descricao':       'TEXT',
+        'cnpj':            'TEXT',
+        'tem_comentarios': 'INTEGER DEFAULT 0',
+        'contato_feito':       'INTEGER DEFAULT 0',
+        'contato_feito_em':    'TEXT',
+        'contato_feito_por':   'TEXT',
+    }
+    for col, tipo in novas.items():
+        if col not in cols:
+            try:
+                conn.execute(f'ALTER TABLE demandas ADD COLUMN {col} {tipo}')
+            except Exception as e:
+                print(f'[migrate] {col}: {e}')
 
 
 def _auto_seed():
@@ -238,6 +285,71 @@ def list_demandas(filtros=None):
         d.criado_em ASC LIMIT 2000"""
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def list_demandas_por_empresa(filtros=None):
+    """Agrupa demandas por empresa com progresso total."""
+    sql = """
+        SELECT e.id AS empresa_id, e.nome AS empresa_nome, e.cnpj,
+               COUNT(d.id) AS total_demandas,
+               SUM(CASE WHEN d.status='concluida' THEN 1 ELSE 0 END) AS demandas_concluidas,
+               SUM(CASE WHEN d.status!='concluida' THEN 1 ELSE 0 END) AS demandas_pendentes,
+               COALESCE(SUM(d.progresso), 0) / NULLIF(COUNT(d.id),0) AS progresso_medio,
+               (SELECT COUNT(*) FROM medicoes m JOIN demandas d2 ON d2.id=m.demanda_id
+                 WHERE d2.empresa_id = e.id) AS total_medicoes,
+               (SELECT COUNT(*) FROM medicoes m JOIN demandas d2 ON d2.id=m.demanda_id
+                 WHERE d2.empresa_id = e.id AND m.status='realizado') AS medicoes_realizadas,
+               MIN(d.criado_em) AS demanda_mais_antiga,
+               MAX(d.prazo) AS prazo_mais_distante,
+               MAX(d.responsavel) AS responsavel,
+               MAX(d.contato_feito) AS contato_feito
+        FROM empresas e
+        JOIN demandas d ON d.empresa_id = e.id
+        WHERE 1=1
+    """
+    params = []
+    f = filtros or {}
+    if f.get('status') == 'pendente':
+        sql += " AND d.status != 'concluida'"
+    elif f.get('status') == 'concluida':
+        sql += " AND d.status = 'concluida'"
+    if f.get('empresa'):
+        sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
+    sql += """ GROUP BY e.id, e.nome, e.cnpj
+        ORDER BY demandas_pendentes DESC, demanda_mais_antiga ASC
+        LIMIT 1000"""
+    with get_db() as conn:
+        rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+        # adicionar dias_aberta da mais antiga
+        for r in rows:
+            if r.get('demanda_mais_antiga'):
+                from datetime import datetime as _dt
+                try:
+                    dt = _dt.fromisoformat(r['demanda_mais_antiga'].replace(' ', 'T').split('.')[0])
+                    r['dias_aberta'] = (_dt.now() - dt).days
+                except:
+                    r['dias_aberta'] = 0
+            else:
+                r['dias_aberta'] = 0
+        return rows
+
+
+def get_empresa_demandas(empresa_id):
+    """Retorna empresa + todas suas demandas + medicoes."""
+    with get_db() as conn:
+        emp = conn.execute('SELECT * FROM empresas WHERE id=?', (empresa_id,)).fetchone()
+        if not emp: return None
+        emp = row_to_dict(emp)
+        dems = [row_to_dict(r) for r in conn.execute("""
+            SELECT d.*,
+                   (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id) AS total_medicoes,
+                   (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id AND m.status='realizado') AS realizadas,
+                   CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta
+            FROM demandas d WHERE d.empresa_id=?
+            ORDER BY d.criado_em DESC
+        """, (empresa_id,)).fetchall()]
+        emp['demandas'] = dems
+        return emp
 
 
 def get_demanda_completa(demanda_id):
