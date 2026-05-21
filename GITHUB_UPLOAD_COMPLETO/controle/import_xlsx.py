@@ -116,6 +116,102 @@ def importar_amostradores(file_bytes):
     return {'inserted': inserted, 'updated': updated, 'errors': errors}
 
 
+def importar_demandas_planner(file_bytes):
+    """Importa formato 'Demandas_Medicoes' extraido do Microsoft Planner.
+    Colunas: Nome da Empresa (OS, NOME) | Data de Criacao | Prazo | Responsaveis
+    Atualiza demandas existentes (match por numero_os) ou cria novas.
+    """
+    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+    inseridas = 0
+    atualizadas = 0
+    erros = []
+
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        rows = list(ws.iter_rows(values_only=True))
+        if not rows: continue
+
+        # Achar cabecalho
+        header_idx = None
+        for i, row in enumerate(rows):
+            txt = ' '.join(_norm(c) for c in row if c)
+            if 'EMPRESA' in txt and ('CRIACAO' in txt or 'PREVISAO' in txt or 'RESPONSAVEIS' in txt):
+                header_idx = i; break
+        if header_idx is None: continue
+
+        header_norm = [_norm(c) for c in rows[header_idx]]
+        def col_idx(*kws):
+            for j, h in enumerate(header_norm):
+                for kw in kws:
+                    if kw in h:
+                        return j
+            return None
+
+        c_emp = col_idx('NOME DA EMPRESA', 'EMPRESA')
+        c_cri = col_idx('DATA DE CRIACAO', 'CRIACAO')
+        c_pra = col_idx('PREVISAO', 'PRAZO', 'CONCLUSAO')
+        c_res = col_idx('RESPONSAVEIS', 'RESPONSAVEL')
+
+        for row in rows[header_idx + 1:]:
+            if not row or not row[c_emp]: continue
+            raw = _str(row[c_emp])
+            # Parse "OS, NOME EMPRESA"
+            os_num, nome = '', raw
+            if ',' in raw:
+                parts = raw.split(',', 1)
+                if parts[0].strip().isdigit():
+                    os_num = parts[0].strip()
+                    nome = parts[1].strip()
+            data_cri = _str(row[c_cri]) if c_cri is not None else ''
+            prazo    = _str(row[c_pra]) if c_pra is not None else ''
+            resp     = _str(row[c_res]) if c_res is not None else ''
+            if not nome: continue
+
+            empresa_id = upsert_empresa('', nome, contato=resp)
+            if not empresa_id: continue
+
+            with get_db() as conn:
+                # Match por OS
+                existing = None
+                if os_num:
+                    existing = conn.execute(
+                        'SELECT id FROM demandas WHERE numero_os = ?',
+                        (os_num,)).fetchone()
+                if existing:
+                    conn.execute("""
+                        UPDATE demandas
+                        SET empresa_id=?, prazo=?, observacao=COALESCE(observacao,'') || ' | Responsavel: ' || ?,
+                            criado_em=COALESCE(NULLIF(?, ''), criado_em)
+                        WHERE id=?""",
+                        (empresa_id, prazo, resp, _parse_data(data_cri), existing['id']))
+                    atualizadas += 1
+                else:
+                    conn.execute("""
+                        INSERT INTO demandas
+                            (numero_os, empresa_id, prazo, status, observacao, criado_em)
+                        VALUES (?, ?, ?, 'pendente', ?, ?)""",
+                        (os_num, empresa_id, prazo,
+                         f'Responsavel: {resp}',
+                         _parse_data(data_cri) or None))
+                    inseridas += 1
+
+    return {'demandas_inseridas': inseridas, 'demandas_atualizadas': atualizadas, 'errors': erros}
+
+
+def _parse_data(s):
+    """Converte 'dd/mm/aaaa' para 'aaaa-mm-dd HH:MM:SS' (ISO SQLite). Mantem se ja for ISO."""
+    if not s: return ''
+    s = s.strip()
+    if not s: return ''
+    # dd/mm/aaaa
+    if len(s) == 10 and s[2] == '/' and s[5] == '/':
+        try:
+            d, m, y = s.split('/')
+            return f'{y}-{m.zfill(2)}-{d.zfill(2)} 12:00:00'
+        except: return ''
+    return s
+
+
 def _is_finalizada(cell):
     """Detecta se a celula tem fundo VERDE (= demanda finalizada).
     Considera verde:
