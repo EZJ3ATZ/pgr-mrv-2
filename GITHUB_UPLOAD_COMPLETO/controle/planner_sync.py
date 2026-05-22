@@ -18,7 +18,8 @@ from datetime import datetime, timezone
 
 from .graph import (
     graph_ok, get_teams_groups, get_plans_for_group,
-    get_plan_buckets, get_plan_tasks, get_task_details, get_user,
+    get_plan_buckets, get_plan_tasks, get_plan_category_map,
+    get_task_details, get_user,
 )
 from .db import get_db, init_db
 
@@ -163,12 +164,30 @@ def _upsert_ms_user(conn, user_id: str) -> dict:
 
 # ── Ponto de entrada principal ─────────────────────────────────────────
 
-def sync_planner(group_filter: str = None) -> dict:
+def _task_has_label(task: dict, category_ids: set) -> bool:
+    """Verifica se uma tarefa tem pelo menos um dos labels indicados."""
+    applied = task.get('appliedCategories', {})
+    return any(cid in applied and applied[cid] for cid in category_ids)
+
+
+def _find_category_ids(category_map: dict, label_filter: str) -> set:
+    """
+    Dado o mapa {categoryN: 'nome'} do plano, encontra os IDs cujo
+    nome contém label_filter (case-insensitive).
+    Ex: label_filter='medições' → {'category1', 'category3'}
+    """
+    needle = label_filter.lower().strip()
+    return {k for k, v in category_map.items() if needle in v.lower()}
+
+
+def sync_planner(group_filter: str = None, label_filter: str = None) -> dict:
     """
     Sincroniza Planner → sistema.
 
     Args:
-        group_filter: se fornecido, sincroniza apenas o grupo com este ID ou nome.
+        group_filter:  filtra por ID ou nome parcial do grupo.
+        label_filter:  filtra tarefas que têm este label/flag aplicado.
+                       Ex: 'medições' — só importa tarefas com esse label.
 
     Returns:
         Dicionário com estatísticas do sync.
@@ -178,13 +197,16 @@ def sync_planner(group_filter: str = None) -> dict:
 
     init_db()
     stats = {
-        'grupos':    0,
-        'planos':    0,
-        'tarefas':   0,
-        'criadas':   0,
-        'atualizadas': 0,
-        'erros':     [],
-        'iniciado_em': datetime.now(timezone.utc).isoformat(),
+        'grupos':        0,
+        'planos':        0,
+        'tarefas_total': 0,
+        'tarefas_filtradas': 0,
+        'criadas':       0,
+        'atualizadas':   0,
+        'ignoradas':     0,
+        'erros':         [],
+        'label_filter':  label_filter,
+        'iniciado_em':   datetime.now(timezone.utc).isoformat(),
     }
 
     try:
@@ -198,7 +220,7 @@ def sync_planner(group_filter: str = None) -> dict:
                   if g.get('id') == group_filter or
                   group_filter.lower() in g.get('displayName', '').lower()]
 
-    log.info('[planner_sync] %d grupos encontrados', len(grupos))
+    log.info('[planner_sync] %d grupos | label_filter=%s', len(grupos), label_filter)
 
     with get_db() as conn:
         for grupo in grupos:
@@ -226,6 +248,20 @@ def sync_planner(group_filter: str = None) -> dict:
                     log.warning('[planner_sync] buckets plano %s: %s', pnome, e)
                     bucket_map = {}
 
+                # Descobrir IDs dos labels que correspondem ao filtro
+                category_ids = set()
+                if label_filter:
+                    try:
+                        cat_map = get_plan_category_map(pid)
+                        category_ids = _find_category_ids(cat_map, label_filter)
+                        log.info('[planner_sync] plano "%s" label "%s" → categorias: %s',
+                                 pnome, label_filter, category_ids)
+                        if not category_ids:
+                            log.warning('[planner_sync] label "%s" não encontrado no plano "%s" — '
+                                        'verifique o nome exato do label no Planner.', label_filter, pnome)
+                    except Exception as e:
+                        log.warning('[planner_sync] category_map plano %s: %s', pnome, e)
+
                 # Listar tarefas
                 try:
                     tarefas = get_plan_tasks(pid)
@@ -234,10 +270,18 @@ def sync_planner(group_filter: str = None) -> dict:
                     stats['erros'].append(f'Plano {pnome}: {e}')
                     continue
 
-                log.info('[planner_sync] plano "%s" → %d tarefas', pnome, len(tarefas))
+                stats['tarefas_total'] += len(tarefas)
+
+                # Aplicar filtro de label
+                if label_filter and category_ids:
+                    tarefas_filtradas = [t for t in tarefas if _task_has_label(t, category_ids)]
+                    stats['ignoradas'] += len(tarefas) - len(tarefas_filtradas)
+                    tarefas = tarefas_filtradas
+
+                stats['tarefas_filtradas'] += len(tarefas)
+                log.info('[planner_sync] plano "%s" → %d tarefas para importar', pnome, len(tarefas))
 
                 for tarefa in tarefas:
-                    stats['tarefas'] += 1
                     tid = tarefa['id']
 
                     try:
