@@ -476,7 +476,7 @@ def list_amostradores_vencendo(dias_alerta=7):
     """
     sql = """
         SELECT a.*, e.nome AS empresa_nome,
-               CAST(julianday(a.data_envio_lab) + COALESCE(a.dias_validade,30)
+               CAST(julianday(a.data_envio_lab) + COALESCE(a.dias_validade,45)
                     - julianday('now') AS INTEGER) AS dias_para_vencer,
                CAST(julianday('now') - julianday(a.data_envio_lab) AS INTEGER) AS dias_no_lab
         FROM amostradores a
@@ -495,11 +495,11 @@ def contar_vencendo():
     """Conta amostradores em 4 faixas: vencido, urgente (<=3d), alerta (<=7d), ok."""
     sql = """
         SELECT
-          SUM(CASE WHEN julianday('now') > julianday(data_envio_lab) + COALESCE(dias_validade,30) THEN 1 ELSE 0 END) AS vencidos,
-          SUM(CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,30) - 3
-                                AND julianday(data_envio_lab) + COALESCE(dias_validade,30) THEN 1 ELSE 0 END) AS urgente,
-          SUM(CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,30) - 7
-                                AND julianday(data_envio_lab) + COALESCE(dias_validade,30) - 4 THEN 1 ELSE 0 END) AS alerta,
+          SUM(CASE WHEN julianday('now') > julianday(data_envio_lab) + COALESCE(dias_validade,45) THEN 1 ELSE 0 END) AS vencidos,
+          SUM(CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,45) - 3
+                                AND julianday(data_envio_lab) + COALESCE(dias_validade,45) THEN 1 ELSE 0 END) AS urgente,
+          SUM(CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,45) - 7
+                                AND julianday(data_envio_lab) + COALESCE(dias_validade,45) - 4 THEN 1 ELSE 0 END) AS alerta,
           COUNT(*) AS total_no_lab
         FROM amostradores
         WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
