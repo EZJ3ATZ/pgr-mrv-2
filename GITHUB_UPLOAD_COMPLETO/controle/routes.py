@@ -12,7 +12,8 @@ from .db import (
     get_demanda_completa, upsert_empresa, stats_dashboard,
     registrar_sync, list_sync_log,
     list_demandas_por_empresa, get_empresa_demandas,
-    list_amostradores_vencendo, contar_vencendo
+    list_amostradores_vencendo, contar_vencendo,
+    mesclar_empresas_duplicatas
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -154,7 +155,7 @@ def marcar_envio_lab(aid):
     init_db()
     d = request.json or {}
     data_envio = d.get('data_envio_lab') or datetime.now().strftime('%Y-%m-%d')
-    dias       = int(d.get('dias_validade', 30) or 30)
+    dias       = int(d.get('dias_validade', 45) or 45)
     lote       = d.get('lote', '')
     obs        = d.get('observacao_venc', '')
     with get_db() as conn:
@@ -175,7 +176,7 @@ def marcar_envio_lab_lote():
     ids = d.get('ids', [])
     if not ids: return jsonify({'erro': 'sem ids'}), 400
     data_envio = d.get('data_envio_lab') or datetime.now().strftime('%Y-%m-%d')
-    dias       = int(d.get('dias_validade', 30) or 30)
+    dias       = int(d.get('dias_validade', 45) or 45)
     lote       = d.get('lote', '')
     placeholders = ','.join(['?'] * len(ids))
     with get_db() as conn:
@@ -678,6 +679,97 @@ def get_bombas():
     })
 
 
+# ── Previsão de estoque baseada em demandas pendentes ────────────────
+@controle_bp.route('/previsao_estoque')
+def previsao_estoque():
+    """Cruza demandas pendentes × guia de métodos × estoque atual.
+    Retorna para cada tipo de amostrador: qtd necessária, em estoque e falta.
+    """
+    init_db()
+    with get_db() as conn:
+        meds = [row_to_dict(r) for r in conn.execute("""
+            SELECT m.id, m.agente, m.tipo_amostrador,
+                   m.qtd_pontos_prevista, m.qtd_pontos_feita, m.status,
+                   d.numero_os, d.prazo, d.empresa_id,
+                   e.nome AS empresa_nome
+            FROM medicoes m
+            JOIN demandas d ON d.id = m.demanda_id
+            JOIN empresas e ON e.id = d.empresa_id
+            WHERE m.status != 'realizado'
+              AND d.status != 'concluida'
+            ORDER BY d.prazo ASC NULLS LAST
+        """).fetchall()]
+
+    necessidades = {}   # tipo -> {qtd_necessaria, falta, medicoes[]}
+    agentes_sem_guia = set()
+
+    for m in meds:
+        agente = m.get('agente', '')
+        pontos_faltam = max(0, (m.get('qtd_pontos_prevista') or 1) -
+                                (m.get('qtd_pontos_feita') or 0))
+        if pontos_faltam == 0:
+            continue
+
+        metodos = _buscar_metodos_agente(agente)
+        if not metodos:
+            agentes_sem_guia.add(agente)
+            # Tenta usar tipo_amostrador ja cadastrado na medicao
+            tipo_raw = (m.get('tipo_amostrador') or '').upper().strip()
+            if tipo_raw:
+                necessidades.setdefault(tipo_raw, {
+                    'qtd_necessaria': 0, 'em_estoque': 0, 'falta': 0,
+                    'medicoes': [], 'metodo': '(tipo da planilha)',
+                    'vazao': '', 'volume': ''
+                })
+                necessidades[tipo_raw]['qtd_necessaria'] += pontos_faltam
+                necessidades[tipo_raw]['medicoes'].append({
+                    'empresa': m['empresa_nome'], 'os': m['numero_os'],
+                    'agente': agente, 'prazo': m['prazo'], 'pontos': pontos_faltam
+                })
+            continue
+
+        tipos_vistos = set()
+        for met in metodos:
+            tipos = _extrair_tipos_amostrador(met.get('amostradorCod', ''))
+            for t in tipos:
+                if t in tipos_vistos:
+                    continue
+                tipos_vistos.add(t)
+                necessidades.setdefault(t, {
+                    'qtd_necessaria': 0, 'em_estoque': 0, 'falta': 0,
+                    'medicoes': [],
+                    'metodo': met.get('metodoCod', ''),
+                    'vazao': met.get('vazao', ''),
+                    'volume': met.get('volume', ''),
+                })
+                necessidades[t]['qtd_necessaria'] += pontos_faltam
+                necessidades[t]['medicoes'].append({
+                    'empresa': m['empresa_nome'], 'os': m['numero_os'],
+                    'agente': agente, 'prazo': m['prazo'], 'pontos': pontos_faltam
+                })
+
+    # Contar estoque atual por tipo
+    with get_db() as conn:
+        for tipo, dados in necessidades.items():
+            r = conn.execute(
+                "SELECT COUNT(*) c FROM amostradores WHERE tipo=? AND status='Estoque'",
+                (tipo,)).fetchone()
+            dados['em_estoque'] = r['c'] if r else 0
+            dados['falta'] = max(0, dados['qtd_necessaria'] - dados['em_estoque'])
+
+    # Ordenar: mais crítico primeiro (falta > 0, depois por qtd necessaria)
+    lista = sorted(
+        [{'tipo': t, **v} for t, v in necessidades.items()],
+        key=lambda x: (-x['falta'], -x['qtd_necessaria'])
+    )
+
+    return jsonify({
+        'necessidades': lista,
+        'agentes_sem_guia': sorted(agentes_sem_guia),
+        'total_medicoes_pendentes': len(meds),
+    })
+
+
 # ── Calculo de tempo (preview, sem persistir) ─────────────────────────
 @controle_bp.route('/calc_tempo')
 def calc_tempo():
@@ -690,6 +782,57 @@ def calc_tempo():
         return jsonify({'tempo_min': round(tempo, 2)})
     except (ValueError, TypeError):
         return jsonify({'erro': 'valores numericos invalidos'}), 400
+
+
+# ── Devolucao de amostrador ao laboratorio ────────────────────────────
+@controle_bp.route('/amostradores/<int:aid>/devolver', methods=['POST'])
+def devolver_amostrador(aid):
+    """Marca amostrador como Devolvido (sai da contagem de vencimento)."""
+    init_db()
+    d = request.json or {}
+    obs = d.get('observacao', '')
+    data_dev = d.get('data_devolucao') or datetime.now().strftime('%Y-%m-%d')
+    with get_db() as conn:
+        am = conn.execute('SELECT * FROM amostradores WHERE id=?', (aid,)).fetchone()
+        if not am:
+            return jsonify({'erro': 'nao encontrado'}), 404
+        conn.execute("""
+            UPDATE amostradores
+            SET status='Devolvido',
+                observacao = CASE WHEN ? != '' THEN ? ELSE observacao END,
+                atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=?""",
+            (obs, obs, aid))
+    return jsonify({'ok': True, 'data_devolucao': data_dev})
+
+
+@controle_bp.route('/amostradores/devolver_lote', methods=['POST'])
+def devolver_lote():
+    """Marca vários amostradores como Devolvidos de uma vez."""
+    init_db()
+    d = request.json or {}
+    ids = d.get('ids', [])
+    if not ids:
+        return jsonify({'erro': 'sem ids'}), 400
+    obs = d.get('observacao', 'Devolvido em lote')
+    placeholders = ','.join(['?'] * len(ids))
+    with get_db() as conn:
+        cur = conn.execute(f"""
+            UPDATE amostradores
+            SET status='Devolvido', observacao=?,
+                atualizado_em=CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})""",
+            [obs] + ids)
+    return jsonify({'ok': True, 'afetados': cur.rowcount})
+
+
+# ── Utilitários de limpeza ────────────────────────────────────────────
+@controle_bp.route('/empresas/mesclar_duplicatas', methods=['POST'])
+def mesclar_duplicatas():
+    """Consolida empresas com mesmo nome em um único registro."""
+    init_db()
+    mescladas = mesclar_empresas_duplicatas()
+    return jsonify({'ok': True, 'mescladas': mescladas})
 
 
 # ── Reset (cuidado!) ──────────────────────────────────────────────────
