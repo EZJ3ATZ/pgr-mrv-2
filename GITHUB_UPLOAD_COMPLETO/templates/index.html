@@ -7595,7 +7595,7 @@ function nvCqRenderAmostr() {
     const vi=parseFloat(am.vazao_inicial)||0, vf=parseFloat(am.vazao_final)||0;
     const vm=vi&&vf?(vi+vf)/2:0;
     let t=0;
-    if(am.hora_inicio&&am.hora_final){const[h1,m1]=am.hora_inicio.split(':').map(Number);const[h2,m2]=am.hora_final.split(':').map(Number);t=(h2*60+m2)-(h1*60+m1);(am.intervalos||'').split(/[,;]+/).forEach(iv=>{iv=iv.trim();if(iv.includes(':')){{const[ih,im]=iv.split(':').map(Number);t-=(ih*60+im);}}});if(t<0)t=0;}
+    if(am.hora_inicio&&am.hora_final){const[h1,m1]=am.hora_inicio.split(':').map(Number);const[h2,m2]=am.hora_final.split(':').map(Number);t=(h2*60+m2)-(h1*60+m1);(am.intervalos||'').split(/[,;]+/).forEach(iv=>{iv=iv.trim();if(iv.includes(':')){const pts=iv.split(':');t-=(parseInt(pts[0])||0)*60+(parseInt(pts[1])||0);}});if(t<0)t=0;}
     const vol=vm&&t?+(vm*t).toFixed(3):0;
     const dv=vi?+(Math.abs(vi-vf)/vi*100).toFixed(2):0;
     const dvS=dv>5?'color:#92400e;font-weight:700;background:#2a1500;':dv>0?'color:#065f46;':'';
