@@ -183,6 +183,24 @@ def get_plan_tasks(plan_id: str) -> list:
     return graph_paginate(f'/planner/plans/{plan_id}/tasks')
 
 
+def get_plan_details(plan_id: str) -> dict:
+    """Busca detalhes do plano (categoryDescriptions — mapeamento de labels)."""
+    try:
+        return graph_get(f'/planner/plans/{plan_id}/details')
+    except Exception as e:
+        log.warning('[graph] get_plan_details %s: %s', plan_id, e)
+        return {}
+
+
+def get_plan_category_map(plan_id: str) -> dict:
+    """
+    Retorna mapa {categoryN: 'nome'} dos labels do plano.
+    Ex: {'category1': 'Medições', 'category2': 'Urgente'}
+    """
+    details = get_plan_details(plan_id)
+    return details.get('categoryDescriptions', {})
+
+
 def get_task_details(task_id: str) -> dict:
     """Busca detalhes de uma tarefa (descrição, checklist, referencias)."""
     try:
