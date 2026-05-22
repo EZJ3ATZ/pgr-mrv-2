@@ -1044,14 +1044,18 @@
     </div>
   </div>
 
-  <div class="header-search">
+  <div class="header-search" style="position:relative;">
     <div class="header-search-icon">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
     </div>
-    <input type="text" placeholder="Buscar empresa, OS, agente...">
-    <span class="header-search-kbd">Ctrl+K</span>
+    <input type="text" id="global-search-input" placeholder="Buscar empresa, OS, agente..." autocomplete="off"
+      oninput="gsSearch(this.value)" onkeydown="gsKeyNav(event)" onfocus="gsSearch(this.value)" onblur="setTimeout(()=>gsHide(),180)">
+    <span class="header-search-kbd" id="gs-kbd">Ctrl+K</span>
+    <div id="gs-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;
+      background:var(--surface);border:1px solid var(--border2);border-radius:10px;
+      box-shadow:0 8px 28px rgba(0,0,0,.6);z-index:9999;overflow:hidden;max-height:340px;overflow-y:auto;"></div>
   </div>
 
   <div class="header-right">
@@ -3029,7 +3033,7 @@
       <div style="position:relative;height:220px;"><canvas id="bi-chart-tecnico"></canvas></div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Top Agentes Qu&#237;micos Medidos</div>
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Top Avalia&#231;&#245;es Realizadas</div>
       <div style="position:relative;height:220px;"><canvas id="bi-chart-agentes"></canvas></div>
     </div>
   </div>
@@ -3256,6 +3260,7 @@
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">#</th>
                 <th style="padding:7px 6px;border:1px solid var(--border);">ID Amostrador</th>
                 <th style="padding:7px 6px;border:1px solid var(--border);">Tipo</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);">Bomba</th>
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Vi<br><span style="font-weight:400;font-size:.74rem;">(L/min)</span></th>
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Vf<br><span style="font-weight:400;font-size:.74rem;">(L/min)</span></th>
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">In&#237;cio</th>
@@ -3269,7 +3274,7 @@
               </tr>
             </thead>
             <tbody id="cq-amostr-tbody">
-              <tr><td colspan="13" style="padding:20px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>
+              <tr><td colspan="14" style="padding:20px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>
             </tbody>
           </table>
         </div>
@@ -3904,9 +3909,23 @@ async function qImportLaudo() {
     if (d.erro) throw new Error(d.erro);
     qLaudoImgs = d.paginas || [];
     if (d.dadosExtraidos && Object.keys(d.dadosExtraidos).length) {
-      const fn = d.dadosExtraidos.filtroNumero;
+      const fn   = d.dadosExtraidos.filtroNumero;
+      const nome = (d.dadosExtraidos.trabalhador || '').toLowerCase();
+      // 1) match por filtroNumero
       let target = fn ? qAvals.find(a => a.filtroNumero === fn) : null;
-      if (!target) { target = qNewAval(); qAvals.push(target); }
+      // 2) match por nome do trabalhador
+      if (!target && nome) target = qAvals.find(a => a.trabalhador && a.trabalhador.toLowerCase() === nome);
+      // 3) se tem só 1 avaliação, preenche ela (não cria 2ª)
+      if (!target && qAvals.length === 1) target = qAvals[0];
+      // 4) nenhuma avaliação ainda → cria nova
+      if (!target && qAvals.length === 0) { target = qNewAval(); qAvals.push(target); }
+      // 5) múltiplas avaliações sem match → pergunta qual
+      if (!target) {
+        const opts = qAvals.map((a,i) => `${i+1}: ${a.trabalhador||a.cargo||('Avaliação '+(i+1))}`).join('\n');
+        const idx  = parseInt(prompt('Qual avaliação preencher com os dados do laboratório?\n\n' + opts + '\n\nDigite o número:'));
+        if (!isNaN(idx) && idx >= 1 && idx <= qAvals.length) target = qAvals[idx-1];
+        else { document.getElementById('q-laudo-status').textContent = 'Importação cancelada.'; return; }
+      }
       Object.assign(target, d.dadosExtraidos);
       qRenderAvals();
       document.getElementById('q-laudo-status').textContent =
@@ -6602,30 +6621,43 @@ async function biLoad() {
       }
     });
 
-    // 7. Tipo amostrador (pie)
+    // 7. Tipo amostrador (horizontal bar — mais legível que pizza)
     _biDestroy('tipo-am');
-    const ta = d.por_tipo_amostrador || [];
+    const ta = (d.por_tipo_amostrador || []).slice(0,12).reverse();
     _biCharts['tipo-am'] = new Chart(document.getElementById('bi-chart-tipo-am'), {
-      type:'pie',
+      type:'bar',
       data:{
         labels:ta.map(t=>t.tipo_amostrador||'N/I'),
-        datasets:[{data:ta.map(t=>t.qtd),
-          backgroundColor:palette,borderColor:'#0E1118',borderWidth:2,hoverOffset:6}]
+        datasets:[{label:'Qtd',data:ta.map(t=>t.qtd),
+          backgroundColor:ta.map((_,i)=>palette[i%palette.length]),
+          borderRadius:4,borderSkipped:false}]
       },
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom',labels:{font:{size:10}}}}}
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},
+          datalabels:{display:false},
+          tooltip:{callbacks:{label:ctx=>' '+ctx.raw+' unid.'}}},
+        scales:{
+          x:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true},
+          y:{grid:{display:false},ticks:{color:'#828DA8',font:{size:10}}}
+        }
+      }
     });
 
-    // 8. Demandas por mes (bar)
+    // 8. Demandas por mes (area line — melhor para série temporal)
     _biDestroy('dem-mes');
     const dmArr = _biPreencheMeses(d.demandas_por_mes || []);
+    const dmGrad = document.getElementById('bi-chart-dem-mes').getContext('2d');
+    const dmGradFill = dmGrad.createLinearGradient(0,0,0,220);
+    dmGradFill.addColorStop(0,'rgba(167,139,250,.35)');
+    dmGradFill.addColorStop(1,'rgba(167,139,250,.02)');
     _biCharts['dem-mes'] = new Chart(document.getElementById('bi-chart-dem-mes'), {
-      type:'bar',
+      type:'line',
       data:{
         labels:dmArr.map(r=>_biMes(r.mes)),
         datasets:[{label:'Demandas abertas',data:dmArr.map(r=>r.qtd),
-          backgroundColor:'rgba(167,139,250,.7)',borderColor:roxo,
-          borderWidth:1,borderRadius:4}]
+          borderColor:roxo,backgroundColor:dmGradFill,
+          borderWidth:2,fill:true,tension:0.4,
+          pointRadius:4,pointBackgroundColor:roxo,pointBorderColor:'#0E1118',pointBorderWidth:2}]
       },
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false}},
@@ -6967,7 +6999,7 @@ function coletaQuimicoFecharForm() {
 // ── Químico: amostradores ──
 
 function cqAddAmostrador() {
-  _cqAmostr.push({ id_amostrador:'', tipo_amostrador:'TCP', vazao_inicial:0, vazao_final:0, hora_inicio:'', hora_final:'', intervalos:'' });
+  _cqAmostr.push({ id_amostrador:'', tipo_amostrador:'TCP', bomba:'', vazao_inicial:0, vazao_final:0, hora_inicio:'', hora_final:'', intervalos:'' });
   cqRenderAmostr();
 }
 
@@ -7019,6 +7051,10 @@ function cqRenderAmostr() {
       <td style="padding:4px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" style="width:80px;" placeholder="ID" onchange="_cqAmostr[${i}].id_amostrador=this.value"></td>
       <td style="padding:4px;border:1px solid var(--border);"><select style="width:70px;" onchange="_cqAmostr[${i}].tipo_amostrador=this.value">
         ${['TCP','FMD','IOM','MCE','PVC','OVM'].map(t => '<option' + (am.tipo_amostrador===t?' selected':'') + '>' + t + '</option>').join('')}
+      </select></td>
+      <td style="padding:4px;border:1px solid var(--border);"><select style="width:100px;font-size:.78rem;" onchange="_cqAmostr[${i}].bomba=this.value">
+        <option value="" ${!am.bomba?'selected':''}>—</option>
+        ${['BDX-II GILLIAN','AIRLITE SKC','FORMIS TURAM','INLITE VENTUSPRO'].map(b=>`<option value="${b}" ${am.bomba===b?'selected':''}>${b.split(' ')[0]}</option>`).join('')}
       </select></td>
       <td style="padding:4px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" style="width:65px;" placeholder="0.150" onchange="_cqAmostr[${i}].vazao_inicial=parseFloat(this.value)||0; cqRenderAmostr()"></td>
       <td style="padding:4px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" style="width:65px;" placeholder="0.150" onchange="_cqAmostr[${i}].vazao_final=parseFloat(this.value)||0; cqRenderAmostr()"></td>
@@ -7093,6 +7129,7 @@ async function coletaQuimicoSalvar() {
     amostradores:      _cqAmostr.map(am => ({
       id_amostrador:  am.id_amostrador,
       tipo_amostrador:am.tipo_amostrador,
+      bomba:          am.bomba || '',
       vazao_inicial:  am.vazao_inicial || 0,
       vazao_final:    am.vazao_final   || 0,
       hora_inicio:    am.hora_inicio,
@@ -7108,6 +7145,117 @@ async function coletaQuimicoSalvar() {
     if (st) { st.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); st.style.color = 'var(--green)'; }
   } catch(e) {
     if (st) { st.textContent = '❌ Erro: ' + e.message; st.style.color = 'var(--red)'; }
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// BUSCA GLOBAL (Ctrl+K)
+// ═══════════════════════════════════════════════════════════════════════
+let _gsIdx = -1;
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const inp = document.getElementById('global-search-input');
+    if (inp) { inp.focus(); inp.select(); }
+  }
+  if (e.key === 'Escape') gsHide();
+});
+
+function gsHide() {
+  const d = document.getElementById('gs-dropdown');
+  if (d) d.style.display = 'none';
+  _gsIdx = -1;
+}
+
+function gsKeyNav(e) {
+  const d = document.getElementById('gs-dropdown');
+  if (!d || d.style.display === 'none') return;
+  const items = d.querySelectorAll('.gs-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _gsIdx = Math.min(_gsIdx + 1, items.length - 1);
+    items.forEach((it, i) => it.style.background = i === _gsIdx ? 'var(--surface2)' : '');
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _gsIdx = Math.max(_gsIdx - 1, 0);
+    items.forEach((it, i) => it.style.background = i === _gsIdx ? 'var(--surface2)' : '');
+  } else if (e.key === 'Enter' && _gsIdx >= 0) {
+    items[_gsIdx].click();
+  }
+}
+
+async function gsSearch(q) {
+  const d = document.getElementById('gs-dropdown');
+  const kbd = document.getElementById('gs-kbd');
+  if (!d) return;
+  q = (q || '').trim();
+  if (!q) { d.style.display = 'none'; if(kbd) kbd.style.display = ''; return; }
+  if (kbd) kbd.style.display = 'none';
+  _gsIdx = -1;
+
+  const results = [];
+  const ql = q.toLowerCase();
+
+  // Empresas (já carregadas em _empData)
+  if (window._empData && _empData.length) {
+    _empData.filter(e => (e.empresa_nome||'').toLowerCase().includes(ql)).slice(0,5).forEach(e => {
+      results.push({ icon:'🏢', label: e.empresa_nome, sub: `${e.total_demandas||0} demandas`, action: () => { showSection('controle'); ctrlSwitchTab('empresas'); setTimeout(()=>{ const el=document.getElementById('emp-busca'); if(el){el.value=q; empFiltrar();} },300); } });
+    });
+  }
+
+  // Agentes/amostradores (carregados em _agData)
+  if (window._agData && _agData.length) {
+    _agData.filter(a => (a.nome||a.agente||'').toLowerCase().includes(ql) || (a.cas||'').toLowerCase().includes(ql) || (a.metodo||'').toLowerCase().includes(ql)).slice(0,4).forEach(a => {
+      results.push({ icon:'⚗️', label: a.nome || a.agente || '?', sub: `CAS ${a.cas||'—'} · ${a.metodo||''}`, action: () => { showSection('controle'); ctrlSwitchTab('agentes'); setTimeout(()=>{ const el=document.getElementById('ag-busca'); if(el){el.value=q; agFiltrar();} },300); } });
+    });
+  }
+
+  // Se nada carregado ainda, oferece navegação rápida por seção
+  if (!results.length) {
+    const sections = [
+      { key:'pgr', icon:'📄', label:'PGR', sub:'Gerar documento PGR' },
+      { key:'calor', icon:'🌡️', label:'Laudo de Calor', sub:'Gerar laudo IBUTG' },
+      { key:'quimico', icon:'⚗️', label:'Análise Química', sub:'Laudo de agentes químicos' },
+      { key:'controle', icon:'📊', label:'Controle', sub:'Medições e amostradores' },
+      { key:'bi', icon:'📈', label:'Analytics BI', sub:'Indicadores e gráficos' },
+      { key:'coleta', icon:'📋', label:'Coletas de Campo', sub:'Planilhas digitais' },
+    ];
+    sections.filter(s => s.label.toLowerCase().includes(ql) || s.sub.toLowerCase().includes(ql)).forEach(s => {
+      results.push({ icon:s.icon, label:s.label, sub:s.sub, action:()=>showSection(s.key) });
+    });
+  }
+
+  if (!results.length) {
+    d.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text3);font-size:.83rem;">Nenhum resultado para "<b>${q}</b>"</div>`;
+    d.style.display = 'block';
+    return;
+  }
+
+  d.innerHTML = results.map((r,i) => `
+    <div class="gs-item" onclick="gsSelect(${i})" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--border);">
+      <span style="font-size:1.1rem;flex-shrink:0;">${r.icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.85rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.label}</div>
+        <div style="font-size:.73rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.sub}</div>
+      </div>
+      <span style="font-size:.7rem;color:var(--text3);">↵</span>
+    </div>
+  `).join('');
+  d.style.display = 'block';
+  window._gsResults = results;
+}
+
+function gsSelect(i) {
+  const results = window._gsResults || [];
+  if (results[i]) {
+    results[i].action();
+    gsHide();
+    document.getElementById('global-search-input').value = '';
+    const kbd = document.getElementById('gs-kbd');
+    if(kbd) kbd.style.display = '';
   }
 }
 
