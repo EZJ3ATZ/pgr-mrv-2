@@ -318,8 +318,25 @@ def dar_baixa():
     d = request.json or {}
     medicao_id    = d.get('medicao_id')
     amostrador_id = d.get('amostrador_id')
-    if not medicao_id or not amostrador_id:
-        return jsonify({'erro': 'medicao_id e amostrador_id obrigatorios'}), 400
+    agente_avulso = (d.get('agente_avulso') or '').strip()
+    demanda_id_avulso = d.get('demanda_id')
+
+    if not amostrador_id:
+        return jsonify({'erro': 'amostrador_id obrigatorio'}), 400
+
+    # Modo avulso: cria medicao on-the-fly quando não tem medicao pré-cadastrada
+    if not medicao_id and agente_avulso:
+        if not demanda_id_avulso:
+            return jsonify({'erro': 'demanda_id obrigatorio para entrada avulsa'}), 400
+        with get_db() as conn:
+            cur = conn.execute(
+                """INSERT INTO medicoes (demanda_id, agente, qtd_pontos_prevista, qtd_pontos_feita, status)
+                   VALUES (?, ?, 1, 0, 'pendente')""",
+                (demanda_id_avulso, agente_avulso))
+            medicao_id = cur.lastrowid
+
+    if not medicao_id:
+        return jsonify({'erro': 'medicao_id ou agente_avulso+demanda_id obrigatorios'}), 400
 
     avaliador        = d.get('avaliador', '')
     bomba            = d.get('bomba', '')
