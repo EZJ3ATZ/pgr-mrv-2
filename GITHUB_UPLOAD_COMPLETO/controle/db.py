@@ -233,6 +233,37 @@ CREATE TABLE IF NOT EXISTS coletas_quimico_amostr (
     FOREIGN KEY (coleta_id) REFERENCES coletas_quimico(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_col_quim_amostr ON coletas_quimico_amostr(coleta_id);
+
+-- ── Microsoft Graph / Planner ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ms_users (
+    ms_id        TEXT PRIMARY KEY,
+    display_name TEXT,
+    email        TEXT,
+    job_title    TEXT,
+    department   TEXT,
+    atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ms_sync_state (
+    chave        TEXT PRIMARY KEY,
+    valor        TEXT,
+    atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS eventos (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo        TEXT NOT NULL,
+    descricao   TEXT,
+    ref_id      INTEGER,
+    ref_tipo    TEXT,
+    usuario     TEXT,
+    ms_user_id  TEXT,
+    ip          TEXT,
+    criado_em   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_eventos_tipo     ON eventos(tipo);
+CREATE INDEX IF NOT EXISTS idx_eventos_ref      ON eventos(ref_id, ref_tipo);
+CREATE INDEX IF NOT EXISTS idx_eventos_criado   ON eventos(criado_em);
 """
 
 
@@ -352,6 +383,40 @@ def _migrate(conn):
                 conn.execute(f'ALTER TABLE amostradores ADD COLUMN {col} {tipo}')
             except Exception as e:
                 print(f'[migrate] amostradores.{col}: {e}')
+
+    # ── demandas: colunas Microsoft Graph / Planner ──────────────────
+    cols_dem = [r['name'] for r in conn.execute('PRAGMA table_info(demandas)').fetchall()]
+    novas_demandas_graph = {
+        'planner_task_id':    'TEXT UNIQUE',
+        'planner_plan_id':    'TEXT',
+        'planner_plan_nome':  'TEXT',
+        'planner_bucket_id':  'TEXT',
+        'planner_bucket':     'TEXT',
+        'planner_group_id':   'TEXT',
+        'planner_group_nome': 'TEXT',
+        'titulo':             'TEXT',
+        'prioridade':         'TEXT DEFAULT \'media\'',
+        'percent_complete':   'INTEGER DEFAULT 0',
+        'criado_em_ms':       'TEXT',
+        'concluido_em_ms':    'TEXT',
+        'ms_assignee_id':     'TEXT',
+        'ms_assignees_json':  'TEXT',
+        'etiquetas_json':     'TEXT',
+        'origem':             'TEXT DEFAULT \'manual\'',
+        'atualizado_em':      'TEXT DEFAULT CURRENT_TIMESTAMP',
+    }
+    for col, tipo in novas_demandas_graph.items():
+        if col not in cols_dem:
+            try:
+                conn.execute(f'ALTER TABLE demandas ADD COLUMN {col} {tipo}')
+            except Exception as e:
+                print(f'[migrate] demandas.{col}: {e}')
+
+    # Índice Planner task id (idempotente)
+    try:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_dem_planner_task ON demandas(planner_task_id)')
+    except Exception:
+        pass
 
 
 def _auto_seed():
