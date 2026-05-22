@@ -384,6 +384,14 @@ def _migrate(conn):
             except Exception as e:
                 print(f'[migrate] amostradores.{col}: {e}')
 
+    # ── empresas: flag pendente (importadas do Planner sem match) ────
+    cols_emp = [r['name'] for r in conn.execute('PRAGMA table_info(empresas)').fetchall()]
+    if 'pendente' not in cols_emp:
+        try:
+            conn.execute('ALTER TABLE empresas ADD COLUMN pendente INTEGER DEFAULT 0')
+        except Exception as e:
+            print(f'[migrate] empresas.pendente: {e}')
+
     # ── demandas: colunas Microsoft Graph / Planner ──────────────────
     cols_dem = [r['name'] for r in conn.execute('PRAGMA table_info(demandas)').fetchall()]
     novas_demandas_graph = {
@@ -402,8 +410,11 @@ def _migrate(conn):
         'ms_assignee_id':     'TEXT',
         'ms_assignees_json':  'TEXT',
         'etiquetas_json':     'TEXT',
-        'origem':             'TEXT DEFAULT \'manual\'',
-        'atualizado_em':      'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'origem':                  'TEXT DEFAULT \'manual\'',
+        'atualizado_em':           'TEXT DEFAULT CURRENT_TIMESTAMP',
+        # Matching empresa
+        'empresa_match_score':     'REAL',
+        'empresa_match_metodo':    'TEXT',
     }
     for col, tipo in novas_demandas_graph.items():
         if col not in cols_dem:
