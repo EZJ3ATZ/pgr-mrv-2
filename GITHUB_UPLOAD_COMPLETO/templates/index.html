@@ -10,30 +10,52 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --orange:    #F26522;
-      --orange-d:  #C84F14;
-      --orange-dim:#3D1F0C;
-      --bg:        #0C0E12;
-      --surface:   #131720;
-      --surface2:  #1A1F2E;
-      --border:    #252B3B;
-      --border2:   #2E3650;
-      --text:      #E8EAF0;
-      --text2:     #8A93AB;
-      --text3:     #5A6180;
-      --green:     #22C55E;
-      --green-bg:  #052614;
-      --green-bd:  #166534;
+      /* Brand */
+      --orange:      #F47B2A;
+      --orange-d:    #D4631C;
+      --orange-dim:  #241206;
+      --orange-glow: rgba(244,123,42,.18);
+
+      /* Backgrounds */
+      --bg:       #07090E;
+      --surface:  #0E1118;
+      --surface2: #141925;
+      --surface3: #1A2030;
+
+      /* Borders */
+      --border:   #1C2236;
+      --border2:  #273050;
+      --border3:  #334268;
+
+      /* Text */
+      --text:     #EDF0F7;
+      --text2:    #828DA8;
+      --text3:    #485068;
+
+      /* Semantic */
+      --green:     #10B981;
+      --green-bg:  #041A10;
+      --green-bd:  #065F3C;
       --yellow:    #F59E0B;
-      --yellow-bg: #271A05;
-      --yellow-bd: #78450A;
+      --yellow-bg: #1B0F05;
+      --yellow-bd: #6B4409;
       --red:       #EF4444;
-      --red-bg:    #200808;
+      --red-bg:    #160506;
       --red-bd:    #7F1D1D;
-      --blue:      #3B82F6;
-      --blue-bg:   #060E24;
+      --blue:      #60A5FA;
+      --blue-bg:   #030D1C;
       --blue-bd:   #1E3A8A;
+      --purple:    #A78BFA;
+      --purple-bg: #0D0A1C;
+
+      /* Layout */
       --radius:    10px;
+      --radius-lg: 14px;
+
+      /* Shadows */
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+      --shadow:    0 4px 14px rgba(0,0,0,.5);
+      --shadow-lg: 0 16px 32px rgba(0,0,0,.6);
     }
 
     html { scroll-behavior: smooth; }
@@ -49,10 +71,12 @@
 
     /* ═══ Header ═══════════════════════════════════════════════════ */
     header {
-      background: var(--surface);
+      background: rgba(7,9,14,.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
       padding: 0 40px;
-      height: 60px;
+      height: 54px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -64,89 +88,128 @@
     .logo {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      cursor: pointer;
     }
 
-    .logo-badge {
-      background: var(--orange);
-      color: #fff;
-      font-weight: 800;
-      font-size: .85rem;
-      letter-spacing: 1px;
-      padding: 5px 10px;
-      border-radius: 6px;
+    .logo-icon {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg, var(--orange), var(--orange-d));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px var(--orange-glow);
+      flex-shrink: 0;
+      transition: transform .2s;
     }
 
-    .logo-label {
+    .logo:hover .logo-icon { transform: scale(1.05); }
+    .logo-icon svg { width: 16px; height: 16px; color: #fff; }
+
+    .logo-wordmark { display: flex; flex-direction: column; line-height: 1; }
+
+    .logo-name {
       font-weight: 700;
-      font-size: .95rem;
+      font-size: .88rem;
       color: var(--text);
+      letter-spacing: -.01em;
     }
 
     .logo-sub {
-      font-size: .72rem;
+      font-size: .63rem;
       color: var(--text3);
-      margin-top: 1px;
+      margin-top: 2px;
+      letter-spacing: .02em;
     }
 
     .header-right {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+    }
+
+    .header-version {
+      font-size: .68rem;
+      color: var(--text3);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16,185,129,.07);
+      border: 1px solid rgba(16,185,129,.18);
+      border-radius: 20px;
+      padding: 4px 10px;
     }
 
     .dot {
-      width: 8px; height: 8px;
+      width: 6px; height: 6px;
       background: var(--green);
       border-radius: 50%;
-      box-shadow: 0 0 8px var(--green);
+      animation: pulse-dot 2.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.5); }
+      50%       { box-shadow: 0 0 0 4px rgba(16,185,129,0); }
     }
 
     .status-text {
-      font-size: .75rem;
-      color: var(--text2);
+      font-size: .7rem;
+      color: var(--green);
+      font-weight: 500;
     }
 
     /* ═══ Tabs ══════════════════════════════════════════════════════ */
     .tabs-bar {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 0 40px;
+      padding: 0 36px;
       display: flex;
-      gap: 2px;
+      gap: 0;
+      overflow-x: auto;
     }
+    .tabs-bar::-webkit-scrollbar { height: 0; }
 
     .tab {
-      padding: 12px 20px;
-      font-size: .83rem;
+      padding: 0 16px;
+      height: 44px;
+      font-size: .79rem;
       font-weight: 500;
-      color: var(--text2);
+      color: var(--text3);
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      transition: all .15s;
+      transition: all .18s;
       display: flex;
       align-items: center;
       gap: 7px;
       user-select: none;
+      white-space: nowrap;
     }
 
-    .tab:hover { color: var(--text); }
+    .tab:hover { color: var(--text2); background: rgba(255,255,255,.025); }
 
     .tab.active {
       color: var(--orange);
       border-bottom-color: var(--orange);
+      background: rgba(244,123,42,.04);
     }
 
-    .tab svg { width: 15px; height: 15px; }
+    .tab svg { width: 14px; height: 14px; flex-shrink: 0; }
 
     .tab-badge {
       background: var(--orange-dim);
       color: var(--orange);
-      font-size: .65rem;
+      font-size: .6rem;
       font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 10px;
-      letter-spacing: .03em;
+      padding: 2px 6px;
+      border-radius: 8px;
     }
 
     /* ═══ Layout ════════════════════════════════════════════════════ */
@@ -156,38 +219,43 @@
     .page {
       max-width: 860px;
       margin: 0 auto;
-      padding: 32px 20px 80px;
+      padding: 36px 20px 80px;
     }
 
     .page-head {
       margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
     }
 
     .page-title {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 700;
       color: var(--text);
     }
 
     .page-sub {
-      font-size: .82rem;
+      font-size: .81rem;
       color: var(--text2);
-      margin-top: 3px;
+      margin-top: 4px;
     }
 
     /* ═══ Card ══════════════════════════════════════════════════════ */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 22px 26px;
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
       margin-bottom: 14px;
+      transition: border-color .2s;
     }
+
+    .card:hover { border-color: var(--border2); }
 
     .card-header {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 18px;
       padding-bottom: 14px;
       border-bottom: 1px solid var(--border);
@@ -196,7 +264,7 @@
     .card-icon {
       width: 32px; height: 32px;
       background: var(--orange-dim);
-      border: 1px solid #5C2A0F;
+      border: 1px solid rgba(244,123,42,.2);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -206,49 +274,50 @@
 
     .card-icon svg { width: 16px; height: 16px; color: var(--orange); }
 
-    .card-title { font-size: .88rem; font-weight: 700; color: var(--text); }
-    .card-desc  { font-size: .75rem; color: var(--text2); margin-top: 1px; }
+    .card-title { font-size: .87rem; font-weight: 600; color: var(--text); }
+    .card-desc  { font-size: .74rem; color: var(--text2); margin-top: 2px; }
 
     /* ═══ Upload ════════════════════════════════════════════════════ */
     .upload-zone {
       border: 2px dashed var(--border2);
-      border-radius: 8px;
-      padding: 28px 20px;
+      border-radius: 10px;
+      padding: 32px 24px;
       text-align: center;
       cursor: pointer;
-      transition: all .2s;
+      transition: all .25s;
       background: var(--surface2);
     }
 
     .upload-zone:hover {
       border-color: var(--orange);
-      background: #1A1208;
+      background: rgba(244,123,42,.04);
+      transform: translateY(-1px);
     }
 
     .upload-zone.active {
       border-color: var(--green);
-      background: var(--green-bg);
+      background: rgba(16,185,129,.05);
     }
 
     .upload-icon {
-      width: 40px; height: 40px;
+      width: 44px; height: 44px;
       background: var(--orange-dim);
-      border: 1px solid #5C2A0F;
-      border-radius: 9px;
+      border: 1px solid rgba(244,123,42,.25);
+      border-radius: 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .upload-icon svg { width: 20px; height: 20px; color: var(--orange); }
 
-    .upload-zone strong { display: block; font-size: .88rem; color: var(--text); margin-bottom: 3px; }
+    .upload-zone strong { display: block; font-size: .88rem; color: var(--text); margin-bottom: 4px; }
     .upload-zone p { font-size: .78rem; color: var(--text2); }
     #pdf-name { margin-top: 8px; font-size: .8rem; font-weight: 600; color: var(--green); }
 
     .tip {
-      font-size: .74rem;
+      font-size: .73rem;
       color: var(--text3);
       margin-top: 10px;
       display: flex;
@@ -263,12 +332,12 @@
 
     label {
       display: block;
-      font-size: .71rem;
+      font-size: .69rem;
       font-weight: 600;
       color: var(--text3);
       margin-bottom: 5px;
       text-transform: uppercase;
-      letter-spacing: .06em;
+      letter-spacing: .07em;
     }
 
     input, select {
@@ -280,18 +349,17 @@
       color: var(--text);
       font-size: .86rem;
       font-family: inherit;
-      transition: all .15s;
+      transition: all .2s;
       outline: none;
     }
 
     input:focus, select:focus {
       border-color: var(--orange);
-      background: #16100A;
-      box-shadow: 0 0 0 3px rgba(242,101,34,.15);
+      background: rgba(244,123,42,.04);
+      box-shadow: 0 0 0 3px rgba(244,123,42,.12);
     }
 
     input::placeholder { color: var(--text3); }
-
     select option { background: var(--surface2); color: var(--text); }
 
     /* ═══ Cargos ════════════════════════════════════════════════════ */
@@ -303,20 +371,26 @@
     }
 
     .btn-add {
-      background: var(--orange);
-      color: #fff;
-      border: none;
+      background: var(--surface3);
+      color: var(--text);
+      border: 1.5px solid var(--border2);
       border-radius: 7px;
-      padding: 9px 18px;
-      font-size: .84rem;
+      padding: 9px 16px;
+      font-size: .82rem;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
-      transition: background .15s;
+      transition: all .2s;
       font-family: inherit;
     }
 
-    .btn-add:hover { background: var(--orange-d); }
+    .btn-add:hover {
+      background: var(--orange);
+      border-color: var(--orange);
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(244,123,42,.3);
+    }
 
     #cargo-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
 
@@ -326,28 +400,28 @@
       justify-content: space-between;
       background: var(--surface2);
       border: 1.5px solid var(--border);
-      border-radius: 7px;
-      padding: 9px 13px;
+      border-radius: 8px;
+      padding: 10px 14px;
       font-size: .86rem;
-      transition: border-color .15s;
+      transition: all .2s;
     }
 
-    .cargo-item:hover { border-color: var(--border2); }
+    .cargo-item:hover { border-color: var(--border2); background: var(--surface3); }
 
     .cargo-item.cargo-unknown {
-      border-color: var(--yellow-bd);
-      background: var(--yellow-bg);
+      border-color: rgba(245,158,11,.3);
+      background: rgba(245,158,11,.05);
     }
 
     .cargo-meta { display: flex; align-items: center; gap: 8px; }
     .cargo-name { font-weight: 500; color: var(--text); }
 
     .ghe-tag {
-      font-size: .68rem;
+      font-size: .67rem;
       font-weight: 700;
       color: var(--orange);
       background: var(--orange-dim);
-      border: 1px solid #5C2A0F;
+      border: 1px solid rgba(244,123,42,.25);
       border-radius: 4px;
       padding: 2px 7px;
       letter-spacing: .03em;
@@ -365,17 +439,17 @@
       color: var(--text3);
       cursor: pointer;
       font-size: .9rem;
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: 3px 7px;
+      border-radius: 5px;
       transition: all .15s;
     }
 
-    .btn-rem:hover { color: var(--red); background: var(--red-bg); }
+    .btn-rem:hover { color: var(--red); background: rgba(239,68,68,.1); }
 
     .cargo-alert {
-      background: var(--yellow-bg);
-      border: 1px solid var(--yellow-bd);
-      border-radius: 7px;
+      background: rgba(245,158,11,.07);
+      border: 1px solid rgba(245,158,11,.25);
+      border-radius: 8px;
       padding: 10px 14px;
       font-size: .8rem;
       color: var(--yellow);
@@ -387,28 +461,31 @@
     .btn-gerar {
       width: 100%;
       padding: 14px;
-      background: var(--orange);
+      background: linear-gradient(135deg, var(--orange), var(--orange-d));
       color: #fff;
       border: none;
       border-radius: var(--radius);
-      font-size: .92rem;
+      font-size: .9rem;
       font-weight: 700;
       cursor: pointer;
       letter-spacing: .02em;
       font-family: inherit;
-      transition: all .15s;
+      transition: all .25s;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      margin-top: 4px;
+      margin-top: 6px;
+      box-shadow: 0 4px 16px rgba(244,123,42,.25);
     }
 
     .btn-gerar:hover {
-      background: var(--orange-d);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(242,101,34,.35);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(244,123,42,.4);
+      filter: brightness(1.08);
     }
+
+    .btn-gerar:active { transform: translateY(0); }
 
     .btn-gerar:disabled {
       background: var(--surface2);
@@ -417,11 +494,12 @@
       transform: none;
       box-shadow: none;
       border: 1px solid var(--border);
+      filter: none;
     }
 
     /* ═══ Status ════════════════════════════════════════════════════ */
     .status {
-      border-radius: 8px;
+      border-radius: 9px;
       padding: 12px 16px;
       font-size: .83rem;
       margin-top: 12px;
@@ -429,20 +507,20 @@
       line-height: 1.5;
     }
 
-    .status.ok      { background: var(--green-bg);  border: 1px solid var(--green-bd);  color: var(--green);  display: block; }
-    .status.err     { background: var(--red-bg);    border: 1px solid var(--red-bd);    color: var(--red);    display: block; }
-    .status.loading { background: var(--blue-bg);   border: 1px solid var(--blue-bd);   color: var(--blue);   display: block; }
-    .status.warn    { background: var(--yellow-bg); border: 1px solid var(--yellow-bd); color: var(--yellow); display: block; }
+    .status.ok      { background: rgba(16,185,129,.08);  border: 1px solid rgba(16,185,129,.2);  color: var(--green);  display: block; }
+    .status.err     { background: rgba(239,68,68,.08);   border: 1px solid rgba(239,68,68,.2);   color: var(--red);    display: block; }
+    .status.loading { background: rgba(96,165,250,.08);  border: 1px solid rgba(96,165,250,.2);  color: var(--blue);   display: block; }
+    .status.warn    { background: rgba(245,158,11,.08);  border: 1px solid rgba(245,158,11,.2);  color: var(--yellow); display: block; }
 
     .spin { display: inline-block; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ═══ Laudo de Calor ════════════════════════════════════════════ */
+    /* ═══ Coming soon ═══════════════════════════════════════════════ */
     .coming-soon {
       background: var(--surface);
       border: 1px dashed var(--border2);
-      border-radius: var(--radius);
-      padding: 60px 40px;
+      border-radius: var(--radius-lg);
+      padding: 64px 40px;
       text-align: center;
       margin-top: 24px;
     }
@@ -450,7 +528,7 @@
     .coming-icon {
       width: 56px; height: 56px;
       background: var(--orange-dim);
-      border: 1px solid #5C2A0F;
+      border: 1px solid rgba(244,123,42,.2);
       border-radius: 14px;
       display: inline-flex;
       align-items: center;
@@ -478,20 +556,478 @@
     /* ═══ Footer ════════════════════════════════════════════════════ */
     footer {
       text-align: center;
-      padding: 20px;
-      font-size: .72rem;
+      padding: 24px;
+      font-size: .7rem;
       color: var(--text3);
       border-top: 1px solid var(--border);
+      margin-top: 40px;
     }
 
+    /* ═══ HOME PAGE ══════════════════════════════════════════════════ */
+    .home-wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px 80px; }
+
+    .home-hero {
+      padding: 60px 0 52px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 48px;
+    }
+
+    .home-hero-left { flex: 1; max-width: 580px; }
+
+    .home-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(244,123,42,.09);
+      border: 1px solid rgba(244,123,42,.2);
+      color: var(--orange);
+      font-size: .69rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 20px;
+      margin-bottom: 22px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .home-eyebrow-dot { width: 5px; height: 5px; background: var(--orange); border-radius: 50%; }
+
+    .home-h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1.15;
+      color: var(--text);
+      letter-spacing: -.03em;
+      margin-bottom: 18px;
+    }
+
+    .home-h1 span {
+      background: linear-gradient(135deg, var(--orange), #FFAA60);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .home-p {
+      font-size: .93rem;
+      color: var(--text2);
+      line-height: 1.7;
+      margin-bottom: 30px;
+      max-width: 470px;
+    }
+
+    .home-cta-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .home-btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, var(--orange), var(--orange-d));
+      color: #fff; border: none; border-radius: 9px;
+      padding: 12px 22px; font-size: .88rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .25s;
+      box-shadow: 0 4px 20px rgba(244,123,42,.3);
+    }
+
+    .home-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(244,123,42,.45);
+      filter: brightness(1.08);
+    }
+
+    .home-btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface2); color: var(--text);
+      border: 1.5px solid var(--border2); border-radius: 9px;
+      padding: 11px 18px; font-size: .85rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all .2s;
+    }
+
+    .home-btn-secondary:hover {
+      border-color: var(--border3); background: var(--surface3); transform: translateY(-1px);
+    }
+
+    /* Hero visual (right side cards) */
+    .home-hero-right { flex-shrink: 0; width: 300px; display: none; }
+    @media (min-width: 860px) { .home-hero-right { display: block; } }
+
+    .home-mini-cards { display: flex; flex-direction: column; gap: 8px; }
+
+    .home-mini-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all .2s;
+    }
+
+    .home-mini-card:hover { border-color: var(--border2); transform: translateX(-2px); }
+
+    .home-mini-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .home-mini-title { font-size: .79rem; font-weight: 600; color: var(--text); }
+    .home-mini-sub   { font-size: .69rem; color: var(--text3); margin-top: 1px; }
+
+    .home-mini-badge {
+      margin-left: auto;
+      font-size: .64rem; font-weight: 700;
+      padding: 2px 7px; border-radius: 8px;
+    }
+
+    /* Module cards */
+    .home-section-label {
+      font-size: .69rem; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .1em;
+      margin: 44px 0 18px;
+    }
+
+    .home-modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 44px;
+    }
+
+    .home-mod {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      cursor: pointer;
+      transition: all .25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .home-mod::after {
+      content: '→';
+      position: absolute;
+      bottom: 16px; right: 18px;
+      font-size: .8rem;
+      color: var(--text3);
+      transition: all .2s;
+    }
+
+    .home-mod:hover {
+      border-color: var(--border2);
+      background: var(--surface2);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(0,0,0,.4);
+    }
+
+    .home-mod:hover::after { color: var(--orange); transform: translateX(2px); }
+
+    .home-mod-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .home-mod-icon svg { width: 18px; height: 18px; }
+
+    .home-mod-icon.orange { background: var(--orange-dim);   border: 1px solid rgba(244,123,42,.2); color: var(--orange); }
+    .home-mod-icon.red    { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); color: var(--red); }
+    .home-mod-icon.blue   { background: rgba(96,165,250,.08); border: 1px solid rgba(96,165,250,.2); color: var(--blue); }
+    .home-mod-icon.green  { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: var(--green); }
+    .home-mod-icon.purple { background: rgba(167,139,250,.08); border: 1px solid rgba(167,139,250,.2); color: var(--purple); }
+
+    .home-mod-name { font-size: .88rem; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+    .home-mod-desc { font-size: .74rem; color: var(--text2); line-height: 1.5; margin-bottom: 12px; }
+
+    .home-mod-tag {
+      display: inline-block;
+      font-size: .64rem; font-weight: 600;
+      padding: 2px 7px; border-radius: 4px; letter-spacing: .03em;
+    }
+
+    /* Stats row on home */
+    .home-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px; margin-bottom: 44px;
+    }
+
+    .home-stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px; transition: all .2s;
+    }
+
+    .home-stat:hover { border-color: var(--border2); }
+
+    .home-stat-label {
+      font-size: .67rem; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .08em;
+      font-weight: 600; margin-bottom: 8px;
+    }
+
+    .home-stat-value {
+      font-size: 1.8rem; font-weight: 800; color: var(--text); line-height: 1;
+    }
+
+    .home-stat-sub { font-size: .71rem; color: var(--text3); margin-top: 4px; }
+
+    /* Features */
+    .home-features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .home-feature {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; transition: border-color .2s;
+    }
+
+    .home-feature:hover { border-color: var(--border2); }
+
+    .home-feature-icon {
+      width: 30px; height: 30px;
+      background: var(--orange-dim);
+      border: 1px solid rgba(244,123,42,.2);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+
+    .home-feature-icon svg { width: 14px; height: 14px; color: var(--orange); }
+    .home-feature-title { font-size: .83rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .home-feature-desc  { font-size: .74rem; color: var(--text2); line-height: 1.5; }
+
+    /* ═══ Layout com Sidebar ════════════════════════════════════════ */
+    .layout {
+      display: flex;
+      min-height: calc(100vh - 54px);
+    }
+
+    /* ─── Sidebar ─────────────────────────────────────────────────── */
+    .sidebar {
+      width: 218px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 54px;
+      height: calc(100vh - 54px);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 16px 10px 24px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .sidebar-section { margin-bottom: 8px; }
+
+    .sidebar-label {
+      font-size: .62rem;
+      font-weight: 700;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      padding: 10px 10px 5px;
+      display: block;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 500;
+      color: var(--text3);
+      transition: all .18s;
+      user-select: none;
+      position: relative;
+      margin-bottom: 1px;
+    }
+
+    .sidebar-item:hover {
+      color: var(--text2);
+      background: rgba(255,255,255,.04);
+    }
+
+    .sidebar-item.active {
+      color: var(--text);
+      background: rgba(244,123,42,.1);
+      font-weight: 600;
+    }
+
+    .sidebar-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 50%;
+      transform: translateY(-50%);
+      width: 3px; height: 22px;
+      background: var(--orange);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .sidebar-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    .sidebar-badge {
+      margin-left: auto;
+      font-size: .6rem;
+      font-weight: 700;
+      background: var(--orange);
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 6px;
+    }
+
+    .sidebar-badge.new { background: var(--orange); }
+    .sidebar-badge.green { background: var(--green); }
+    .sidebar-badge.blue  { background: var(--blue); }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 8px;
+    }
+
+    .sidebar-nova {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--green);
+      background: rgba(16,185,129,.07);
+      border: 1px solid rgba(16,185,129,.15);
+      transition: all .2s;
+      margin-top: 4px;
+    }
+
+    .sidebar-nova:hover {
+      background: rgba(16,185,129,.14);
+      border-color: rgba(16,185,129,.3);
+      transform: translateX(2px);
+    }
+
+    .sidebar-nova svg { width: 15px; height: 15px; }
+
+    /* ─── Main content area ───────────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+
+    /* ─── Header search and user ──────────────────────────────────── */
+    .header-search {
+      flex: 1;
+      max-width: 320px;
+      margin: 0 20px;
+      position: relative;
+    }
+
+    .header-search input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 42px 7px 34px;
+      color: var(--text2);
+      font-size: .78rem;
+      outline: none;
+      transition: all .2s;
+      font-family: inherit;
+    }
+
+    .header-search input:focus { border-color: var(--orange); color: var(--text); }
+    .header-search input::placeholder { color: var(--text3); }
+
+    .header-search-icon {
+      position: absolute; left: 10px; top: 50%;
+      transform: translateY(-50%); color: var(--text3); pointer-events: none;
+    }
+
+    .header-search-icon svg { width: 14px; height: 14px; }
+
+    .header-search-kbd {
+      position: absolute; right: 8px; top: 50%;
+      transform: translateY(-50%);
+      font-size: .6rem; color: var(--text3);
+      background: var(--surface3); border: 1px solid var(--border2);
+      padding: 1px 5px; border-radius: 4px; white-space: nowrap;
+    }
+
+    .header-notif {
+      width: 34px; height: 34px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; transition: all .18s;
+      position: relative;
+    }
+
+    .header-notif:hover { border-color: var(--border2); }
+    .header-notif svg { width: 15px; height: 15px; color: var(--text2); }
+
+    .header-notif-dot {
+      position: absolute; top: 7px; right: 7px;
+      width: 6px; height: 6px;
+      background: var(--orange); border-radius: 50%;
+      border: 1.5px solid var(--surface);
+    }
+
+    .header-user {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 5px 12px 5px 5px;
+      cursor: pointer; transition: all .18s;
+    }
+
+    .header-user:hover { border-color: var(--border2); }
+
+    .header-user-avatar {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--orange), var(--orange-d));
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-size: .72rem;
+      font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+
+    .header-user-info { display: flex; flex-direction: column; line-height: 1; }
+
+    .header-user-name { font-size: .77rem; font-weight: 600; color: var(--text); }
+    .header-user-role { font-size: .64rem; color: var(--text3); margin-top: 2px; }
+
+    /* Remove old tab bar */
+    .tabs-bar { display: none; }
+
     /* ═══ Responsive ════════════════════════════════════════════════ */
-    @media (max-width: 640px) {
-      header, .tabs-bar { padding: 0 16px; }
+    @media (max-width: 768px) {
+      header { padding: 0 16px; }
+      .header-search { display: none; }
+      .header-user-info { display: none; }
+      .sidebar { width: 54px; }
+      .sidebar-item span, .sidebar-label, .sidebar-badge, .sidebar-nova span { display: none; }
+      .sidebar-item, .sidebar-nova { justify-content: center; padding: 9px; }
+      .sidebar-item::before { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .sidebar { display: none; }
       .page { padding: 20px 14px 60px; }
-      .card { padding: 16px 14px; }
+      .card { padding: 16px; }
       .grid2, .grid3 { grid-template-columns: 1fr; }
       .cargo-row { grid-template-columns: 1fr; }
-      .tab { padding: 12px 14px; font-size: .78rem; }
+      .home-h1 { font-size: 1.7rem; }
+      .home-hero { padding: 36px 0 32px; }
+      .home-wrap { padding: 0 14px 60px; }
     }
   </style>
 </head>
@@ -499,56 +1035,374 @@
 
 <!-- ══ Header ══════════════════════════════════════════════════════════ -->
 <header>
-  <div class="logo">
-    <div class="logo-badge">GO</div>
-    <div>
-      <div class="logo-label">Ferramentas SST</div>
-      <div class="logo-sub">Higiene Ocupacional · Segurança do Trabalho</div>
+  <div class="logo" onclick="goToTab('home')">
+    <div class="logo-icon">
+      <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+      </svg>
+    </div>
+    <div class="logo-wordmark">
+      <div class="logo-name">Grupo Ocupacional</div>
+      <div class="logo-sub">Plataforma SST · MRV</div>
     </div>
   </div>
+
+  <div class="header-search">
+    <div class="header-search-icon">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+    </div>
+    <input type="text" placeholder="Buscar empresa, OS, agente...">
+    <span class="header-search-kbd">Ctrl+K</span>
+  </div>
+
   <div class="header-right">
-    <div class="dot"></div>
-    <span class="status-text">Sistema operacional</span>
+    <div class="status-pill">
+      <div class="dot"></div>
+      <span class="status-text">Online</span>
+    </div>
+    <div class="header-notif">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+      </svg>
+      <div class="header-notif-dot"></div>
+    </div>
+    <div class="header-user">
+      <div class="header-user-avatar">MC</div>
+      <div class="header-user-info">
+        <div class="header-user-name">Matheus Costa</div>
+        <div class="header-user-role">Técnico SST</div>
+      </div>
+    </div>
   </div>
 </header>
 
-<!-- ══ Abas ═════════════════════════════════════════════════════════════ -->
-<nav class="tabs-bar">
-  <div class="tab active" onclick="switchTab('pgr', this)">
-    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
-    </svg>
-    Gerador de PGR
+<!-- ══ Layout Principal ══════════════════════════════════════════════════ -->
+<div class="layout">
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+
+  <div class="sidebar-section">
+    <div class="sidebar-item active" data-name="home" onclick="goToTab('home')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+        <polyline stroke-linecap="round" stroke-linejoin="round" points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Início</span>
+    </div>
   </div>
-  <div class="tab" onclick="switchTab('calor', this)">
-    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
-    </svg>
-    Laudo de Calor
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section">
+    <span class="sidebar-label">Documentos</span>
+
+    <div class="sidebar-item" data-name="pgr" onclick="goToTab('pgr')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
+      </svg>
+      <span>Gerador de PGR</span>
+      <span class="sidebar-badge new">NR-1</span>
+    </div>
+
+    <div class="sidebar-item" data-name="calor" onclick="goToTab('calor')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+      </svg>
+      <span>Laudo de Calor</span>
+    </div>
+
+    <div class="sidebar-item" data-name="ruido" onclick="goToTab('ruido')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
+      </svg>
+      <span>Laudo de Ru&#237;do</span>
+    </div>
+
+    <div class="sidebar-item" data-name="quimico" onclick="goToTab('quimico')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
+      </svg>
+      <span>An&#225;lise Qu&#237;mica</span>
+    </div>
   </div>
-  <div class="tab" onclick="switchTab('ruido', this)">
-    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
-    </svg>
-    Laudo de Ruído
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section">
+    <span class="sidebar-label">Gest&#227;o</span>
+
+    <div class="sidebar-item" data-name="controle" onclick="goToTab('controle'); ctrlInit();">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
+      </svg>
+      <span>Controle de Medi&#231;&#245;es</span>
+    </div>
+
+    <div class="sidebar-nova" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', document.querySelector('[onclick*=nova]')),300);">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      </svg>
+      <span>Nova Medi&#231;&#227;o</span>
+    </div>
   </div>
-  <div class="tab" onclick="switchTab('quimico', this)">
-    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
-    </svg>
-    Análise Química
+
+</aside>
+
+<!-- ── Conteúdo Principal ──────────────────────────────────────────────── -->
+<main class="main-content">
+
+<!-- ══ Painel HOME ══════════════════════════════════════════════════════ -->
+<div id="tab-home" class="tab-panel active">
+<div class="home-wrap">
+
+  <!-- Hero -->
+  <div class="home-hero">
+    <div class="home-hero-left">
+      <div class="home-eyebrow">
+        <div class="home-eyebrow-dot"></div>
+        Plataforma de Engenharia Ocupacional
+      </div>
+      <h1 class="home-h1">Laudos SST<br><span>automatizados.</span></h1>
+      <p class="home-p">
+        Gere PGRs, laudos de calor, ruído e análise química com poucos cliques.
+        Controle medições, amostradores e demandas — tudo integrado, sem planilha.
+      </p>
+      <div class="home-cta-row">
+        <button class="home-btn-primary" onclick="goToTab('pgr')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
+          </svg>
+          Gerar PGR agora
+        </button>
+        <button class="home-btn-secondary" onclick="goToTab('controle'); ctrlInit();">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
+          </svg>
+          Ver controle de medições
+        </button>
+      </div>
+    </div>
+
+    <!-- Dashboard preview card -->
+    <div class="home-hero-right">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 20px 40px rgba(0,0,0,.5);">
+        <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Indicadores Gerais</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Medições realizadas</div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--text);" id="hp-med">—</div>
+            <div style="font-size:.65rem;color:var(--green);margin-top:2px;">em andamento</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Amostradores em estoque</div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--text);" id="hp-est">—</div>
+            <div style="font-size:.65rem;color:var(--blue);margin-top:2px;">disponíveis</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Demandas em aberto</div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--yellow);" id="hp-dem">—</div>
+            <div style="font-size:.65rem;color:var(--text3);margin-top:2px;">pendentes</div>
+          </div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">No laboratório</div>
+            <div style="font-size:1.4rem;font-weight:800;color:var(--orange);" id="hp-lab">—</div>
+            <div style="font-size:.65rem;color:var(--text3);margin-top:2px;">aguardando</div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-weight:600;">Tipos de Medição</div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;"></div>
+              <div style="font-size:.7rem;color:var(--text2);flex:1;">Ruído</div>
+              <div style="font-size:.7rem;color:var(--text3);">NR-15 An.1</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;"></div>
+              <div style="font-size:.7rem;color:var(--text2);flex:1;">Calor / IBUTG</div>
+              <div style="font-size:.7rem;color:var(--text3);">NR-15 An.3</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0;"></div>
+              <div style="font-size:.7rem;color:var(--text2);flex:1;">Agentes Químicos</div>
+              <div style="font-size:.7rem;color:var(--text3);">NR-15 An.13</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;"></div>
+              <div style="font-size:.7rem;color:var(--text2);flex:1;">PGR / Riscos</div>
+              <div style="font-size:.7rem;color:var(--text3);">NR-1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="tab" onclick="switchTab('controle', this); ctrlInit();">
-    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
-    </svg>
-    Controle de Medições
+
+  <!-- Módulos -->
+  <div class="home-section-label">Módulos disponíveis</div>
+  <div class="home-modules">
+
+    <div class="home-mod" onclick="goToTab('pgr')">
+      <div class="home-mod-icon orange">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Gerador de PGR</div>
+      <div class="home-mod-desc">Programa de Gerenciamento de Riscos · NR-1. Gere o DOCX completo com GHEs, cargos e agentes de risco.</div>
+      <span class="home-mod-tag" style="background:var(--orange-dim);color:var(--orange);">NR-1</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('calor')">
+      <div class="home-mod-icon red">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Laudo de Calor</div>
+      <div class="home-mod-desc">Avaliação de Estresse Térmico · IBUTG. Laudos por setor com parâmetros da NR-15 Anexo 3.</div>
+      <span class="home-mod-tag" style="background:rgba(239,68,68,.08);color:var(--red);">NR-15 An.3</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('ruido')">
+      <div class="home-mod-icon blue">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Laudo de Ruído</div>
+      <div class="home-mod-desc">Dosimetria com CHROMPACK SmartdB. Importa o PDF do dosímetro e gera o laudo completo automaticamente.</div>
+      <span class="home-mod-tag" style="background:rgba(96,165,250,.08);color:var(--blue);">NR-15 An.1</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('quimico')">
+      <div class="home-mod-icon purple">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Análise Química</div>
+      <div class="home-mod-desc">Agentes químicos com cadeia de custódia e resultado laboratorial. Importa Excel e PDF do laboratório.</div>
+      <span class="home-mod-tag" style="background:rgba(167,139,250,.08);color:var(--purple);">NR-15 An.13</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('controle'); ctrlInit();">
+      <div class="home-mod-icon green">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Controle de Medições</div>
+      <div class="home-mod-desc">Gestão integrada de amostradores, demandas por empresa, previsão de estoque e controle de vencimento.</div>
+      <span class="home-mod-tag" style="background:rgba(16,185,129,.08);color:var(--green);">Gestão</span>
+    </div>
+
   </div>
-</nav>
+
+  <!-- Estatísticas ao vivo -->
+  <div class="home-section-label">Painel rápido</div>
+  <div class="home-stats" id="home-stats-row">
+    <div class="home-stat">
+      <div class="home-stat-label">Amostradores</div>
+      <div class="home-stat-value" id="hs-total">—</div>
+      <div class="home-stat-sub">em estoque</div>
+    </div>
+    <div class="home-stat">
+      <div class="home-stat-label">No Laboratório</div>
+      <div class="home-stat-value" id="hs-lab" style="color:var(--blue);">—</div>
+      <div class="home-stat-sub">aguardando resultado</div>
+    </div>
+    <div class="home-stat">
+      <div class="home-stat-label">Demandas abertas</div>
+      <div class="home-stat-value" id="hs-dem" style="color:var(--yellow);">—</div>
+      <div class="home-stat-sub">pendentes de coleta</div>
+    </div>
+    <div class="home-stat">
+      <div class="home-stat-label">Empresas ativas</div>
+      <div class="home-stat-value" id="hs-emp" style="color:var(--green);">—</div>
+      <div class="home-stat-sub">com OS registradas</div>
+    </div>
+  </div>
+
+  <!-- Diferenciais -->
+  <div class="home-section-label">Por que usar</div>
+  <div class="home-features">
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Geração instantânea</div>
+        <div class="home-feature-desc">DOCX gerado em segundos com todos os dados preenchidos. Sem copiar, sem colar, sem retrabalho.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">GHEs pré-mapeados</div>
+        <div class="home-feature-desc">135 cargos e 25 GHEs da MRV já cadastrados. Agentes de risco preenchidos automaticamente por cargo.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Controle integrado</div>
+        <div class="home-feature-desc">Amostradores, OS, prazos e previsão de estoque em um único painel. Substitui todas as planilhas.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Extração automática de PDF</div>
+        <div class="home-feature-desc">Importe o PDF da empresa ou do dosímetro e o sistema extrai CNPJ, endereço e dados de medição.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Controle de vencimento</div>
+        <div class="home-feature-desc">Alertas automáticos de amostradores próximos do vencimento no laboratório para evitar cobranças extras.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Normas técnicas inclusas</div>
+        <div class="home-feature-desc">NR-1, NR-15 Anexos 1 e 3, guia de métodos de análise química — tudo pré-configurado.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
 
 <!-- ══ Painel PGR ═══════════════════════════════════════════════════════ -->
-<div id="tab-pgr" class="tab-panel active">
+<div id="tab-pgr" class="tab-panel">
 <div class="page">
 
   <div class="page-head">
@@ -1044,55 +1898,135 @@
 <div id="tab-controle" class="tab-panel">
 <style>
   .ctrl-page { max-width: 1400px; margin: 0 auto; padding: 24px 20px; }
-  .ctrl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
-  .ctrl-title { font-size:1.4rem; font-weight:700; color:var(--text); }
-  .ctrl-subtabs { display:flex; gap:4px; background:var(--surface); padding:4px; border-radius:8px; border:1px solid var(--border); }
-  .ctrl-subtab { padding:8px 16px; border-radius:6px; cursor:pointer; font-size:.85rem; color:var(--text3); font-weight:500; transition:all .15s; }
-  .ctrl-subtab.active { background:var(--orange); color:#fff; }
-  .ctrl-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
-  .ctrl-stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 16px; }
-  .ctrl-stat-label { font-size:.7rem; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
-  .ctrl-stat-value { font-size:1.5rem; font-weight:700; color:var(--text); margin-top:4px; }
-  .ctrl-stat.green .ctrl-stat-value { color:#0a7; }
-  .ctrl-stat.blue .ctrl-stat-value { color:#39f; }
-  .ctrl-stat.yellow .ctrl-stat-value { color:#f80; }
-  .ctrl-stat.red .ctrl-stat-value { color:#e22; }
+  .ctrl-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:12px; }
+  .ctrl-title { font-size:1.2rem; font-weight:700; color:var(--text); letter-spacing:-.01em; }
+
+  .ctrl-subtabs {
+    display:flex; gap:3px;
+    background:var(--surface2); padding:3px;
+    border-radius:9px; border:1px solid var(--border);
+  }
+
+  .ctrl-subtab {
+    padding:7px 14px; border-radius:7px; cursor:pointer;
+    font-size:.8rem; color:var(--text3); font-weight:500;
+    transition:all .18s; white-space:nowrap;
+  }
+
+  .ctrl-subtab:hover { color:var(--text2); background:rgba(255,255,255,.04); }
+  .ctrl-subtab.active { background:var(--orange); color:#fff; font-weight:600; box-shadow:0 2px 8px rgba(244,123,42,.3); }
+
+  .ctrl-stats {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px; margin-bottom:20px;
+  }
+
+  .ctrl-stat {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:14px 16px; transition:all .2s;
+  }
+
+  .ctrl-stat:hover { border-color:var(--border2); }
+
+  .ctrl-stat-label { font-size:.67rem; color:var(--text3); text-transform:uppercase; letter-spacing:.07em; font-weight:600; }
+  .ctrl-stat-value { font-size:1.6rem; font-weight:800; color:var(--text); margin-top:5px; line-height:1; }
+  .ctrl-stat.green .ctrl-stat-value { color:var(--green); }
+  .ctrl-stat.blue  .ctrl-stat-value { color:var(--blue); }
+  .ctrl-stat.yellow .ctrl-stat-value { color:var(--yellow); }
+  .ctrl-stat.red   .ctrl-stat-value { color:var(--red); }
+
   .ctrl-filters { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
-  .ctrl-filters input, .ctrl-filters select { background:var(--surface); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; min-width:140px; outline:none; }
-  .ctrl-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-  .ctrl-table { width:100%; border-collapse:collapse; font-size:.8rem; }
-  .ctrl-table th { background:rgba(255,255,255,.04); padding:10px 12px; text-align:left; font-weight:600; color:var(--text3); text-transform:uppercase; font-size:.7rem; letter-spacing:.04em; border-bottom:1px solid var(--border); position:sticky; top:0; }
-  .ctrl-table td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--text); }
-  .ctrl-table tr:hover td { background:rgba(255,165,0,.04); }
-  .ctrl-badge { display:inline-block; padding:3px 9px; border-radius:4px; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
-  .ctrl-badge.estoque { background:rgba(0,170,119,.15); color:#0a7; }
-  .ctrl-badge.laboratorio { background:rgba(57,153,255,.15); color:#39f; }
-  .ctrl-badge.reservado { background:rgba(255,136,0,.15); color:#f80; }
-  .ctrl-badge.devolvido { background:rgba(150,150,150,.15); color:#999; }
-  .ctrl-badge.pendente { background:rgba(226,34,34,.15); color:#e22; }
-  .ctrl-badge.parcial { background:rgba(255,136,0,.15); color:#f80; }
-  .ctrl-badge.realizado, .ctrl-badge.concluida { background:rgba(0,170,119,.15); color:#0a7; }
-  .ctrl-btn-baixa { background:var(--orange); color:#fff; border:none; padding:5px 12px; border-radius:4px; cursor:pointer; font-size:.72rem; font-weight:600; }
-  .ctrl-btn-baixa:hover { opacity:.9; }
-  .ctrl-import-area { background:var(--surface); border:2px dashed var(--border); border-radius:8px; padding:20px; text-align:center; margin-bottom:14px; }
-  .ctrl-import-btn { background:#06f; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-size:.85rem; font-weight:600; margin:0 4px; }
-  .ctrl-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:9998; align-items:center; justify-content:center; }
+  .ctrl-filters input, .ctrl-filters select {
+    background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:7px; padding:7px 11px; color:var(--text);
+    font-size:.82rem; min-width:140px; outline:none; transition:all .18s;
+    font-family:inherit;
+  }
+  .ctrl-filters input:focus, .ctrl-filters select:focus {
+    border-color:var(--orange); box-shadow:0 0 0 3px rgba(244,123,42,.1);
+  }
+
+  .ctrl-table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .ctrl-table { width:100%; border-collapse:collapse; font-size:.79rem; }
+  .ctrl-table th {
+    background:rgba(255,255,255,.035); padding:10px 12px; text-align:left;
+    font-weight:600; color:var(--text3); text-transform:uppercase;
+    font-size:.67rem; letter-spacing:.05em; border-bottom:1px solid var(--border);
+    position:sticky; top:0;
+  }
+  .ctrl-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text); }
+  .ctrl-table tbody tr:hover td { background:rgba(244,123,42,.035); }
+  .ctrl-table tbody tr:last-child td { border-bottom:none; }
+
+  .ctrl-badge {
+    display:inline-block; padding:2px 8px; border-radius:4px;
+    font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  }
+  .ctrl-badge.estoque    { background:rgba(16,185,129,.12);  color:var(--green); }
+  .ctrl-badge.laboratorio{ background:rgba(96,165,250,.12);  color:var(--blue); }
+  .ctrl-badge.reservado  { background:rgba(245,158,11,.12);  color:var(--yellow); }
+  .ctrl-badge.devolvido  { background:rgba(150,150,150,.1);  color:#888; }
+  .ctrl-badge.pendente   { background:rgba(239,68,68,.12);   color:var(--red); }
+  .ctrl-badge.parcial    { background:rgba(245,158,11,.12);  color:var(--yellow); }
+  .ctrl-badge.realizado, .ctrl-badge.concluida { background:rgba(16,185,129,.12); color:var(--green); }
+
+  .ctrl-btn-baixa {
+    background:var(--orange); color:#fff; border:none;
+    padding:5px 11px; border-radius:5px; cursor:pointer;
+    font-size:.71rem; font-weight:600; transition:all .18s;
+  }
+  .ctrl-btn-baixa:hover { filter:brightness(1.1); transform:translateY(-1px); box-shadow:0 3px 10px rgba(244,123,42,.3); }
+
+  .ctrl-import-area {
+    background:var(--surface); border:2px dashed var(--border2);
+    border-radius:10px; padding:24px; text-align:center; margin-bottom:14px;
+  }
+
+  .ctrl-import-btn {
+    background:#2563EB; color:#fff; border:none;
+    padding:8px 16px; border-radius:7px; cursor:pointer;
+    font-size:.82rem; font-weight:600; margin:0 4px; transition:all .18s;
+    font-family:inherit;
+  }
+  .ctrl-import-btn:hover { filter:brightness(1.1); transform:translateY(-1px); }
+
+  .ctrl-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9998; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
   .ctrl-overlay.show { display:flex; }
-  .ctrl-modal { background:var(--bg); border:1.5px solid var(--border); border-radius:10px; max-width:680px; width:92%; max-height:88vh; overflow:auto; padding:24px; }
-  .ctrl-modal h3 { margin:0 0 14px; color:var(--text); }
-  .ctrl-modal label { display:block; font-size:.72rem; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; font-weight:600; margin-bottom:3px; }
-  .ctrl-modal input, .ctrl-modal select { width:100%; background:var(--surface); border:1.5px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-size:.85rem; margin-bottom:10px; outline:none; }
+
+  .ctrl-modal {
+    background:var(--surface);
+    border:1px solid var(--border2);
+    border-radius:14px;
+    max-width:680px; width:92%; max-height:88vh; overflow:auto; padding:26px;
+    box-shadow:0 24px 48px rgba(0,0,0,.7);
+  }
+
+  .ctrl-modal h3 { margin:0 0 16px; color:var(--text); font-size:1rem; font-weight:700; }
+  .ctrl-modal label { display:block; font-size:.69rem; color:var(--text3); text-transform:uppercase; letter-spacing:.07em; font-weight:600; margin-bottom:4px; }
+  .ctrl-modal input, .ctrl-modal select {
+    width:100%; background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:7px; padding:8px 11px; color:var(--text);
+    font-size:.85rem; margin-bottom:11px; outline:none; transition:all .18s;
+    font-family:inherit;
+  }
+  .ctrl-modal input:focus, .ctrl-modal select:focus { border-color:var(--orange); box-shadow:0 0 0 3px rgba(244,123,42,.1); }
   .ctrl-modal .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .ctrl-info-box { background:rgba(57,153,255,.08); border-left:3px solid #39f; padding:10px 12px; border-radius:6px; margin:10px 0; font-size:.8rem; }
-  .ctrl-warn-box { background:rgba(255,136,0,.1); border-left:3px solid #f80; padding:10px 12px; border-radius:6px; margin:10px 0; font-size:.8rem; color:#fc9; }
-  .ctrl-tempo-calc { display:flex; gap:14px; margin-top:10px; padding:10px; background:rgba(0,170,119,.08); border-radius:6px; }
+
+  .ctrl-info-box { background:rgba(96,165,250,.07); border-left:3px solid var(--blue); padding:10px 13px; border-radius:7px; margin:10px 0; font-size:.8rem; }
+  .ctrl-warn-box { background:rgba(245,158,11,.08); border-left:3px solid var(--yellow); padding:10px 13px; border-radius:7px; margin:10px 0; font-size:.8rem; color:#fbbf24; }
+
+  .ctrl-tempo-calc { display:flex; gap:14px; margin-top:10px; padding:12px; background:rgba(16,185,129,.07); border-radius:8px; }
   .ctrl-tempo-calc div { flex:1; text-align:center; }
-  .ctrl-tempo-calc strong { display:block; font-size:1.2rem; color:#0a7; }
-  .ctrl-actions { display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
-  .ctrl-actions button { padding:9px 18px; border-radius:6px; border:none; cursor:pointer; font-size:.85rem; font-weight:600; }
-  .ctrl-btn-cancel { background:transparent; color:var(--text3); border:1px solid var(--border) !important; }
-  .ctrl-btn-ok { background:#0a7; color:#fff; }
-  .ctrl-empty { padding:40px; text-align:center; color:var(--text3); }
+  .ctrl-tempo-calc strong { display:block; font-size:1.3rem; color:var(--green); font-weight:700; }
+
+  .ctrl-actions { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+  .ctrl-actions button { padding:9px 18px; border-radius:7px; border:none; cursor:pointer; font-size:.83rem; font-weight:600; font-family:inherit; transition:all .18s; }
+  .ctrl-btn-cancel { background:transparent; color:var(--text3); border:1.5px solid var(--border) !important; }
+  .ctrl-btn-cancel:hover { border-color:var(--border2) !important; color:var(--text2); }
+  .ctrl-btn-ok { background:var(--green); color:#fff; box-shadow:0 2px 8px rgba(16,185,129,.3); }
+  .ctrl-btn-ok:hover { filter:brightness(1.08); transform:translateY(-1px); }
+
+  .ctrl-empty { padding:48px; text-align:center; color:var(--text3); font-size:.85rem; }
 </style>
 
 <div class="ctrl-page">
@@ -1102,12 +2036,12 @@
       <div style="color:var(--text3); font-size:.85rem; margin-top:4px;">Gestão integrada — substitui as planilhas atuais</div>
     </div>
     <div class="ctrl-subtabs">
-      <div class="ctrl-subtab active" onclick="ctrlSwitchSub('empresa', this)">🏢 Por Empresa</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">📋 Demandas/OS</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('amostr', this)">📦 Amostradores</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('prev', this)">📊 Previsão</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:#0a7; color:#fff;">+ Nova Medição</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">⚙ Importar</div>
+      <div class="ctrl-subtab active" onclick="ctrlSwitchSub('empresa', this)">Por Empresa</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('prev', this)">Previsão</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:var(--green);color:#fff;font-weight:700;">+ Nova Medição</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
     </div>
   </div>
 
@@ -1235,6 +2169,11 @@
         <option value="">Todas</option>
         <option value="concluida">Apenas concluídas</option>
       </select>
+      <select id="ctrl-fe-ordem" onchange="ctrlLoadPorEmpresa()">
+        <option value="nome">A→Z (nome)</option>
+        <option value="data">Data de entrada</option>
+        <option value="pend">Mais pendentes</option>
+      </select>
     </div>
     <div class="ctrl-table-wrap">
       <table class="ctrl-table">
@@ -1268,6 +2207,11 @@
       <select id="ctrl-fd-urg" onchange="ctrlLoadDemand()">
         <option value="">— Urgência —</option>
         <option value="atrasada">⚠ Prazo vencido</option>
+      </select>
+      <select id="ctrl-fd-ordem" onchange="ctrlLoadDemand()">
+        <option value="empresa">A→Z (empresa)</option>
+        <option value="data_criacao">Data entrada Planner</option>
+        <option value="prazo">Prazo</option>
       </select>
     </div>
     <div class="ctrl-table-wrap">
@@ -1547,6 +2491,11 @@
       <option value="">— Selecione primeiro a OS —</option>
     </select>
 
+    <div id="ctrl-bx-avulso-wrap" style="display:none; margin-top:6px;">
+      <label style="color:var(--yellow); font-size:.78rem;">⚠ Sem medições cadastradas — informe o agente manualmente:</label>
+      <input type="text" id="ctrl-bx-avulso-agente" placeholder="Ex: Poeira mineral, Ruído, Calor..." style="margin-top:4px;">
+    </div>
+
     <div class="ctrl-info-box" id="ctrl-bx-metodo-info" style="display:none;"></div>
 
     <label>Amostrador (disponível)</label>
@@ -1605,19 +2554,51 @@
 
 </div>
 
+</main><!-- /main-content -->
+</div><!-- /layout -->
+
 <!-- ══ Footer ═══════════════════════════════════════════════════════════ -->
 <footer>
-  Grupo Ocupacional · Higiene Ocupacional · Segurança do Trabalho
+  Grupo Ocupacional &middot; Higiene Ocupacional &amp; Seguran&ccedil;a do Trabalho &middot; Plataforma SST MRV
 </footer>
 
 <script>
-// ── Navegação de abas ────────────────────────────────────────────────
-function switchTab(name, el) {
+// ── Navegação principal ──────────────────────────────────────────────
+function goToTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  el.classList.add('active');
+  document.querySelectorAll('.sidebar-item').forEach(t => t.classList.remove('active'));
+  const panel = document.getElementById('tab-' + name);
+  if (panel) panel.classList.add('active');
+  const navEl = document.querySelector(`.sidebar-item[data-name="${name}"]`);
+  if (navEl) navEl.classList.add('active');
+  window.scrollTo(0, 0);
 }
+
+// Compatibilidade: switchTab ainda funciona (chamado em alguns lugares)
+function switchTab(name, el) {
+  goToTab(name);
+}
+
+// Carrega estatísticas na home page
+async function homeLoadStats() {
+  try {
+    const r = await fetch('/controle/stats');
+    if (!r.ok) return;
+    const d = await r.json();
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v ?? '—'); };
+    // Stats row
+    set('hs-total', d.estoque);
+    set('hs-lab',   d.laboratorio);
+    set('hs-dem',   d.demandas_pendentes);
+    set('hs-emp',   d.empresas_ativas);
+    // Hero dashboard preview
+    set('hp-med',  d.medicoes_pendentes);
+    set('hp-est',  d.estoque);
+    set('hp-dem',  d.demandas_pendentes);
+    set('hp-lab',  d.laboratorio);
+  } catch(e) { /* silencioso */ }
+}
+homeLoadStats();
 
 // ── Estado ───────────────────────────────────────────────────────────
 let cargos = [];
@@ -3149,8 +4130,10 @@ async function ctrlLoadPorEmpresa() {
   const q = new URLSearchParams();
   const nome = document.getElementById('ctrl-fe-nome').value;
   const st = document.getElementById('ctrl-fe-status').value;
+  const ordem = document.getElementById('ctrl-fe-ordem')?.value || 'nome';
   if (nome) q.set('empresa', nome);
   if (st) q.set('status', st);
+  q.set('ordem', ordem);
 
   const tb = document.getElementById('ctrl-tb-empresa');
   tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr>';
@@ -3264,6 +4247,19 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                 else if (diff <= 7) { cor='#fc6'; }
                 prazoHtml = `<span style="color:${cor};">${d.prazo}${badge}</span>`;
               }
+              // Medições pendentes inline
+              let medHtml = '';
+              if (!isDone && d.medicoes_pendentes && d.medicoes_pendentes.length > 0) {
+                const meds = d.medicoes_pendentes;
+                medHtml = `<tr style="background:rgba(0,0,0,.2);">
+                  <td colspan="7" style="padding:4px 10px 8px 40px;">
+                    <div style="font-size:.7rem; color:var(--text3); margin-bottom:4px;">Medições pendentes:</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                      ${meds.map(m => `<span style="background:var(--surface3); border:1px solid var(--border2); padding:2px 8px; border-radius:12px; font-size:.7rem; color:var(--text2);">${m.agente} <span style="color:var(--text3);">(${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</span></span>`).join('')}
+                    </div>
+                  </td>
+                </tr>`;
+              }
               return `<tr style="border-bottom:1px solid rgba(255,255,255,.04); ${!isDone&&d.prazo&&Math.round((new Date(d.prazo)-new Date())/86400000)<0?'background:rgba(239,68,68,.04);':''}">
                 <td style="padding:6px 10px;"><b>${d.numero_os||'—'}</b></td>
                 <td style="padding:6px 8px; font-size:.72rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2);" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa||'—').slice(0,55)}</td>
@@ -3277,7 +4273,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                 <td style="padding:6px 8px; font-size:.75rem; color:var(--text3);">${d.responsavel||'—'}</td>
                 <td style="padding:6px 8px;"><span class="ctrl-badge ${isDone?'concluida':'pendente'}">${isDone?'concluída':'pendente'}</span></td>
                 <td style="padding:6px 8px;">${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
-              </tr>`;
+              </tr>${medHtml}`;
             }).join('')}
           </tbody>
         </table>`;
@@ -3795,9 +4791,16 @@ async function ctrlLoadAmostr() {
         // Sem calcular, confiamos no status
         rowStyle = 'background:rgba(255,136,0,.03);';
       }
-      const acoes = st === 'estoque'
-        ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>`
-        : '';
+      const acoes = [
+        st === 'estoque' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : '',
+        `<select onchange="ctrlMudarStatusAmostr(${a.id}, this.value, this)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text3); border-radius:4px; font-size:.68rem; padding:2px 4px; margin-left:4px; cursor:pointer;" title="Alterar status">
+          <option value="">Status</option>
+          <option value="Estoque" ${st==='estoque'?'selected':''}>Estoque</option>
+          <option value="Laboratorio" ${st==='laboratorio'?'selected':''}>Laboratório</option>
+          <option value="Reservado" ${st==='reservado'?'selected':''}>Reservado</option>
+          <option value="Devolvido" ${st==='devolvido'?'selected':''}>Devolvido</option>
+        </select>`
+      ].join('');
       return `<tr style="${rowStyle}">
         <td><span class="ctrl-badge ${st}">${a.status||'—'}</span></td>
         <td><b>${a.tipo||'—'}</b></td>
@@ -3816,14 +4819,31 @@ async function ctrlLoadAmostr() {
   }
 }
 
+async function ctrlMudarStatusAmostr(id, novoStatus, selEl) {
+  if (!novoStatus) return;
+  try {
+    await ctrlFetch(`/controle/amostradores/${id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({status: novoStatus})
+    });
+    _showToast(`✓ Status alterado para ${novoStatus}`, 'success');
+    ctrlLoadAmostr();
+  } catch(e) {
+    alert('Erro: ' + e.message);
+    selEl.value = '';
+  }
+}
+
 async function ctrlLoadDemand() {
   const q = new URLSearchParams();
   const emp = document.getElementById('ctrl-fd-empresa').value;
   const st  = document.getElementById('ctrl-fd-status').value;
   const urg = document.getElementById('ctrl-fd-urg').value;
+  const ordem = document.getElementById('ctrl-fd-ordem')?.value || 'empresa';
   if (emp) q.set('empresa', emp);
   if (st) q.set('status', st);
   if (urg) q.set('urgencia', urg);
+  q.set('ordem', ordem);
 
   const tb = document.getElementById('ctrl-tb-demand');
   tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr>';
@@ -4260,13 +5280,25 @@ function ctrlSugerirVazao() {
 
 async function ctrlLoadMedicoesDoBaixa(demId) {
   const sel = document.getElementById('ctrl-bx-medicao');
-  if (!demId) { sel.innerHTML='<option>—</option>'; return; }
+  const avulsoWrap = document.getElementById('ctrl-bx-avulso-wrap');
+  if (!demId) {
+    sel.innerHTML = '<option value="">— Selecione primeiro a OS —</option>';
+    if (avulsoWrap) avulsoWrap.style.display = 'none';
+    return;
+  }
   try {
     const d = await ctrlFetch('/controle/demandas/' + demId);
-    sel.innerHTML = '<option value="">— Selecione o agente —</option>' +
-      (d.medicoes||[]).filter(m=>m.status!=='realizado').map(m =>
-        `<option value="${m.id}" data-agente="${m.agente}" data-tipo="${m.tipo_amostrador||''}">${m.agente} (${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</option>`
-      ).join('');
+    const pendentes = (d.medicoes||[]).filter(m => m.status !== 'realizado');
+    if (pendentes.length === 0) {
+      sel.innerHTML = '<option value="avulso">Entrada avulsa (sem medição pré-cadastrada)</option>';
+      if (avulsoWrap) avulsoWrap.style.display = 'block';
+    } else {
+      sel.innerHTML = '<option value="">— Selecione o agente —</option>' +
+        pendentes.map(m =>
+          `<option value="${m.id}" data-agente="${m.agente}" data-tipo="${m.tipo_amostrador||''}">${m.agente} (${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</option>`
+        ).join('');
+      if (avulsoWrap) avulsoWrap.style.display = 'none';
+    }
   } catch(e) { console.error(e); }
 }
 
@@ -4338,9 +5370,16 @@ function ctrlCloseBaixa() {
 }
 
 async function ctrlConfirmarBaixa() {
-  const medId = +document.getElementById('ctrl-bx-medicao').value;
-  const amId  = +document.getElementById('ctrl-bx-amostr').value;
-  if (!medId || !amId) { alert('Selecione OS, agente e amostrador'); return; }
+  const medValue = document.getElementById('ctrl-bx-medicao').value;
+  const isAvulso = medValue === 'avulso';
+  const medId    = isAvulso ? 0 : +medValue;
+  const amId     = +document.getElementById('ctrl-bx-amostr').value;
+  if (!amId) { alert('Selecione o amostrador'); return; }
+  if (!isAvulso && !medId) { alert('Selecione OS e agente'); return; }
+  if (isAvulso) {
+    const agenteAvulso = (document.getElementById('ctrl-bx-avulso-agente').value||'').trim();
+    if (!agenteAvulso) { alert('Informe o nome do agente para entrada avulsa'); return; }
+  }
   const vazao = parseFloat(document.getElementById('ctrl-bx-vazao').value||0);
   if (!vazao || vazao <= 0) { alert('Informe a vazão calibrada (use ⚡ se preferir a recomendada)'); return; }
 
@@ -4353,7 +5392,6 @@ async function ctrlConfirmarBaixa() {
 
   const m = window._ctrlMetodoSel || {};
   const payload = {
-    medicao_id: medId,
     amostrador_id: amId,
     avaliador: document.getElementById('ctrl-bx-avaliador').value,
     bomba: bombaStr,
@@ -4365,6 +5403,12 @@ async function ctrlConfirmarBaixa() {
     data_medicao: document.getElementById('ctrl-bx-data').value,
     observacao: document.getElementById('ctrl-bx-obs').value,
   };
+  if (isAvulso) {
+    payload.demanda_id   = +document.getElementById('ctrl-bx-demand').value || null;
+    payload.agente_avulso = (document.getElementById('ctrl-bx-avulso-agente').value||'').trim();
+  } else {
+    payload.medicao_id = medId;
+  }
   try {
     const r = await ctrlFetch('/controle/baixa', {
       method:'POST', headers:{'Content-Type':'application/json'},
