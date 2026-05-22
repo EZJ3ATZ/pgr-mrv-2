@@ -1201,3 +1201,451 @@ def api_del_coleta_quimico(cid):
         conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
         conn.execute('DELETE FROM coletas_quimico WHERE id=?', (cid,))
     return jsonify({'ok': True})
+
+
+# ── Wizard: salvar medicao completa ──────────────────────────────────
+@controle_bp.route('/medicoes', methods=['POST'])
+def api_salvar_medicao_wizard():
+    """Recebe payload do wizard Central Operacional e salva em coletas_ruido ou coletas_quimico."""
+    init_db()
+    d = request.json or {}
+    tipo = d.get('tipo', '')
+
+    if tipo == 'ruido':
+        cr = d.get('campo_ruido') or {}
+        payload_ruido = {
+            'empresa_id':          d.get('empresa_id'),
+            'empresa_nome':        d.get('empresa_nome', ''),
+            'acompanhante':        cr.get('acomp', ''),
+            'cargo_acompanhante':  cr.get('cargo_acomp', ''),
+            'tecnico':             cr.get('tecnico') or d.get('avaliador', ''),
+            'data_coleta':         d.get('data', ''),
+            'hora_inicio':         cr.get('hora_ini', ''),
+            'hora_termino':        cr.get('hora_fim', ''),
+            'calibracao_inicial':  _safe_float(cr.get('cal_ini')),
+            'calibracao_final':    _safe_float(cr.get('cal_fim')),
+            'status':              'concluida',
+            'trabalhadores':       cr.get('trabalhadores', []),
+            'termos':              cr.get('termos', []),
+            # extras para relatório
+            'calibrador':          cr.get('calibrador', ''),
+            'unidade':             d.get('unidade', ''),
+            'cidade':              d.get('cidade', ''),
+            'resp_empresa':        d.get('resp_empresa', ''),
+            'os':                  d.get('os', ''),
+            'itens':               d.get('itens', []),
+        }
+        cid = save_coleta_ruido(payload_ruido)
+        return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido'})
+
+    elif tipo == 'quimico':
+        cq = d.get('campo_quimico') or {}
+        payload_q = {
+            'empresa_id':    d.get('empresa_id'),
+            'empresa_nome':  d.get('empresa_nome', ''),
+            'avaliador':     d.get('avaliador', ''),
+            'data_coleta':   d.get('data', ''),
+            'status':        'concluida',
+            'func_nome':     cq.get('func_nome', ''),
+            'func_funcao':   cq.get('func_funcao', ''),
+            'func_setor':    cq.get('func_setor', ''),
+            'func_jornada':  cq.get('func_jornada', ''),
+            'ventilacao':    cq.get('ventilacao', ''),
+            'ambiente':      cq.get('ambiente', ''),
+            'temperatura':   cq.get('temperatura', ''),
+            'umidade':       cq.get('umidade', ''),
+            'bomba':         cq.get('bomba', ''),
+            'id_bomba':      cq.get('id_bomba', ''),
+            'substancias':   cq.get('substancias', ''),
+            'fracao':        cq.get('fracao', ''),
+            'amostradores':  cq.get('amostradores', []),
+        }
+        cid = save_coleta_quimico(payload_q)
+        return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico'})
+
+    return jsonify({'ok': True, 'aviso': 'tipo nao mapeado, nao salvo'})
+
+
+def _safe_float(v):
+    try: return float(str(v).replace(',', '.'))
+    except: return None
+
+
+# ── Relatório PDF de Ruído ────────────────────────────────────────────
+@controle_bp.route('/relatorio/ruido', methods=['POST'])
+def gerar_relatorio_ruido():
+    """Gera PDF do relatório/planilha de campo de ruído.
+    Aceita payload direto (do wizard) ou coleta_id para buscar do banco.
+    """
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable, KeepTogether)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    except ImportError:
+        return jsonify({'erro': 'reportlab nao instalado'}), 500
+
+    d = request.json or {}
+    cid = d.get('coleta_id')
+
+    # Buscar do banco se fornecido ID
+    if cid:
+        coleta = get_coleta_ruido(int(cid))
+        if coleta:
+            d = coleta
+            d['trabalhadores'] = coleta.get('trabalhadores', [])
+
+    # Extrair campos
+    empresa_nome   = d.get('empresa_nome', d.get('empresa', {}).get('nome', '—'))
+    cnpj           = d.get('cnpj', d.get('empresa', {}).get('cnpj', ''))
+    unidade        = d.get('unidade', '')
+    cidade         = d.get('cidade', '')
+    resp_empresa   = d.get('resp_empresa', '')
+    os_num         = d.get('os', '')
+    data_coleta    = d.get('data_coleta', d.get('data', ''))
+    hora_ini       = d.get('hora_inicio', d.get('hora_ini', ''))
+    hora_fim       = d.get('hora_termino', d.get('hora_fim', ''))
+    tecnico        = d.get('tecnico', '')
+    acomp          = d.get('acompanhante', d.get('acomp', ''))
+    cargo_acomp    = d.get('cargo_acompanhante', d.get('cargo_acomp', ''))
+    calibrador     = d.get('calibrador', '')
+    cal_ini        = d.get('calibracao_inicial', d.get('cal_ini', ''))
+    cal_fim        = d.get('calibracao_final', d.get('cal_fim', ''))
+    desvio         = d.get('desvio_calibracao', '')
+    status_cal     = d.get('status_calibracao', '')
+    trabalhadores  = d.get('trabalhadores', [])
+    termos         = d.get('termos', [])
+    itens_ghe      = d.get('itens', [])
+
+    # Calcular desvio se não veio calculado
+    if not desvio and cal_ini and cal_fim:
+        try:
+            desvio = round(float(str(cal_fim).replace(',','.')) - float(str(cal_ini).replace(',','.')), 2)
+        except: desvio = ''
+
+    # Formatar data
+    if data_coleta and '-' in str(data_coleta):
+        try:
+            from datetime import datetime as _dt
+            data_fmt = _dt.strptime(data_coleta, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except: data_fmt = data_coleta
+    else:
+        data_fmt = data_coleta or '___/___/______'
+
+    # ─── Estilos ───────────────────────────────────────────────────
+    AZUL      = colors.HexColor('#1E3A8A')
+    AZUL_CLR  = colors.HexColor('#DBEAFE')
+    CINZA     = colors.HexColor('#F3F4F6')
+    BORDA     = colors.HexColor('#CBD5E1')
+    VERDE     = colors.HexColor('#16A34A')
+    LARANJA   = colors.HexColor('#D97706')
+    PRETO     = colors.black
+    BRANCO    = colors.white
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+        leftMargin=1.8*cm, rightMargin=1.8*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+        title=f'Relatório de Ruído — {empresa_nome}')
+
+    styles = getSampleStyleSheet()
+
+    def sty(name, **kw):
+        base = styles.get(name, styles['Normal'])
+        return ParagraphStyle(f'_sty_{name}_{id(kw)}', parent=base, **kw)
+
+    titulo_pg = sty('Title', fontSize=13, textColor=AZUL, alignment=TA_CENTER,
+                    fontName='Helvetica-Bold', spaceAfter=2)
+    subtit_pg = sty('Normal', fontSize=8.5, textColor=colors.HexColor('#475569'),
+                    alignment=TA_CENTER, spaceAfter=10)
+    sec_hdr   = sty('Normal', fontSize=8, fontName='Helvetica-Bold', textColor=BRANCO)
+    cell_bold = sty('Normal', fontSize=8, fontName='Helvetica-Bold', textColor=PRETO)
+    cell_reg  = sty('Normal', fontSize=8, fontName='Helvetica', textColor=PRETO)
+    cell_sml  = sty('Normal', fontSize=7.5, fontName='Helvetica', textColor=PRETO)
+    assin_sty = sty('Normal', fontSize=8, fontName='Helvetica', textColor=PRETO)
+    footer_sty= sty('Normal', fontSize=6.5, textColor=colors.HexColor('#64748B'),
+                    alignment=TA_CENTER)
+
+    W = A4[0] - 3.6*cm   # largura útil
+
+    elements = []
+
+    # ─── Cabeçalho ─────────────────────────────────────────────────
+    hdr_data = [[
+        Paragraph('<b>OCUPACIONAL ENGENHARIA</b><br/><font size="7" color="#64748B">Higiene Ocupacional e Segurança do Trabalho</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL)),
+        Paragraph('<b>PLANILHA DE CAMPO — RUÍDO</b><br/><font size="7">Dosimetria de Ruído | NR-15 Anexo 1 | NHO-01 FUNDACENTRO</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_RIGHT)),
+    ]]
+    hdr_tbl = Table(hdr_data, colWidths=[W*0.55, W*0.45])
+    hdr_tbl.setStyle(TableStyle([
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('LINEBELOW',(0,0),(-1,-1),1.5,AZUL),
+        ('BOTTOMPADDING',(0,0),(-1,-1),6),
+    ]))
+    elements.append(hdr_tbl)
+    elements.append(Spacer(1, 8))
+
+    # ─── Identificação da Empresa ───────────────────────────────────
+    def sec_label(txt):
+        t = Table([[Paragraph(txt, sec_hdr)]], colWidths=[W])
+        t.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,-1),AZUL),
+            ('TOPPADDING',(0,0),(-1,-1),3), ('BOTTOMPADDING',(0,0),(-1,-1),3),
+            ('LEFTPADDING',(0,0),(-1,-1),6),
+        ]))
+        return t
+
+    def info_row(pairs, widths=None):
+        """pairs = [(label, value), ...] numa linha"""
+        n = len(pairs)
+        if not widths:
+            widths = [W/n]*n
+        cells = []
+        for lbl, val in pairs:
+            cells.append(Paragraph(f'<b>{lbl}:</b> {val or "—"}', cell_reg))
+        t = Table([cells], colWidths=widths)
+        t.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,-1),CINZA),
+            ('GRID',(0,0),(-1,-1),0.4,BORDA),
+            ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
+            ('LEFTPADDING',(0,0),(-1,-1),5),
+        ]))
+        return t
+
+    elements.append(sec_label('1. IDENTIFICAÇÃO DA EMPRESA'))
+    elements.append(Spacer(1, 2))
+    elements.append(info_row([('Empresa', empresa_nome), ('CNPJ', cnpj or ''), ('OS', os_num)],
+                              [W*0.50, W*0.30, W*0.20]))
+    elements.append(Spacer(1, 1))
+    elements.append(info_row([('Unidade/Obra', unidade), ('Cidade', cidade), ('Responsável', resp_empresa)],
+                              [W*0.40, W*0.25, W*0.35]))
+    elements.append(Spacer(1, 8))
+
+    # ─── Dados da Medição ───────────────────────────────────────────
+    elements.append(sec_label('2. DADOS DA MEDIÇÃO'))
+    elements.append(Spacer(1, 2))
+    elements.append(info_row([('Data', data_fmt), ('Hora Início', hora_ini), ('Hora Término', hora_fim)],
+                              [W*0.35, W*0.25, W*0.40]))
+    elements.append(Spacer(1, 1))
+    elements.append(info_row([('Profissional Técnico', tecnico), ('Acompanhante', acomp), ('Cargo Acompanhante', cargo_acomp)],
+                              [W*0.35, W*0.35, W*0.30]))
+    elements.append(Spacer(1, 8))
+
+    # ─── Calibração ─────────────────────────────────────────────────
+    elements.append(sec_label('3. CALIBRAÇÃO DO EQUIPAMENTO'))
+    elements.append(Spacer(1, 2))
+
+    # Status calibração
+    if desvio != '':
+        try:
+            dev_num = float(str(desvio).replace(',','.'))
+            ok_cal  = abs(dev_num) <= 0.5
+            status_cal_txt = ('✓ APROVADA' if ok_cal else '✗ REPROVADA') + f' (Δ = {desvio} dB)'
+            status_cal_color = VERDE if ok_cal else LARANJA
+        except:
+            status_cal_txt = str(status_cal) or '—'
+            status_cal_color = PRETO
+    else:
+        status_cal_txt = status_cal or '—'
+        status_cal_color = PRETO
+
+    cal_rows = [
+        [Paragraph('<b>Calibrador</b>', cell_bold), Paragraph('<b>Cal. Inicial (dB)</b>', cell_bold),
+         Paragraph('<b>Cal. Final (dB)</b>', cell_bold), Paragraph('<b>Desvio</b>', cell_bold),
+         Paragraph('<b>Status</b>', cell_bold)],
+        [Paragraph(str(calibrador) or '—', cell_reg),
+         Paragraph(str(cal_ini) or '—', cell_reg),
+         Paragraph(str(cal_fim) or '—', cell_reg),
+         Paragraph(str(desvio) if desvio != '' else '—', cell_reg),
+         Paragraph(f'<font color="{status_cal_color.hexval() if hasattr(status_cal_color,"hexval") else "#16A34A"}">{status_cal_txt}</font>', cell_reg)],
+    ]
+    cal_tbl = Table(cal_rows, colWidths=[W*0.28, W*0.18, W*0.18, W*0.14, W*0.22])
+    cal_tbl.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
+        ('GRID',(0,0),(-1,-1),0.4,BORDA),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+        ('FONTSIZE',(0,0),(-1,-1),8),
+        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
+        ('LEFTPADDING',(0,0),(-1,-1),5),
+        ('ALIGN',(1,0),(3,-1),'CENTER'),
+    ]))
+    elements.append(cal_tbl)
+    elements.append(Spacer(1, 8))
+
+    # ─── Trabalhadores ───────────────────────────────────────────────
+    elements.append(sec_label('4. IDENTIFICAÇÃO DOS TRABALHADORES AVALIADOS'))
+    elements.append(Spacer(1, 2))
+
+    trab_head = [
+        Paragraph('<b>N°</b>', cell_bold),
+        Paragraph('<b>N° Série Dosímetro</b>', cell_bold),
+        Paragraph('<b>Nome Completo</b>', cell_bold),
+        Paragraph('<b>Cargo/Função</b>', cell_bold),
+        Paragraph('<b>Setor/GHE</b>', cell_bold),
+        Paragraph('<b>Almoço/Pausa</b>', cell_bold),
+    ]
+    trab_rows = [trab_head]
+
+    # Garantir pelo menos 5 linhas
+    trabs_fill = list(trabalhadores) if trabalhadores else []
+    while len(trabs_fill) < 5:
+        trabs_fill.append({})
+
+    for i, tr in enumerate(trabs_fill, 1):
+        trab_rows.append([
+            Paragraph(str(i), cell_reg),
+            Paragraph(tr.get('serie_dosimetro','') or '', cell_reg),
+            Paragraph(tr.get('nome','') or '', cell_reg),
+            Paragraph(tr.get('cargo','') or '', cell_sml),
+            Paragraph(tr.get('setor','') or '', cell_sml),
+            Paragraph(tr.get('almoco','') or '', cell_reg),
+        ])
+
+    # Linha GHE (agentes do planejamento)
+    if itens_ghe:
+        ghe_txt = '; '.join([it.get('ghe','') or it.get('agente','') for it in itens_ghe if it.get('ghe') or it.get('agente')])
+        trab_rows.append([
+            Paragraph('GHEs:', cell_bold),
+            Paragraph(ghe_txt[:120], cell_sml),
+            '', '', '', '',
+        ])
+
+    trab_tbl = Table(trab_rows, colWidths=[W*0.05, W*0.17, W*0.26, W*0.20, W*0.18, W*0.14],
+                     repeatRows=1)
+    trab_tbl.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
+        ('GRID',(0,0),(-1,-1),0.4,BORDA),
+        ('FONTSIZE',(0,0),(-1,-1),8),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
+        ('LEFTPADDING',(0,0),(-1,-1),4),
+        ('ALIGN',(0,0),(0,-1),'CENTER'),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA]),
+        ('SPAN',(1,-1),(5,-1)) if itens_ghe else ('NOP',(0,0),(0,0)),
+    ]))
+    elements.append(trab_tbl)
+    elements.append(Spacer(1, 8))
+
+    # ─── Resultados (a preencher em campo / após leitura) ────────────
+    elements.append(sec_label('5. RESULTADOS DAS MEDIÇÕES (Preencher após leitura dos dosímetros)'))
+    elements.append(Spacer(1, 2))
+
+    res_head = [
+        Paragraph('<b>N°</b>', cell_bold),
+        Paragraph('<b>Nome</b>', cell_bold),
+        Paragraph('<b>Dose (%)</b>', cell_bold),
+        Paragraph('<b>Nível Eq. dB(A)</b>', cell_bold),
+        Paragraph('<b>Lavg dB(A)</b>', cell_bold),
+        Paragraph('<b>Critério NR-15</b>', cell_bold),
+        Paragraph('<b>Classificação</b>', cell_bold),
+    ]
+    res_rows = [res_head]
+    for i in range(1, len(trabs_fill)+1):
+        nm = trabs_fill[i-1].get('nome','') if i-1 < len(trabs_fill) else ''
+        res_rows.append([
+            Paragraph(str(i), cell_reg),
+            Paragraph(nm or '', cell_sml),
+            Paragraph('', cell_reg),
+            Paragraph('', cell_reg),
+            Paragraph('', cell_reg),
+            Paragraph('100% / 85 dB(A)', cell_sml),
+            Paragraph('', cell_reg),
+        ])
+    res_tbl = Table(res_rows, colWidths=[W*0.04, W*0.22, W*0.10, W*0.14, W*0.14, W*0.18, W*0.18],
+                    repeatRows=1)
+    res_tbl.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
+        ('GRID',(0,0),(-1,-1),0.4,BORDA),
+        ('FONTSIZE',(0,0),(-1,-1),8),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
+        ('LEFTPADDING',(0,0),(-1,-1),4),
+        ('ALIGN',(0,0),(0,-1),'CENTER'),
+        ('ALIGN',(2,0),(5,-1),'CENTER'),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA]),
+    ]))
+    elements.append(res_tbl)
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph(
+        '<font size="7" color="#475569">Critério NR-15 Anexo 1 (Portaria 3214/78): '
+        'Limite 85 dB(A) para 8h/dia — Dose = 100%. '
+        'NHO-01 FUNDACENTRO: Nível de Ação 80 dB(A) (NA), Limite de Tolerância 85 dB(A) (LT). '
+        'Classificação: ≤ 80 dB(A) = Baixo | 80–85 = Moderado (NA) | > 85 = Alto (LT).</font>',
+        cell_reg))
+    elements.append(Spacer(1, 8))
+
+    # ─── Termo de Responsabilidade ───────────────────────────────────
+    elements.append(sec_label('6. TERMO DE RESPONSABILIDADE — DOSÍMETROS'))
+    elements.append(Spacer(1, 2))
+
+    termo_head = [
+        Paragraph('<b>N°</b>', cell_bold),
+        Paragraph('<b>Nome</b>', cell_bold),
+        Paragraph('<b>Função</b>', cell_bold),
+        Paragraph('<b>Assinatura</b>', cell_bold),
+        Paragraph('<b>Data Entrega</b>', cell_bold),
+        Paragraph('<b>Data Devolução</b>', cell_bold),
+    ]
+    termo_rows = [termo_head]
+
+    termos_fill = list(termos) if termos else []
+    while len(termos_fill) < 5:
+        termos_fill.append({})
+
+    for i, tr in enumerate(termos_fill, 1):
+        termo_rows.append([
+            Paragraph(str(i), cell_reg),
+            Paragraph(tr.get('nome','') or '', cell_reg),
+            Paragraph(tr.get('funcao','') or '', cell_reg),
+            Paragraph('', cell_reg),   # assinatura (campo em branco)
+            Paragraph(tr.get('data_entrega', data_fmt) or '', cell_reg),
+            Paragraph('', cell_reg),   # data devolução
+        ])
+
+    termo_tbl = Table(termo_rows, colWidths=[W*0.04, W*0.24, W*0.20, W*0.22, W*0.15, W*0.15],
+                      repeatRows=1)
+    termo_tbl.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
+        ('GRID',(0,0),(-1,-1),0.4,BORDA),
+        ('FONTSIZE',(0,0),(-1,-1),8),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
+        ('LEFTPADDING',(0,0),(-1,-1),4),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA]),
+    ]))
+    elements.append(termo_tbl)
+    elements.append(Spacer(1, 10))
+
+    # ─── Assinaturas finais ──────────────────────────────────────────
+    assin_rows = [[
+        Paragraph('_________________________________<br/><font size="7">Profissional Técnico</font><br/>'
+                  f'<font size="7">{tecnico}</font>', assin_sty),
+        Paragraph('_________________________________<br/><font size="7">Responsável da Empresa / Acompanhante</font><br/>'
+                  f'<font size="7">{acomp}</font>', assin_sty),
+        Paragraph(f'_________________________________<br/><font size="7">Data: {data_fmt}</font>',
+                  assin_sty),
+    ]]
+    assin_tbl = Table(assin_rows, colWidths=[W/3, W/3, W/3])
+    assin_tbl.setStyle(TableStyle([
+        ('ALIGN',(0,0),(-1,-1),'CENTER'),
+        ('VALIGN',(0,0),(-1,-1),'TOP'),
+        ('TOPPADDING',(0,0),(-1,-1),4),
+    ]))
+    elements.append(assin_tbl)
+    elements.append(Spacer(1, 10))
+
+    # ─── Rodapé ──────────────────────────────────────────────────────
+    elements.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
+    elements.append(Spacer(1, 3))
+    elements.append(Paragraph(
+        'Normas: NR-15 Anexo 1 (Portaria 3214/78) — NHO-01 FUNDACENTRO '
+        '— ABNT NBR 10151 — Portaria MTb 1.297/2017 | '
+        f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        footer_sty))
+
+    doc.build(elements)
+    buf.seek(0)
+    nome_safe = re.sub(r'[^\w-]', '_', empresa_nome)[:40]
+    data_safe = data_fmt.replace('/', '-')
+    return send_file(buf, as_attachment=True,
+        download_name=f'planilha_ruido_{nome_safe}_{data_safe}.pdf',
+        mimetype='application/pdf')
