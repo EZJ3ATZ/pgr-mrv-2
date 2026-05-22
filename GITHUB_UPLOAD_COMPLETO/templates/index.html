@@ -2702,10 +2702,10 @@
       <thead>
         <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
           <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Agente</th>
-          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Tipo</th>
-          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Método / Norma</th>
-          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">CAS / Ref.</th>
-          <th style="text-align:right;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Vazão (L/min)</th>
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Amostrador</th>
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Método</th>
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Nº CAS</th>
+          <th style="text-align:right;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Vazão / Volume</th>
         </tr>
       </thead>
       <tbody id="ag-tbody">
@@ -5898,24 +5898,14 @@ function empRender() {
 let _agData = [];
 
 async function agLoad() {
+  const tbody = document.getElementById('ag-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--text3);">Carregando agentes...</td></tr>';
   try {
-    const r = await ctrlFetch('/controle/metodos');
-    _agData = r.metodos || [];
+    const r = await ctrlFetch('/controle/agentes');
+    _agData = r.agentes || [];
     agFiltrar();
   } catch(e) {
-    // fallback: carregar a lista estática dos métodos
-    _agData = [
-      {nome:'Poeira Total', tipo:'quimico', metodo:'NIOSH 0500', cas:'—', vazao_min:1.5, vazao_max:2.5},
-      {nome:'Poeira Mineral (Sílica)', tipo:'quimico', metodo:'NIOSH 7500', cas:'14808-60-7', vazao_min:1.7, vazao_max:2.0},
-      {nome:'Ruído (Dosimetria)', tipo:'fisico', metodo:'NR-15 An.1', cas:'—', vazao_min:null, vazao_max:null},
-      {nome:'Calor / IBUTG', tipo:'fisico', metodo:'NR-15 An.3', cas:'—', vazao_min:null, vazao_max:null},
-      {nome:'Benzeno', tipo:'quimico', metodo:'NIOSH 1501', cas:'71-43-2', vazao_min:0.1, vazao_max:0.2},
-      {nome:'Tolueno', tipo:'quimico', metodo:'NIOSH 1501', cas:'108-88-3', vazao_min:0.1, vazao_max:0.2},
-      {nome:'Estireno', tipo:'quimico', metodo:'NIOSH 1501', cas:'100-42-5', vazao_min:0.1, vazao_max:0.2},
-      {nome:'Hexano (n-Hexano)', tipo:'quimico', metodo:'NIOSH 1500', cas:'110-54-3', vazao_min:0.1, vazao_max:0.2},
-      {nome:'Formaldeído', tipo:'quimico', metodo:'NIOSH 2541', cas:'50-00-0', vazao_min:0.5, vazao_max:1.0},
-    ];
-    agFiltrar();
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--red);">Erro ao carregar agentes: ${e.message}</td></tr>`;
   }
 }
 
@@ -5923,26 +5913,39 @@ function agFiltrar() {
   const busca = (document.getElementById('ag-busca')?.value||'').toLowerCase();
   const tipo  = document.getElementById('ag-tipo')?.value||'';
   let lista = _agData.filter(a => {
-    const match = !busca || (a.nome||'').toLowerCase().includes(busca) || (a.metodo||'').toLowerCase().includes(busca) || (a.cas||'').toLowerCase().includes(busca);
-    const tMatch = !tipo || (a.tipo||'') === tipo;
+    const match = !busca ||
+      (a.nome||'').toLowerCase().includes(busca) ||
+      (a.metodo||'').toLowerCase().includes(busca) ||
+      (a.cas||'').toLowerCase().includes(busca) ||
+      (a.tipo_amostrador||'').toLowerCase().includes(busca) ||
+      (a.amostrador_desc||'').toLowerCase().includes(busca);
+    // filtro tipo: quimico = tem CAS, fisico = sem CAS
+    let tMatch = true;
+    if (tipo === 'quimico') tMatch = !!(a.cas && a.cas !== '—');
+    else if (tipo === 'fisico') tMatch = !(a.cas && a.cas !== '—');
     return match && tMatch;
   });
   const tbody = document.getElementById('ag-tbody');
   if (!tbody) return;
   if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--text3);">Nenhum agente encontrado.</td></tr>'; return; }
-  const tipoCor = {quimico:'var(--purple)', fisico:'var(--blue)', biologico:'var(--red)'};
-  const tipoBg  = {quimico:'rgba(167,139,250,.1)', fisico:'rgba(96,165,250,.1)', biologico:'rgba(239,68,68,.1)'};
-  tbody.innerHTML = lista.map(a => `
+  tbody.innerHTML = lista.map(a => {
+    const amCod = (a.tipo_amostrador||'').toUpperCase();
+    const amCor = amCod==='TCP'?'var(--blue)':amCod==='PVC'?'var(--purple)':amCod==='TAS'?'var(--yellow)':amCod==='DNPH'?'var(--orange)':amCod==='BAG'?'var(--green)':'var(--text3)';
+    const amBg  = amCod==='TCP'?'rgba(96,165,250,.1)':amCod==='PVC'?'rgba(167,139,250,.1)':amCod==='TAS'?'rgba(245,158,11,.1)':amCod==='DNPH'?'rgba(34,197,94,.1)':amCod==='BAG'?'rgba(16,185,129,.1)':'var(--surface3)';
+    return `
     <tr style="border-bottom:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-      <td style="padding:11px 16px;font-size:.82rem;font-weight:600;color:var(--text);">${a.nome||'—'}</td>
-      <td style="padding:11px 16px;">
-        <span style="background:${tipoBg[a.tipo]||'var(--surface3)'};color:${tipoCor[a.tipo]||'var(--text3)'};font-size:.67rem;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:capitalize;">${a.tipo||'—'}</span>
+      <td style="padding:10px 16px;font-size:.82rem;font-weight:600;color:var(--text);">${a.nome||'—'}</td>
+      <td style="padding:10px 16px;">
+        ${amCod ? `<span style="background:${amBg};color:${amCor};font-size:.67rem;font-weight:700;padding:2px 8px;border-radius:10px;">${amCod}</span>` : '<span style="color:var(--text3);font-size:.75rem;">—</span>'}
       </td>
-      <td style="padding:11px 16px;font-size:.8rem;color:var(--text2);">${a.metodo||'—'}</td>
-      <td style="padding:11px 16px;font-size:.78rem;color:var(--text3);font-family:monospace;">${a.cas||'—'}</td>
-      <td style="padding:11px 16px;text-align:right;font-size:.8rem;color:var(--text2);">${a.vazao_min ? `${a.vazao_min}–${a.vazao_max}` : '—'}</td>
-    </tr>
-  `).join('');
+      <td style="padding:10px 16px;font-size:.79rem;color:var(--text2);">${a.metodo||'—'}</td>
+      <td style="padding:10px 16px;font-size:.74rem;color:var(--text3);font-family:monospace;">${a.cas||'—'}</td>
+      <td style="padding:10px 16px;text-align:right;font-size:.78rem;color:var(--text2);">${a.vazao||'—'}</td>
+    </tr>`;
+  }).join('');
+  // atualizar contador
+  const buscoEl = document.getElementById('ag-busca');
+  if (buscoEl) buscoEl.placeholder = `🔍 Buscar entre ${_agData.length} agentes...`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
