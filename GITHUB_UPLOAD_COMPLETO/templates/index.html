@@ -1890,8 +1890,11 @@
         <input type="text" id="q-razao" placeholder="Nome completo da empresa">
       </div>
       <div>
-        <label>Logo da Empresa <span style="font-weight:400;color:#888">(opcional)</span></label>
-        <input type="file" id="q-logo" accept="image/*" style="padding:4px;">
+        <label>Logo da Empresa <span style="font-weight:400;color:#888">(opcional — aparece na capa do laudo)</span></label>
+        <div id="q-logo-drop" onclick="document.getElementById('q-logo').click()" style="border:2px dashed var(--border);border-radius:8px;padding:14px 12px;text-align:center;cursor:pointer;color:var(--text3);font-size:.85rem;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'" ondragover="event.preventDefault();this.style.borderColor='var(--green)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="event.preventDefault();document.getElementById('q-logo').files=event.dataTransfer.files;qLogoUpdate()">
+          <span id="q-logo-label">📎 Clique para selecionar logo (PNG / JPG)</span>
+        </div>
+        <input type="file" id="q-logo" accept="image/*" style="display:none" onchange="qLogoUpdate()">
       </div>
     </div>
     <div class="field">
