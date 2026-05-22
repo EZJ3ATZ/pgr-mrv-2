@@ -441,6 +441,27 @@ def cria_empresa():
 
 
 # ── Estoque de amostradores por agente ────────────────────────────────
+
+# Tipos de amostrador que a empresa NÃO utiliza (não aparecem na previsão)
+TIPOS_IGNORADOS_PREVISAO = {'FMD', 'OVM', 'ICR', 'ASL', 'IEC'}
+
+# Aliases de agentes → nome canônico no guia (para lookup exato)
+AGENTE_ALIASES = {
+    'BTX': 'BENZENO',
+    'BTE': 'BENZENO',
+    'BTXE': 'BENZENO',
+    'BENZENO, TOLUENO E XILENO': 'BENZENO',
+    'BENZENO, TOLUENO, XILENO': 'BENZENO',
+    'BENZENO, TOLUENO, ETILBENZENO': 'BENZENO',
+    'ARSÊNIO': 'ARSÊNIO E COMPOSTOS INORGÂNICOS',
+    'ARSENIO': 'ARSÊNIO E COMPOSTOS INORGÂNICOS',
+    'ARSÊNIO E COMPOSTOS INORGÂNICOS, COM AS': 'ARSÊNIO E COMPOSTOS INORGÂNICOS',
+    'HEXANO, OUTROS ISÔMEROS': 'HEXANO, OUTROS ISÔMEROS QUE NÃO O N-HEXANO',
+    'HEXANO, OUTROS ISOMEROS': 'HEXANO, OUTROS ISÔMEROS QUE NÃO O N-HEXANO',
+    'HEXANO OUTROS ISÔMEROS': 'HEXANO, OUTROS ISÔMEROS QUE NÃO O N-HEXANO',
+}
+
+
 def _extrair_tipos_amostrador(amostrador_cod):
     """Extrai siglas de tipo (TCP, TAS, IOL, etc) de strings como
        'SKC 226-01 (TCP*****)' ou 'IOL E X2P' ou 'TCG E TCP'.
@@ -475,6 +496,10 @@ def _buscar_metodos_agente(nome_agente):
     chave = (nome_agente or '').strip()
     if not chave:
         return []
+    # Resolver alias primeiro
+    alias = AGENTE_ALIASES.get(chave.upper())
+    if alias:
+        chave = alias
     # Tentar como CAS
     if chave in guia.get('by_cas', {}):
         return guia['by_cas'][chave]
@@ -483,9 +508,18 @@ def _buscar_metodos_agente(nome_agente):
     if key_upper in guia.get('by_name', {}):
         cas = guia['by_name'][key_upper]
         return guia.get('by_cas', {}).get(cas, [])
-    # Busca parcial
+    # Busca parcial — evita matches espúrios em substrings curtas
+    best = None
     for nome_upper, cas in guia.get('by_name', {}).items():
-        if key_upper in nome_upper or nome_upper in key_upper:
+        if key_upper in nome_upper:
+            # prefere match mais curto (mais específico)
+            if best is None or len(nome_upper) < len(best[0]):
+                best = (nome_upper, cas)
+    if best:
+        return guia.get('by_cas', {}).get(best[1], [])
+    # Busca inversa: nome do guia dentro da chave
+    for nome_upper, cas in guia.get('by_name', {}).items():
+        if len(nome_upper) > 4 and nome_upper in key_upper:
             return guia.get('by_cas', {}).get(cas, [])
     return []
 
@@ -776,6 +810,8 @@ def previsao_estoque():
             for t in tipos:
                 if t in tipos_vistos:
                     continue
+                if t in TIPOS_IGNORADOS_PREVISAO:
+                    continue  # empresa não usa este tipo
                 tipos_vistos.add(t)
                 necessidades.setdefault(t, {
                     'qtd_necessaria': 0, 'em_estoque': 0, 'falta': 0,
