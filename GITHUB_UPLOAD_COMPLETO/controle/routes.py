@@ -1772,6 +1772,62 @@ def api_eventos():
     return jsonify([row_to_dict(r) for r in rows])
 
 
+# ── Matching empresa ──────────────────────────────────────────────────
+
+@controle_bp.route('/empresas/pendentes')
+def api_empresas_pendentes():
+    """Lista empresas criadas automaticamente pelo Planner que precisam de validação."""
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT e.id, e.nome, e.cnpj, e.criado_em,
+                   COUNT(d.id) AS total_demandas
+            FROM empresas e
+            LEFT JOIN demandas d ON d.empresa_id = e.id
+            WHERE e.pendente = 1
+            GROUP BY e.id
+            ORDER BY total_demandas DESC, e.criado_em DESC
+        ''').fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
+@controle_bp.route('/empresas/pendentes/<int:pend_id>/vincular', methods=['POST'])
+def api_vincular_empresa_pendente(pend_id):
+    """
+    Vincula empresa pendente a uma empresa existente (ou a confirma como nova).
+    Body: {"empresa_id": 123}  → usa empresa existente
+    Body: {"confirmar": true}  → confirma pendente como empresa real (remove flag)
+    """
+    init_db()
+    d = request.json or {}
+    with get_db() as conn:
+        if 'empresa_id' in d:
+            destino = int(d['empresa_id'])
+            # Remapear demandas da pendente para a real
+            conn.execute('UPDATE demandas SET empresa_id=? WHERE empresa_id=?', (destino, pend_id))
+            conn.execute('DELETE FROM empresas WHERE id=?', (pend_id,))
+            return jsonify({'ok': True, 'acao': 'remapeada', 'empresa_id': destino})
+        elif d.get('confirmar'):
+            conn.execute('UPDATE empresas SET pendente=0 WHERE id=?', (pend_id,))
+            return jsonify({'ok': True, 'acao': 'confirmada'})
+        else:
+            return jsonify({'erro': 'Informe empresa_id ou confirmar:true'}), 400
+
+
+@controle_bp.route('/demandas/match-empresas', methods=['POST'])
+def api_match_empresas():
+    """Re-executa matching de empresa em todas as demandas sem vínculo."""
+    init_db()
+    try:
+        from .empresa_match import match_todas_demandas
+        with get_db() as conn:
+            conn.execute('PRAGMA foreign_keys = OFF')
+            stats = match_todas_demandas(conn)
+        return jsonify({'ok': True, **stats})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/eventos', methods=['POST'])
 def api_registrar_evento():
     """Registra evento manualmente (ações do usuário)."""
