@@ -116,7 +116,7 @@ def update_amostrador(aid):
     d = request.json or {}
     fields = []
     params = []
-    for k in ('status', 'tipo', 'codigo', 'avaliador', 'data_medicao', 'observacao'):
+    for k in ('status', 'tipo', 'codigo', 'avaliador', 'data_medicao', 'observacao', 'data_entrada'):
         if k in d:
             fields.append(f'{k}=?'); params.append(d[k])
     if 'empresa' in d:
@@ -137,6 +137,36 @@ def delete_amostrador(aid):
     with get_db() as conn:
         conn.execute('DELETE FROM amostradores WHERE id=?', (aid,))
     return jsonify({'ok': True})
+
+
+# ── Manutencao / bulk updates ─────────────────────────────────────────
+@controle_bp.route('/amostradores/fix_data_entrada', methods=['POST'])
+def fix_data_entrada():
+    """Atualiza data_entrada de amostradores com muitos dias parados."""
+    init_db()
+    d = request.json or {}
+    nova_data  = d.get('data_entrada', '2025-10-23')  # default: 23/10/2025
+    dias_min   = int(d.get('dias_min', 200))
+    ids_manual = d.get('ids', [])  # lista de IDs especificos, opcional
+
+    with get_db() as conn:
+        if ids_manual:
+            placeholders = ','.join('?' * len(ids_manual))
+            cur = conn.execute(
+                f"UPDATE amostradores SET data_entrada=?, atualizado_em=CURRENT_TIMESTAMP "
+                f"WHERE id IN ({placeholders})",
+                [nova_data] + ids_manual
+            )
+        else:
+            cur = conn.execute(
+                """UPDATE amostradores SET data_entrada=?, atualizado_em=CURRENT_TIMESTAMP
+                   WHERE status IN ('Estoque','Reservado')
+                     AND data_entrada IS NOT NULL
+                     AND CAST(julianday('now') - julianday(data_entrada) AS INTEGER) > ?""",
+                (nova_data, dias_min)
+            )
+        afetados = cur.rowcount
+    return jsonify({'ok': True, 'afetados': afetados, 'nova_data': nova_data})
 
 
 # ── Vencimento (laboratorio cobra apos N dias) ────────────────────────
