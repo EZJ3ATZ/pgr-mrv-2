@@ -1681,8 +1681,9 @@ def graph_sync_manual():
     try:
         from .planner_sync import sync_planner
         d = request.json or {}
-        group_filter = d.get('group_id')
-        stats = sync_planner(group_filter=group_filter)
+        group_filter  = d.get('group_id')
+        label_filter  = d.get('label_filter')
+        stats = sync_planner(group_filter=group_filter, label_filter=label_filter)
         if 'erro' in stats:
             return jsonify(stats), 400
         return jsonify(stats)
