@@ -1087,10 +1087,10 @@ def analytics():
         """).fetchall()
         dem_por_status = {r['status']: r['qtd'] for r in dem_rows}
 
-        # Evolucao mensal (ultimos 12 meses)
+        # Evolucao mensal (ultimos 12 meses) — usa amostradores.data_medicao
         evolucao = [row_to_dict(r) for r in conn.execute("""
             SELECT strftime('%Y-%m', data_medicao) AS mes, COUNT(*) AS qtd
-            FROM baixas
+            FROM amostradores
             WHERE data_medicao IS NOT NULL
               AND data_medicao >= date('now','-12 months')
             GROUP BY mes ORDER BY mes
