@@ -28,6 +28,7 @@ from .graph import (
 )
 from .db import get_db, init_db
 from .empresa_match import match_todas_demandas
+from .classificador import extrair_os, classificar
 
 log = logging.getLogger(__name__)
 
@@ -67,15 +68,18 @@ def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> d
         'em_andamento' if task.get('percentComplete', 0) > 0 else 'aberta'
     )
 
+    titulo = task.get('title', 'Sem título')
+    bucket = bucket_map.get(task.get('bucketId', ''), '')
+
     return {
         'planner_task_id':    task['id'],
         'planner_plan_id':    task.get('planId', ''),
         'planner_plan_nome':  plan.get('title', ''),
         'planner_bucket_id':  task.get('bucketId', ''),
-        'planner_bucket':     bucket_map.get(task.get('bucketId', ''), ''),
+        'planner_bucket':     bucket,
         'planner_group_id':   group.get('id', ''),
         'planner_group_nome': group.get('displayName', ''),
-        'titulo':             task.get('title', 'Sem título'),
+        'titulo':             titulo,
         'prioridade':         PRIORITY_MAP.get(task.get('priority', 5), 'media'),
         'status':             status_raw,
         'percent_complete':   task.get('percentComplete', 0),
@@ -85,6 +89,8 @@ def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> d
         'ms_assignee_id':     assignee_id,
         'ms_assignees_json':  json.dumps(all_assignees),
         'etiquetas_json':     json.dumps(task.get('appliedCategories', {})),
+        'numero_os':          extrair_os(titulo),
+        'tipo_demanda':       classificar(titulo, bucket),
     }
 
 
@@ -108,6 +114,8 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
                 planner_bucket=?, planner_plan_nome=?,
                 ms_assignee_id=?, ms_assignees_json=?,
                 etiquetas_json=?, descricao=?, checklist=?,
+                numero_os=COALESCE(numero_os, ?),
+                tipo_demanda=?,
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE planner_task_id=?
         ''', (
@@ -116,6 +124,7 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
             d['planner_bucket'], d['planner_plan_nome'],
             d['ms_assignee_id'], d['ms_assignees_json'],
             d['etiquetas_json'], desc, checklist_json,
+            d['numero_os'], d['tipo_demanda'],
             d['planner_task_id'],
         ))
         return existing['id'], 'updated'
@@ -130,8 +139,9 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
                 prazo, criado_em_ms, concluido_em_ms,
                 ms_assignee_id, ms_assignees_json,
                 etiquetas_json, descricao, checklist,
+                numero_os, tipo_demanda,
                 origem, criado_em, atualizado_em
-            ) VALUES (0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            ) VALUES (0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
         ''', (
             d['planner_task_id'], d['planner_plan_id'], d['planner_plan_nome'],
             d['planner_bucket_id'], d['planner_bucket'],
@@ -140,6 +150,7 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
             d['prazo'], d['criado_em_ms'], d['concluido_em_ms'],
             d['ms_assignee_id'], d['ms_assignees_json'],
             d['etiquetas_json'], desc, checklist_json,
+            d['numero_os'], d['tipo_demanda'],
         ))
         return cur.lastrowid, 'created'
 
