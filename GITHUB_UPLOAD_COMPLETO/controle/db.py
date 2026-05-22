@@ -387,7 +387,7 @@ def _migrate(conn):
     # ── demandas: colunas Microsoft Graph / Planner ──────────────────
     cols_dem = [r['name'] for r in conn.execute('PRAGMA table_info(demandas)').fetchall()]
     novas_demandas_graph = {
-        'planner_task_id':    'TEXT UNIQUE',
+        'planner_task_id':    'TEXT',   # UNIQUE via índice abaixo (SQLite não suporta ADD COLUMN UNIQUE)
         'planner_plan_id':    'TEXT',
         'planner_plan_nome':  'TEXT',
         'planner_bucket_id':  'TEXT',
@@ -412,9 +412,13 @@ def _migrate(conn):
             except Exception as e:
                 print(f'[migrate] demandas.{col}: {e}')
 
-    # Índice Planner task id (idempotente)
+    # Índice único Planner task id — parcial (ignora NULLs), idempotente
     try:
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_dem_planner_task ON demandas(planner_task_id)')
+        conn.execute('''
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_dem_planner_task
+            ON demandas(planner_task_id)
+            WHERE planner_task_id IS NOT NULL
+        ''')
     except Exception:
         pass
 
