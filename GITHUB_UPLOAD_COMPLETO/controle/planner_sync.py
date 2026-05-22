@@ -231,6 +231,8 @@ def sync_planner(group_filter: str = None, label_filter: str = None) -> dict:
     log.info('[planner_sync] %d grupos | label_filter=%s', len(grupos), label_filter)
 
     with get_db() as conn:
+        # Demandas do Planner não têm empresa vinculada — desabilita FK temporariamente
+        conn.execute('PRAGMA foreign_keys = OFF')
         for grupo in grupos:
             stats['grupos'] += 1
             gid   = grupo['id']
