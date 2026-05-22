@@ -1676,17 +1676,28 @@ def graph_status():
 
 @controle_bp.route('/graph/sync', methods=['POST'])
 def graph_sync_manual():
-    """Dispara sync manual do Planner."""
+    """Dispara sync manual do Planner em background (evita timeout do gunicorn)."""
     init_db()
     try:
         from .planner_sync import sync_planner
+        import threading
+        from flask import current_app
         d = request.json or {}
-        group_filter  = d.get('group_id')
-        label_filter  = d.get('label_filter')
-        stats = sync_planner(group_filter=group_filter, label_filter=label_filter)
-        if 'erro' in stats:
-            return jsonify(stats), 400
-        return jsonify(stats)
+        group_filter = d.get('group_id')
+        label_filter = d.get('label_filter')
+
+        app = current_app._get_current_object()
+
+        def _run():
+            with app.app_context():
+                try:
+                    sync_planner(group_filter=group_filter, label_filter=label_filter)
+                except Exception as ex:
+                    import logging
+                    logging.getLogger(__name__).error('[graph/sync] erro no background: %s', ex)
+
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({'ok': True, 'mensagem': 'Sync iniciado em background — verifique /graph/status em alguns minutos'})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
