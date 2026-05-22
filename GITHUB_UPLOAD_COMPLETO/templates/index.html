@@ -1198,6 +1198,12 @@
       </svg>
       <span>Analytics BI</span>
     </div>
+    <div class="sidebar-item" data-name="coleta" onclick="goToTab('coleta')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+      </svg>
+      <span>Coletas de Campo</span>
+    </div>
   </div>
 
   <div class="sidebar-divider"></div>
@@ -3043,6 +3049,258 @@
 </div>
 </div>
 
+
+<!-- ══ Tab: Coletas de Campo ══════════════════════════════════════════ -->
+<div id="tab-coleta" class="tab-panel">
+  <div class="page-header">
+    <div>
+      <div class="page-title">&#128203; Coletas de Campo</div>
+      <div class="page-sub">Planilhas digitais — Ru&#237;do e Agentes Qu&#237;micos</div>
+    </div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;">
+    <button id="coleta-tab-ruido" onclick="coletaSwitchSub('ruido')" style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--orange);border-bottom:2px solid var(--orange);margin-bottom:-2px;">&#127897;&#65039; Ru&#237;do</button>
+    <button id="coleta-tab-quimico" onclick="coletaSwitchSub('quimico')" style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;">&#9879;&#65039; Qu&#237;mico</button>
+  </div>
+
+  <!-- ── Sub: Ruído ── -->
+  <div id="coleta-sub-ruido">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="coletaRuidoNova()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:9px 18px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.88rem;">+ Nova Coleta</button>
+        <button onclick="coletaRuidoLoadList()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 18px;cursor:pointer;font-family:inherit;font-size:.88rem;">&#128260; Atualizar</button>
+      </div>
+    </div>
+    <div id="coleta-ruido-list">
+      <div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div>
+    </div>
+    <div id="coleta-ruido-form" style="display:none;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button onclick="coletaRuidoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:.85rem;">&#8592; Voltar</button>
+        <span id="coleta-ruido-form-title" style="font-weight:700;font-size:1rem;">Nova Coleta de Ru&#237;do</span>
+        <span id="coleta-ruido-autosave" style="font-size:.75rem;color:var(--text3);"></span>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 1 &mdash; IDENTIFICA&#199;&#195;O</div>
+        <div class="grid2 field">
+          <div><label>Empresa</label><input type="text" id="cr-empresa" placeholder="Raz&#227;o Social" oninput="coletaRuidoAutoSave()"></div>
+          <div><label>Data da Coleta</label><input type="date" id="cr-data" oninput="coletaRuidoAutoSave()"></div>
+        </div>
+        <div class="grid3 field">
+          <div><label>Acompanhante</label><input type="text" id="cr-acomp" oninput="coletaRuidoAutoSave()"></div>
+          <div><label>Cargo do Acompanhante</label><input type="text" id="cr-cargo-acomp" oninput="coletaRuidoAutoSave()"></div>
+          <div><label>T&#233;cnico</label><select id="cr-tecnico" oninput="coletaRuidoAutoSave()">
+            <option value="Matheus Costa">Matheus Costa</option>
+            <option value="Kelly Elissama Firmino">Kelly Elissama Firmino</option>
+            <option value="Helbert Goncalves">Helbert Gon&#231;alves</option>
+          </select></div>
+        </div>
+        <div class="grid2 field">
+          <div><label>Hora de In&#237;cio</label><input type="time" id="cr-hora-ini" oninput="coletaRuidoAutoSave()"></div>
+          <div><label>T&#233;rmino</label><input type="time" id="cr-hora-fim" oninput="coletaRuidoAutoSave()"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:8px;">ETAPA 2 &mdash; DESVIO DE CALIBRA&#199;&#195;O</div>
+        <div style="font-size:.82rem;color:var(--text3);margin-bottom:12px;">Desvio m&#225;ximo permitido: <strong>1 dB</strong> (NHO-01). Se ultrapassar, o laudo &#233; marcado como DIVERGENTE.</div>
+        <div class="grid3 field">
+          <div><label>Calibra&#231;&#227;o Inicial [dB]</label><input type="number" step="0.1" id="cr-cal-ini" placeholder="94,1" oninput="crCalcDesvio()"></div>
+          <div><label>Calibra&#231;&#227;o Final [dB]</label><input type="number" step="0.1" id="cr-cal-fin" placeholder="94,1" oninput="crCalcDesvio()"></div>
+          <div><label>Resultado</label><div id="cr-desvio-badge" style="padding:9px 12px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);font-size:.82rem;color:var(--text3);">Preencha os valores</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;">ETAPA 3 &mdash; FUNCION&#193;RIOS MONITORADOS</div>
+          <button onclick="crAddFuncionario()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:.82rem;">+ Funcion&#225;rio</button>
+        </div>
+        <div id="cr-func-list"><div style="text-align:center;padding:24px;color:var(--text3);font-size:.85rem;">Nenhum funcion&#225;rio. Clique em "+ Funcion&#225;rio".</div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 4 &mdash; OBSERVA&#199;&#213;ES</div>
+        <div class="field"><label>Observa&#231;&#245;es</label><textarea id="cr-obs" rows="3" style="width:100%;resize:vertical;" oninput="coletaRuidoAutoSave()"></textarea></div>
+        <div class="field"><label>Status</label><select id="cr-status" oninput="coletaRuidoAutoSave()">
+          <option value="rascunho">Rascunho</option><option value="concluida">Conclu&#237;da</option><option value="divergente">Divergente (calibra&#231;&#227;o)</option>
+        </select></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button onclick="coletaRuidoSalvar()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;">&#128190; Salvar</button>
+        <button onclick="coletaRuidoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-size:.9rem;">Cancelar</button>
+        <div id="cr-save-status" style="display:flex;align-items:center;font-size:.85rem;color:var(--text3);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sub: Químico ── -->
+  <div id="coleta-sub-quimico" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="coletaQuimicoNova()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:9px 18px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.88rem;">+ Nova Coleta</button>
+        <button onclick="coletaQuimicoLoadList()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 18px;cursor:pointer;font-family:inherit;font-size:.88rem;">&#128260; Atualizar</button>
+      </div>
+    </div>
+    <div id="coleta-quimico-list"><div style="text-align:center;padding:40px;color:var(--text3);">Carregando...</div></div>
+    <div id="coleta-quimico-form" style="display:none;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <button onclick="coletaQuimicoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:.85rem;">&#8592; Voltar</button>
+        <span id="coleta-quimico-form-title" style="font-weight:700;font-size:1rem;">Nova Coleta Qu&#237;mica</span>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 1 &mdash; EMPRESA</div>
+        <div class="grid2 field">
+          <div><label>Empresa Amostrada</label><input type="text" id="cq-empresa" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Cidade</label><input type="text" id="cq-cidade" oninput="coletaQuimicoAutoSave()"></div>
+        </div>
+        <div class="grid3 field">
+          <div><label>Unidade / Obra</label><input type="text" id="cq-unidade" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Respons&#225;vel pela Coleta</label><select id="cq-resp" oninput="coletaQuimicoAutoSave()">
+            <option value="Matheus Costa">Matheus Costa</option>
+            <option value="Kelly Elissama Firmino">Kelly Elissama Firmino</option>
+            <option value="Helbert Goncalves">Helbert Gon&#231;alves</option>
+          </select></div>
+          <div><label>Data da Coleta</label><input type="date" id="cq-data" oninput="coletaQuimicoAutoSave()"></div>
+        </div>
+        <div class="grid3 field">
+          <div><label>Dia da Semana</label><select id="cq-diasem" oninput="coletaQuimicoAutoSave()">
+            <option value="">--</option><option>Segunda</option><option>Ter&#231;a</option><option>Quarta</option><option>Quinta</option><option>Sexta</option><option>S&#225;bado</option><option>Domingo</option>
+          </select></div>
+          <div><label>Turno</label><select id="cq-turno" oninput="coletaQuimicoAutoSave()">
+            <option value="">--</option><option>Diurno</option><option>Vespertino</option><option>Noturno</option><option>Integral</option>
+          </select></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 2 &mdash; FUNCION&#193;RIO AMOSTRADO</div>
+        <div class="grid2 field">
+          <div><label>Nome</label><input type="text" id="cq-func-nome" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Fun&#231;&#227;o / Cargo</label><input type="text" id="cq-func-funcao" oninput="coletaQuimicoAutoSave()"></div>
+        </div>
+        <div class="grid3 field">
+          <div><label>Setor</label><input type="text" id="cq-func-setor" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Jornada</label><input type="text" id="cq-func-jornada" placeholder="08h" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Local Espec&#237;fico</label><input type="text" id="cq-func-local" oninput="coletaQuimicoAutoSave()"></div>
+        </div>
+        <div class="field"><label>Atividade de Trabalho</label><input type="text" id="cq-func-atv" oninput="coletaQuimicoAutoSave()"></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 3 &mdash; CONDI&#199;&#213;ES AMBIENTAIS</div>
+        <div class="grid3 field">
+          <div><label>Ventila&#231;&#227;o</label><select id="cq-ventil" oninput="coletaQuimicoAutoSave()">
+            <option value="">--</option><option>Natural</option><option>For&#231;ada (motor)</option><option>Refrigerada</option>
+          </select></div>
+          <div><label>Ambiente</label><select id="cq-amb" oninput="coletaQuimicoAutoSave()">
+            <option value="">--</option><option>Aberto</option><option>Fechado</option><option>Semi-aberto</option>
+          </select></div>
+          <div><label>Meteorologia</label><select id="cq-meteo" oninput="coletaQuimicoAutoSave()">
+            <option value="">--</option><option>Sol</option><option>Chuva</option><option>Nublado</option>
+          </select></div>
+        </div>
+        <div class="grid3 field">
+          <div><label>Temperatura (&#176;C)</label><input type="text" id="cq-temp" placeholder="25" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Umidade Relativa (%)</label><input type="text" id="cq-umid" placeholder="60" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Outras Condi&#231;&#245;es</label><input type="text" id="cq-outras-cond" oninput="coletaQuimicoAutoSave()"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 4 &mdash; EQUIPAMENTOS</div>
+        <div class="grid2 field">
+          <div><label>Bomba</label><select id="cq-bomba" oninput="coletaQuimicoAutoSave()">
+            <option value="">-- Selecionar --</option>
+            <option value="BDX-II GILLIAN">BDX-II &ndash; GILLIAN</option>
+            <option value="AIRLITE SKC">AIRLITE &ndash; SKC</option>
+            <option value="FORMIS TURAM">FORMIS &ndash; TURAM</option>
+            <option value="INLITE VENTUSPRO">INLITE &ndash; VENTUSPRO</option>
+          </select></div>
+          <div><label>ID da Bomba</label><input type="text" id="cq-id-bomba" placeholder="Ex: BDX-001" oninput="coletaQuimicoAutoSave()"></div>
+        </div>
+        <div class="grid2 field">
+          <div><label>Data Calibra&#231;&#227;o Bomba</label><input type="date" id="cq-cal-bomba" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Calibrador de Fluxo</label><select id="cq-calibrador" oninput="coletaQuimicoAutoSave()">
+            <option value="DEFENDER 510M S/N:126958">DEFENDER 510M &ndash; S/N:126958</option>
+            <option value="TSI 4143F-414332019013">TSI 4143F &ndash; 414332019013</option>
+            <option value="Outro">Outro</option>
+          </select></div>
+        </div>
+        <div class="field"><label>Acess&#243;rios</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-ac-ciclone-al"> Ciclone Alum&#237;nio</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-ac-ciclone-ny"> Ciclone Nylon</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-ac-redutor"> Redutor de Vaz&#227;o</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-ac-iom"> Suporte IOM</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-ac-termo"> Termo-Higrômetro</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-ac-supcass"> Suporte Cassete</label>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;">ETAPA 5 &mdash; AMOSTRAGEM</div>
+          <button onclick="cqAddAmostrador()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:.82rem;">+ Amostrador</button>
+        </div>
+        <div class="grid2 field">
+          <div><label>Subst&#226;ncia(s)</label><input type="text" id="cq-substancias" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>Fra&#231;&#227;o</label><select id="cq-fracao" oninput="coletaQuimicoAutoSave()">
+            <option value="">--</option><option>Total</option><option>Respir&#225;vel</option><option>Tor&#225;cica</option><option>Inal&#225;vel</option>
+          </select></div>
+        </div>
+        <div class="field"><label>Tempo de Exposi&#231;&#227;o ao Agente</label><input type="text" id="cq-tempo-exp" placeholder="Ex: 8h (jornada completa)" oninput="coletaQuimicoAutoSave()"></div>
+        <div style="overflow-x:auto;margin-top:12px;">
+          <table style="width:100%;border-collapse:collapse;font-size:.82rem;min-width:780px;">
+            <thead>
+              <tr style="background:var(--surface2);">
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">#</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);">ID Amostrador</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);">Tipo</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Vi<br><span style="font-weight:400;font-size:.74rem;">(L/min)</span></th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Vf<br><span style="font-weight:400;font-size:.74rem;">(L/min)</span></th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">In&#237;cio</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Final</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Intervalos</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;background:#f0f9ff;">Vm*</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;background:#f0f9ff;">t (min)</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;background:#f0f9ff;">Vol (L)**</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;background:#fff7ed;">&Delta;V%***</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);"></th>
+              </tr>
+            </thead>
+            <tbody id="cq-amostr-tbody">
+              <tr><td colspan="13" style="padding:20px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:.73rem;color:var(--text3);margin-top:8px;line-height:1.7;">
+          * Vm = (Vi + Vf) / 2 &nbsp;&nbsp; ** Vol = Vm &#215; t &nbsp;&nbsp; *** &Delta;V = |Vi &minus; Vf| / Vi &#215; 100 &mdash; Limite: &le;5%
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 6 &mdash; EPIs / EPCs</div>
+        <div class="field"><label>EPIs Utilizados</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-luvas"> Luvas</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-oculos"> &#211;culos</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-capacete"> Capacete</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-prot-auric"> Prot. Auricular</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-resp"> Respirador</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-avental"> Avental</label>
+            <label style="display:flex;gap:6px;align-items:center;font-weight:400;cursor:pointer;"><input type="checkbox" id="cq-epi-macacao"> Macac&#227;o Imperme&#225;vel</label>
+          </div>
+        </div>
+        <div class="field"><label>EPC</label><input type="text" id="cq-epc" oninput="coletaQuimicoAutoSave()"></div>
+        <div class="field"><label>Observa&#231;&#245;es</label><textarea id="cq-obs" rows="3" style="width:100%;resize:vertical;" oninput="coletaQuimicoAutoSave()"></textarea></div>
+        <div class="field"><label>Status</label><select id="cq-status" oninput="coletaQuimicoAutoSave()">
+          <option value="rascunho">Rascunho</option><option value="concluida">Conclu&#237;da</option>
+        </select></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button onclick="coletaQuimicoSalvar()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;">&#128190; Salvar</button>
+        <button onclick="coletaQuimicoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-size:.9rem;">Cancelar</button>
+        <div id="cq-save-status" style="display:flex;align-items:center;font-size:.85rem;color:var(--text3);"></div>
+      </div>
+    </div>
+  </div>
+</div>
 </main><!-- /main-content -->
 </div><!-- /layout -->
 
@@ -3066,6 +3324,7 @@ function goToTab(name) {
   if (name === 'agentes')  agLoad();
   if (name === 'indicadores') indLoad();
   if (name === 'bi') biLoad();
+  if (name === 'coleta') coletaLoad();
 }
 
 // Compatibilidade: switchTab ainda funciona (chamado em alguns lugares)
@@ -3903,9 +4162,34 @@ function rNewAval() {
     lavgQ3:'', nenQ3:'', doseQ3:'',
     twaQ5:'', lavgQ5:'', doseQ5:'',
     neQ5:'', nenQ5:'',
+    calIni:'', calFin:'', desvioCalib:'', statusCalib:'',
     tabelaImg:'', histogramaImg:'',
     certImgs:[]
   };
+}
+
+function rCalcDesvio(i) {
+  const ini = parseFloat(rAvals[i].calIni);
+  const fin = parseFloat(rAvals[i].calFin);
+  const el = document.getElementById('r-desvio-badge-' + i);
+  if (!el) return;
+  if (!isNaN(ini) && !isNaN(fin)) {
+    const d = Math.abs(fin - ini);
+    rAvals[i].desvioCalib = d.toFixed(1);
+    rAvals[i].statusCalib = d > 1.0 ? 'divergente' : 'conforme';
+    if (d > 1.0) {
+      el.innerHTML = '⚠️ DESVIO: ' + d.toFixed(1) + ' dB — ACIMA DO LIMITE (>1 dB) — LAUDO DIVERGENTE';
+      el.style.cssText = 'background:#fef3cd;border:1px solid #f59e0b;color:#92400e;padding:8px 12px;border-radius:6px;font-size:.82rem;font-weight:700;display:block;margin-top:6px;';
+    } else {
+      el.innerHTML = '✅ DESVIO: ' + d.toFixed(1) + ' dB — CALIBRAÇÃO CONFORME';
+      el.style.cssText = 'background:#d1fae5;border:1px solid #10b981;color:#065f46;padding:8px 12px;border-radius:6px;font-size:.82rem;font-weight:700;display:block;margin-top:6px;';
+    }
+  } else {
+    rAvals[i].desvioCalib = '';
+    rAvals[i].statusCalib = '';
+    el.innerHTML = '';
+    el.style.cssText = 'display:none;';
+  }
 }
 
 function rAddAval() { rAvals.push(rNewAval()); rRenderAvals(); }
@@ -3996,6 +4280,17 @@ function rRenderAvals() {
       <div class="grid2 field">
         <div><label>Jornada de Trabalho</label><input type="text" value="${rEsc(av.jornada)}" placeholder="08:00 / 08 horas" onchange="rAvals[${i}].jornada=this.value"></div>
         <div><label>N° Série Dosímetro</label><input type="text" value="${rEsc(av.serie)}" onchange="rAvals[${i}].serie=this.value"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px;">
+        <div style="font-size:.78rem;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px;">DESVIO DE CALIBRAÇÃO — Limite máx. 1 dB (NHO-01)</div>
+        <div class="grid3 field" style="margin-bottom:0;">
+          <div><label>Calibração Inicial [dB]</label><input type="number" step="0.1" value="${rEsc(av.calIni)}" placeholder="94,1" onchange="rAvals[${i}].calIni=this.value; rCalcDesvio(${i})"></div>
+          <div><label>Calibração Final [dB]</label><input type="number" step="0.1" value="${rEsc(av.calFin)}" placeholder="94,1" onchange="rAvals[${i}].calFin=this.value; rCalcDesvio(${i})"></div>
+          <div style="display:flex;flex-direction:column;justify-content:flex-end;">
+            <label style="visibility:hidden;">Desvio</label>
+            <span id="r-desvio-badge-${i}" style="${av.statusCalib==='divergente' ? 'background:#fef3cd;border:1px solid #f59e0b;color:#92400e;' : av.statusCalib==='conforme' ? 'background:#d1fae5;border:1px solid #10b981;color:#065f46;' : 'display:none;'}padding:8px 10px;border-radius:6px;font-size:.8rem;font-weight:700;">${av.desvioCalib ? (av.statusCalib==='divergente' ? '⚠️ '+av.desvioCalib+' dB — DIVERGENTE' : '✅ '+av.desvioCalib+' dB — OK') : ''}</span>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label>Fonte(s) Geradora(s) de Ruído</label>
@@ -6344,6 +6639,475 @@ async function biLoad() {
     console.error('biLoad:', e);
   }
 }
+
+
+// ── COLETAS DE CAMPO ──────────────────────────────────────────────────
+
+let _crFuncs = [];      // array de funcionários da coleta de ruído
+let _crColetaId = null; // id da coleta sendo editada
+let _cqAmostr  = [];    // array de amostradores químicos
+let _cqColetaId = null;
+let _crAutoTimer = null;
+let _cqAutoTimer = null;
+
+function coletaLoad() {
+  coletaSwitchSub('ruido');
+  coletaRuidoLoadList();
+}
+
+function coletaSwitchSub(sub) {
+  document.getElementById('coleta-sub-ruido').style.display   = sub === 'ruido'   ? '' : 'none';
+  document.getElementById('coleta-sub-quimico').style.display = sub === 'quimico' ? '' : 'none';
+  const btnR = document.getElementById('coleta-tab-ruido');
+  const btnQ = document.getElementById('coleta-tab-quimico');
+  const actStyle = 'padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--orange);border-bottom:2px solid var(--orange);margin-bottom:-2px;';
+  const iacStyle = 'padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;';
+  btnR.style.cssText = sub === 'ruido'   ? actStyle : iacStyle;
+  btnQ.style.cssText = sub === 'quimico' ? actStyle : iacStyle;
+  if (sub === 'quimico') coletaQuimicoLoadList();
+}
+
+// ── Ruído: lista ──
+
+async function coletaRuidoLoadList() {
+  const el = document.getElementById('coleta-ruido-list');
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">Carregando...</div>';
+  try {
+    const lista = await ctrlFetch('/controle/coletas/ruido');
+    if (!lista || !lista.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">Nenhuma coleta registrada. Clique em "+ Nova Coleta".</div>';
+      return;
+    }
+    el.innerHTML = lista.map(c => `
+      <div style="border:1px solid var(--border2);border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-weight:600;font-size:.92rem;">${c.empresa_nome || '(sem empresa)'}</div>
+          <div style="font-size:.8rem;color:var(--text3);margin-top:2px;">${c.data_coleta || ''} &nbsp;|&nbsp; ${c.tecnico || ''} &nbsp;|&nbsp; ${c.total_func || 0} funcion${(c.total_func||0)===1?'ário':'ários'}</div>
+          <div style="margin-top:4px;">
+            ${c.status_calibracao === 'divergente'
+              ? '<span style="background:#fef3cd;color:#92400e;border:1px solid #f59e0b;border-radius:4px;padding:2px 8px;font-size:.74rem;font-weight:700;">⚠️ CALIBRAÇÃO DIVERGENTE</span>'
+              : c.status_calibracao === 'conforme'
+              ? '<span style="background:#d1fae5;color:#065f46;border:1px solid #10b981;border-radius:4px;padding:2px 8px;font-size:.74rem;font-weight:600;">✅ Calibração OK</span>'
+              : ''}
+            <span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.74rem;margin-left:4px;">${c.status||'rascunho'}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="coletaRuidoEditar(${c.id})" style="background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue);border-radius:6px;padding:5px 14px;cursor:pointer;font-family:inherit;font-size:.82rem;">Editar</button>
+          <button onclick="coletaRuidoDeletar(${c.id})" style="background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:inherit;font-size:.82rem;">&#128465;</button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:20px;">Erro: ' + e.message + '</div>';
+  }
+}
+
+function coletaRuidoNova() {
+  _crColetaId = null;
+  _crFuncs = [];
+  document.getElementById('coleta-ruido-form-title').textContent = 'Nova Coleta de Ruído';
+  document.getElementById('cr-empresa').value = '';
+  document.getElementById('cr-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('cr-acomp').value = '';
+  document.getElementById('cr-cargo-acomp').value = '';
+  document.getElementById('cr-tecnico').value = 'Matheus Costa';
+  document.getElementById('cr-hora-ini').value = '';
+  document.getElementById('cr-hora-fim').value = '';
+  document.getElementById('cr-cal-ini').value = '';
+  document.getElementById('cr-cal-fin').value = '';
+  document.getElementById('cr-desvio-badge').textContent = 'Preencha os valores';
+  document.getElementById('cr-desvio-badge').style.cssText = 'padding:9px 12px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);font-size:.82rem;color:var(--text3);';
+  document.getElementById('cr-obs').value = '';
+  document.getElementById('cr-status').value = 'rascunho';
+  document.getElementById('cr-save-status').textContent = '';
+  crRenderFuncs();
+  document.getElementById('coleta-ruido-list').style.display = 'none';
+  document.getElementById('coleta-ruido-form').style.display = '';
+}
+
+async function coletaRuidoEditar(id) {
+  try {
+    const c = await ctrlFetch('/controle/coletas/ruido/' + id);
+    _crColetaId = id;
+    _crFuncs = (c.funcionarios || []).map(f => ({...f}));
+    document.getElementById('coleta-ruido-form-title').textContent = 'Editando: ' + (c.empresa_nome || '');
+    document.getElementById('cr-empresa').value = c.empresa_nome || '';
+    document.getElementById('cr-data').value = c.data_coleta || '';
+    document.getElementById('cr-acomp').value = c.acompanhante || '';
+    document.getElementById('cr-cargo-acomp').value = c.cargo_acompanhante || '';
+    document.getElementById('cr-tecnico').value = c.tecnico || 'Matheus Costa';
+    document.getElementById('cr-hora-ini').value = c.hora_inicio || '';
+    document.getElementById('cr-hora-fim').value = c.hora_termino || '';
+    document.getElementById('cr-cal-ini').value = c.calibracao_inicial || '';
+    document.getElementById('cr-cal-fin').value = c.calibracao_final || '';
+    document.getElementById('cr-obs').value = c.observacao || '';
+    document.getElementById('cr-status').value = c.status || 'rascunho';
+    crCalcDesvio();
+    crRenderFuncs();
+    document.getElementById('coleta-ruido-list').style.display = 'none';
+    document.getElementById('coleta-ruido-form').style.display = '';
+  } catch(e) { alert('Erro ao carregar: ' + e.message); }
+}
+
+async function coletaRuidoDeletar(id) {
+  if (!confirm('Excluir esta coleta de ruído?')) return;
+  try {
+    await ctrlFetch('/controle/coletas/ruido/' + id, { method: 'DELETE' });
+    coletaRuidoLoadList();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function coletaRuidoFecharForm() {
+  document.getElementById('coleta-ruido-form').style.display = 'none';
+  document.getElementById('coleta-ruido-list').style.display = '';
+  coletaRuidoLoadList();
+}
+
+function crCalcDesvio() {
+  const ci = parseFloat(document.getElementById('cr-cal-ini').value);
+  const cf = parseFloat(document.getElementById('cr-cal-fin').value);
+  const el = document.getElementById('cr-desvio-badge');
+  if (!isNaN(ci) && !isNaN(cf)) {
+    const d = Math.abs(cf - ci);
+    if (d > 1.0) {
+      el.innerHTML = '⚠️ ' + d.toFixed(1) + ' dB — ACIMA DO LIMITE (>1 dB) — LAUDO DIVERGENTE';
+      el.style.cssText = 'padding:9px 12px;border-radius:6px;background:#fef3cd;border:1px solid #f59e0b;font-size:.82rem;color:#92400e;font-weight:700;';
+      document.getElementById('cr-status').value = 'divergente';
+    } else {
+      el.innerHTML = '✅ ' + d.toFixed(1) + ' dB — CALIBRAÇÃO CONFORME';
+      el.style.cssText = 'padding:9px 12px;border-radius:6px;background:#d1fae5;border:1px solid #10b981;font-size:.82rem;color:#065f46;font-weight:700;';
+    }
+  } else {
+    el.textContent = 'Preencha os valores';
+    el.style.cssText = 'padding:9px 12px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);font-size:.82rem;color:var(--text3);';
+  }
+}
+
+function crAddFuncionario() {
+  _crFuncs.push({ nome:'', cargo:'', setor:'', almoco:false, serie_dosimetro:'' });
+  crRenderFuncs();
+}
+
+function crRemFuncionario(i) {
+  _crFuncs.splice(i, 1);
+  crRenderFuncs();
+}
+
+function crRenderFuncs() {
+  const el = document.getElementById('cr-func-list');
+  if (!_crFuncs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:.85rem;">Nenhum funcionário. Clique em "+ Funcionário".</div>';
+    return;
+  }
+  el.innerHTML = _crFuncs.map((f, i) => `
+    <div style="border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-weight:600;font-size:.88rem;color:var(--orange);">Funcionário ${i+1}</span>
+        <button onclick="crRemFuncionario(${i})" style="background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red);border-radius:5px;padding:3px 10px;cursor:pointer;font-family:inherit;font-size:.78rem;">Remover</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+        <div><label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:2px;">N° Série Dosímetro</label>
+          <input type="text" value="${f.serie_dosimetro||''}" style="width:100%;box-sizing:border-box;" placeholder="Ex: DOSxxxx" onchange="_crFuncs[${i}].serie_dosimetro=this.value">
+        </div>
+        <div><label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:2px;">Nome</label>
+          <input type="text" value="${f.nome||''}" style="width:100%;box-sizing:border-box;" onchange="_crFuncs[${i}].nome=this.value">
+        </div>
+        <div><label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:2px;">Cargo</label>
+          <input type="text" value="${f.cargo||''}" style="width:100%;box-sizing:border-box;" onchange="_crFuncs[${i}].cargo=this.value">
+        </div>
+        <div><label style="font-size:.78rem;color:var(--text3);display:block;margin-bottom:2px;">Setor</label>
+          <input type="text" value="${f.setor||''}" style="width:100%;box-sizing:border-box;" onchange="_crFuncs[${i}].setor=this.value">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <label style="display:flex;gap:8px;align-items:center;font-weight:400;cursor:pointer;margin-bottom:1px;">
+            <input type="checkbox" ${f.almoco?'checked':''} onchange="_crFuncs[${i}].almoco=this.checked"> Almoço
+          </label>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function coletaRuidoAutoSave() {
+  clearTimeout(_crAutoTimer);
+  _crAutoTimer = setTimeout(coletaRuidoSalvar, 3000);
+  const el = document.getElementById('coleta-ruido-autosave');
+  if (el) el.textContent = 'Salvando...';
+}
+
+async function coletaRuidoSalvar() {
+  const ci = parseFloat(document.getElementById('cr-cal-ini').value);
+  const cf = parseFloat(document.getElementById('cr-cal-fin').value);
+  const payload = {
+    id: _crColetaId,
+    empresa_nome: document.getElementById('cr-empresa').value,
+    acompanhante: document.getElementById('cr-acomp').value,
+    cargo_acompanhante: document.getElementById('cr-cargo-acomp').value,
+    tecnico: document.getElementById('cr-tecnico').value,
+    data_coleta: document.getElementById('cr-data').value,
+    hora_inicio: document.getElementById('cr-hora-ini').value,
+    hora_termino: document.getElementById('cr-hora-fim').value,
+    calibracao_inicial: isNaN(ci) ? null : ci,
+    calibracao_final: isNaN(cf) ? null : cf,
+    observacao: document.getElementById('cr-obs').value,
+    status: document.getElementById('cr-status').value,
+    funcionarios: _crFuncs,
+  };
+  const st = document.getElementById('cr-save-status');
+  try {
+    const r = await ctrlFetch('/controle/coletas/ruido', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (r.id && !_crColetaId) _crColetaId = r.id;
+    if (st) { st.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); st.style.color = 'var(--green)'; }
+    const as = document.getElementById('coleta-ruido-autosave');
+    if (as) as.textContent = '✅ Autosalvo';
+  } catch(e) {
+    if (st) { st.textContent = '❌ Erro: ' + e.message; st.style.color = 'var(--red)'; }
+  }
+}
+
+// ── Químico: lista ──
+
+async function coletaQuimicoLoadList() {
+  const el = document.getElementById('coleta-quimico-list');
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">Carregando...</div>';
+  try {
+    const lista = await ctrlFetch('/controle/coletas/quimico');
+    if (!lista || !lista.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">Nenhuma coleta registrada. Clique em "+ Nova Coleta".</div>';
+      return;
+    }
+    el.innerHTML = lista.map(c => `
+      <div style="border:1px solid var(--border2);border-radius:8px;padding:14px 18px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-weight:600;font-size:.92rem;">${c.empresa_nome || '(sem empresa)'}</div>
+          <div style="font-size:.8rem;color:var(--text3);margin-top:2px;">${c.data_coleta||''} &nbsp;|&nbsp; ${c.nome_funcionario||''} &nbsp;|&nbsp; ${c.funcao||''} &nbsp;|&nbsp; ${c.total_amostradores||0} amostrador(es)</div>
+          <div style="margin-top:4px;"><span style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.74rem;">${c.status||'rascunho'}</span></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="coletaQuimicoEditar(${c.id})" style="background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue);border-radius:6px;padding:5px 14px;cursor:pointer;font-family:inherit;font-size:.82rem;">Editar</button>
+          <button onclick="coletaQuimicoDeletar(${c.id})" style="background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:inherit;font-size:.82rem;">&#128465;</button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:20px;">Erro: ' + e.message + '</div>';
+  }
+}
+
+function coletaQuimicoNova() {
+  _cqColetaId = null;
+  _cqAmostr = [];
+  const ids = ['cq-empresa','cq-cidade','cq-unidade','cq-func-nome','cq-func-funcao','cq-func-setor','cq-func-jornada','cq-func-local','cq-func-atv','cq-temp','cq-umid','cq-outras-cond','cq-substancias','cq-tempo-exp','cq-id-bomba','cq-epc','cq-obs'];
+  ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('cq-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('cq-resp').value = 'Matheus Costa';
+  document.getElementById('cq-status').value = 'rascunho';
+  ['cq-ac-ciclone-al','cq-ac-ciclone-ny','cq-ac-redutor','cq-ac-iom','cq-ac-termo','cq-ac-supcass',
+   'cq-epi-luvas','cq-epi-oculos','cq-epi-capacete','cq-epi-prot-auric','cq-epi-resp','cq-epi-avental','cq-epi-macacao'
+  ].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+  cqRenderAmostr();
+  document.getElementById('coleta-quimico-list').style.display = 'none';
+  document.getElementById('coleta-quimico-form').style.display = '';
+  document.getElementById('coleta-quimico-form-title').textContent = 'Nova Coleta Química';
+}
+
+async function coletaQuimicoEditar(id) {
+  try {
+    const c = await ctrlFetch('/controle/coletas/quimico/' + id);
+    _cqColetaId = id;
+    _cqAmostr = (c.amostradores || []).map(a => ({...a}));
+    document.getElementById('coleta-quimico-form-title').textContent = 'Editando: ' + (c.empresa_nome || '');
+    const setVal = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val || ''; };
+    setVal('cq-empresa', c.empresa_nome); setVal('cq-cidade', c.cidade); setVal('cq-unidade', c.unidade);
+    setVal('cq-resp', c.responsavel_coleta || 'Matheus Costa');
+    setVal('cq-data', c.data_coleta); setVal('cq-diasem', c.dia_semana); setVal('cq-turno', c.turno);
+    setVal('cq-func-nome', c.nome_funcionario); setVal('cq-func-funcao', c.funcao);
+    setVal('cq-func-setor', c.setor); setVal('cq-func-jornada', c.jornada);
+    setVal('cq-func-local', c.local_atividade); setVal('cq-func-atv', c.atividade);
+    setVal('cq-ventil', c.ventilacao); setVal('cq-amb', c.ambiente); setVal('cq-meteo', c.condicoes_meteo);
+    setVal('cq-temp', c.temperatura); setVal('cq-umid', c.umidade); setVal('cq-outras-cond', c.outras_condicoes);
+    setVal('cq-bomba', c.bomba); setVal('cq-id-bomba', c.id_bomba);
+    setVal('cq-cal-bomba', c.data_cal_bomba); setVal('cq-calibrador', c.id_calibrador);
+    setVal('cq-substancias', c.substancias); setVal('cq-fracao', c.fracao);
+    setVal('cq-tempo-exp', c.tempo_exposto); setVal('cq-epc', c.epc); setVal('cq-obs', c.observacao);
+    setVal('cq-status', c.status);
+    const acs = (c.acessorios || '').split(',');
+    document.getElementById('cq-ac-ciclone-al').checked = acs.includes('Ciclone Alumínio');
+    document.getElementById('cq-ac-ciclone-ny').checked = acs.includes('Ciclone Nylon');
+    document.getElementById('cq-ac-redutor').checked = acs.includes('Redutor');
+    document.getElementById('cq-ac-iom').checked = acs.includes('IOM');
+    document.getElementById('cq-ac-termo').checked = acs.includes('Termo-Higrômetro');
+    document.getElementById('cq-ac-supcass').checked = acs.includes('Suporte Cassete');
+    const epis = (c.epis || '').split(',');
+    ['Luvas','Óculos','Capacete','Prot. Auricular','Respirador','Avental','Macacão'].forEach((ep, i) => {
+      const ids = ['cq-epi-luvas','cq-epi-oculos','cq-epi-capacete','cq-epi-prot-auric','cq-epi-resp','cq-epi-avental','cq-epi-macacao'];
+      document.getElementById(ids[i]).checked = epis.some(e => e.includes(ep.split(' ')[0]));
+    });
+    cqRenderAmostr();
+    document.getElementById('coleta-quimico-list').style.display = 'none';
+    document.getElementById('coleta-quimico-form').style.display = '';
+  } catch(e) { alert('Erro ao carregar: ' + e.message); }
+}
+
+async function coletaQuimicoDeletar(id) {
+  if (!confirm('Excluir esta coleta química?')) return;
+  try {
+    await ctrlFetch('/controle/coletas/quimico/' + id, { method:'DELETE' });
+    coletaQuimicoLoadList();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function coletaQuimicoFecharForm() {
+  document.getElementById('coleta-quimico-form').style.display = 'none';
+  document.getElementById('coleta-quimico-list').style.display = '';
+  coletaQuimicoLoadList();
+}
+
+// ── Químico: amostradores ──
+
+function cqAddAmostrador() {
+  _cqAmostr.push({ id_amostrador:'', tipo_amostrador:'TCP', vazao_inicial:0, vazao_final:0, hora_inicio:'', hora_final:'', intervalos:'' });
+  cqRenderAmostr();
+}
+
+function cqRemAmostr(i) { _cqAmostr.splice(i, 1); cqRenderAmostr(); }
+
+function cqCalcRow(i) {
+  const vi = parseFloat(_cqAmostr[i].vazao_inicial) || 0;
+  const vf = parseFloat(_cqAmostr[i].vazao_final) || 0;
+  const vm = vi && vf ? (vi + vf) / 2 : 0;
+  // tempo em minutos
+  const hi = _cqAmostr[i].hora_inicio || '';
+  const hf = _cqAmostr[i].hora_final  || '';
+  let t = 0;
+  if (hi && hf) {
+    const [h1,m1] = hi.split(':').map(Number);
+    const [h2,m2] = hf.split(':').map(Number);
+    t = (h2 * 60 + m2) - (h1 * 60 + m1);
+    // Desconta intervalos "hh:mm"
+    const intv = (_cqAmostr[i].intervalos || '').trim();
+    if (intv) {
+      intv.split(/[,;]+/).forEach(iv => {
+        iv = iv.trim();
+        if (iv.includes(':')) {
+          const [ih, im] = iv.split(':').map(Number);
+          t -= (ih*60 + im);
+        }
+      });
+    }
+    if (t < 0) t = 0;
+  }
+  _cqAmostr[i]._vm = vm;
+  _cqAmostr[i]._t  = t;
+  _cqAmostr[i]._vol = vm && t ? +(vm * t).toFixed(3) : 0;
+  _cqAmostr[i]._dv  = vi ? +(Math.abs(vi - vf) / vi * 100).toFixed(2) : 0;
+  return { vm, t, vol: _cqAmostr[i]._vol, dv: _cqAmostr[i]._dv };
+}
+
+function cqRenderAmostr() {
+  const tb = document.getElementById('cq-amostr-tbody');
+  if (!_cqAmostr.length) {
+    tb.innerHTML = '<tr><td colspan="13" style="padding:20px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>';
+    return;
+  }
+  tb.innerHTML = _cqAmostr.map((am, i) => {
+    const { vm, t, vol, dv } = cqCalcRow(i);
+    const dvStyle = dv > 5 ? 'color:#92400e;font-weight:700;background:#fef3cd;' : dv > 0 ? 'color:#065f46;' : '';
+    return `<tr>
+      <td style="padding:5px 6px;border:1px solid var(--border);text-align:center;">${i+1}</td>
+      <td style="padding:4px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" style="width:80px;" placeholder="ID" onchange="_cqAmostr[${i}].id_amostrador=this.value"></td>
+      <td style="padding:4px;border:1px solid var(--border);"><select style="width:70px;" onchange="_cqAmostr[${i}].tipo_amostrador=this.value">
+        ${['TCP','FMD','IOM','MCE','PVC','OVM'].map(t => '<option' + (am.tipo_amostrador===t?' selected':'') + '>' + t + '</option>').join('')}
+      </select></td>
+      <td style="padding:4px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" style="width:65px;" placeholder="0.150" onchange="_cqAmostr[${i}].vazao_inicial=parseFloat(this.value)||0; cqRenderAmostr()"></td>
+      <td style="padding:4px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" style="width:65px;" placeholder="0.150" onchange="_cqAmostr[${i}].vazao_final=parseFloat(this.value)||0; cqRenderAmostr()"></td>
+      <td style="padding:4px;border:1px solid var(--border);"><input type="time" value="${am.hora_inicio||''}" style="width:80px;" onchange="_cqAmostr[${i}].hora_inicio=this.value; cqRenderAmostr()"></td>
+      <td style="padding:4px;border:1px solid var(--border);"><input type="time" value="${am.hora_final||''}" style="width:80px;" onchange="_cqAmostr[${i}].hora_final=this.value; cqRenderAmostr()"></td>
+      <td style="padding:4px;border:1px solid var(--border);"><input type="text" value="${am.intervalos||''}" style="width:80px;" placeholder="hh:mm" onchange="_cqAmostr[${i}].intervalos=this.value; cqRenderAmostr()"></td>
+      <td style="padding:5px 6px;border:1px solid var(--border);text-align:center;background:#f0f9ff;">${vm ? vm.toFixed(3) : '—'}</td>
+      <td style="padding:5px 6px;border:1px solid var(--border);text-align:center;background:#f0f9ff;">${t ? t.toFixed(0) : '—'}</td>
+      <td style="padding:5px 6px;border:1px solid var(--border);text-align:center;background:#f0f9ff;">${vol ? vol.toFixed(3) : '—'}</td>
+      <td style="padding:5px 6px;border:1px solid var(--border);text-align:center;background:#fff7ed;${dvStyle}">${dv ? dv.toFixed(2) + '%' + (dv > 5 ? ' ⚠️' : '') : '—'}</td>
+      <td style="padding:4px;border:1px solid var(--border);"><button onclick="cqRemAmostr(${i})" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:1rem;">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function coletaQuimicoAutoSave() {
+  clearTimeout(_cqAutoTimer);
+  _cqAutoTimer = setTimeout(coletaQuimicoSalvar, 3000);
+}
+
+async function coletaQuimicoSalvar() {
+  const getAcs = () => [
+    document.getElementById('cq-ac-ciclone-al').checked ? 'Ciclone Alumínio' : null,
+    document.getElementById('cq-ac-ciclone-ny').checked ? 'Ciclone Nylon' : null,
+    document.getElementById('cq-ac-redutor').checked    ? 'Redutor' : null,
+    document.getElementById('cq-ac-iom').checked        ? 'IOM' : null,
+    document.getElementById('cq-ac-termo').checked      ? 'Termo-Higrômetro' : null,
+    document.getElementById('cq-ac-supcass').checked    ? 'Suporte Cassete' : null,
+  ].filter(Boolean).join(',');
+  const getEpis = () => [
+    document.getElementById('cq-epi-luvas').checked     ? 'Luvas' : null,
+    document.getElementById('cq-epi-oculos').checked    ? 'Óculos' : null,
+    document.getElementById('cq-epi-capacete').checked  ? 'Capacete' : null,
+    document.getElementById('cq-epi-prot-auric').checked? 'Prot. Auricular' : null,
+    document.getElementById('cq-epi-resp').checked      ? 'Respirador' : null,
+    document.getElementById('cq-epi-avental').checked   ? 'Avental' : null,
+    document.getElementById('cq-epi-macacao').checked   ? 'Macacão' : null,
+  ].filter(Boolean).join(',');
+  const payload = {
+    id: _cqColetaId,
+    empresa_nome:      document.getElementById('cq-empresa').value,
+    cidade:            document.getElementById('cq-cidade').value,
+    unidade:           document.getElementById('cq-unidade').value,
+    responsavel_coleta:document.getElementById('cq-resp').value,
+    data_coleta:       document.getElementById('cq-data').value,
+    dia_semana:        document.getElementById('cq-diasem').value,
+    turno:             document.getElementById('cq-turno').value,
+    nome_funcionario:  document.getElementById('cq-func-nome').value,
+    funcao:            document.getElementById('cq-func-funcao').value,
+    setor:             document.getElementById('cq-func-setor').value,
+    jornada:           document.getElementById('cq-func-jornada').value,
+    local_atividade:   document.getElementById('cq-func-local').value,
+    atividade:         document.getElementById('cq-func-atv').value,
+    ventilacao:        document.getElementById('cq-ventil').value,
+    ambiente:          document.getElementById('cq-amb').value,
+    condicoes_meteo:   document.getElementById('cq-meteo').value,
+    temperatura:       document.getElementById('cq-temp').value,
+    umidade:           document.getElementById('cq-umid').value,
+    outras_condicoes:  document.getElementById('cq-outras-cond').value,
+    bomba:             document.getElementById('cq-bomba').value,
+    id_bomba:          document.getElementById('cq-id-bomba').value,
+    data_cal_bomba:    document.getElementById('cq-cal-bomba').value,
+    id_calibrador:     document.getElementById('cq-calibrador').value,
+    acessorios:        getAcs(),
+    substancias:       document.getElementById('cq-substancias').value,
+    fracao:            document.getElementById('cq-fracao').value,
+    tempo_exposto:     document.getElementById('cq-tempo-exp').value,
+    epis:              getEpis(),
+    epc:               document.getElementById('cq-epc').value,
+    observacao:        document.getElementById('cq-obs').value,
+    status:            document.getElementById('cq-status').value,
+    amostradores:      _cqAmostr.map(am => ({
+      id_amostrador:  am.id_amostrador,
+      tipo_amostrador:am.tipo_amostrador,
+      vazao_inicial:  am.vazao_inicial || 0,
+      vazao_final:    am.vazao_final   || 0,
+      hora_inicio:    am.hora_inicio,
+      hora_final:     am.hora_final,
+      intervalos:     am.intervalos,
+      tempo_min:      am._t || 0,
+    })),
+  };
+  const st = document.getElementById('cq-save-status');
+  try {
+    const r = await ctrlFetch('/controle/coletas/quimico', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (r.id && !_cqColetaId) _cqColetaId = r.id;
+    if (st) { st.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); st.style.color = 'var(--green)'; }
+  } catch(e) {
+    if (st) { st.textContent = '❌ Erro: ' + e.message; st.style.color = 'var(--red)'; }
+  }
+}
+
 </script>
 </body>
 </html>
