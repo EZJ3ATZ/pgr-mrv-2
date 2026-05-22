@@ -1102,19 +1102,20 @@
       <div style="color:var(--text3); font-size:.85rem; margin-top:4px;">Gestão integrada — substitui as planilhas atuais</div>
     </div>
     <div class="ctrl-subtabs">
-      <div class="ctrl-subtab active" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
+      <div class="ctrl-subtab active" onclick="ctrlSwitchSub('empresa', this)">🏢 Por Empresa</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">📋 Demandas/OS</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('amostr', this)">📦 Amostradores</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('venc', this)">⏱ Vencimento</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('empresa', this)">Por Empresa</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('prev', this)">📊 Previsão</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:#0a7; color:#fff;">+ Nova Medição</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">⚙ Importar</div>
     </div>
   </div>
 
   <div class="ctrl-stats" id="ctrl-stats"></div>
 
   <!-- Sub: Amostradores -->
-  <div id="ctrl-sub-amostr">
+  <div id="ctrl-sub-amostr" style="display:none;">
     <div class="ctrl-filters">
       <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
       <select id="ctrl-f-status" onchange="ctrlLoadAmostr()">
@@ -1135,10 +1136,10 @@
         <thead>
           <tr>
             <th>Status</th><th>Tipo</th><th>Código</th><th>Entrada</th>
-            <th>Empresa</th><th>Avaliador</th><th>Data Medição</th><th></th>
+            <th>Empresa</th><th>Avaliador</th><th>Data Medição</th><th>Parado</th><th></th>
           </tr>
         </thead>
-        <tbody id="ctrl-tb-amostr"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
+        <tbody id="ctrl-tb-amostr"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -1197,7 +1198,7 @@
       <div class="row2">
         <div>
           <label>Validade (dias)</label>
-          <input type="number" id="ctrl-el-dias" value="30" min="1" max="365">
+          <input type="number" id="ctrl-el-dias" value="45" min="1" max="365">
         </div>
         <div>
           <label>Lote / N° remessa</label>
@@ -1217,8 +1218,8 @@
     </div>
   </div>
 
-  <!-- Sub: Por Empresa (agrupado) -->
-  <div id="ctrl-sub-empresa" style="display:none;">
+  <!-- Sub: Por Empresa (agrupado) - DEFAULT -->
+  <div id="ctrl-sub-empresa">
     <div class="ctrl-filters">
       <input type="text" id="ctrl-fe-nome" placeholder="Buscar empresa..." oninput="ctrlLoadPorEmpresa()">
       <select id="ctrl-fe-status" onchange="ctrlLoadPorEmpresa()">
@@ -1259,7 +1260,7 @@
       </select>
       <select id="ctrl-fd-urg" onchange="ctrlLoadDemand()">
         <option value="">— Urgência —</option>
-        <option value="atrasada">⚠ Atrasadas (>7d parada)</option>
+        <option value="atrasada">⚠ Prazo vencido</option>
       </select>
     </div>
     <div class="ctrl-table-wrap">
@@ -1404,22 +1405,66 @@
       <label>Razão Social *</label>
       <input type="text" id="ctrl-nv-cad-nome" placeholder="Nome completo">
       <label>CNPJ</label>
-      <input type="text" id="ctrl-nv-cad-cnpj" placeholder="00.000.000/0001-00">
+      <input type="text" id="ctrl-nv-cad-cnpj" placeholder="00.000.000/0001-00"
+        oninput="ctrlCadCNPJLookup(this.value)"
+        style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+      <div id="ctrl-nv-cad-cnpj-status" style="font-size:.75rem; margin-top:4px; min-height:18px;"></div>
       <div class="row2">
-        <div><label>Contato</label><input type="text" id="ctrl-nv-cad-contato"></div>
-        <div><label>Telefone</label><input type="text" id="ctrl-nv-cad-tel"></div>
+        <div><label>Contato</label><input type="text" id="ctrl-nv-cad-contato" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;"></div>
+        <div><label>Telefone</label><input type="text" id="ctrl-nv-cad-tel" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;"></div>
       </div>
       <label>E-mail</label>
-      <input type="email" id="ctrl-nv-cad-email">
+      <input type="email" id="ctrl-nv-cad-email" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
       <div class="row2">
-        <div><label>Cidade</label><input type="text" id="ctrl-nv-cad-cidade"></div>
-        <div><label>UF</label><input type="text" id="ctrl-nv-cad-uf" value="MG" maxlength="2"></div>
+        <div><label>Cidade</label><input type="text" id="ctrl-nv-cad-cidade" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;"></div>
+        <div><label>UF</label><input type="text" id="ctrl-nv-cad-uf" value="MG" maxlength="2" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;"></div>
       </div>
       <div class="ctrl-actions">
         <button class="ctrl-btn-cancel" onclick="ctrlNvFecharCadEmpresa()">Cancelar</button>
         <button class="ctrl-btn-ok" onclick="ctrlNvSalvarCadEmpresa()">✓ Cadastrar</button>
       </div>
     </div>
+  </div>
+
+  <!-- Sub: Previsão de Estoque -->
+  <div id="ctrl-sub-prev" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <div>
+        <span style="font-size:1rem; font-weight:700;">Previsão de Necessidade de Amostradores</span>
+        <span id="ctrl-prev-resumo" style="color:var(--text3); font-size:.8rem; margin-left:10px;"></span>
+      </div>
+      <button onclick="ctrlLoadPrevisao()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:7px 14px; border-radius:6px; font-size:.8rem; cursor:pointer;">🔄 Atualizar</button>
+    </div>
+    <div style="background:rgba(57,153,255,.06); border-left:3px solid #39f; padding:10px 14px; border-radius:6px; margin-bottom:14px; font-size:.8rem;">
+      Cruza <b>medições pendentes</b> com o <b>guia de métodos</b> e o <b>estoque atual</b>.
+      Mostra quantos amostradores de cada tipo são necessários e se há falta.
+    </div>
+
+    <!-- Alertas de falta -->
+    <div id="ctrl-prev-alertas" style="margin-bottom:14px;"></div>
+
+    <!-- Tabela principal -->
+    <div class="ctrl-table-wrap">
+      <table class="ctrl-table">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Método</th>
+            <th>Vazão / Volume</th>
+            <th style="text-align:center;">Necessário</th>
+            <th style="text-align:center;">Em Estoque</th>
+            <th style="text-align:center;">Falta</th>
+            <th>Demandas</th>
+          </tr>
+        </thead>
+        <tbody id="ctrl-tb-prev">
+          <tr><td colspan="7" class="ctrl-empty">Clique em Atualizar para calcular.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Agentes sem guia -->
+    <div id="ctrl-prev-semguia" style="margin-top:14px;"></div>
   </div>
 
   <!-- Sub: Importar -->
@@ -1446,6 +1491,18 @@
       <button class="ctrl-import-btn" onclick="document.getElementById('ctrl-imp-planner').click()" style="background:#39f;">Importar do Planner</button>
     </div>
     <div id="ctrl-import-msg" style="margin-top:14px;"></div>
+
+    <!-- Manutenção de dados -->
+    <div style="margin-top:20px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:8px;">
+      <div style="font-weight:600; font-size:.9rem; margin-bottom:8px;">🔧 Manutenção de Dados</div>
+      <div style="font-size:.8rem; color:var(--text3); margin-bottom:10px;">
+        Use quando perceber empresas duplicadas na tela "Por Empresa". O sistema consolida empresas com o mesmo nome em um único registro.
+      </div>
+      <button onclick="ctrlMesclarDuplicatas()" style="background:#f59e0b; color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
+        🔀 Mesclar Empresas Duplicadas
+      </button>
+      <span id="ctrl-mesclar-msg" style="font-size:.8rem; margin-left:10px;"></span>
+    </div>
 
     <div style="margin-top:24px;">
       <h4 style="margin:0 0 10px; color:var(--text); font-size:.95rem;">📜 Histórico de Sincronizações</h4>
@@ -2906,26 +2963,30 @@ async function ctrlFetch(url, opt = {}) {
 function ctrlInit() {
   if (ctrlInitialized) {
     ctrlLoadStats();
-    ctrlLoadAmostr();
+    ctrlLoadPorEmpresa();
     return;
   }
   ctrlInitialized = true;
   ctrlLoadStats();
-  ctrlLoadAmostr();
-  ctrlLoadDemand();
+  ctrlLoadPorEmpresa(); // Por Empresa é a tela padrão
 }
 
 function ctrlSwitchSub(name, el) {
   document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  ['amostr','venc','empresa','demand','nova','import'].forEach(s => {
+  _ctrlSubAtiva = name;
+  _ctrlStatsCache = null; // força refresh dos stats com contexto correto
+  ['amostr','venc','empresa','demand','prev','nova','import'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
+  ctrlLoadStats(name);
   if (name === 'demand') ctrlLoadDemand();
   if (name === 'empresa') ctrlLoadPorEmpresa();
+  if (name === 'amostr') ctrlLoadAmostr();
   if (name === 'nova') ctrlNvInit();
   if (name === 'import') ctrlLoadSyncLog();
+  if (name === 'prev') ctrlLoadPrevisao();
   if (name === 'venc') ctrlLoadVencendo();
 }
 
@@ -2964,10 +3025,13 @@ async function ctrlLoadVencendo() {
         <td>${a.codigo||'—'}</td>
         <td>${a.empresa_nome||'—'}</td>
         <td>${(a.data_envio_lab||'').slice(0,10)} <div style="color:var(--text3); font-size:.7rem;">há ${a.dias_no_lab||0}d</div></td>
-        <td>${a.dias_validade||30}d</td>
+        <td>${a.dias_validade||45}d</td>
         <td style="color:var(--text3); font-size:.75rem;">${ctrlCalcDataVenc(a.data_envio_lab, a.dias_validade)}</td>
         <td><span style="color:${cor}; font-weight:600; font-size:.78rem;">${lbl}</span></td>
-        <td><button onclick="ctrlEditarEnvioLab(${a.id})" style="background:transparent; color:var(--text3); border:1px solid var(--border); padding:4px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">Editar</button></td>
+        <td style="display:flex; gap:4px; flex-wrap:wrap;">
+          <button onclick="ctrlEditarEnvioLab(${a.id})" style="background:transparent; color:var(--text3); border:1px solid var(--border); padding:4px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">Editar</button>
+          ${dv < 0 || dv <= 7 ? `<button onclick="ctrlDevolverAmostrador(${a.id})" style="background:#e22; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:.7rem; cursor:pointer; font-weight:600;">↩ Devolver</button>` : ''}
+        </td>
       </tr>`;
     }).join('');
   } catch(e) {
@@ -2979,7 +3043,7 @@ function ctrlCalcDataVenc(dataEnvio, dias) {
   if (!dataEnvio) return '—';
   try {
     const d = new Date(dataEnvio.split(' ')[0]);
-    d.setDate(d.getDate() + (dias || 30));
+    d.setDate(d.getDate() + (dias || 45));
     return d.toLocaleDateString('pt-BR');
   } catch(_) { return '—'; }
 }
@@ -2987,7 +3051,7 @@ function ctrlCalcDataVenc(dataEnvio, dias) {
 async function ctrlAbrirEnvioLab() {
   document.getElementById('ctrl-envio-lab-overlay').classList.add('show');
   document.getElementById('ctrl-el-data').value = new Date().toISOString().slice(0,10);
-  document.getElementById('ctrl-el-dias').value = 30;
+  document.getElementById('ctrl-el-dias').value = 45;
   document.getElementById('ctrl-el-lote').value = '';
   const lista = document.getElementById('ctrl-el-lista');
   lista.innerHTML = '<div style="color:var(--text3); padding:10px; text-align:center;">Carregando...</div>';
@@ -3030,7 +3094,7 @@ async function ctrlSalvarEnvioLab() {
   const payload = {
     ids,
     data_envio_lab: document.getElementById('ctrl-el-data').value,
-    dias_validade: +document.getElementById('ctrl-el-dias').value || 30,
+    dias_validade: +document.getElementById('ctrl-el-dias').value || 45,
     lote: document.getElementById('ctrl-el-lote').value.trim(),
   };
   try {
@@ -3048,7 +3112,7 @@ async function ctrlSalvarEnvioLab() {
 async function ctrlEditarEnvioLab(aid) {
   const nova = prompt('Nova data de envio ao laboratório (YYYY-MM-DD):');
   if (!nova) return;
-  const dias = +prompt('Validade em dias (padrão 30):', '30') || 30;
+  const dias = +prompt('Validade em dias (padrão 45):', '45') || 45;
   try {
     await ctrlFetch(`/controle/amostradores/${aid}/envio_lab`, {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -3099,7 +3163,11 @@ async function ctrlLoadPorEmpresa() {
         <td><span id="ctrl-earrow-${e.empresa_id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
         <td><b>${e.empresa_nome}</b></td>
         <td style="color:var(--text3); font-size:.75rem;">${e.cnpj||'—'}</td>
-        <td><span style="color:#0a7; font-weight:600;">${concl}</span> / <span style="color:#f80;">${pend}</span> / <span style="color:var(--text3);">${total}</span></td>
+        <td>
+          <span style="color:#0a7; font-weight:600;" title="Concluídas">✓${concl}</span>
+          &nbsp;<span style="color:#f80; font-weight:600;" title="Pendentes">●${pend}</span>
+          &nbsp;<span style="color:var(--text3); font-size:.75rem;">/${total}</span>
+        </td>
         <td>
           <div style="font-size:.78rem; margin-bottom:3px;">${pct}% concluído</div>
           <div style="width:100%; height:6px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden;">
@@ -3161,12 +3229,30 @@ async function ctrlToggleExpandEmpresa(empresaId) {
             ${dems.map(d => {
               const isDone = d.status === 'concluida';
               const pct = d.total_medicoes > 0 ? Math.round((d.realizadas/d.total_medicoes)*100) : (d.progresso || 0);
-              return `<tr style="border-bottom:1px solid var(--border);">
-                <td style="padding:6px 8px;"><b>${d.numero_os||'—'}</b></td>
-                <td style="padding:6px 8px; font-size:.72rem; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa||'—').slice(0,50)}</td>
-                <td style="padding:6px 8px;">${d.prazo||'—'}</td>
-                <td style="padding:6px 8px;">${pct}%</td>
-                <td style="padding:6px 8px;">${d.responsavel||'—'}</td>
+              const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#444';
+              // Prazo com urgência
+              let prazoHtml = '—';
+              if (d.prazo) {
+                const diff = Math.round((new Date(d.prazo) - new Date()) / 86400000);
+                let cor = 'var(--text3)', badge = '';
+                if (isDone) { cor='#0a7'; }
+                else if (diff < 0) { cor='#e22'; badge=` <span style="background:#e22;color:#fff;padding:1px 5px;border-radius:3px;font-size:.65rem;">ATRASADA ${Math.abs(diff)}d</span>`; }
+                else if (diff === 0) { cor='#e22'; badge=` <span style="background:#e22;color:#fff;padding:1px 5px;border-radius:3px;font-size:.65rem;">HOJE</span>`; }
+                else if (diff <= 3) { cor='#f80'; badge=` <span style="color:#f80;font-size:.7rem;">${diff}d</span>`; }
+                else if (diff <= 7) { cor='#fc6'; }
+                prazoHtml = `<span style="color:${cor};">${d.prazo}${badge}</span>`;
+              }
+              return `<tr style="border-bottom:1px solid rgba(255,255,255,.04); ${!isDone&&d.prazo&&Math.round((new Date(d.prazo)-new Date())/86400000)<0?'background:rgba(239,68,68,.04);':''}">
+                <td style="padding:6px 10px;"><b>${d.numero_os||'—'}</b></td>
+                <td style="padding:6px 8px; font-size:.72rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2);" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa||'—').slice(0,55)}</td>
+                <td style="padding:6px 8px; font-size:.78rem;">${prazoHtml}</td>
+                <td style="padding:6px 8px;">
+                  <div style="font-size:.75rem; margin-bottom:3px;">${pct}%</div>
+                  <div style="width:80px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:${corBar};"></div>
+                  </div>
+                </td>
+                <td style="padding:6px 8px; font-size:.75rem; color:var(--text3);">${d.responsavel||'—'}</td>
                 <td style="padding:6px 8px;"><span class="ctrl-badge ${isDone?'concluida':'pendente'}">${isDone?'concluída':'pendente'}</span></td>
                 <td style="padding:6px 8px;">${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
               </tr>`;
@@ -3599,19 +3685,37 @@ async function ctrlNvSalvarComoDemanda() {
   } catch(e) { alert('Erro: ' + e.message); }
 }
 
-async function ctrlLoadStats() {
+let _ctrlStatsCache = null;
+async function ctrlLoadStats(contexto) {
   try {
-    const s = await ctrlFetch('/controle/stats');
-    document.getElementById('ctrl-stats').innerHTML = `
-      <div class="ctrl-stat green"><div class="ctrl-stat-label">Em Estoque</div><div class="ctrl-stat-value">${s.estoque||0}</div></div>
-      <div class="ctrl-stat blue"><div class="ctrl-stat-label">Laboratório</div><div class="ctrl-stat-value">${s.laboratorio||0}</div></div>
-      <div class="ctrl-stat yellow"><div class="ctrl-stat-label">Reservados</div><div class="ctrl-stat-value">${s.reservados||0}</div></div>
-      <div class="ctrl-stat"><div class="ctrl-stat-label">Total Amostradores</div><div class="ctrl-stat-value">${s.total_amostradores||0}</div></div>
-      <div class="ctrl-stat red"><div class="ctrl-stat-label">Demandas Pendentes</div><div class="ctrl-stat-value">${s.demandas_pendentes||0}</div></div>
-      <div class="ctrl-stat green"><div class="ctrl-stat-label">Demandas Concluídas</div><div class="ctrl-stat-value">${s.demandas_concluidas||0}</div></div>
-    `;
+    const s = _ctrlStatsCache || await ctrlFetch('/controle/stats');
+    _ctrlStatsCache = s;
+    const tab = contexto || _ctrlSubAtiva || 'empresa';
+    let html = '';
+    if (tab === 'amostr' || tab === 'venc') {
+      // Contexto amostradores: focar em estoque e vencimento
+      const venc = (s.venc_urgente||0) + (s.venc_vencidos||0);
+      html = `
+        <div class="ctrl-stat green"><div class="ctrl-stat-label">Em Estoque</div><div class="ctrl-stat-value">${s.estoque||0}</div></div>
+        <div class="ctrl-stat blue"><div class="ctrl-stat-label">Laboratório</div><div class="ctrl-stat-value">${s.laboratorio||0}</div></div>
+        <div class="ctrl-stat"><div class="ctrl-stat-label">Total</div><div class="ctrl-stat-value">${s.total_amostradores||0}</div></div>
+        ${venc > 0 ? `<div class="ctrl-stat red"><div class="ctrl-stat-label">⏱ Vencendo/Vencidos</div><div class="ctrl-stat-value">${venc}</div></div>` : ''}
+      `;
+    } else {
+      // Contexto empresas/demandas: focar em pendências e estoque chave
+      html = `
+        <div class="ctrl-stat red"><div class="ctrl-stat-label">OS Pendentes</div><div class="ctrl-stat-value">${s.demandas_pendentes||0}</div></div>
+        <div class="ctrl-stat green"><div class="ctrl-stat-label">OS Concluídas</div><div class="ctrl-stat-value">${s.demandas_concluidas||0}</div></div>
+        <div class="ctrl-stat green"><div class="ctrl-stat-label">Em Estoque</div><div class="ctrl-stat-value">${s.estoque||0}</div></div>
+        <div class="ctrl-stat blue"><div class="ctrl-stat-label">No Laboratório</div><div class="ctrl-stat-value">${s.laboratorio||0}</div></div>
+        ${(s.venc_vencidos||0) > 0 ? `<div class="ctrl-stat red"><div class="ctrl-stat-label">⏱ Lab Vencido</div><div class="ctrl-stat-value">${s.venc_vencidos}</div></div>` : ''}
+      `;
+    }
+    document.getElementById('ctrl-stats').innerHTML = html;
   } catch(e) { console.error('stats', e); }
 }
+
+let _ctrlSubAtiva = 'empresa';
 
 async function ctrlLoadAmostr() {
   const q = new URLSearchParams();
@@ -3637,20 +3741,41 @@ async function ctrlLoadAmostr() {
       tipos.map(t => `<option ${t===cur?'selected':''}>${t}</option>`).join('');
 
     if (!data.length) {
-      tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Nenhum amostrador encontrado. Use "Importar Planilhas" para carregar.</td></tr>';
+      tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhum amostrador encontrado. Use "Importar Planilhas" para carregar.</td></tr>';
       return;
     }
-    tb.innerHTML = data.map(a => `
-      <tr>
-        <td><span class="ctrl-badge ${(a.status||'').toLowerCase()}">${a.status||'—'}</span></td>
+    tb.innerHTML = data.map(a => {
+      const st = (a.status || '').toLowerCase();
+      const parado = a.tempo_parado !== null && a.tempo_parado !== undefined ? a.tempo_parado : null;
+      let corParado = 'var(--text3)', lblParado = '—';
+      if (parado !== null) {
+        if (parado > 30) { corParado = '#e22'; lblParado = `${parado}d ⚠`; }
+        else if (parado > 15) { corParado = '#f80'; lblParado = `${parado}d`; }
+        else if (parado > 7) { corParado = '#fc6'; lblParado = `${parado}d`; }
+        else { corParado = 'var(--text3)'; lblParado = `${parado}d`; }
+      }
+      // Linha com fundo levemente colorido para vencidos/urgentes no lab
+      let rowStyle = '';
+      if (st.includes('lab') && a.data_envio_lab) {
+        const diasV = a.dias_para_vencer; // pode não existir aqui, ok
+        // Sem calcular, confiamos no status
+        rowStyle = 'background:rgba(255,136,0,.03);';
+      }
+      const acoes = st === 'estoque'
+        ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>`
+        : '';
+      return `<tr style="${rowStyle}">
+        <td><span class="ctrl-badge ${st}">${a.status||'—'}</span></td>
         <td><b>${a.tipo||'—'}</b></td>
-        <td>${a.codigo||'—'}</td>
-        <td>${(a.data_entrada||'').slice(0,10)}</td>
-        <td>${a.empresa_nome||'—'}</td>
-        <td>${a.avaliador||'—'}</td>
-        <td>${(a.data_medicao||'').slice(0,10)}</td>
-        <td>${a.status==='Estoque' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : ''}</td>
-      </tr>`).join('');
+        <td style="font-family:monospace; font-size:.82rem;">${a.codigo||'—'}</td>
+        <td style="font-size:.78rem;">${(a.data_entrada||'').slice(0,10)||'—'}</td>
+        <td style="font-size:.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${a.empresa_nome||''}">${a.empresa_nome||'—'}</td>
+        <td style="font-size:.78rem;">${a.avaliador||'—'}</td>
+        <td style="font-size:.78rem;">${(a.data_medicao||'').slice(0,10)||'—'}</td>
+        <td style="color:${corParado}; font-size:.78rem; font-weight:600;">${lblParado}</td>
+        <td>${acoes}</td>
+      </tr>`;
+    }).join('');
     ctrlLoadStats();
   } catch(e) {
     tb.innerHTML = `<tr><td colspan="8" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
@@ -3680,19 +3805,33 @@ async function ctrlLoadDemand() {
     tb.innerHTML = data.map(d => {
       const pct = d.total_medicoes>0 ? Math.round((d.realizadas/d.total_medicoes)*100) : 0;
       const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#666';
-      const dias = d.dias_aberta || 0;
-      // Para concluida, mostrar dias até finalizar (esverdeado neutro)
+      const diasPrazo = (d.dias_para_prazo !== null && d.dias_para_prazo !== undefined) ? d.dias_para_prazo : null;
+      const diasAberta = d.dias_aberta || 0;
       let corDias, lblDias;
       if (d.status === 'concluida') {
-        corDias = '#0a7'; lblDias = `✓ ${dias}d`;
-      } else if (dias > 14) {
-        corDias = '#e22'; lblDias = `${dias}d ⚠`;
-      } else if (dias > 7) {
-        corDias = '#f80'; lblDias = `${dias}d`;
-      } else if (dias > 3) {
-        corDias = '#fc6'; lblDias = `${dias}d`;
+        corDias = '#0a7'; lblDias = `✓ concluída`;
+      } else if (diasPrazo !== null && d.prazo) {
+        // Tem prazo definido — mostrar relação com deadline
+        if (diasPrazo < 0) {
+          corDias = '#e22'; lblDias = `⚠ ${Math.abs(diasPrazo)}d atrasada`;
+        } else if (diasPrazo === 0) {
+          corDias = '#e22'; lblDias = `⚠ vence hoje`;
+        } else if (diasPrazo <= 3) {
+          corDias = '#f80'; lblDias = `prazo em ${diasPrazo}d`;
+        } else if (diasPrazo <= 7) {
+          corDias = '#fc6'; lblDias = `prazo em ${diasPrazo}d`;
+        } else {
+          corDias = '#999'; lblDias = `prazo em ${diasPrazo}d`;
+        }
       } else {
-        corDias = '#999'; lblDias = `${dias}d`;
+        // Sem prazo — mostrar dias aberta
+        if (diasAberta > 30) {
+          corDias = '#e22'; lblDias = `${diasAberta}d aberta`;
+        } else if (diasAberta > 14) {
+          corDias = '#f80'; lblDias = `${diasAberta}d aberta`;
+        } else {
+          corDias = '#999'; lblDias = `${diasAberta}d aberta`;
+        }
       }
       const agentesPend = d.agentes_pendentes || '';
       const agentesList = agentesPend ? agentesPend.split(' | ').filter(Boolean) : [];
@@ -3735,17 +3874,35 @@ async function ctrlToggleExpand(demId) {
     try {
       const d = await ctrlFetch('/controle/demandas/' + demId);
       const meds = d.medicoes || [];
-      if (!meds.length) { cont.innerHTML = '<i>Sem medições.</i>'; return; }
-      cont.innerHTML = `
+
+      // Cabeçalho com info de contato e prazo
+      const prazo = d.prazo ? `<b>Prazo:</b> ${d.prazo}` : '';
+      const resp  = d.responsavel ? `<b>Resp.:</b> ${d.responsavel}` : '';
+      const contatoFeito = d.contato_feito;
+      const contatoHtml = `
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; font-size:.8rem; color:var(--text2);">
+          ${prazo} ${resp}
+          <span style="margin-left:auto;">
+            ${contatoFeito
+              ? `<span style="color:#0a7;">✓ Contato realizado</span>
+                 <button onclick="ctrlDemandaContato(${demId}, false)" style="margin-left:6px; background:transparent; border:1px solid var(--border); color:var(--text3); padding:2px 7px; border-radius:3px; font-size:.7rem; cursor:pointer;">desfazer</button>`
+              : `<button onclick="ctrlDemandaContato(${demId}, true)" style="background:#39f; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.75rem; cursor:pointer;">📞 Marcar contato feito</button>`
+            }
+          </span>
+        </div>`;
+
+      if (!meds.length) { cont.innerHTML = contatoHtml + '<i>Sem medições.</i>'; return; }
+      cont.innerHTML = contatoHtml + `
         <table style="width:100%; border-collapse:collapse;">
           <thead>
-            <tr style="border-bottom:1px solid var(--border); text-align:left;">
-              <th style="padding:6px 8px;">Agente</th>
-              <th style="padding:6px 8px;">Amostr.</th>
-              <th style="padding:6px 8px;">Pontos</th>
-              <th style="padding:6px 8px;">Status</th>
-              <th style="padding:6px 8px;">Parado há</th>
-              <th style="padding:6px 8px;">Laudo</th>
+            <tr style="border-bottom:1px solid var(--border); text-align:left; font-size:.75rem; color:var(--text3);">
+              <th style="padding:5px 8px;">Agente</th>
+              <th style="padding:5px 8px;">Amostr.</th>
+              <th style="padding:5px 8px;">Pontos</th>
+              <th style="padding:5px 8px;">Status</th>
+              <th style="padding:5px 8px;">Vazão (L/min)</th>
+              <th style="padding:5px 8px;">Tempo (min)</th>
+              <th style="padding:5px 8px;">Laudo</th>
             </tr>
           </thead>
           <tbody>
@@ -3753,17 +3910,26 @@ async function ctrlToggleExpand(demId) {
               const isDone = m.status === 'realizado';
               const isParcial = m.status === 'parcial';
               const cor = isDone ? '#0a7' : (isParcial ? '#f80' : '#e22');
-              // dias parado: usa criado_em da medicao
-              const dt = m.criado_em ? new Date(m.criado_em) : null;
-              const dias = dt ? Math.round((Date.now() - dt.getTime()) / 86400000) : 0;
-              const corDias = isDone ? '#0a7' : (dias > 14 ? '#e22' : dias > 7 ? '#f80' : '#999');
-              return `<tr style="border-bottom:1px solid var(--border);">
-                <td style="padding:6px 8px;"><b>${m.agente||'—'}</b></td>
-                <td style="padding:6px 8px; color:#999;">${m.tipo_amostrador||'—'}</td>
-                <td style="padding:6px 8px;">${m.qtd_pontos_feita}/${m.qtd_pontos_prevista}</td>
-                <td style="padding:6px 8px;"><span style="color:${cor}; font-weight:600;">${m.status||'—'}</span></td>
-                <td style="padding:6px 8px;"><span style="color:${corDias};">${isDone ? '✓' : dias+'d'}</span></td>
-                <td style="padding:6px 8px;">${m.necessita_laudo === 'S' ? '<span style="color:#fc6;">📄 Sim</span>' : '—'}</td>
+              // Baixas: pegar dados de vazão
+              const baixas = m.baixas || [];
+              let vazaoHtml = '—', tempoHtml = '—';
+              if (baixas.length > 0) {
+                const b = baixas[0]; // última baixa
+                vazaoHtml = b.vazao_calibrada ? `<b>${b.vazao_calibrada}</b>` : '—';
+                if (b.tempo_calculado_min && b.tempo_calculado_max) {
+                  tempoHtml = `${Math.round(b.tempo_calculado_min)}–${Math.round(b.tempo_calculado_max)}`;
+                } else if (b.tempo_calculado_min) {
+                  tempoHtml = `${Math.round(b.tempo_calculado_min)}`;
+                }
+              }
+              return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+                <td style="padding:5px 8px;"><b>${m.agente||'—'}</b></td>
+                <td style="padding:5px 8px; color:#999; font-size:.78rem;">${m.tipo_amostrador||'—'}</td>
+                <td style="padding:5px 8px;">${m.qtd_pontos_feita||0}/${m.qtd_pontos_prevista||1}</td>
+                <td style="padding:5px 8px;"><span style="color:${cor}; font-weight:600;">${m.status||'—'}</span></td>
+                <td style="padding:5px 8px; font-size:.82rem;">${vazaoHtml}</td>
+                <td style="padding:5px 8px; font-size:.82rem;">${tempoHtml}</td>
+                <td style="padding:5px 8px;">${m.necessita_laudo === 'S' ? '<span style="color:#fc6;">📄 Sim</span>' : '—'}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -3776,6 +3942,155 @@ async function ctrlToggleExpand(demId) {
     row.style.display = 'none';
     arrow.style.transform = 'rotate(0)';
   }
+}
+
+// CNPJ lookup no cadastro de empresa (modal Nova Medição)
+let _ctrlCNPJTimer = null;
+async function ctrlCadCNPJLookup(raw) {
+  const digits = raw.replace(/\D/g,'');
+  const st = document.getElementById('ctrl-nv-cad-cnpj-status');
+  if (digits.length < 14) { st.innerHTML = ''; return; }
+  if (_ctrlCNPJTimer) clearTimeout(_ctrlCNPJTimer);
+  _ctrlCNPJTimer = setTimeout(async () => {
+    st.innerHTML = '<span style="color:var(--text3);">🔎 Consultando Receita Federal...</span>';
+    try {
+      const r = await _fetchCNPJ(digits);
+      if (!r || r.status === 'ERROR') {
+        st.innerHTML = '<span style="color:#e22;">CNPJ não encontrado na Receita Federal.</span>';
+        return;
+      }
+      // Preencher campos automaticamente
+      const nome = r.razao_social || r.nome || '';
+      const cidade = r.municipio || r.cidade || (r.endereco && r.endereco.municipio) || '';
+      const uf = r.uf || r.estado || (r.endereco && r.endereco.uf) || '';
+      const email = r.email || '';
+      if (nome) {
+        const campoNome = document.getElementById('ctrl-nv-cad-nome');
+        if (campoNome && !campoNome.value) campoNome.value = nome;
+      }
+      if (cidade) { const c = document.getElementById('ctrl-nv-cad-cidade'); if(c) c.value = cidade; }
+      if (uf) { const c = document.getElementById('ctrl-nv-cad-uf'); if(c) c.value = uf; }
+      if (email) { const c = document.getElementById('ctrl-nv-cad-email'); if(c) c.value = email; }
+      const sit = r.situacao_cadastral || r.situacao || '';
+      st.innerHTML = `<span style="color:#0a7;">✓ Dados carregados automaticamente conforme Receita Federal.</span>
+        ${sit ? `<span style="color:var(--text3); margin-left:8px;">Situação: ${sit}</span>` : ''}`;
+    } catch(e) {
+      st.innerHTML = '<span style="color:#e22;">Erro ao consultar CNPJ.</span>';
+    }
+  }, 600);
+}
+
+async function ctrlDevolverAmostrador(aid) {
+  if (!confirm('Confirmar devolução ao laboratório?')) return;
+  try {
+    await ctrlFetch(`/controle/amostradores/${aid}/devolver`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({observacao: 'Devolvido ao laboratório', data_devolucao: new Date().toISOString().slice(0,10)})
+    });
+    _showToast('✓ Amostrador marcado como Devolvido', 'success');
+    ctrlLoadAmostr();
+    ctrlLoadVencendo();
+    ctrlLoadStats();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function ctrlDemandaContato(demId, feito) {
+  try {
+    await ctrlFetch(`/controle/demanda/${demId}/contato`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({feito, por: localStorage.getItem('ctrl_user') || 'Matheus'})
+    });
+    _showToast(feito ? '✓ Contato marcado' : '↶ Contato desfeito', 'success');
+    // Recarrega só o expand desta demanda
+    const cont = document.getElementById('ctrl-exp-content-'+demId);
+    if (cont) {
+      // Força reload do expand
+      const row = document.getElementById('ctrl-exp-'+demId);
+      if (row) row.style.display = 'none';
+      await ctrlToggleExpand(demId);
+    }
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function ctrlLoadPrevisao() {
+  const tb = document.getElementById('ctrl-tb-prev');
+  const resumo = document.getElementById('ctrl-prev-resumo');
+  const alertas = document.getElementById('ctrl-prev-alertas');
+  const semGuia = document.getElementById('ctrl-prev-semguia');
+  tb.innerHTML = '<tr><td colspan="7" class="ctrl-empty">Calculando...</td></tr>';
+  alertas.innerHTML = '';
+  semGuia.innerHTML = '';
+  try {
+    const data = await ctrlFetch('/controle/previsao_estoque');
+    const lista = data.necessidades || [];
+    resumo.textContent = `${data.total_medicoes_pendentes} medições pendentes`;
+
+    // Alertas de falta
+    const faltando = lista.filter(x => x.falta > 0);
+    if (faltando.length > 0) {
+      alertas.innerHTML = `
+        <div style="background:rgba(239,68,68,.08); border-left:3px solid #e22; border-radius:6px; padding:10px 14px; font-size:.82rem;">
+          <b style="color:#e22;">⚠ Estoque insuficiente para ${faltando.length} tipo(s):</b>
+          ${faltando.map(x => `<span style="background:rgba(239,68,68,.15); border-radius:4px; padding:2px 7px; margin:2px; display:inline-block;">
+            ${x.tipo} — falta <b>${x.falta}</b>
+          </span>`).join('')}
+        </div>`;
+    } else if (lista.length > 0) {
+      alertas.innerHTML = `<div style="background:var(--green-bg); border-left:3px solid var(--green); border-radius:6px; padding:8px 14px; font-size:.82rem; color:var(--green);">✓ Estoque suficiente para todas as demandas pendentes.</div>`;
+    }
+
+    if (!lista.length) {
+      tb.innerHTML = '<tr><td colspan="7" class="ctrl-empty">Nenhuma medição pendente com guia de método.</td></tr>';
+      return;
+    }
+
+    tb.innerHTML = lista.map(x => {
+      const corFalta = x.falta > 0 ? '#e22' : '#0a7';
+      const fundoFalta = x.falta > 0 ? 'rgba(239,68,68,.08)' : '';
+      // Top 3 demandas
+      const demStr = (x.medicoes || []).slice(0, 3).map(m =>
+        `<span style="font-size:.7rem; color:var(--text3);">${m.empresa} ${m.os ? `(OS ${m.os})` : ''}</span>`
+      ).join('<br>');
+      const mais = (x.medicoes || []).length > 3 ? `<span style="font-size:.7rem; color:var(--text3);">+${x.medicoes.length-3} mais</span>` : '';
+      return `<tr style="background:${fundoFalta};">
+        <td style="padding:7px 10px;"><b>${x.tipo}</b></td>
+        <td style="padding:7px 10px; font-size:.78rem; color:var(--text3);">${x.metodo||'—'}</td>
+        <td style="padding:7px 10px; font-size:.78rem; color:var(--text3);">${x.vazao||'—'} / ${x.volume||'—'}</td>
+        <td style="padding:7px 10px; text-align:center; font-weight:600;">${x.qtd_necessaria}</td>
+        <td style="padding:7px 10px; text-align:center; color:${x.em_estoque > 0 ? '#0a7':'#e22'}; font-weight:600;">${x.em_estoque}</td>
+        <td style="padding:7px 10px; text-align:center; color:${corFalta}; font-weight:700;">${x.falta > 0 ? x.falta : '✓'}</td>
+        <td style="padding:7px 10px;">${demStr}${mais}</td>
+      </tr>`;
+    }).join('');
+
+    // Agentes sem guia
+    const sg = data.agentes_sem_guia || [];
+    if (sg.length > 0) {
+      semGuia.innerHTML = `
+        <div style="background:rgba(245,158,11,.07); border-left:3px solid #f59e0b; border-radius:6px; padding:10px 14px; font-size:.8rem;">
+          <b style="color:#f59e0b;">ℹ Agentes sem método cadastrado no guia</b> (não incluídos no cálculo):<br>
+          ${sg.map(a => `<span style="background:rgba(245,158,11,.12); border-radius:3px; padding:1px 6px; margin:2px; display:inline-block;">${a}</span>`).join('')}
+        </div>`;
+    }
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="7" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function ctrlMesclarDuplicatas() {
+  const msg = document.getElementById('ctrl-mesclar-msg');
+  msg.textContent = '⏳ Mesclando...';
+  try {
+    const r = await ctrlFetch('/controle/empresas/mesclar_duplicatas', {method:'POST'});
+    if (r.mescladas > 0) {
+      msg.innerHTML = `<span style="color:#0a7;">✓ ${r.mescladas} empresa(s) duplicada(s) consolidada(s).</span>`;
+      _ctrlStatsCache = null;
+      ctrlLoadStats();
+      ctrlLoadPorEmpresa();
+    } else {
+      msg.innerHTML = `<span style="color:var(--text3);">Nenhuma duplicata encontrada.</span>`;
+    }
+  } catch(e) { msg.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`; }
 }
 
 async function ctrlImportar(tipo, input) {
