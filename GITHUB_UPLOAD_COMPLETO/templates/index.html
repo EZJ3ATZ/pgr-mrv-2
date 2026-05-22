@@ -1202,11 +1202,11 @@
       </svg>
       <span>Analytics BI</span>
     </div>
-    <div class="sidebar-item" data-name="coleta" onclick="goToTab('coleta')">
+    <div class="sidebar-item" data-name="coleta" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', document.querySelector('[onclick*=nova]')),300);" title="Coletas integradas em Nova Medição">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
       </svg>
-      <span>Coletas de Campo</span>
+      <span>Nova Coleta</span>
     </div>
   </div>
 
@@ -2325,122 +2325,405 @@
     </div>
   </div>
 
-  <!-- Sub: Nova Medição (workflow completo) -->
+  <!-- ══ CENTRAL OPERACIONAL DE COLETA — Wizard 6 Etapas ══ -->
   <div id="ctrl-sub-nova" style="display:none;">
+  <style>
+    .nv-prog{display:flex;align-items:flex-start;justify-content:center;gap:0;margin-bottom:24px;padding:18px 0 0;}
+    .nv-prog-item{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;}
+    .nv-prog-item::before{content:'';position:absolute;top:15px;left:-50%;right:50%;height:2px;background:var(--border2);z-index:0;}
+    .nv-prog-item:first-child::before{display:none;}
+    .nv-prog-item.done::before,.nv-prog-item.active::before{background:var(--green);}
+    .nv-prog-circle{width:30px;height:30px;border-radius:50%;border:2px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:var(--text3);position:relative;z-index:1;transition:all .22s;}
+    .nv-prog-item.active .nv-prog-circle{border-color:var(--orange);background:var(--orange);color:#fff;box-shadow:0 0 0 4px rgba(34,197,94,.15);}
+    .nv-prog-item.done .nv-prog-circle{border-color:var(--green);background:var(--green);color:#fff;}
+    .nv-prog-label{font-size:.62rem;color:var(--text3);margin-top:5px;text-align:center;white-space:nowrap;}
+    .nv-prog-item.active .nv-prog-label{color:var(--orange);font-weight:600;}
+    .nv-prog-item.done .nv-prog-label{color:var(--green);}
+    .nv-step{animation:nvFadeIn .2s ease;}
+    @keyframes nvFadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .nv-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px;}
+    .nv-card-title{font-size:.68rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.09em;margin-bottom:14px;}
+    .nv-f label{display:block;font-size:.67rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:3px;}
+    .nv-f input,.nv-f select,.nv-f textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-size:.85rem;outline:none;transition:border-color .15s;font-family:inherit;}
+    .nv-f input:focus,.nv-f select:focus{border-color:var(--orange);}
+    .nv-g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .nv-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+    .nv-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;}
+    .nv-trab-tbl{width:100%;border-collapse:collapse;font-size:.8rem;}
+    .nv-trab-tbl th{padding:7px 6px;background:var(--surface2);border:1px solid var(--border);font-size:.68rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;text-align:left;}
+    .nv-trab-tbl td{padding:3px;border:1px solid var(--border);}
+    .nv-trab-tbl input,.nv-trab-tbl select{background:var(--surface2);border:none;border-radius:4px;padding:6px 7px;color:var(--text);font-size:.79rem;width:100%;font-family:inherit;}
+    .nv-vok{background:rgba(16,185,129,.07);border:1px solid var(--green-bd);border-radius:7px;padding:10px 13px;display:flex;gap:10px;align-items:flex-start;margin-bottom:7px;}
+    .nv-verr{background:rgba(239,68,68,.07);border:1px solid var(--red-bd);border-radius:7px;padding:10px 13px;display:flex;gap:10px;align-items:flex-start;margin-bottom:7px;}
+    .nv-vwarn{background:rgba(245,158,11,.07);border:1px solid var(--yellow-bd);border-radius:7px;padding:10px 13px;display:flex;gap:10px;align-items:flex-start;margin-bottom:7px;}
+    .nv-nav{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-top:1px solid var(--border);margin-top:4px;}
+    .nv-btn-bk{background:transparent;border:1.5px solid var(--border2);color:var(--text2);padding:9px 20px;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;font-family:inherit;transition:all .15s;}
+    .nv-btn-bk:hover{border-color:var(--border3);color:var(--text);}
+    .nv-btn-nx{background:var(--orange);color:#fff;border:none;padding:9px 24px;border-radius:8px;cursor:pointer;font-size:.88rem;font-weight:700;font-family:inherit;transition:all .15s;box-shadow:0 2px 10px rgba(34,197,94,.2);}
+    .nv-btn-nx:hover{filter:brightness(1.08);transform:translateY(-1px);}
+  </style>
 
-    <!-- Passo 1: Empresa -->
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:14px;">
-      <div style="font-size:.95rem; font-weight:600; color:var(--text); margin-bottom:10px;">1. Empresa / OS</div>
-      <div style="position:relative;">
-        <input type="text" id="ctrl-nv-empresa" placeholder="Digite nome ou CNPJ da empresa..."
-          oninput="ctrlNvBuscarEmpresa(this.value)" autocomplete="off"
-          style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:9px 12px; color:var(--text); font-size:.9rem; outline:none;">
-        <div id="ctrl-nv-empresa-list" style="position:absolute; top:100%; left:0; right:0; background:var(--bg); border:1px solid var(--border); border-radius:6px; margin-top:2px; max-height:220px; overflow-y:auto; z-index:10; display:none;"></div>
-      </div>
-      <div id="ctrl-nv-empresa-status" style="margin-top:8px; font-size:.82rem;"></div>
-      <div class="row2" style="margin-top:8px;">
-        <div>
-          <label style="font-size:.7rem; color:var(--text3);">Número da OS</label>
-          <input type="text" id="ctrl-nv-os" placeholder="opcional"
-            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+    <div>
+      <div style="font-size:1.05rem;font-weight:800;color:var(--text);letter-spacing:-.01em;">🎯 Central Operacional de Coleta</div>
+      <div style="font-size:.78rem;color:var(--text3);margin-top:2px;">Do planejamento ao laudo — tudo em um fluxo só</div>
+    </div>
+    <button onclick="nvReset()" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;">↺ Reiniciar</button>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="nv-prog" id="nv-prog">
+    <div class="nv-prog-item active" data-s="1"><div class="nv-prog-circle">1</div><div class="nv-prog-label">Empresa</div></div>
+    <div class="nv-prog-item" data-s="2"><div class="nv-prog-circle">2</div><div class="nv-prog-label">Planejamento</div></div>
+    <div class="nv-prog-item" data-s="3"><div class="nv-prog-circle">3</div><div class="nv-prog-label">Campo</div></div>
+    <div class="nv-prog-item" data-s="4"><div class="nv-prog-circle">4</div><div class="nv-prog-label">Equipamentos</div></div>
+    <div class="nv-prog-item" data-s="5"><div class="nv-prog-circle">5</div><div class="nv-prog-label">Validações</div></div>
+    <div class="nv-prog-item" data-s="6"><div class="nv-prog-circle">6</div><div class="nv-prog-label">Finalizar</div></div>
+  </div>
+
+  <!-- ─── ETAPA 1: EMPRESA / OS ─── -->
+  <div id="nv-s1" class="nv-step">
+    <div class="nv-card">
+      <div class="nv-card-title">Etapa 1 — Dados da Empresa / OS</div>
+      <div class="nv-f" style="margin-bottom:12px;">
+        <label>Empresa *</label>
+        <div style="position:relative;">
+          <input type="text" id="ctrl-nv-empresa" placeholder="Digite nome ou CNPJ da empresa..." oninput="ctrlNvBuscarEmpresa(this.value)" autocomplete="off">
+          <div id="ctrl-nv-empresa-list" style="position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-top:2px;max-height:220px;overflow-y:auto;z-index:10;display:none;"></div>
         </div>
-        <div>
-          <label style="font-size:.7rem; color:var(--text3);">Data prevista da coleta</label>
-          <input type="date" id="ctrl-nv-data"
-            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+        <div id="ctrl-nv-empresa-status" style="margin-top:6px;font-size:.8rem;"></div>
+      </div>
+      <div class="nv-g3 nv-f" style="margin-bottom:12px;">
+        <div><label>Unidade / Obra</label><input type="text" id="nv-unidade" placeholder="Ex: Parque Canoas"></div>
+        <div><label>Cidade</label><input type="text" id="nv-cidade" placeholder="Ex: Canoas - RS"></div>
+        <div><label>Responsável na Empresa</label><input type="text" id="nv-resp-empresa" placeholder="Nome do responsável"></div>
+      </div>
+      <div class="nv-g4 nv-f" style="margin-bottom:12px;">
+        <div><label>N° da OS</label><input type="text" id="ctrl-nv-os" placeholder="opcional"></div>
+        <div><label>Data da Coleta</label><input type="date" id="ctrl-nv-data"></div>
+        <div><label>Prazo de Entrega</label><input type="date" id="nv-prazo"></div>
+        <div><label>Técnico Responsável</label>
+          <select id="ctrl-nv-avaliador">
+            <option>Matheus Costa</option><option>Kelly Elissama Firmino</option>
+            <option>Wesley</option><option>Helbert Gonçalves</option>
+          </select>
         </div>
       </div>
-      <div style="margin-top:8px;">
-        <label style="font-size:.7rem; color:var(--text3);">Avaliador responsável</label>
-        <select id="ctrl-nv-avaliador" style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
-          <option>Wesley</option><option>Helbert</option><option>Matheus</option><option>Kelly</option>
+      <div class="nv-f">
+        <label>Tipo de Medição *</label>
+        <select id="nv-tipo" onchange="nvTipoChange()">
+          <option value="">— Selecione o tipo —</option>
+          <option value="ruido">🔊 Ruído</option>
+          <option value="quimico">⚗️ Agentes Químicos</option>
+          <option value="calor">🌡️ Calor (IBUTG)</option>
+          <option value="vibracao">〰️ Vibração</option>
         </select>
       </div>
     </div>
+  </div>
 
-    <!-- Passo 2: Adicionar agentes -->
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:14px;">
-      <div style="font-size:.95rem; font-weight:600; color:var(--text); margin-bottom:10px;">2. Adicionar agente a medir</div>
+  <!-- ─── ETAPA 2: PLANEJAMENTO ─── -->
+  <div id="nv-s2" class="nv-step" style="display:none;">
+    <div class="nv-card">
+      <div class="nv-card-title">Etapa 2 — Planejamento da Medição</div>
 
-      <div style="margin-bottom:8px;">
-        <label style="font-size:.7rem; color:var(--text3);">Agente / Função</label>
-        <input type="text" id="ctrl-nv-agente" placeholder="Ex: Acetona, Ruído, Calor..."
-          oninput="ctrlNvBuscarAgente(this.value)" autocomplete="off" list="ctrl-nv-agente-dl"
-          style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
-        <datalist id="ctrl-nv-agente-dl"></datalist>
+      <div id="nv-plan-ruido" style="display:none;">
+        <div style="background:rgba(34,197,94,.07);border-left:3px solid var(--green);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Ruído</b> — NR-15 Anexo 1 + NHO-01 FUNDACENTRO. Dosimetria individual por trabalhador.</div>
+        <div class="nv-g2 nv-f">
+          <div><label>Nº de Dosímetros</label><select id="nv-plan-n-dosim"><option>1</option><option>2</option><option>3</option><option>4</option><option value="5" selected>5</option></select></div>
+          <div><label>Estratégia</label><select id="nv-plan-estrategia"><option>Individual (por trabalhador)</option><option>Por Função/GHE</option><option>Ambiental (ponto fixo)</option></select></div>
+        </div>
+        <div class="nv-f" style="margin-top:10px;"><label>Setores / Funções Prioritários</label><input type="text" id="nv-plan-setores" placeholder="Ex: Armação, Forma, Concretagem..."></div>
       </div>
 
-      <div id="ctrl-nv-metodo-info" style="display:none; padding:8px 10px; background:rgba(57,153,255,.08); border-left:3px solid #39f; border-radius:5px; font-size:.78rem; margin-bottom:8px;"></div>
-
-      <div class="row2">
-        <div>
-          <label style="font-size:.7rem; color:var(--text3);">Modelo da Bomba</label>
-          <select id="ctrl-nv-bomba-modelo" onchange="ctrlNvPreencherSNs(this.value)"
-            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
-            <option value="">— Selecione —</option>
-          </select>
+      <div id="nv-plan-quimico" style="display:none;">
+        <div style="background:rgba(96,165,250,.07);border-left:3px solid var(--blue);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Agentes Químicos</b> — Adicione cada agente. O sistema buscará o método analítico correspondente.</div>
+        <div class="nv-f" style="margin-bottom:10px;">
+          <label>Agente a Amostrar</label>
+          <input type="text" id="ctrl-nv-agente" placeholder="Ex: Tolueno, Poeira Respirável, BTX..." oninput="ctrlNvBuscarAgente(this.value)" autocomplete="off" list="ctrl-nv-agente-dl">
+          <datalist id="ctrl-nv-agente-dl"></datalist>
         </div>
-        <div>
-          <label style="font-size:.7rem; color:var(--text3);">N° Série</label>
-          <select id="ctrl-nv-bomba-sn"
-            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
-            <option value="">— SN —</option>
-          </select>
+        <div id="ctrl-nv-metodo-info" style="display:none;padding:8px 10px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:5px;font-size:.78rem;margin-bottom:8px;"></div>
+        <div class="nv-g2 nv-f" style="margin-bottom:10px;">
+          <div><label>Modelo da Bomba</label><select id="ctrl-nv-bomba-modelo" onchange="ctrlNvPreencherSNs(this.value)"><option value="">— Selecione —</option></select></div>
+          <div><label>N° Série da Bomba</label><select id="ctrl-nv-bomba-sn"><option value="">— SN —</option></select></div>
+        </div>
+        <div id="ctrl-nv-estoque-info" style="display:none;padding:8px 10px;background:rgba(0,170,119,.08);border-left:3px solid #0a7;border-radius:5px;font-size:.78rem;margin-bottom:8px;"></div>
+        <div class="nv-g2 nv-f" style="margin-bottom:10px;">
+          <div><label>Amostrador</label><select id="ctrl-nv-amostr-sel"><option value="">— Selecione agente primeiro —</option></select><input type="text" id="ctrl-nv-amostr" placeholder="ou digite manualmente" style="margin-top:4px;font-size:.78rem;"></div>
+          <div><label>Função / Setor</label><input type="text" id="ctrl-nv-funcao" placeholder="Ex: Pintor / Acabamento"></div>
+        </div>
+        <div class="nv-f">
+          <label>Vazão Calibrada (L/min) <button type="button" onclick="ctrlNvUsarVazaoMedia()" style="margin-left:8px;background:var(--green);color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⚡ Média do método</button></label>
+          <input type="number" step="0.001" id="ctrl-nv-vazao" placeholder="0.150" oninput="ctrlNvCalcTempoPreview()">
+          <div id="ctrl-nv-tempo-preview" style="display:none;margin-top:6px;padding:7px;background:rgba(0,170,119,.08);border-radius:5px;font-size:.8rem;text-align:center;"></div>
+          <div id="ctrl-nv-vazao-aviso"></div>
+        </div>
+        <button onclick="ctrlNvAdicionarItem()" style="margin-top:12px;width:100%;background:var(--green);color:#fff;border:none;padding:10px;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;">+ Adicionar Agente</button>
+        <div id="ctrl-nv-count" style="display:none;"></div>
+      </div>
+
+      <div id="nv-plan-calor" style="display:none;">
+        <div style="background:rgba(245,158,11,.07);border-left:3px solid var(--yellow);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Calor — IBUTG</b> — NR-15 Anexo 3. Medição nos postos de trabalho.</div>
+        <div class="nv-g2 nv-f"><div><label>Pontos de Medição</label><input type="number" id="nv-plan-pontos-calor" min="1" value="3"></div><div><label>Regime de Trabalho</label><select id="nv-plan-regime"><option>Leve — 75% trabalho / 25% descanso</option><option>Moderado — 50% / 50%</option><option>Pesado — 25% / 75%</option><option>Contínuo — sem descanso</option></select></div></div>
+      </div>
+
+      <div id="nv-plan-vibracao" style="display:none;">
+        <div style="background:rgba(167,139,250,.07);border-left:3px solid var(--purple);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Vibração</b> — NR-9 / ISO 2631.</div>
+        <div class="nv-g2 nv-f"><div><label>Tipo</label><select id="nv-plan-tipo-vibr"><option>VCI — Vibração de Corpo Inteiro</option><option>VBMA — Vibração de Mãos e Braços</option></select></div><div><label>Equipamento / Fonte</label><input type="text" id="nv-plan-fonte-vibr" placeholder="Ex: Motoniveladora"></div></div>
+      </div>
+
+      <!-- Lista agentes adicionados -->
+      <div id="ctrl-nv-lista" style="min-height:36px;margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ─── ETAPA 3: CAMPO ─── -->
+  <div id="nv-s3" class="nv-step" style="display:none;">
+
+    <!-- RUÍDO -->
+    <div id="nv-s3-ruido" style="display:none;">
+      <div class="nv-card">
+        <div class="nv-card-title">Etapa 3 — Campo · Dosimetria de Ruído</div>
+        <div class="nv-g3 nv-f" style="margin-bottom:12px;">
+          <div><label>Acompanhante da Inspeção</label><input type="text" id="nv-cr-acomp" placeholder="Nome"></div>
+          <div><label>Cargo do Acompanhante</label><input type="text" id="nv-cr-cargo-acomp" placeholder="Cargo"></div>
+          <div><label>Técnico Ocupacional</label><input type="text" id="nv-cr-tecnico" value="Matheus Costa"></div>
+        </div>
+        <div class="nv-g2 nv-f">
+          <div><label>Hora de Início</label><input type="time" id="nv-cr-hora-ini"></div>
+          <div><label>Término</label><input type="time" id="nv-cr-hora-fim"></div>
         </div>
       </div>
 
-      <div id="ctrl-nv-estoque-info" style="display:none; padding:8px 10px; background:rgba(0,170,119,.08); border-left:3px solid #0a7; border-radius:5px; font-size:.78rem; margin-bottom:8px;"></div>
+      <div class="nv-card">
+        <div class="nv-card-title">Calibração do Dosímetro</div>
+        <div class="nv-g3 nv-f">
+          <div><label>Calibrador / N° Série</label><input type="text" id="nv-cr-calibrador" placeholder="Ex: Cel-282 SN:12345"></div>
+          <div><label>Nível Acústico Inicial (dB)</label><input type="number" step="0.1" id="nv-cr-cal-ini" placeholder="94.0" oninput="nvCrCalcDesvio()"></div>
+          <div><label>Nível Acústico Final (dB)</label><input type="number" step="0.1" id="nv-cr-cal-fim" placeholder="94.0" oninput="nvCrCalcDesvio()"></div>
+        </div>
+        <div id="nv-cr-desvio-badge" style="margin-top:10px;padding:10px 14px;border-radius:8px;background:var(--surface2);font-size:.82rem;color:var(--text3);">Desvio calculado automaticamente</div>
+      </div>
 
-      <div class="row2" style="margin-top:8px;">
-        <div>
-          <label style="font-size:.7rem; color:var(--text3);">Amostrador disponível</label>
-          <select id="ctrl-nv-amostr-sel"
-            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
-            <option value="">— Selecione agente primeiro —</option>
-          </select>
-          <div style="display:flex; gap:6px; margin-top:4px;">
-            <input type="text" id="ctrl-nv-amostr" placeholder="ou digite manualmente"
-              style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:5px 8px; color:var(--text); font-size:.75rem; outline:none;">
+      <div class="nv-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="nv-card-title" style="margin:0;">Trabalhadores Monitorados</div>
+          <button onclick="nvCrAddTrab()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.81rem;font-family:inherit;">+ Trabalhador</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="nv-trab-tbl">
+            <thead><tr>
+              <th style="width:28px;">#</th>
+              <th>N° Série Dosímetro</th>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>Setor</th>
+              <th>Pausa (hh:mm)</th>
+              <th>Nível (dB)</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="nv-cr-trab-tbody">
+              <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3);">Clique em "+ Trabalhador" para adicionar</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:9px;font-size:.7rem;color:var(--text3);line-height:1.5;">⚠ Monitoramento conforme Anexo 01 NR-15 (Portaria 3214/78 MTE) e NHO-01 FUNDACENTRO.</div>
+      </div>
+
+      <div class="nv-card">
+        <div class="nv-card-title">Termo de Responsabilidade de Equipamentos</div>
+        <div style="font-size:.78rem;color:var(--text3);margin-bottom:12px;">Colaboradores que recebem os equipamentos e assinarão na devolução</div>
+        <div style="overflow-x:auto;">
+          <table class="nv-trab-tbl">
+            <thead><tr><th>#</th><th>Nome</th><th>Função</th><th>Data Entrega</th><th>Data Devolução</th><th></th></tr></thead>
+            <tbody id="nv-cr-termo-tbody"><tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Nenhum colaborador</td></tr></tbody>
+          </table>
+        </div>
+        <button onclick="nvCrAddTermo()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.79rem;font-family:inherit;">+ Colaborador</button>
+      </div>
+    </div>
+
+    <!-- QUÍMICO -->
+    <div id="nv-s3-quimico" style="display:none;">
+      <div class="nv-card">
+        <div class="nv-card-title">Etapa 3 — Campo · Identificação do Funcionário</div>
+        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
+          <div><label>Nome do Funcionário</label><input type="text" id="nv-cq-func-nome" placeholder="Nome completo"></div>
+          <div><label>Jornada de Trabalho</label><input type="text" id="nv-cq-func-jornada" placeholder="Ex: 08:00 às 17:00"></div>
+        </div>
+        <div class="nv-g3 nv-f" style="margin-bottom:12px;">
+          <div><label>Função</label><input type="text" id="nv-cq-func-funcao" placeholder="Cargo"></div>
+          <div><label>Setor</label><input type="text" id="nv-cq-func-setor" placeholder="Setor"></div>
+          <div><label>Local Específico da Atividade</label><input type="text" id="nv-cq-func-local" placeholder="Posto de trabalho"></div>
+        </div>
+        <div class="nv-f"><label>Atividade de Trabalho</label><input type="text" id="nv-cq-func-atv" placeholder="Descreva a atividade principal"></div>
+      </div>
+
+      <div class="nv-card">
+        <div class="nv-card-title">Condições Ambientais</div>
+        <div class="nv-g3 nv-f" style="margin-bottom:12px;">
+          <div><label>Ventilação</label><select id="nv-cq-ventil"><option value="">--</option><option>Natural</option><option>Motor</option><option>Refrigerada</option></select></div>
+          <div><label>Ambiente</label><select id="nv-cq-amb"><option value="">--</option><option>Aberto</option><option>Fechado</option><option>Semi-aberto</option></select></div>
+          <div><label>Meteorologia</label><select id="nv-cq-meteo"><option value="">--</option><option>Sol</option><option>Chuva</option><option>Nublado</option></select></div>
+        </div>
+        <div class="nv-g3 nv-f">
+          <div><label>Temperatura (°C)</label><input type="text" id="nv-cq-temp" placeholder="25"></div>
+          <div><label>Umidade Relativa (%)</label><input type="text" id="nv-cq-umid" placeholder="60"></div>
+          <div><label>Outras Condições</label><input type="text" id="nv-cq-outras-cond"></div>
+        </div>
+      </div>
+
+      <div class="nv-card">
+        <div class="nv-card-title">Equipamentos de Coleta</div>
+        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
+          <div><label>Bomba Gravimétrica</label><select id="nv-cq-bomba"><option value="">-- Selecionar --</option><option value="BDX-II GILLIAN">BDX-II – GILLIAN</option><option value="AIRLITE SKC">AIRLITE – SKC</option><option value="FORMIS TURAM">FORMIS – TURAM</option><option value="INLITE VENTUSPRO">INLITE – VENTUSPRO</option></select></div>
+          <div><label>ID da Bomba</label><input type="text" id="nv-cq-id-bomba" placeholder="Ex: BDX-001"></div>
+        </div>
+        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
+          <div><label>Data Calibração Bomba</label><input type="date" id="nv-cq-cal-bomba"></div>
+          <div><label>Calibrador de Fluxo</label><select id="nv-cq-calibrador"><option>DEFENDER 510M S/N:126958</option><option>TSI 4143F – 414332019013</option><option>Outro</option></select></div>
+        </div>
+        <div class="nv-f"><label>Acessórios</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px;">
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-ac-ciclone-al"> Ciclone Alumínio</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-ac-ciclone-ny"> Ciclone Nylon</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-ac-redutor"> Redutor de Vazão</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-ac-iom"> Suporte IOM</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-ac-termo"> Termo-Higrômetro</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-ac-supcass"> Suporte Cassete</label>
           </div>
         </div>
-        <div>
-          <label style="font-size:.7rem; color:var(--text3);">Função / Setor</label>
-          <input type="text" id="ctrl-nv-funcao" placeholder="Ex: Operador / Britagem"
-            style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+      </div>
+
+      <div class="nv-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="nv-card-title" style="margin:0;">Dados da Amostragem</div>
+          <button onclick="nvCqAddAmostrador()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.81rem;font-family:inherit;">+ Amostrador</button>
         </div>
+        <div class="nv-g2 nv-f" style="margin-bottom:10px;">
+          <div><label>Substância(s) Amostrada(s)</label><input type="text" id="nv-cq-substancias" placeholder="Ex: Tolueno, BTX"></div>
+          <div><label>Fração Amostrada</label><select id="nv-cq-fracao"><option value="">--</option><option>Total</option><option>Respirável</option><option>Torácica</option><option>Inalável</option></select></div>
+        </div>
+        <div class="nv-f" style="margin-bottom:10px;"><label>Tempo Exposto ao Agente</label><input type="text" id="nv-cq-tempo-exp" placeholder="Ex: 8h (jornada completa)"></div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:.79rem;min-width:860px;">
+            <thead><tr style="background:var(--surface2);">
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;">#</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);">ID Amostrador</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);">Tipo</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;">Vi (L/min)</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;">Vf (L/min)</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;">Início</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;">Final</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;">Intervalos*</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;background:#0f1929;">Vm**</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;background:#0f1929;">t (min)</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;background:#0f1929;">Vol (L)***</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);text-align:center;background:#140f09;">ΔV****</th>
+              <th style="padding:7px 5px;border:1px solid var(--border);"></th>
+            </tr></thead>
+            <tbody id="nv-cq-amostr-tbody">
+              <tr><td colspan="13" style="padding:14px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:7px;font-size:.68rem;color:var(--text3);line-height:1.7;">* Intervalos hh:mm  |  ** Vm=(Vi+Vf)/2  |  *** Vol=Vm×t  |  **** ΔV=|Vi−Vf|/Vi×100 (máx ±5%)</div>
       </div>
 
-      <div style="margin-top:8px;">
-        <label style="font-size:.7rem; color:var(--text3);">Vazão Calibrada (L/min)
-          <button type="button" onclick="ctrlNvUsarVazaoMedia()" style="margin-left:8px; background:#0a7; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">⚡ Usar média do método</button>
-        </label>
-        <input type="number" step="0.001" id="ctrl-nv-vazao" placeholder="0.150"
-          oninput="ctrlNvCalcTempoPreview()"
-          style="width:100%; background:var(--bg); border:1.5px solid var(--border); border-radius:6px; padding:7px 10px; color:var(--text); font-size:.85rem; outline:none;">
+      <div class="nv-card">
+        <div class="nv-card-title">EPI / EPC e Observações</div>
+        <div class="nv-f" style="margin-bottom:12px;"><label>EPI Utilizados</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px;">
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-luvas"> Luvas</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-oculos"> Óculos</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-capacete"> Capacete</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-prot-auric"> Protetor Auricular</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-resp"> Respirador</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-avental"> Avental</label>
+            <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.81rem;"><input type="checkbox" id="nv-cq-epi-macacao"> Macacão</label>
+          </div>
+        </div>
+        <div class="nv-f" style="margin-bottom:10px;"><label>EPC Instalados</label><input type="text" id="nv-cq-epc" placeholder="Ex: Exaustão local, ventilação diluidora"></div>
+        <div class="nv-f"><label>Observações de Campo</label><textarea id="nv-cq-obs" rows="3" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;"></textarea></div>
       </div>
-
-      <div id="ctrl-nv-tempo-preview" style="display:none; margin-top:8px; padding:8px; background:rgba(0,170,119,.08); border-radius:5px; font-size:.82rem; text-align:center;"></div>
-      <div id="ctrl-nv-vazao-aviso"></div>
-
-      <button onclick="ctrlNvAdicionarItem()"
-        style="margin-top:12px; width:100%; background:#06f; color:#fff; border:none; padding:10px; border-radius:6px; font-size:.9rem; font-weight:600; cursor:pointer;">
-        + Adicionar à lista
-      </button>
     </div>
 
-    <!-- Passo 3: Lista de itens + ações -->
-    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:14px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div style="font-size:.95rem; font-weight:600; color:var(--text);">3. Lista de medições <span id="ctrl-nv-count" style="color:var(--text3); font-weight:400;">(0)</span></div>
-        <div>
-          <button onclick="ctrlNvGerarPDF()" style="background:#e22; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer; margin-right:6px;">📄 Gerar Ficha de Campo</button>
-          <button onclick="ctrlNvSalvarComoDemanda()" style="background:#0a7; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">💾 Salvar como Demanda</button>
+    <!-- GENÉRICO (Calor / Vibração) -->
+    <div id="nv-s3-generic" style="display:none;">
+      <div class="nv-card">
+        <div class="nv-card-title">Etapa 3 — Campo</div>
+        <div class="nv-f" style="margin-bottom:12px;"><label>Acompanhante</label><input type="text" id="nv-gen-acomp" placeholder="Nome"></div>
+        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
+          <div><label>Hora de Início</label><input type="time" id="nv-gen-hora-ini"></div>
+          <div><label>Término</label><input type="time" id="nv-gen-hora-fim"></div>
         </div>
-      </div>
-      <div id="ctrl-nv-lista" style="min-height:60px;">
-        <div style="color:var(--text3); text-align:center; padding:20px; font-size:.85rem;">Nenhum agente adicionado. Use o formulário acima para incluir.</div>
+        <div class="nv-f"><label>Observações de Campo</label><textarea id="nv-gen-obs" rows="4" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas, intercorrências..."></textarea></div>
       </div>
     </div>
+  </div>
+
+  <!-- ─── ETAPA 4: EQUIPAMENTOS ─── -->
+  <div id="nv-s4" class="nv-step" style="display:none;">
+    <div class="nv-card">
+      <div class="nv-card-title">Etapa 4 — Equipamentos Utilizados</div>
+      <div id="nv-equip-ruido" style="display:none;">
+        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
+          <div><label>Dosímetro — Modelo</label><input type="text" id="nv-eq-dosim-modelo" placeholder="Ex: Larson Davis SoundTrack LxT"></div>
+          <div><label>N° Série Dosímetro</label><input type="text" id="nv-eq-dosim-sn" placeholder="SN"></div>
+        </div>
+        <div class="nv-g4 nv-f" style="margin-bottom:12px;">
+          <div><label>Calibrador — Modelo</label><input type="text" id="nv-eq-cal-modelo" placeholder="Ex: Cel-282"></div>
+          <div><label>N° Série Calibrador</label><input type="text" id="nv-eq-cal-sn" placeholder="SN"></div>
+          <div><label>Cert. Calibração</label><input type="text" id="nv-eq-dosim-cert" placeholder="N°"></div>
+          <div><label>Validade</label><input type="date" id="nv-eq-dosim-valid"></div>
+        </div>
+      </div>
+      <div id="nv-equip-quimico" style="display:none;">
+        <div class="nv-g4 nv-f" style="margin-bottom:12px;">
+          <div><label>Cert. Bomba</label><input type="text" id="nv-eq-bomba-cert" placeholder="N°"></div>
+          <div><label>Validade Bomba</label><input type="date" id="nv-eq-bomba-valid"></div>
+          <div><label>Cert. Calibrador</label><input type="text" id="nv-eq-calibrador-cert" placeholder="N°"></div>
+          <div><label>Validade Calibrador</label><input type="date" id="nv-eq-calibrador-valid"></div>
+        </div>
+      </div>
+      <div class="nv-f"><label>Observações sobre Equipamentos</label><textarea id="nv-eq-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Intercorrências, estado dos equipamentos..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- ─── ETAPA 5: VALIDAÇÕES ─── -->
+  <div id="nv-s5" class="nv-step" style="display:none;">
+    <div class="nv-card">
+      <div class="nv-card-title">Etapa 5 — Validações Automáticas</div>
+      <div id="nv-valid-results" style="min-height:80px;"><div style="text-align:center;padding:28px;color:var(--text3);font-size:.84rem;">Verificando dados preenchidos...</div></div>
+      <button onclick="nvRunValidacoes()" style="margin-top:14px;width:100%;background:#1E3A8A;color:#fff;border:none;padding:11px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">🔍 Revalidar</button>
+    </div>
+  </div>
+
+  <!-- ─── ETAPA 6: FINALIZAÇÃO ─── -->
+  <div id="nv-s6" class="nv-step" style="display:none;">
+    <div class="nv-card">
+      <div class="nv-card-title">Etapa 6 — Finalização</div>
+      <div id="nv-final-resumo" style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:16px;font-size:.84rem;color:var(--text2);">Resumo da coleta aparecerá aqui.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <button onclick="nvSalvarMedicao()" style="background:var(--green);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">✅ Salvar Medição</button>
+        <button onclick="ctrlNvGerarPDF()" style="background:#2563EB;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">📄 Ficha de Campo</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="nvGerarLaudo()" style="background:var(--orange);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Gerar Laudo</button>
+        <button onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Concluir OS</button>
+      </div>
+      <div id="nv-final-status" style="margin-top:12px;font-size:.82rem;min-height:18px;"></div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nv-nav">
+    <button class="nv-btn-bk" id="nv-btn-back" onclick="nvBack()" style="visibility:hidden;">← Voltar</button>
+    <div style="font-size:.72rem;color:var(--text3);" id="nv-step-label">Etapa 1 de 6</div>
+    <button class="nv-btn-nx" id="nv-btn-next" onclick="nvNext()">Próximo →</button>
+  </div>
   </div>
 
   <!-- Modal: cadastrar nova empresa -->
@@ -7148,6 +7431,307 @@ async function coletaQuimicoSalvar() {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// CENTRAL OPERACIONAL DE COLETA — Wizard 6 Etapas
+// ═══════════════════════════════════════════════════════════════════════
+let _nvStep  = 1;
+let _nvTipo  = '';
+let _nvCrTrabs  = [];
+let _nvCrTermos = [];
+let _nvCqAmostr = [];
+
+function nvTipoChange() {
+  _nvTipo = document.getElementById('nv-tipo')?.value || '';
+}
+
+function nvGotoStep(n) {
+  _nvStep = n;
+  for (let i = 1; i <= 6; i++) {
+    const el = document.getElementById('nv-s' + i);
+    if (el) el.style.display = (i === n) ? '' : 'none';
+  }
+  // Progress bar
+  document.querySelectorAll('#nv-prog .nv-prog-item').forEach((item, idx) => {
+    const s = idx + 1;
+    item.classList.remove('active','done');
+    if (s < n)      item.classList.add('done');
+    else if (s === n) item.classList.add('active');
+  });
+  // Nav buttons
+  const bk   = document.getElementById('nv-btn-back');
+  const nx   = document.getElementById('nv-btn-next');
+  const lbl  = document.getElementById('nv-step-label');
+  if (bk)  bk.style.visibility  = n > 1 ? 'visible' : 'hidden';
+  if (nx)  { nx.textContent = n === 5 ? 'Próximo →' : (n === 6 ? '' : 'Próximo →'); nx.style.display = n === 6 ? 'none' : ''; }
+  if (lbl) lbl.textContent = `Etapa ${n} de 6`;
+
+  if (n === 3) nvShowStep3();
+  if (n === 4) nvShowStep4();
+  if (n === 5) { nvRunValidacoes(); }
+  if (n === 6) nvGerarResumo();
+}
+
+function nvShowStep3() {
+  const t = _nvTipo;
+  document.getElementById('nv-s3-ruido').style.display    = t === 'ruido'   ? '' : 'none';
+  document.getElementById('nv-s3-quimico').style.display  = t === 'quimico' ? '' : 'none';
+  document.getElementById('nv-s3-generic').style.display  = (t !== 'ruido' && t !== 'quimico') ? '' : 'none';
+}
+
+function nvShowStep4() {
+  const t = _nvTipo;
+  document.getElementById('nv-equip-ruido').style.display   = t === 'ruido'   ? '' : 'none';
+  document.getElementById('nv-equip-quimico').style.display = t === 'quimico' ? '' : 'none';
+}
+
+function nvNext() {
+  if (!nvValidateStep(_nvStep)) return;
+  if (_nvStep < 6) nvGotoStep(_nvStep + 1);
+}
+
+function nvBack() {
+  if (_nvStep > 1) nvGotoStep(_nvStep - 1);
+}
+
+function nvValidateStep(s) {
+  if (s === 1) {
+    const emp  = document.getElementById('ctrl-nv-empresa')?.value.trim();
+    const tipo = document.getElementById('nv-tipo')?.value;
+    if (!emp)  { _showToast('⚠ Informe a empresa', 'warn'); return false; }
+    if (!tipo) { _showToast('⚠ Selecione o tipo de medição', 'warn'); return false; }
+    _nvTipo = tipo;
+    nvAdaptStep2();
+  }
+  return true;
+}
+
+function nvAdaptStep2() {
+  const t = _nvTipo;
+  document.getElementById('nv-plan-ruido').style.display    = t === 'ruido'    ? '' : 'none';
+  document.getElementById('nv-plan-quimico').style.display  = t === 'quimico'  ? '' : 'none';
+  document.getElementById('nv-plan-calor').style.display    = t === 'calor'    ? '' : 'none';
+  document.getElementById('nv-plan-vibracao').style.display = t === 'vibracao' ? '' : 'none';
+}
+
+function nvReset() {
+  _nvStep = 1; _nvTipo = '';
+  _nvCrTrabs = []; _nvCrTermos = []; _nvCqAmostr = [];
+  window._ctrlNvEmpresa = null;
+  window._ctrlNvItens   = [];
+  ['ctrl-nv-empresa','ctrl-nv-os','ctrl-nv-data','nv-unidade','nv-cidade',
+   'nv-resp-empresa','nv-prazo'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
+  const t = document.getElementById('nv-tipo'); if(t) t.value='';
+  const avt = document.getElementById('ctrl-nv-avaliador'); if(avt) avt.value='Matheus Costa';
+  nvGotoStep(1);
+  const lv = document.getElementById('ctrl-nv-lista');
+  if(lv) lv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:14px;font-size:.84rem;">Nenhum agente adicionado.</div>';
+}
+
+// ── Calibração Ruído ──────────────────────────────────────────────────
+function nvCrCalcDesvio() {
+  const ini = parseFloat(document.getElementById('nv-cr-cal-ini')?.value);
+  const fim = parseFloat(document.getElementById('nv-cr-cal-fim')?.value);
+  const badge = document.getElementById('nv-cr-desvio-badge');
+  if (!badge) return;
+  if (isNaN(ini) || isNaN(fim)) {
+    badge.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:8px;background:var(--surface2);font-size:.82rem;color:var(--text3);';
+    badge.textContent = 'Desvio calculado automaticamente';
+    return;
+  }
+  const dv = Math.abs(fim - ini);
+  const ok = dv <= 0.5;
+  badge.style.cssText = `margin-top:10px;padding:10px 14px;border-radius:8px;font-size:.82rem;background:${ok?'rgba(16,185,129,.08)':'rgba(239,68,68,.08)'};color:${ok?'var(--green)':'var(--red)'};`;
+  badge.innerHTML = `Desvio: <b>${dv.toFixed(1)} dB</b> — ${ok?'✓ Dentro do tolerado (≤ 0,5 dB)':'⚠ FORA DO TOLERADO! Calibração comprometida.'}`;
+}
+
+// ── Trabalhadores Ruído ───────────────────────────────────────────────
+function nvCrAddTrab() {
+  _nvCrTrabs.push({sn:'',nome:'',cargo:'',setor:'',pausa:'',nivel:''});
+  nvCrRenderTrabs();
+}
+function nvCrRenderTrabs() {
+  const tb = document.getElementById('nv-cr-trab-tbody'); if(!tb) return;
+  if (!_nvCrTrabs.length) { tb.innerHTML='<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3);">Clique em "+ Trabalhador" para adicionar</td></tr>'; return; }
+  tb.innerHTML = _nvCrTrabs.map((t,i) => `<tr>
+    <td style="text-align:center;padding:5px;">${i+1}</td>
+    <td><input value="${t.sn||''}" placeholder="SN Dosímetro" style="width:100px;" onchange="_nvCrTrabs[${i}].sn=this.value"></td>
+    <td><input value="${t.nome||''}" placeholder="Nome completo" style="width:150px;" onchange="_nvCrTrabs[${i}].nome=this.value"></td>
+    <td><input value="${t.cargo||''}" placeholder="Cargo" style="width:110px;" onchange="_nvCrTrabs[${i}].cargo=this.value"></td>
+    <td><input value="${t.setor||''}" placeholder="Setor" style="width:100px;" onchange="_nvCrTrabs[${i}].setor=this.value"></td>
+    <td><input value="${t.pausa||''}" placeholder="hh:mm" style="width:62px;" onchange="_nvCrTrabs[${i}].pausa=this.value"></td>
+    <td><input type="number" step="0.1" value="${t.nivel||''}" placeholder="dB" style="width:62px;" onchange="_nvCrTrabs[${i}].nivel=this.value"></td>
+    <td style="text-align:center;"><button onclick="_nvCrTrabs.splice(${i},1);nvCrRenderTrabs();" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
+  </tr>`).join('');
+}
+
+// ── Termo de Responsabilidade ─────────────────────────────────────────
+function nvCrAddTermo() {
+  _nvCrTermos.push({nome:'',funcao:'',entrega:'',devolucao:''});
+  nvCrRenderTermos();
+}
+function nvCrRenderTermos() {
+  const tb = document.getElementById('nv-cr-termo-tbody'); if(!tb) return;
+  if (!_nvCrTermos.length) { tb.innerHTML='<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Nenhum colaborador</td></tr>'; return; }
+  tb.innerHTML = _nvCrTermos.map((t,i) => `<tr>
+    <td style="text-align:center;padding:5px;">${i+1}</td>
+    <td><input value="${t.nome||''}" placeholder="Nome" style="width:140px;" onchange="_nvCrTermos[${i}].nome=this.value"></td>
+    <td><input value="${t.funcao||''}" placeholder="Função" style="width:110px;" onchange="_nvCrTermos[${i}].funcao=this.value"></td>
+    <td><input type="date" value="${t.entrega||''}" style="width:120px;" onchange="_nvCrTermos[${i}].entrega=this.value"></td>
+    <td><input type="date" value="${t.devolucao||''}" style="width:120px;" onchange="_nvCrTermos[${i}].devolucao=this.value"></td>
+    <td style="text-align:center;"><button onclick="_nvCrTermos.splice(${i},1);nvCrRenderTermos();" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
+  </tr>`).join('');
+}
+
+// ── Amostradores Químico ──────────────────────────────────────────────
+function nvCqAddAmostrador() {
+  _nvCqAmostr.push({id_amostrador:'',tipo_amostrador:'TCP',vazao_inicial:0,vazao_final:0,hora_inicio:'',hora_final:'',intervalos:''});
+  nvCqRenderAmostr();
+}
+function nvCqRenderAmostr() {
+  const tb = document.getElementById('nv-cq-amostr-tbody'); if(!tb) return;
+  if (!_nvCqAmostr.length) { tb.innerHTML='<tr><td colspan="13" style="padding:14px;text-align:center;color:var(--text3);">Nenhum amostrador.</td></tr>'; return; }
+  tb.innerHTML = _nvCqAmostr.map((am,i) => {
+    const vi=parseFloat(am.vazao_inicial)||0, vf=parseFloat(am.vazao_final)||0;
+    const vm=vi&&vf?(vi+vf)/2:0;
+    let t=0;
+    if(am.hora_inicio&&am.hora_final){const[h1,m1]=am.hora_inicio.split(':').map(Number);const[h2,m2]=am.hora_final.split(':').map(Number);t=(h2*60+m2)-(h1*60+m1);(am.intervalos||'').split(/[,;]+/).forEach(iv=>{iv=iv.trim();if(iv.includes(':')){{const[ih,im]=iv.split(':').map(Number);t-=(ih*60+im);}}});if(t<0)t=0;}
+    const vol=vm&&t?+(vm*t).toFixed(3):0;
+    const dv=vi?+(Math.abs(vi-vf)/vi*100).toFixed(2):0;
+    const dvS=dv>5?'color:#92400e;font-weight:700;background:#2a1500;':dv>0?'color:#065f46;':'';
+    const inp='background:var(--surface2);border:none;border-radius:4px;padding:5px 6px;color:var(--text);font-size:.78rem;';
+    return `<tr>
+      <td style="padding:4px 5px;border:1px solid var(--border);text-align:center;">${i+1}</td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" placeholder="ID" style="${inp}width:75px;" onchange="_nvCqAmostr[${i}].id_amostrador=this.value"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><select style="${inp}width:65px;" onchange="_nvCqAmostr[${i}].tipo_amostrador=this.value">${['TCP','FMD','IOM','MCE','PVC','OVM'].map(tp=>`<option${am.tipo_amostrador===tp?' selected':''}>${tp}</option>`).join('')}</select></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" placeholder="0.150" style="${inp}width:62px;" onchange="_nvCqAmostr[${i}].vazao_inicial=parseFloat(this.value)||0;nvCqRenderAmostr()"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" placeholder="0.150" style="${inp}width:62px;" onchange="_nvCqAmostr[${i}].vazao_final=parseFloat(this.value)||0;nvCqRenderAmostr()"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_inicio||''}" style="${inp}width:78px;" onchange="_nvCqAmostr[${i}].hora_inicio=this.value;nvCqRenderAmostr()"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_final||''}" style="${inp}width:78px;" onchange="_nvCqAmostr[${i}].hora_final=this.value;nvCqRenderAmostr()"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.intervalos||''}" placeholder="hh:mm" style="${inp}width:72px;" onchange="_nvCqAmostr[${i}].intervalos=this.value;nvCqRenderAmostr()"></td>
+      <td style="padding:4px 5px;border:1px solid var(--border);text-align:center;background:#0f1929;">${vm?vm.toFixed(3):'—'}</td>
+      <td style="padding:4px 5px;border:1px solid var(--border);text-align:center;background:#0f1929;">${t?t.toFixed(0):'—'}</td>
+      <td style="padding:4px 5px;border:1px solid var(--border);text-align:center;background:#0f1929;">${vol?vol.toFixed(3):'—'}</td>
+      <td style="padding:4px 5px;border:1px solid var(--border);text-align:center;background:#140f09;${dvS}">${dv?dv.toFixed(2)+'%'+(dv>5?' ⚠':''):'—'}</td>
+      <td style="padding:2px;border:1px solid var(--border);text-align:center;"><button onclick="_nvCqAmostr.splice(${i},1);nvCqRenderAmostr();" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Validações ────────────────────────────────────────────────────────
+function nvRunValidacoes() {
+  const tipo = _nvTipo;
+  const res  = document.getElementById('nv-valid-results');
+  if (!res) return;
+  const checks = [];
+  const emp = document.getElementById('ctrl-nv-empresa')?.value.trim();
+  checks.push({ok:!!emp, msg: emp ? `Empresa: <b>${emp}</b>` : 'Empresa não informada'});
+  checks.push({ok:!!tipo, msg: tipo ? `Tipo: <b>${tipo.toUpperCase()}</b>` : 'Tipo de medição não selecionado'});
+
+  if (tipo === 'ruido') {
+    checks.push({ok:_nvCrTrabs.length>0, msg:_nvCrTrabs.length>0?`${_nvCrTrabs.length} trabalhador(es) cadastrado(s)`:'Nenhum trabalhador adicionado'});
+    const ini=parseFloat(document.getElementById('nv-cr-cal-ini')?.value);
+    const fim=parseFloat(document.getElementById('nv-cr-cal-fim')?.value);
+    if(!isNaN(ini)&&!isNaN(fim)){const dv=Math.abs(fim-ini);checks.push({ok:dv<=0.5,warn:dv>0.5,msg:`Desvio calibração: <b>${dv.toFixed(1)} dB</b> ${dv<=0.5?'✓':'⚠ FORA do tolerado (±0,5 dB)!'}`});}
+    else checks.push({warn:true,msg:'Calibração do dosímetro não informada'});
+  }
+
+  if (tipo === 'quimico') {
+    checks.push({ok:_nvCqAmostr.length>0, msg:_nvCqAmostr.length>0?`${_nvCqAmostr.length} amostrador(es) configurado(s)`:'Nenhum amostrador adicionado'});
+    const bomba=document.getElementById('nv-cq-bomba')?.value;
+    checks.push({ok:!!bomba, msg:bomba?`Bomba: <b>${bomba}</b>`:'Bomba não selecionada'});
+    _nvCqAmostr.forEach((am,i)=>{
+      const vi=parseFloat(am.vazao_inicial)||0,vf=parseFloat(am.vazao_final)||0;
+      if(vi&&vf){const dv=Math.abs(vi-vf)/vi*100;
+        checks.push({ok:dv<=5,warn:dv>5,msg:`Amostrador #${i+1}: ΔV = <b>${dv.toFixed(2)}%</b>${dv>5?' ⚠ Ultrapassa ±5%!':' ✓'}`});}
+    });
+  }
+
+  res.innerHTML = checks.map(c=>{
+    const cls=c.ok?'nv-vok':(c.warn?'nv-vwarn':'nv-verr');
+    const icon=c.ok?'✓':(c.warn?'⚠':'✗');
+    const color=c.ok?'var(--green)':(c.warn?'var(--yellow)':'var(--red)');
+    return `<div class="${cls}"><span style="color:${color};font-weight:700;font-size:1rem;flex-shrink:0;">${icon}</span><div style="font-size:.82rem;color:var(--text2);">${c.msg}</div></div>`;
+  }).join('');
+}
+
+// ── Resumo Final ──────────────────────────────────────────────────────
+function nvGerarResumo() {
+  const el = document.getElementById('nv-final-resumo'); if(!el) return;
+  const emp  = document.getElementById('ctrl-nv-empresa')?.value || '—';
+  const tipo = _nvTipo || '—';
+  const data = document.getElementById('ctrl-nv-data')?.value || '—';
+  const tec  = document.getElementById('ctrl-nv-avaliador')?.value || '—';
+  const os   = document.getElementById('ctrl-nv-os')?.value || '—';
+  let extra  = '';
+  if (tipo==='ruido')  extra=`<br>👥 <b>${_nvCrTrabs.length}</b> trabalhador(es)`;
+  if (tipo==='quimico') extra=`<br>⚗️ <b>${_nvCqAmostr.length}</b> amostrador(es) · <b>${window._ctrlNvItens?.length||0}</b> agente(s)`;
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.82rem;">
+    <div>🏢 <b>Empresa:</b> ${emp}</div><div>📋 <b>OS:</b> ${os}</div>
+    <div>📅 <b>Data:</b> ${data}</div><div>👷 <b>Técnico:</b> ${tec}</div>
+    <div>🔬 <b>Tipo:</b> ${tipo.toUpperCase()}${extra}</div>
+  </div>`;
+}
+
+// ── Ações Finais ──────────────────────────────────────────────────────
+async function nvSalvarMedicao() {
+  try {
+    const payload = {
+      empresa_id:   window._ctrlNvEmpresa?.id || null,
+      empresa_nome: document.getElementById('ctrl-nv-empresa')?.value || '',
+      os:           document.getElementById('ctrl-nv-os')?.value || '',
+      data:         document.getElementById('ctrl-nv-data')?.value || '',
+      prazo:        document.getElementById('nv-prazo')?.value || '',
+      avaliador:    document.getElementById('ctrl-nv-avaliador')?.value || '',
+      tipo:         _nvTipo,
+      unidade:      document.getElementById('nv-unidade')?.value || '',
+      cidade:       document.getElementById('nv-cidade')?.value || '',
+      resp_empresa: document.getElementById('nv-resp-empresa')?.value || '',
+      itens:        window._ctrlNvItens || [],
+      campo_ruido: _nvTipo==='ruido' ? {
+        acomp:document.getElementById('nv-cr-acomp')?.value||'', cargo_acomp:document.getElementById('nv-cr-cargo-acomp')?.value||'',
+        tecnico:document.getElementById('nv-cr-tecnico')?.value||'', hora_ini:document.getElementById('nv-cr-hora-ini')?.value||'',
+        hora_fim:document.getElementById('nv-cr-hora-fim')?.value||'', calibrador:document.getElementById('nv-cr-calibrador')?.value||'',
+        cal_ini:document.getElementById('nv-cr-cal-ini')?.value||'', cal_fim:document.getElementById('nv-cr-cal-fim')?.value||'',
+        trabalhadores:_nvCrTrabs, termos:_nvCrTermos
+      } : null,
+      campo_quimico: _nvTipo==='quimico' ? {
+        func_nome:document.getElementById('nv-cq-func-nome')?.value||'', func_jornada:document.getElementById('nv-cq-func-jornada')?.value||'',
+        func_funcao:document.getElementById('nv-cq-func-funcao')?.value||'', func_setor:document.getElementById('nv-cq-func-setor')?.value||'',
+        ventilacao:document.getElementById('nv-cq-ventil')?.value||'', ambiente:document.getElementById('nv-cq-amb')?.value||'',
+        temperatura:document.getElementById('nv-cq-temp')?.value||'', umidade:document.getElementById('nv-cq-umid')?.value||'',
+        bomba:document.getElementById('nv-cq-bomba')?.value||'', id_bomba:document.getElementById('nv-cq-id-bomba')?.value||'',
+        substancias:document.getElementById('nv-cq-substancias')?.value||'', fracao:document.getElementById('nv-cq-fracao')?.value||'',
+        amostradores:_nvCqAmostr
+      } : null,
+    };
+    await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    document.getElementById('nv-final-status').innerHTML='<span style="color:var(--green);">✅ Medição salva com sucesso!</span>';
+    _showToast('✅ Medição salva!','ok');
+  } catch(e) {
+    document.getElementById('nv-final-status').innerHTML=`<span style="color:var(--red);">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+function nvGerarLaudo() {
+  if      (_nvTipo==='quimico') { showSection('quimico'); _showToast('Abra a Análise Química para gerar o laudo','info'); }
+  else if (_nvTipo==='calor')   { showSection('calor');   _showToast('Abra o Laudo de Calor para gerar','info'); }
+  else ctrlNvGerarPDF();
+}
+
+async function nvConcluirOS() {
+  if (!confirm('Marcar esta OS/Demanda como concluída?')) return;
+  await nvSalvarMedicao();
+  _showToast('✅ OS concluída!','ok');
+}
+
+// Inicializar wizard quando entra no sub
+const _nvOrigCtrlNvInit = typeof ctrlNvInit === 'function' ? ctrlNvInit : null;
+function ctrlNvInit() {
+  if (_nvOrigCtrlNvInit) _nvOrigCtrlNvInit();
+  document.getElementById('ctrl-nv-data').value = new Date().toISOString().slice(0,10);
+  nvGotoStep(1);
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // BUSCA GLOBAL (Ctrl+K)
