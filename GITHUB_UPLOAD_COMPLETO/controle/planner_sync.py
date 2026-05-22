@@ -14,6 +14,7 @@ Chamado periodicamente pelo APScheduler (app.py) e manualmente via endpoint.
 
 import logging
 import json
+import unicodedata
 from datetime import datetime, timezone
 
 from .graph import (
@@ -114,8 +115,10 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
         ))
         return existing['id'], 'updated'
     else:
+        # empresa_id=0 como sentinela para demandas vindas do Planner (sem empresa vinculada)
         cur = conn.execute('''
             INSERT INTO demandas (
+                empresa_id,
                 planner_task_id, planner_plan_id, planner_plan_nome,
                 planner_bucket_id, planner_bucket, planner_group_id, planner_group_nome,
                 titulo, prioridade, status, percent_complete,
@@ -123,7 +126,7 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
                 ms_assignee_id, ms_assignees_json,
                 etiquetas_json, descricao, checklist,
                 origem, criado_em, atualizado_em
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            ) VALUES (0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
         ''', (
             d['planner_task_id'], d['planner_plan_id'], d['planner_plan_nome'],
             d['planner_bucket_id'], d['planner_bucket'],
@@ -170,14 +173,19 @@ def _task_has_label(task: dict, category_ids: set) -> bool:
     return any(cid in applied and applied[cid] for cid in category_ids)
 
 
+def _normalize(s: str) -> str:
+    """Remove acentos e converte para minúsculas para comparação robusta."""
+    return unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii').lower()
+
+
 def _find_category_ids(category_map: dict, label_filter: str) -> set:
     """
     Dado o mapa {categoryN: 'nome'} do plano, encontra os IDs cujo
-    nome contém label_filter (case-insensitive).
-    Ex: label_filter='medições' → {'category1', 'category3'}
+    nome contém label_filter (case e acento insensitive).
+    Ex: label_filter='medicoes' → match com 'MEDIÇÕES'
     """
-    needle = label_filter.lower().strip()
-    return {k for k, v in category_map.items() if v and needle in v.lower()}
+    needle = _normalize(label_filter.strip())
+    return {k for k, v in category_map.items() if v and needle in _normalize(v)}
 
 
 def sync_planner(group_filter: str = None, label_filter: str = None) -> dict:
