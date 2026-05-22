@@ -1141,7 +1141,7 @@
       <span>Medi&#231;&#245;es e Amostradores</span>
     </div>
 
-    <div class="sidebar-item" data-name="demandas-os" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demandas', document.querySelector('[data-sub=demandas]')); },300);">
+    <div class="sidebar-item" data-name="demandas-os" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },300);">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
       </svg>
@@ -1168,7 +1168,7 @@
       <span>Agentes</span>
     </div>
 
-    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', document.querySelector('[data-sub=amostr]')); },300);">
+    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', null); },300);">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
       </svg>
@@ -2732,7 +2732,7 @@
       </div>
       <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório de Demandas</div>
       <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Todas as OS com status, empresa, agente e prazo. Filtrável por período e empresa.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demandas',null),300);" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Demandas →</button>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demand',null),300);" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Demandas →</button>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -2750,7 +2750,7 @@
       </div>
       <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Vencimentos Próximos</div>
       <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Amostradores no laboratório com data de vencimento se aproximando — evite cobranças extras.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('vencimento',null),300);" style="background:rgba(245,158,11,.08);color:var(--yellow);border:1px solid rgba(245,158,11,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Vencimentos →</button>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('prev',null),300);" style="background:rgba(245,158,11,.08);color:var(--yellow);border:1px solid rgba(245,158,11,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Vencimentos →</button>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -2759,7 +2759,7 @@
       </div>
       <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório por Empresa</div>
       <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Histórico completo por empresa: todas as OS, medições realizadas e status consolidado.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('porEmpresa',null),300);" style="background:rgba(167,139,250,.08);color:var(--purple);border:1px solid rgba(167,139,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver por Empresa →</button>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('empresa',null),300);" style="background:rgba(167,139,250,.08);color:var(--purple);border:1px solid rgba(167,139,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver por Empresa →</button>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -4349,7 +4349,12 @@ function ctrlInit() {
 
 function ctrlSwitchSub(name, el) {
   document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  if (el) el.classList.add('active');
+  else {
+    // encontrar o botão pelo name
+    const btn = document.querySelector(`.ctrl-subtab[onclick*="'${name}'"]`);
+    if (btn) btn.classList.add('active');
+  }
   _ctrlSubAtiva = name;
   _ctrlStatsCache = null;
   ['amostr','empresa','demand','prev','nova','import'].forEach(s => {
@@ -5866,7 +5871,7 @@ function empRender() {
     return `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .2s;"
            onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'"
-           onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('porEmpresa',null); },300);">
+           onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('empresa',null); },300);">
         <div style="width:40px;height:40px;background:var(--orange-dim);border:1px solid rgba(34,197,94,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--orange);flex-shrink:0;">
           ${(e.empresa_nome||'?')[0].toUpperCase()}
         </div>
