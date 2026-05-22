@@ -27,6 +27,7 @@ from .graph import (
     get_task_details, get_user,
 )
 from .db import get_db, init_db
+from .empresa_match import match_todas_demandas
 
 log = logging.getLogger(__name__)
 
@@ -352,6 +353,16 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
             INSERT OR REPLACE INTO ms_sync_state (chave, valor, atualizado_em)
             VALUES ('last_sync', ?, CURRENT_TIMESTAMP)
         ''', (datetime.now(timezone.utc).isoformat(),))
+
+        # ── Matching empresa após sync ────────────────────────────────
+        log.info('[planner_sync] iniciando matching de empresas...')
+        try:
+            match_stats = match_todas_demandas(conn)
+            stats['match_empresas'] = match_stats
+            log.info('[planner_sync] match empresas: %s', match_stats)
+        except Exception as e:
+            log.warning('[planner_sync] match empresas erro: %s', e)
+            stats['match_empresas'] = {'erro': str(e)}
 
         conn.execute('''
             INSERT OR REPLACE INTO ms_sync_state (chave, valor, atualizado_em)
