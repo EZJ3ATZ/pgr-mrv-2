@@ -1039,3 +1039,108 @@ def export_amostradores():
     return send_file(buf, as_attachment=True,
                      download_name=f'amostradores_{datetime.now().strftime("%Y%m%d")}.xlsx',
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+# ── Analytics / BI ───────────────────────────────────────────────────
+@controle_bp.route('/analytics')
+def analytics():
+    """Dados consolidados para o painel de BI."""
+    init_db()
+    with get_db() as conn:
+
+        # Top agentes medidos (realizados)
+        por_agente = [row_to_dict(r) for r in conn.execute("""
+            SELECT agente, COUNT(*) AS qtd
+            FROM medicoes WHERE status='realizado'
+            GROUP BY agente ORDER BY qtd DESC LIMIT 12
+        """).fetchall()]
+
+        # Por tecnico (avaliador)
+        por_tecnico = [row_to_dict(r) for r in conn.execute("""
+            SELECT avaliador, COUNT(*) AS qtd
+            FROM baixas
+            WHERE avaliador IS NOT NULL AND avaliador != ''
+            GROUP BY avaliador ORDER BY qtd DESC LIMIT 10
+        """).fetchall()]
+
+        # Top 10 empresas por demandas
+        top_empresas = [row_to_dict(r) for r in conn.execute("""
+            SELECT e.nome,
+                   COUNT(d.id) AS total,
+                   SUM(CASE WHEN d.status='concluida' THEN 1 ELSE 0 END) AS concluidas,
+                   SUM(CASE WHEN d.status!='concluida' THEN 1 ELSE 0 END) AS pendentes
+            FROM demandas d
+            JOIN empresas e ON e.id = d.empresa_id
+            GROUP BY e.id, e.nome
+            ORDER BY total DESC LIMIT 10
+        """).fetchall()]
+
+        # Status amostradores
+        status_rows = conn.execute("""
+            SELECT status, COUNT(*) AS qtd FROM amostradores GROUP BY status
+        """).fetchall()
+        status_amostr = {r['status']: r['qtd'] for r in status_rows}
+
+        # Status demandas
+        dem_rows = conn.execute("""
+            SELECT status, COUNT(*) AS qtd FROM demandas GROUP BY status
+        """).fetchall()
+        dem_por_status = {r['status']: r['qtd'] for r in dem_rows}
+
+        # Evolucao mensal (ultimos 12 meses)
+        evolucao = [row_to_dict(r) for r in conn.execute("""
+            SELECT strftime('%Y-%m', data_medicao) AS mes, COUNT(*) AS qtd
+            FROM baixas
+            WHERE data_medicao IS NOT NULL
+              AND data_medicao >= date('now','-12 months')
+            GROUP BY mes ORDER BY mes
+        """).fetchall()]
+
+        # Demandas abertas por mes
+        demandas_por_mes = [row_to_dict(r) for r in conn.execute("""
+            SELECT strftime('%Y-%m', criado_em) AS mes, COUNT(*) AS qtd
+            FROM demandas
+            WHERE criado_em IS NOT NULL
+              AND criado_em >= date('now','-12 months')
+            GROUP BY mes ORDER BY mes
+        """).fetchall()]
+
+        # Amostradores por tipo
+        por_tipo_amostrador = [row_to_dict(r) for r in conn.execute("""
+            SELECT tipo AS tipo_amostrador, COUNT(*) AS qtd
+            FROM amostradores GROUP BY tipo ORDER BY qtd DESC
+        """).fetchall()]
+
+        # KPIs
+        total_dem  = sum(dem_por_status.values()) or 1
+        concluidas = dem_por_status.get('concluida', 0)
+        taxa_conclusao = round(concluidas / total_dem * 100, 1)
+
+        dem_atrasadas = conn.execute("""
+            SELECT COUNT(*) AS c FROM demandas
+            WHERE status != 'concluida' AND prazo < date('now')
+        """).fetchone()['c']
+
+        total_med = conn.execute(
+            "SELECT COUNT(*) AS c FROM medicoes WHERE status='realizado'"
+        ).fetchone()['c']
+
+        kpis = {
+            'taxa_conclusao':     taxa_conclusao,
+            'demandas_atrasadas': dem_atrasadas,
+            'total_medicoes':     total_med,
+            'total_demandas':     sum(dem_por_status.values()),
+            'concluidas':         concluidas,
+        }
+
+    return jsonify({
+        'por_agente':         por_agente,
+        'por_tecnico':        por_tecnico,
+        'top_empresas':       top_empresas,
+        'status_amostradores': status_amostr,
+        'dem_por_status':     dem_por_status,
+        'evolucao_mensal':    evolucao,
+        'demandas_por_mes':   demandas_por_mes,
+        'por_tipo_amostrador': por_tipo_amostrador,
+        'kpis':               kpis,
+    })
