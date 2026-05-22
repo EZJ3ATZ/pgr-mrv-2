@@ -307,12 +307,18 @@ def list_demandas(filtros=None):
         sql += (" AND d.status != 'concluida'"
                 " AND d.prazo IS NOT NULL AND d.prazo != ''"
                 " AND julianday(d.prazo) < julianday('now')")
-    # Ordenar: pendentes com prazo mais proximo primeiro
-    sql += """ ORDER BY
-        CASE WHEN d.status='concluida' THEN 1 ELSE 0 END,
-        CASE WHEN d.prazo IS NULL OR d.prazo = '' THEN 1 ELSE 0 END,
-        d.prazo ASC,
-        d.criado_em ASC LIMIT 2000"""
+    # Ordenar conforme filtro
+    ordem = f.get('ordem', 'prazo')
+    if ordem == 'empresa':
+        sql += """ ORDER BY e.nome ASC, d.criado_em ASC LIMIT 2000"""
+    elif ordem == 'data_criacao':
+        sql += """ ORDER BY d.criado_em ASC LIMIT 2000"""
+    else:  # prazo (padrão)
+        sql += """ ORDER BY
+            CASE WHEN d.status='concluida' THEN 1 ELSE 0 END,
+            CASE WHEN d.prazo IS NULL OR d.prazo = '' THEN 1 ELSE 0 END,
+            d.prazo ASC,
+            d.criado_em ASC LIMIT 2000"""
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
@@ -359,9 +365,13 @@ def list_demandas_por_empresa(filtros=None):
         sql += " AND d.status = 'concluida'"
     if f.get('empresa'):
         sql += ' AND LOWER(e.nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
-    sql += """ GROUP BY LOWER(TRIM(e.nome))
-        ORDER BY demandas_pendentes DESC, demanda_mais_antiga ASC
-        LIMIT 1000"""
+    ordem = f.get('ordem', 'nome')
+    order_clause = {
+        'nome':  'empresa_nome ASC',
+        'data':  'demanda_mais_antiga ASC',
+        'pend':  'demandas_pendentes DESC, demanda_mais_antiga ASC',
+    }.get(ordem, 'empresa_nome ASC')
+    sql += f" GROUP BY LOWER(TRIM(e.nome)) ORDER BY {order_clause} LIMIT 1000"
     with get_db() as conn:
         rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
         for r in rows:
@@ -410,19 +420,36 @@ def mesclar_empresas_duplicatas():
 
 
 def get_empresa_demandas(empresa_id):
-    """Retorna empresa + todas suas demandas + medicoes."""
+    """Retorna empresa + TODAS as demandas de empresas com o mesmo nome (consolida duplicatas).
+    Isso resolve o caso em que importações diferentes criaram registros duplicados."""
     with get_db() as conn:
         emp = conn.execute('SELECT * FROM empresas WHERE id=?', (empresa_id,)).fetchone()
         if not emp: return None
         emp = row_to_dict(emp)
-        dems = [row_to_dict(r) for r in conn.execute("""
+        # Buscar todos os IDs de empresas com o mesmo nome (case-insensitive)
+        nome_key = (emp.get('nome') or '').strip().lower()
+        ids_iguais = [r['id'] for r in conn.execute(
+            "SELECT id FROM empresas WHERE LOWER(TRIM(nome))=?", (nome_key,)).fetchall()]
+        if not ids_iguais:
+            ids_iguais = [empresa_id]
+        ph = ','.join('?' * len(ids_iguais))
+        dems = [row_to_dict(r) for r in conn.execute(f"""
             SELECT d.*,
+                   e.nome AS empresa_nome,
                    (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id) AS total_medicoes,
                    (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id AND m.status='realizado') AS realizadas,
                    CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta
-            FROM demandas d WHERE d.empresa_id=?
-            ORDER BY d.criado_em DESC
-        """, (empresa_id,)).fetchall()]
+            FROM demandas d
+            JOIN empresas e ON e.id = d.empresa_id
+            WHERE d.empresa_id IN ({ph})
+            ORDER BY d.status ASC, d.criado_em DESC
+        """, ids_iguais).fetchall()]
+        # Incluir medicoes pendentes de cada demanda
+        for d in dems:
+            d['medicoes_pendentes'] = [row_to_dict(r) for r in conn.execute(
+                "SELECT id, agente, tipo_amostrador, qtd_pontos_feita, qtd_pontos_prevista FROM medicoes "
+                "WHERE demanda_id=? AND status!='realizado' ORDER BY agente",
+                (d['id'],)).fetchall()]
         emp['demandas'] = dems
         return emp
 
@@ -533,6 +560,8 @@ def stats_dashboard():
             "SELECT COUNT(*) AS c FROM demandas WHERE status='concluida'").fetchone()['c']
         stats['medicoes_pendentes'] = conn.execute(
             "SELECT COUNT(*) AS c FROM medicoes WHERE status='pendente'").fetchone()['c']
+        stats['empresas_ativas'] = conn.execute(
+            "SELECT COUNT(DISTINCT empresa_id) AS c FROM demandas WHERE status!='concluida'").fetchone()['c']
         # Vencimento de amostradores no laboratorio
         venc = contar_vencendo()
         stats.update({
