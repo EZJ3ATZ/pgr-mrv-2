@@ -508,18 +508,26 @@ def _buscar_metodos_agente(nome_agente):
     if key_upper in guia.get('by_name', {}):
         cas = guia['by_name'][key_upper]
         return guia.get('by_cas', {}).get(cas, [])
-    # Busca parcial — evita matches espúrios em substrings curtas
+
+    # Normaliza espaço, newlines e vírgulas para comparação fuzzy
+    def _norm(s):
+        s = re.sub(r',\s*', ' ', s)  # vírgulas → espaço
+        return re.sub(r'[\s]+', ' ', s.strip())
+
+    key_norm = _norm(key_upper)
+    # Busca parcial normalizada — evita matches espúrios em substrings curtas
     best = None
     for nome_upper, cas in guia.get('by_name', {}).items():
-        if key_upper in nome_upper:
-            # prefere match mais curto (mais específico)
-            if best is None or len(nome_upper) < len(best[0]):
-                best = (nome_upper, cas)
+        nome_norm = _norm(nome_upper)
+        if key_norm in nome_norm:
+            if best is None or len(nome_norm) < len(best[0]):
+                best = (nome_norm, cas)
     if best:
         return guia.get('by_cas', {}).get(best[1], [])
-    # Busca inversa: nome do guia dentro da chave
+    # Busca inversa normalizada: nome do guia dentro da chave
     for nome_upper, cas in guia.get('by_name', {}).items():
-        if len(nome_upper) > 4 and nome_upper in key_upper:
+        nome_norm = _norm(nome_upper)
+        if len(nome_norm) > 6 and nome_norm in key_norm:
             return guia.get('by_cas', {}).get(cas, [])
     return []
 
