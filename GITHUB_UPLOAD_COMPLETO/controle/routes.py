@@ -1144,3 +1144,60 @@ def analytics():
         'por_tipo_amostrador': por_tipo_amostrador,
         'kpis':               kpis,
     })
+
+
+# ── Coletas de Campo ──────────────────────────────────────────────────
+from .db import (list_coletas_ruido, get_coleta_ruido, save_coleta_ruido,
+                 list_coletas_quimico, get_coleta_quimico, save_coleta_quimico)
+
+@controle_bp.route('/coletas/ruido')
+def api_list_coletas_ruido():
+    init_db()
+    return jsonify(list_coletas_ruido(request.args.to_dict()))
+
+@controle_bp.route('/coletas/ruido', methods=['POST'])
+def api_save_coleta_ruido():
+    init_db()
+    d = request.json or {}
+    cid = save_coleta_ruido(d)
+    return jsonify({'ok': True, 'id': cid})
+
+@controle_bp.route('/coletas/ruido/<int:cid>')
+def api_get_coleta_ruido(cid):
+    init_db()
+    c = get_coleta_ruido(cid)
+    return (jsonify(c), 200) if c else (jsonify({'erro': 'nao encontrada'}), 404)
+
+@controle_bp.route('/coletas/ruido/<int:cid>', methods=['DELETE'])
+def api_del_coleta_ruido(cid):
+    init_db()
+    with get_db() as conn:
+        conn.execute('DELETE FROM coletas_ruido_func WHERE coleta_id=?', (cid,))
+        conn.execute('DELETE FROM coletas_ruido WHERE id=?', (cid,))
+    return jsonify({'ok': True})
+
+@controle_bp.route('/coletas/quimico')
+def api_list_coletas_quimico():
+    init_db()
+    return jsonify(list_coletas_quimico(request.args.to_dict()))
+
+@controle_bp.route('/coletas/quimico', methods=['POST'])
+def api_save_coleta_quimico():
+    init_db()
+    d = request.json or {}
+    cid = save_coleta_quimico(d)
+    return jsonify({'ok': True, 'id': cid})
+
+@controle_bp.route('/coletas/quimico/<int:cid>')
+def api_get_coleta_quimico(cid):
+    init_db()
+    c = get_coleta_quimico(cid)
+    return (jsonify(c), 200) if c else (jsonify({'erro': 'nao encontrada'}), 404)
+
+@controle_bp.route('/coletas/quimico/<int:cid>', methods=['DELETE'])
+def api_del_coleta_quimico(cid):
+    init_db()
+    with get_db() as conn:
+        conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
+        conn.execute('DELETE FROM coletas_quimico WHERE id=?', (cid,))
+    return jsonify({'ok': True})
