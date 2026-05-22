@@ -554,6 +554,10 @@ def stats_dashboard():
             "SELECT COUNT(*) AS c FROM amostradores WHERE status='Laboratorio'").fetchone()['c']
         stats['reservados'] = conn.execute(
             "SELECT COUNT(*) AS c FROM amostradores WHERE status='Reservado'").fetchone()['c']
+        stats['devolvidos'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Devolvido'").fetchone()['c']
+        stats['medicoes_realizadas'] = conn.execute(
+            "SELECT COUNT(*) AS c FROM medicoes WHERE status='realizado'").fetchone()['c']
         stats['demandas_pendentes'] = conn.execute(
             "SELECT COUNT(*) AS c FROM demandas WHERE status!='concluida'").fetchone()['c']
         stats['demandas_concluidas'] = conn.execute(
