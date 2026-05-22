@@ -6,6 +6,7 @@
   <title>OCUPACIONAL ENGENHARIA — Plataforma de Engenharia Ocupacional</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1194,6 +1195,13 @@
       </svg>
       <span>Indicadores</span>
     </div>
+
+    <div class="sidebar-item" data-name="bi" onclick="goToTab('bi')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path stroke-linecap="round" stroke-linejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+      </svg>
+      <span>Analytics BI</span>
+    </div>
   </div>
 
   <div class="sidebar-divider"></div>
@@ -1219,6 +1227,12 @@
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
     </svg>
     <span>Nova Medi&#231;&#227;o</span>
+  </div>
+
+  <div style="padding:12px 16px 10px;border-top:1px solid var(--border);margin-top:4px;">
+    <div style="font-size:.6rem;color:var(--text3);line-height:1.5;text-align:center;letter-spacing:.03em;">
+      Elaborado por<br><span style="color:var(--text2);font-weight:500;">Matheus Vin&#237;cius Costa</span>
+    </div>
   </div>
 
 </aside>
@@ -2936,6 +2950,103 @@
 </div>
 </div>
 
+<!-- ══ Painel ANALYTICS BI ══════════════════════════════════════════════ -->
+<div id="tab-bi" class="tab-panel">
+<div class="page" style="max-width:1200px;">
+  <div class="page-head">
+    <div>
+      <div class="page-title">Analytics BI</div>
+      <div class="page-sub">Painel anal&#237;tico empresarial — dados em tempo real</div>
+    </div>
+    <button onclick="biLoad()" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      Atualizar
+    </button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div id="bi-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
+      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Taxa de Conclus&#227;o</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--orange);" id="bi-taxa">—%</div>
+      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">demandas conclu&#237;das</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
+      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Atrasadas</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--red);" id="bi-atrasadas">—</div>
+      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">prazo vencido</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
+      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Medi&#231;&#245;es Realizadas</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--blue);" id="bi-med">—</div>
+      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">total no sistema</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
+      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Total Demandas</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--text);" id="bi-total-dem">—</div>
+      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">registradas</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
+      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Conclu&#237;das</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--green);" id="bi-conc">—</div>
+      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">demandas finalizadas</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Evolucao + Status Demandas -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Evolu&#231;&#227;o Mensal de Medi&#231;&#245;es</div>
+      <div style="position:relative;height:200px;"><canvas id="bi-chart-evolucao"></canvas></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Status das Demandas</div>
+      <div style="position:relative;height:200px;"><canvas id="bi-chart-status-dem"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: Top empresas + Status amostradores -->
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Top 10 Empresas por Demandas</div>
+      <div style="position:relative;height:260px;"><canvas id="bi-chart-empresas"></canvas></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Status dos Amostradores</div>
+      <div style="position:relative;height:260px;"><canvas id="bi-chart-status-am"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 3: Por tecnico + Top agentes -->
+  <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-bottom:16px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Medi&#231;&#245;es por T&#233;cnico</div>
+      <div style="position:relative;height:220px;"><canvas id="bi-chart-tecnico"></canvas></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Top Agentes Qu&#237;micos Medidos</div>
+      <div style="position:relative;height:220px;"><canvas id="bi-chart-agentes"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 4: Tipo amostrador + Demandas abertas por mes -->
+  <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:16px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Distribui&#231;&#227;o por Tipo de Amostrador</div>
+      <div style="position:relative;height:220px;"><canvas id="bi-chart-tipo-am"></canvas></div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Demandas Abertas por M&#234;s</div>
+      <div style="position:relative;height:220px;"><canvas id="bi-chart-dem-mes"></canvas></div>
+    </div>
+  </div>
+
+  <div id="bi-loading" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:.85rem;">Carregando dados...</div>
+  <div id="bi-empty" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:.85rem;">Nenhum dado dispon&#237;vel ainda. Importe demandas e registre medi&#231;&#245;es para ver os gr&#225;ficos.</div>
+
+</div>
+</div>
+
 </main><!-- /main-content -->
 </div><!-- /layout -->
 
@@ -2958,6 +3069,7 @@ function goToTab(name) {
   if (name === 'empresas') empLoad();
   if (name === 'agentes')  agLoad();
   if (name === 'indicadores') indLoad();
+  if (name === 'bi') biLoad();
 }
 
 // Compatibilidade: switchTab ainda funciona (chamado em alguns lugares)
@@ -5953,7 +6065,10 @@ function agFiltrar() {
 // ═══════════════════════════════════════════════════════════════════════
 async function indLoad() {
   try {
-    const r = await ctrlFetch('/controle/stats');
+    const [r, an] = await Promise.all([
+      ctrlFetch('/controle/stats'),
+      ctrlFetch('/controle/analytics').catch(()=>null)
+    ]);
     const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=(v??'—'); };
     set('ind-total-med',      (r.medicoes_realizadas||0) + (r.medicoes_pendentes||0));
     set('ind-amostr-ativos',  (r.estoque||0) + (r.laboratorio||0));
@@ -5961,33 +6076,36 @@ async function indLoad() {
     set('ind-dem-abertas',    r.demandas_pendentes||0);
     set('ind-empresas',       r.empresas_ativas||0);
 
-    // Distribuição por tipo
+    // Distribuição por tipo (agente) — usa analytics se disponível
     const dist = document.getElementById('ind-dist');
-    if (dist && r.por_agente) {
-      const total = r.por_agente.reduce((s,a)=>s+a.qtd,0)||1;
-      dist.innerHTML = r.por_agente.slice(0,8).map(a => {
+    const agentes = an && an.por_agente && an.por_agente.length ? an.por_agente : null;
+    if (dist && agentes) {
+      const total = agentes.reduce((s,a)=>s+a.qtd,0)||1;
+      dist.innerHTML = agentes.slice(0,10).map((a,i) => {
         const pct = Math.round(a.qtd/total*100);
+        const hue = [145,210,260,45,180,320,90,20,160,240][i%10];
         return `
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="font-size:.78rem;color:var(--text2);width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.agente||'Outros'}</div>
-            <div style="flex:1;height:6px;background:var(--surface3);border-radius:4px;overflow:hidden;">
-              <div style="height:100%;width:${pct}%;background:var(--orange);border-radius:4px;"></div>
+            <div style="font-size:.75rem;color:var(--text2);width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.agente||'Outros'}">${a.agente||'Outros'}</div>
+            <div style="flex:1;height:7px;background:var(--surface3);border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:hsl(${hue},70%,55%);border-radius:4px;transition:width .6s ease;"></div>
             </div>
-            <div style="font-size:.75rem;color:var(--text3);width:42px;text-align:right;">${a.qtd} (${pct}%)</div>
+            <div style="font-size:.72rem;color:var(--text3);width:52px;text-align:right;">${a.qtd} &middot; ${pct}%</div>
           </div>`;
       }).join('');
     } else if (dist) {
-      dist.innerHTML = '<div style="color:var(--text3);font-size:.8rem;">Dados de distribuição não disponíveis.</div>';
+      dist.innerHTML = '<div style="color:var(--text3);font-size:.8rem;">Registre medi&#231;&#245;es para ver a distribui&#231;&#227;o.</div>';
     }
 
     // Status amostradores
     const sa = document.getElementById('ind-status-amostr');
     if (sa) {
+      const amSt = (an && an.status_amostradores) || {};
       const statuses = [
-        {label:'Estoque', val: r.estoque||0, cor:'var(--green)', bg:'rgba(16,185,129,.1)'},
-        {label:'Laboratório', val: r.laboratorio||0, cor:'var(--blue)', bg:'rgba(96,165,250,.1)'},
-        {label:'Reservados', val: r.reservados||0, cor:'var(--yellow)', bg:'rgba(245,158,11,.1)'},
-        {label:'Devolvidos', val: r.devolvidos||0, cor:'var(--text3)', bg:'var(--surface3)'},
+        {label:'Estoque',      val: amSt['Estoque']    ?? r.estoque    ?? 0, cor:'var(--green)',  bg:'rgba(16,185,129,.1)'},
+        {label:'Laborat&#243;rio', val: amSt['Laboratorio'] ?? r.laboratorio ?? 0, cor:'var(--blue)',   bg:'rgba(96,165,250,.1)'},
+        {label:'Reservados',   val: amSt['Reservado']  ?? r.reservados ?? 0, cor:'var(--yellow)', bg:'rgba(245,158,11,.1)'},
+        {label:'Devolvidos',   val: amSt['Devolvido']  ?? r.devolvidos ?? 0, cor:'var(--text3)',  bg:'var(--surface3)'},
       ];
       sa.innerHTML = statuses.map(s => `
         <div style="background:${s.bg};border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px 20px;min-width:120px;">
@@ -5997,6 +6115,238 @@ async function indLoad() {
       `).join('');
     }
   } catch(e) { console.error('indLoad:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ANALYTICS BI
+// ═══════════════════════════════════════════════════════════════════════
+let _biCharts = {};
+
+function _biDefaults() {
+  if (!window.Chart) return;
+  Chart.defaults.color = '#828DA8';
+  Chart.defaults.font.family = 'Inter, sans-serif';
+  Chart.defaults.font.size = 11;
+  Chart.defaults.plugins.legend.labels.boxWidth = 12;
+  Chart.defaults.plugins.legend.labels.padding = 14;
+}
+
+function _biDestroy(id) {
+  if (_biCharts[id]) { _biCharts[id].destroy(); delete _biCharts[id]; }
+}
+
+function _biMes(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return (meses[parseInt(m,10)-1] || m) + '/' + y.slice(2);
+}
+
+function _biPreencheMeses(arr) {
+  if (!arr || !arr.length) return [];
+  const map = {};
+  arr.forEach(r => { map[r.mes] = r.qtd; });
+  const sorted = Object.keys(map).sort();
+  const result = [];
+  let cur = new Date(sorted[0] + '-01');
+  const end = new Date(sorted[sorted.length-1] + '-01');
+  while (cur <= end) {
+    const key = cur.toISOString().slice(0,7);
+    result.push({mes: key, qtd: map[key] || 0});
+    cur.setMonth(cur.getMonth()+1);
+  }
+  return result;
+}
+
+async function biLoad() {
+  if (!window.Chart) { console.warn('Chart.js nao carregado'); return; }
+  _biDefaults();
+  const loadEl  = document.getElementById('bi-loading');
+  const emptyEl = document.getElementById('bi-empty');
+  if (loadEl)  loadEl.style.display  = 'block';
+  if (emptyEl) emptyEl.style.display = 'none';
+  try {
+    const d = await ctrlFetch('/controle/analytics');
+    if (loadEl) loadEl.style.display = 'none';
+
+    const k = d.kpis || {};
+    const s = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v ?? '—'; };
+    s('bi-taxa',      (k.taxa_conclusao ?? '—') + '%');
+    s('bi-atrasadas', k.demandas_atrasadas ?? '—');
+    s('bi-med',       k.total_medicoes ?? '—');
+    s('bi-total-dem', k.total_demandas ?? '—');
+    s('bi-conc',      k.concluidas ?? '—');
+
+    const verde   = '#22C55E';
+    const azul    = '#60A5FA';
+    const roxo    = '#A78BFA';
+    const amarelo = '#F59E0B';
+    const verde2  = '#10B981';
+    const vermelho= '#EF4444';
+    const palette = [verde,azul,roxo,amarelo,verde2,'#FB923C','#F472B6','#34D399','#818CF8','#FBBF24','#38BDF8','#A3E635'];
+    const gridClr = '#1C2236';
+    const tickClr = '#485068';
+
+    // 1. Evolucao mensal
+    _biDestroy('evolucao');
+    const evArr = _biPreencheMeses(d.evolucao_mensal || []);
+    _biCharts['evolucao'] = new Chart(document.getElementById('bi-chart-evolucao'), {
+      type: 'line',
+      data: {
+        labels: evArr.map(r => _biMes(r.mes)),
+        datasets: [{
+          label: 'Medicoes realizadas',
+          data: evArr.map(r => r.qtd),
+          borderColor: verde, backgroundColor: 'rgba(34,197,94,.12)',
+          fill: true, tension: 0.4,
+          pointBackgroundColor: verde, pointRadius: 4, pointHoverRadius: 6,
+        }]
+      },
+      options: { responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{color:gridClr},ticks:{color:tickClr,maxRotation:45}},
+          y:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true}
+        }
+      }
+    });
+
+    // 2. Status demandas (donut)
+    _biDestroy('status-dem');
+    const demSt  = d.dem_por_status || {};
+    const demLbl = Object.keys(demSt);
+    const demTr  = {pendente:'Pendente',concluida:'Concluida',em_andamento:'Em Andamento',cancelada:'Cancelada'};
+    _biCharts['status-dem'] = new Chart(document.getElementById('bi-chart-status-dem'), {
+      type: 'doughnut',
+      data: {
+        labels: demLbl.map(l => demTr[l] || l),
+        datasets:[{data:demLbl.map(l=>demSt[l]),
+          backgroundColor:[verde2,verde,azul,vermelho,roxo,amarelo],
+          borderColor:'#0E1118',borderWidth:2,hoverOffset:6}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom'},
+          tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}`}}},
+        cutout:'62%'}
+    });
+
+    // 3. Top empresas (bar horizontal stacked)
+    _biDestroy('empresas');
+    const emp = (d.top_empresas || []).slice(0,10).reverse();
+    _biCharts['empresas'] = new Chart(document.getElementById('bi-chart-empresas'), {
+      type:'bar',
+      data:{
+        labels:emp.map(e=>e.nome.length>28?e.nome.slice(0,26)+'..':e.nome),
+        datasets:[
+          {label:'Concluidas',data:emp.map(e=>e.concluidas||0),backgroundColor:verde2,borderRadius:3},
+          {label:'Pendentes', data:emp.map(e=>e.pendentes||0), backgroundColor:amarelo,borderRadius:3},
+        ]
+      },
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top'}},
+        scales:{
+          x:{stacked:true,grid:{color:gridClr},ticks:{color:tickClr,precision:0}},
+          y:{stacked:true,grid:{display:false},ticks:{color:'#828DA8',font:{size:10}}}
+        }
+      }
+    });
+
+    // 4. Status amostradores (donut)
+    _biDestroy('status-am');
+    const amSt  = d.status_amostradores || {};
+    const amLbl = Object.keys(amSt);
+    const amClr = {Estoque:verde2,Laboratorio:azul,Reservado:amarelo,Devolvido:'#485068'};
+    _biCharts['status-am'] = new Chart(document.getElementById('bi-chart-status-am'), {
+      type:'doughnut',
+      data:{
+        labels:amLbl,
+        datasets:[{data:amLbl.map(l=>amSt[l]),
+          backgroundColor:amLbl.map(l=>amClr[l]||roxo),
+          borderColor:'#0E1118',borderWidth:2,hoverOffset:6}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom'},
+          tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}`}}},
+        cutout:'60%'}
+    });
+
+    // 5. Por tecnico (bar vertical)
+    _biDestroy('tecnico');
+    const tec = d.por_tecnico || [];
+    _biCharts['tecnico'] = new Chart(document.getElementById('bi-chart-tecnico'), {
+      type:'bar',
+      data:{
+        labels:tec.map(t=>t.avaliador||'N/I'),
+        datasets:[{label:'Medicoes',data:tec.map(t=>t.qtd),
+          backgroundColor:palette,borderRadius:5,borderSkipped:false}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:'#828DA8'}},
+          y:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true}
+        }
+      }
+    });
+
+    // 6. Top agentes (bar horizontal)
+    _biDestroy('agentes-bi');
+    const ag = (d.por_agente || []).slice(0,10).reverse();
+    _biCharts['agentes-bi'] = new Chart(document.getElementById('bi-chart-agentes'), {
+      type:'bar',
+      data:{
+        labels:ag.map(a=>a.agente?(a.agente.length>30?a.agente.slice(0,28)+'..':a.agente):'?'),
+        datasets:[{label:'Medicoes',data:ag.map(a=>a.qtd),
+          backgroundColor:ag.map((_,i)=>palette[i%palette.length]),borderRadius:4}]
+      },
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{color:gridClr},ticks:{color:tickClr,precision:0}},
+          y:{grid:{display:false},ticks:{color:'#828DA8',font:{size:10}}}
+        }
+      }
+    });
+
+    // 7. Tipo amostrador (pie)
+    _biDestroy('tipo-am');
+    const ta = d.por_tipo_amostrador || [];
+    _biCharts['tipo-am'] = new Chart(document.getElementById('bi-chart-tipo-am'), {
+      type:'pie',
+      data:{
+        labels:ta.map(t=>t.tipo_amostrador||'N/I'),
+        datasets:[{data:ta.map(t=>t.qtd),
+          backgroundColor:palette,borderColor:'#0E1118',borderWidth:2,hoverOffset:6}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{font:{size:10}}}}}
+    });
+
+    // 8. Demandas por mes (bar)
+    _biDestroy('dem-mes');
+    const dmArr = _biPreencheMeses(d.demandas_por_mes || []);
+    _biCharts['dem-mes'] = new Chart(document.getElementById('bi-chart-dem-mes'), {
+      type:'bar',
+      data:{
+        labels:dmArr.map(r=>_biMes(r.mes)),
+        datasets:[{label:'Demandas abertas',data:dmArr.map(r=>r.qtd),
+          backgroundColor:'rgba(167,139,250,.7)',borderColor:roxo,
+          borderWidth:1,borderRadius:4}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:tickClr,maxRotation:45}},
+          y:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true}
+        }
+      }
+    });
+
+  } catch(e) {
+    if (loadEl) loadEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    console.error('biLoad:', e);
+  }
 }
 </script>
 </body>
