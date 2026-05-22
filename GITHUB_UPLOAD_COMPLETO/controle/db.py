@@ -214,6 +214,7 @@ CREATE TABLE IF NOT EXISTS coletas_quimico_amostr (
     id_amostrador   TEXT,
     tipo_amostrador TEXT,
     substancia      TEXT,
+    bomba           TEXT,
     vazao_inicial   REAL,
     vazao_final     REAL,
     vazao_media     REAL,
@@ -313,6 +314,14 @@ def _migrate(conn):
                 conn.execute(f'ALTER TABLE demandas ADD COLUMN {col} {tipo}')
             except Exception as e:
                 print(f'[migrate] demandas.{col}: {e}')
+
+    # ── coletas_quimico_amostr: bomba por amostrador ──
+    cols_cqa = [r['name'] for r in conn.execute('PRAGMA table_info(coletas_quimico_amostr)').fetchall()]
+    if 'bomba' not in cols_cqa:
+        try:
+            conn.execute('ALTER TABLE coletas_quimico_amostr ADD COLUMN bomba TEXT')
+        except Exception as e:
+            print(f'[migrate] coletas_quimico_amostr.bomba: {e}')
 
     # ── amostradores: controle de vencimento no laboratorio ──
     cols_am = [r['name'] for r in conn.execute('PRAGMA table_info(amostradores)').fetchall()]
@@ -802,12 +811,12 @@ def save_coleta_quimico(data):
                 dv  = round(abs(vi - vf) / vi * 100, 2) if vi else 0
                 conn.execute(
                     'INSERT INTO coletas_quimico_amostr '
-                    '(coleta_id,seq,id_amostrador,tipo_amostrador,substancia,'
+                    '(coleta_id,seq,id_amostrador,tipo_amostrador,substancia,bomba,'
                     'vazao_inicial,vazao_final,vazao_media,hora_inicio,hora_final,'
                     'intervalos,tempo_min,volume_L,variacao_vazao,status_variacao) '
-                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (cid, i, am.get('id_amostrador',''), am.get('tipo_amostrador',''),
-                     am.get('substancia',''), vi, vf, round(vm,3),
+                     am.get('substancia',''), am.get('bomba',''), vi, vf, round(vm,3),
                      am.get('hora_inicio',''), am.get('hora_final',''),
                      am.get('intervalos',''), t, vol, dv,
                      'divergente' if dv > 5 else 'conforme'))
