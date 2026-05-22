@@ -137,10 +137,15 @@ CREATE TABLE IF NOT EXISTS coletas_ruido (
     data_coleta         TEXT,
     hora_inicio         TEXT,
     hora_termino        TEXT,
+    calibrador          TEXT,
     calibracao_inicial  REAL,
     calibracao_final    REAL,
     desvio_calibracao   REAL,
     status_calibracao   TEXT DEFAULT 'pendente',
+    unidade             TEXT,
+    cidade              TEXT,
+    resp_empresa        TEXT,
+    os                  TEXT,
     observacao          TEXT,
     status              TEXT DEFAULT 'rascunho',
     criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -322,6 +327,16 @@ def _migrate(conn):
             conn.execute('ALTER TABLE coletas_quimico_amostr ADD COLUMN bomba TEXT')
         except Exception as e:
             print(f'[migrate] coletas_quimico_amostr.bomba: {e}')
+
+    # ── coletas_ruido: novos campos (calibrador, unidade, cidade, resp_empresa, os) ──
+    cols_cr = [r['name'] for r in conn.execute('PRAGMA table_info(coletas_ruido)').fetchall()]
+    for col_name, col_def in [('calibrador','TEXT'), ('unidade','TEXT'), ('cidade','TEXT'),
+                               ('resp_empresa','TEXT'), ('os','TEXT')]:
+        if col_name not in cols_cr:
+            try:
+                conn.execute(f'ALTER TABLE coletas_ruido ADD COLUMN {col_name} {col_def}')
+            except Exception as e:
+                print(f'[migrate] coletas_ruido.{col_name}: {e}')
 
     # ── amostradores: controle de vencimento no laboratorio ──
     cols_am = [r['name'] for r in conn.execute('PRAGMA table_info(amostradores)').fetchall()]
@@ -714,8 +729,10 @@ def get_coleta_ruido(cid):
         c = conn.execute('SELECT * FROM coletas_ruido WHERE id=?', (cid,)).fetchone()
         if not c: return None
         c = row_to_dict(c)
-        c['funcionarios'] = [row_to_dict(r) for r in conn.execute(
+        funcs = [row_to_dict(r) for r in conn.execute(
             'SELECT * FROM coletas_ruido_func WHERE coleta_id=? ORDER BY seq', (cid,)).fetchall()]
+        c['funcionarios']  = funcs
+        c['trabalhadores'] = funcs   # alias para compatibilidade com wizard/relatório
         return c
 
 
@@ -723,16 +740,19 @@ def save_coleta_ruido(data):
     cid = data.get('id')
     campos = ['empresa_id','empresa_nome','demanda_id','acompanhante',
               'cargo_acompanhante','tecnico','data_coleta','hora_inicio',
-              'hora_termino','calibracao_inicial','calibracao_final',
-              'desvio_calibracao','status_calibracao','observacao','status']
+              'hora_termino','calibrador','calibracao_inicial','calibracao_final',
+              'desvio_calibracao','status_calibracao','unidade','cidade',
+              'resp_empresa','os','observacao','status']
     vals = {c: data.get(c) for c in campos}
     ci = vals.get('calibracao_inicial')
     cf = vals.get('calibracao_final')
     if ci is not None and cf is not None:
         try:
-            desvio = abs(float(cf) - float(ci))
-            vals['desvio_calibracao'] = round(desvio, 2)
-            vals['status_calibracao'] = 'divergente' if desvio > 1.0 else 'conforme'
+            ci_f = float(str(ci).replace(',','.'))
+            cf_f = float(str(cf).replace(',','.'))
+            desvio = round(cf_f - ci_f, 2)
+            vals['desvio_calibracao'] = desvio
+            vals['status_calibracao'] = 'divergente' if abs(desvio) > 0.5 else 'conforme'
         except: pass
     with get_db() as conn:
         if cid:
@@ -743,13 +763,16 @@ def save_coleta_ruido(data):
             phs  = ', '.join(['?'] * len(vals))
             cur  = conn.execute('INSERT INTO coletas_ruido (' + cols + ') VALUES (' + phs + ')', list(vals.values()))
             cid  = cur.lastrowid
-        if 'funcionarios' in data:
+        # Aceita tanto 'funcionarios' (interno) quanto 'trabalhadores' (wizard)
+        funcs = data.get('trabalhadores') or data.get('funcionarios')
+        if funcs is not None:
             conn.execute('DELETE FROM coletas_ruido_func WHERE coleta_id=?', (cid,))
-            for i, func in enumerate(data['funcionarios'], 1):
+            for i, func in enumerate(funcs, 1):
                 conn.execute(
                     'INSERT INTO coletas_ruido_func (coleta_id,seq,nome,cargo,setor,almoco,serie_dosimetro) VALUES (?,?,?,?,?,?,?)',
                     (cid, i, func.get('nome',''), func.get('cargo',''), func.get('setor',''),
-                     1 if func.get('almoco') else 0, func.get('serie_dosimetro','')))
+                     1 if func.get('almoco') else 0,
+                     func.get('serie_dosimetro', func.get('dosimetro',''))))
     return cid
 
 
