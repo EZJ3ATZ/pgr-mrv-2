@@ -5379,7 +5379,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
           <tbody>
             ${dems.map(d => {
               const isDone = d.status === 'concluida';
-              const pct = d.total_medicoes > 0 ? Math.round((d.realizadas/d.total_medicoes)*100) : (d.progresso || 0);
+              const pct = d.total_medicoes > 0 ? Math.round((d.realizadas/d.total_medicoes)*100) : (d.percent_complete || d.progresso || 0);
               const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#444';
               // Prazo com urgência
               let prazoHtml = '—';
@@ -5408,7 +5408,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
               }
               return `<tr style="border-bottom:1px solid rgba(255,255,255,.04); ${!isDone&&d.prazo&&Math.round((new Date(d.prazo)-new Date())/86400000)<0?'background:rgba(239,68,68,.04);':''}">
                 <td style="padding:6px 10px;"><b>${d.numero_os||'—'}</b></td>
-                <td style="padding:6px 8px; font-size:.72rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2);" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa||'—').slice(0,55)}</td>
+                <td style="padding:6px 8px; font-size:.72rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2);" title="${(d.tarefa_display||d.nome_tarefa||d.titulo||'').replace(/"/g,'&quot;')}">${(d.tarefa_display||d.nome_tarefa||d.titulo||'—').slice(0,55)}</td>
                 <td style="padding:6px 8px; font-size:.78rem;">${prazoHtml}</td>
                 <td style="padding:6px 8px;">
                   <div style="font-size:.75rem; margin-bottom:3px;">${pct}%</div>
@@ -5416,7 +5416,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                     <div style="height:100%;width:${pct}%;background:${corBar};"></div>
                   </div>
                 </td>
-                <td style="padding:6px 8px; font-size:.75rem; color:var(--text3);">${d.responsavel||'—'}</td>
+                <td style="padding:6px 8px; font-size:.75rem; color:var(--text3);">${d.responsavel_efetivo||d.responsavel||'—'}</td>
                 <td style="padding:6px 8px;"><span class="ctrl-badge ${isDone?'concluida':'pendente'}">${isDone?'concluída':'pendente'}</span></td>
                 <td style="padding:6px 8px;">${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
               </tr>${medHtml}`;
