@@ -1105,7 +1105,6 @@
       <div class="ctrl-subtab active" onclick="ctrlSwitchSub('empresa', this)">🏢 Por Empresa</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">📋 Demandas/OS</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('amostr', this)">📦 Amostradores</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('venc', this)">⏱ Vencimento</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('prev', this)">📊 Previsão</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:#0a7; color:#fff;">+ Nova Medição</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">⚙ Importar</div>
@@ -1114,82 +1113,84 @@
 
   <div class="ctrl-stats" id="ctrl-stats"></div>
 
-  <!-- Sub: Amostradores -->
+  <!-- Sub: Amostradores (com subabas Estoque / Vencimento) -->
   <div id="ctrl-sub-amostr" style="display:none;">
-    <div class="ctrl-filters">
-      <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
-      <select id="ctrl-f-status" onchange="ctrlLoadAmostr()">
-        <option value="">— Status —</option>
-        <option>Estoque</option>
-        <option>Laboratorio</option>
-        <option>Reservado</option>
-        <option>Devolvido</option>
-      </select>
-      <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()">
-        <option value="">— Tipo —</option>
-      </select>
-      <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
-      <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
-        <option value="entrada_asc">📅 Entrada: mais antiga</option>
-        <option value="entrada_desc">📅 Entrada: mais nova</option>
-        <option value="parado_desc">⏳ Mais parado</option>
-        <option value="codigo_asc">🔤 Código A-Z</option>
-        <option value="tipo_asc">🔤 Tipo A-Z</option>
-      </select>
-      <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
-    </div>
-    <div class="ctrl-table-wrap">
-      <table class="ctrl-table">
-        <thead>
-          <tr>
-            <th>Status</th><th>Tipo</th><th>Código</th><th>Entrada</th>
-            <th>Empresa</th><th>Avaliador</th><th>Data Medição</th><th>Parado</th><th></th>
-          </tr>
-        </thead>
-        <tbody id="ctrl-tb-amostr"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
 
-  <!-- Sub: Vencimento (controle de cobrança do laboratório) -->
-  <div id="ctrl-sub-venc" style="display:none;">
-    <div style="background:rgba(255,136,0,.06); border-left:3px solid #f80; padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:.82rem;">
-      <b>⏱ Controle de vencimento:</b> O laboratório começa a cobrar após N dias do envio do amostrador.
-      Esta tela ajuda a identificar amostradores próximos do vencimento para retornar antes da cobrança extra.
+    <!-- Mini-tabs dentro de Amostradores -->
+    <div style="display:flex; gap:6px; margin-bottom:16px;">
+      <div id="ctrl-amostr-mtab-estoque" onclick="ctrlSwitchAmostrView('estoque')"
+           style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--orange); color:#fff; transition:all .15s;">📦 Estoque</div>
+      <div id="ctrl-amostr-mtab-venc" onclick="ctrlSwitchAmostrView('venc')"
+           style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--surface2); color:var(--text3); transition:all .15s;">⏱ Vencimento</div>
     </div>
 
-    <!-- Cards de alerta -->
-    <div class="ctrl-stats" id="ctrl-venc-stats"></div>
-
-    <!-- Filtros + ações -->
-    <div class="ctrl-filters">
-      <select id="ctrl-fv-faixa" onchange="ctrlLoadVencendo()">
-        <option value="">— Todos no lab —</option>
-        <option value="vencidos">🔴 Vencidos</option>
-        <option value="urgente">🟠 Urgente (≤3d)</option>
-        <option value="alerta">🟡 Alerta (≤7d)</option>
-      </select>
-      <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
+    <!-- View: Estoque -->
+    <div id="ctrl-amostr-view-estoque">
+      <div class="ctrl-filters">
+        <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
+        <select id="ctrl-f-status" onchange="ctrlLoadAmostr()">
+          <option value="">— Status —</option>
+          <option>Estoque</option>
+          <option>Laboratorio</option>
+          <option>Reservado</option>
+          <option>Devolvido</option>
+        </select>
+        <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()">
+          <option value="">— Tipo —</option>
+        </select>
+        <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
+        <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
+          <option value="entrada_asc">📅 Entrada: mais antiga</option>
+          <option value="entrada_desc">📅 Entrada: mais nova</option>
+          <option value="parado_desc">⏳ Mais parado</option>
+          <option value="codigo_asc">🔤 Código A-Z</option>
+          <option value="tipo_asc">🔤 Tipo A-Z</option>
+        </select>
+        <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
+        <button class="ctrl-import-btn" id="btn-fix-data-entrada" onclick="ctrlFixDataEntrada()" style="background:#555;display:none;" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</button>
+      </div>
+      <div class="ctrl-table-wrap">
+        <table class="ctrl-table">
+          <thead>
+            <tr>
+              <th>Status</th><th>Tipo</th><th>Código</th><th>Entrada</th>
+              <th>Empresa</th><th>Avaliador</th><th>Data Medição</th><th>Parado</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="ctrl-tb-amostr"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="ctrl-table-wrap">
-      <table class="ctrl-table">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>Tipo</th>
-            <th>Código</th>
-            <th>Empresa</th>
-            <th>Enviado ao lab</th>
-            <th>Validade</th>
-            <th>Vencimento</th>
-            <th>Situação</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="ctrl-tb-venc"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
-      </table>
+    <!-- View: Vencimento -->
+    <div id="ctrl-amostr-view-venc" style="display:none;">
+      <div style="background:rgba(255,136,0,.06); border-left:3px solid #f80; padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:.82rem;">
+        <b>⏱ Controle de vencimento:</b> O laboratório começa a cobrar após N dias do envio do amostrador.
+        Esta tela ajuda a identificar amostradores próximos do vencimento para retornar antes da cobrança extra.
+      </div>
+      <div class="ctrl-stats" id="ctrl-venc-stats"></div>
+      <div class="ctrl-filters">
+        <select id="ctrl-fv-faixa" onchange="ctrlLoadVencendo()">
+          <option value="">— Todos no lab —</option>
+          <option value="vencidos">🔴 Vencidos</option>
+          <option value="urgente">🟠 Urgente (≤3d)</option>
+          <option value="alerta">🟡 Alerta (≤7d)</option>
+        </select>
+        <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
+      </div>
+      <div class="ctrl-table-wrap">
+        <table class="ctrl-table">
+          <thead>
+            <tr>
+              <th>Status</th><th>Tipo</th><th>Código</th><th>Empresa</th>
+              <th>Enviado ao lab</th><th>Validade</th><th>Vencimento</th><th>Situação</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="ctrl-tb-venc"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
     </div>
+
   </div>
 
   <!-- Modal: registrar envio ao laboratório -->
@@ -2982,19 +2983,32 @@ function ctrlSwitchSub(name, el) {
   document.querySelectorAll('.ctrl-subtab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   _ctrlSubAtiva = name;
-  _ctrlStatsCache = null; // força refresh dos stats com contexto correto
-  ['amostr','venc','empresa','demand','prev','nova','import'].forEach(s => {
+  _ctrlStatsCache = null;
+  ['amostr','empresa','demand','prev','nova','import'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
   ctrlLoadStats(name);
   if (name === 'demand') ctrlLoadDemand();
   if (name === 'empresa') ctrlLoadPorEmpresa();
-  if (name === 'amostr') ctrlLoadAmostr();
+  if (name === 'amostr') { ctrlSwitchAmostrView('estoque'); ctrlLoadAmostr(); }
   if (name === 'nova') ctrlNvInit();
   if (name === 'import') ctrlLoadSyncLog();
   if (name === 'prev') ctrlLoadPrevisao();
-  if (name === 'venc') ctrlLoadVencendo();
+}
+
+function ctrlSwitchAmostrView(view) {
+  const estoque = document.getElementById('ctrl-amostr-view-estoque');
+  const venc    = document.getElementById('ctrl-amostr-view-venc');
+  const tabEst  = document.getElementById('ctrl-amostr-mtab-estoque');
+  const tabVenc = document.getElementById('ctrl-amostr-mtab-venc');
+  if (!estoque || !venc) return;
+  estoque.style.display = view === 'estoque' ? 'block' : 'none';
+  venc.style.display    = view === 'venc'    ? 'block' : 'none';
+  if (tabEst)  { tabEst.style.background  = view==='estoque' ? 'var(--orange)' : 'var(--surface2)'; tabEst.style.color  = view==='estoque' ? '#fff' : 'var(--text3)'; }
+  if (tabVenc) { tabVenc.style.background = view==='venc'    ? 'var(--orange)' : 'var(--surface2)'; tabVenc.style.color = view==='venc'    ? '#fff' : 'var(--text3)'; }
+  if (view === 'venc') ctrlLoadVencendo();
+  if (view === 'estoque') ctrlLoadAmostr();
 }
 
 async function ctrlLoadVencendo() {
@@ -3758,6 +3772,11 @@ async function ctrlLoadAmostr() {
       if (sort === 'tipo_asc')     return (a.tipo||'').localeCompare(b.tipo||'');
       return 0;
     });
+    // Mostrar botão de correção se houver amostradores com +200 dias em estoque
+    const temVelhos = data.some(a => (a.tempo_parado||0) > 200 && ['estoque','reservado'].includes((a.status||'').toLowerCase()));
+    const btnFix = document.getElementById('btn-fix-data-entrada');
+    if (btnFix) btnFix.style.display = temVelhos ? 'inline-flex' : 'none';
+
     tb.innerHTML = data.map(a => {
       const st = (a.status || '').toLowerCase();
       const parado = a.tempo_parado !== null && a.tempo_parado !== undefined ? a.tempo_parado : null;
@@ -4148,6 +4167,18 @@ async function ctrlImportar(tipo, input) {
 
 async function ctrlExportAmostr() {
   window.open('/controle/export/amostradores', '_blank');
+}
+
+async function ctrlFixDataEntrada() {
+  if (!confirm('Corrigir data de entrada dos amostradores com +200 dias parados para 23/10/2025?\n\nIsso afeta apenas amostradores em Estoque/Reservado.')) return;
+  const r = await ctrlFetch('/controle/amostradores/fix_data_entrada', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ data_entrada: '2025-10-23', dias_min: 200 })
+  });
+  _showToast(`✓ ${r.afetados} amostrador(es) com data corrigida para 23/10/2025`, 'success');
+  ctrlLoadAmostr();
+  document.getElementById('btn-fix-data-entrada').style.display = 'none';
 }
 
 /* ── Modal Dar Baixa ───────────────────────────────────────── */
