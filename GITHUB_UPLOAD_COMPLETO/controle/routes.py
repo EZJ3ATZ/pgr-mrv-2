@@ -1693,11 +1693,31 @@ def graph_sync_manual():
                 try:
                     sync_planner(group_filter=group_filter, label_filter=label_filter)
                 except Exception as ex:
-                    import logging
+                    import logging, traceback
                     logging.getLogger(__name__).error('[graph/sync] erro no background: %s', ex)
+                    # Salva erro no DB para debug
+                    try:
+                        with get_db() as c:
+                            c.execute("INSERT OR REPLACE INTO ms_sync_state (chave,valor,atualizado_em) VALUES ('last_sync_error',?,CURRENT_TIMESTAMP)",
+                                      (traceback.format_exc()[:2000],))
+                    except Exception:
+                        pass
 
         threading.Thread(target=_run, daemon=True).start()
         return jsonify({'ok': True, 'mensagem': 'Sync iniciado em background — verifique /graph/status em alguns minutos'})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/graph/sync_error')
+def graph_sync_error():
+    """Retorna o último erro de sync para debug."""
+    try:
+        with get_db() as conn:
+            row = conn.execute("SELECT valor, atualizado_em FROM ms_sync_state WHERE chave='last_sync_error'").fetchone()
+        if row:
+            return jsonify({'erro': row['valor'], 'quando': row['atualizado_em']})
+        return jsonify({'erro': None, 'msg': 'Nenhum erro registrado'})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
