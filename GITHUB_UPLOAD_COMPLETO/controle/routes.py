@@ -1828,6 +1828,20 @@ def api_match_empresas():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/demandas/reclassificar', methods=['POST'])
+def api_reclassificar():
+    """Reclassifica TODAS as demandas do Planner (operacional/interna/administrativa)
+    e extrai OS do título quando ainda não preenchida."""
+    init_db()
+    try:
+        from .classificador import reclassificar_lote
+        with get_db() as conn:
+            stats = reclassificar_lote(conn)
+        return jsonify({'ok': True, **stats})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/eventos', methods=['POST'])
 def api_registrar_evento():
     """Registra evento manualmente (ações do usuário)."""
