@@ -226,6 +226,49 @@ def get_demandas():
     return jsonify(list_demandas(request.args.to_dict()))
 
 
+@controle_bp.route('/agentes')
+def get_agentes():
+    """Retorna todos os agentes do guia_metodos.json."""
+    import json
+    try:
+        guia_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  '..', 'guia_metodos.json')
+        with open(guia_path, 'r', encoding='utf-8') as f:
+            guia = json.load(f)
+        by_cas = guia.get('by_cas', {})
+        agentes = []
+        seen = set()
+        for cas, entry in by_cas.items():
+            if isinstance(entry, list):
+                entry = entry[0]
+            nome = (entry.get('nome') or '').strip()
+            if not nome or nome in seen:
+                continue
+            seen.add(nome)
+            # tipo do amostrador extraido do amostradorCod ex: "SKC 226-01 (TCP*****)"
+            tipo_amostrador = ''
+            cod = entry.get('amostradorCod', '')
+            if '(' in cod and ')' in cod:
+                tipo_amostrador = cod[cod.index('(')+1:cod.index(')')].replace('*','').strip()
+            agentes.append({
+                'nome': nome,
+                'cas': entry.get('cas', cas),
+                'metodo': entry.get('metodoCod', ''),
+                'metodo_desc': entry.get('metodoDesc', ''),
+                'vazao': entry.get('vazao', ''),
+                'volume': entry.get('volume', ''),
+                'amostrador': entry.get('amostradorCod', ''),
+                'amostrador_desc': entry.get('amostradorDesc', ''),
+                'tipo_amostrador': tipo_amostrador,
+                'unidade': entry.get('unidade', ''),
+                'cuidados': entry.get('cuidados', ''),
+            })
+        agentes.sort(key=lambda x: x['nome'])
+        return jsonify({'agentes': agentes, 'total': len(agentes)})
+    except Exception as e:
+        return jsonify({'erro': str(e), 'agentes': []}), 500
+
+
 @controle_bp.route('/demandas_por_empresa')
 def get_demandas_por_empresa():
     """Demandas agrupadas por empresa, com progresso total da empresa."""
