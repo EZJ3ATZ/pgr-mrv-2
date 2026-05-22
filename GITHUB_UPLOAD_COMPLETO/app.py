@@ -26,6 +26,53 @@ except Exception as _e:
     print(f'[controle] erro ao carregar modulo: {_e}')
     traceback.print_exc()
 
+# ── Scheduler: sync automático Microsoft Planner ──────────────────────
+_scheduler_started = False
+def _start_planner_scheduler():
+    global _scheduler_started
+    if _scheduler_started:
+        return
+    _scheduler_started = True
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.interval import IntervalTrigger
+        from controle.planner_sync import sync_planner
+        from controle.graph import graph_ok
+
+        SYNC_INTERVAL_MINUTES = int(os.environ.get('PLANNER_SYNC_INTERVAL', '15'))
+
+        def _sync_job():
+            if not graph_ok():
+                return
+            try:
+                stats = sync_planner()
+                print(f'[scheduler] Planner sync: {stats.get("criadas",0)} criadas, '
+                      f'{stats.get("atualizadas",0)} atualizadas, '
+                      f'{stats.get("erros",[]).__len__()} erros')
+            except Exception as e:
+                print(f'[scheduler] Planner sync erro: {e}')
+
+        scheduler = BackgroundScheduler(daemon=True)
+        scheduler.add_job(
+            _sync_job,
+            trigger=IntervalTrigger(minutes=SYNC_INTERVAL_MINUTES),
+            id='planner_sync',
+            name='Microsoft Planner Sync',
+            replace_existing=True,
+            max_instances=1,
+        )
+        scheduler.start()
+        print(f'[scheduler] Planner sync a cada {SYNC_INTERVAL_MINUTES} minutos iniciado')
+    except ImportError:
+        print('[scheduler] APScheduler nao instalado — sync automatico desabilitado')
+    except Exception as e:
+        print(f'[scheduler] erro ao iniciar scheduler: {e}')
+
+# Iniciar scheduler após o app estar pronto (evita duplo-start no debug)
+import atexit
+with app.app_context():
+    _start_planner_scheduler()
+
 MESES_PT = {1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",
             7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro"}
 
