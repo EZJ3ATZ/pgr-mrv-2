@@ -415,6 +415,8 @@ def _migrate(conn):
         # Matching empresa
         'empresa_match_score':     'REAL',
         'empresa_match_metodo':    'TEXT',
+        # Classificação da demanda
+        'tipo_demanda':            "TEXT DEFAULT 'operacional'",
     }
     for col, tipo in novas_demandas_graph.items():
         if col not in cols_dem:
@@ -556,7 +558,7 @@ def list_demandas_por_empresa(filtros=None):
                SUM(CASE WHEN m.status='realizado' THEN 1 ELSE 0 END) AS medicoes_realizadas,
                MIN(d.criado_em) AS demanda_mais_antiga,
                MIN(NULLIF(d.prazo,'')) AS prazo_mais_proximo,
-               MAX(d.responsavel) AS responsavel,
+               COALESCE(MAX(d.responsavel), MAX(u.display_name)) AS responsavel,
                MAX(d.contato_feito) AS contato_feito,
                SUM(CASE WHEN d.status!='concluida'
                           AND d.prazo IS NOT NULL AND d.prazo != ''
@@ -566,6 +568,7 @@ def list_demandas_por_empresa(filtros=None):
         FROM empresas e
         JOIN demandas d ON d.empresa_id = e.id
         LEFT JOIN medicoes m ON m.demanda_id = d.id
+        LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
         WHERE 1=1
     """
     params = []
@@ -649,9 +652,12 @@ def get_empresa_demandas(empresa_id):
                    e.nome AS empresa_nome,
                    (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id) AS total_medicoes,
                    (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id AND m.status='realizado') AS realizadas,
-                   CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta
+                   CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta,
+                   COALESCE(d.responsavel, u.display_name) AS responsavel_efetivo,
+                   COALESCE(d.nome_tarefa, d.titulo) AS tarefa_display
             FROM demandas d
             JOIN empresas e ON e.id = d.empresa_id
+            LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
             WHERE d.empresa_id IN ({ph})
             ORDER BY d.status ASC, d.criado_em DESC
         """, ids_iguais).fetchall()]
