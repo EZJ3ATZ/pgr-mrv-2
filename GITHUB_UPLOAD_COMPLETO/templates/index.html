@@ -2130,6 +2130,10 @@
       <div class="ctrl-title">Controle de Medições e Amostradores</div>
       <div style="color:var(--text3); font-size:.85rem; margin-top:4px;">Gestão integrada — substitui as planilhas atuais</div>
     </div>
+    <!-- Banner Microsoft Graph / Planner Status -->
+    <div id="ctrl-graph-status-bar" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:.8rem;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+      <span style="color:var(--text3);">⟳ Verificando conexão Microsoft Planner...</span>
+    </div>
     <div class="ctrl-subtabs">
       <div class="ctrl-subtab active" onclick="ctrlSwitchSub('empresa', this)">Por Empresa</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
@@ -5048,11 +5052,54 @@ function ctrlInit() {
   if (ctrlInitialized) {
     ctrlLoadStats();
     ctrlLoadPorEmpresa();
+    ctrlLoadGraphStatus();
     return;
   }
   ctrlInitialized = true;
   ctrlLoadStats();
-  ctrlLoadPorEmpresa(); // Por Empresa é a tela padrão
+  ctrlLoadPorEmpresa();
+  ctrlLoadGraphStatus();
+}
+
+// ── Microsoft Graph / Planner status ──────────────────────────────────
+async function ctrlLoadGraphStatus() {
+  try {
+    const d = await ctrlFetch('/controle/graph/status');
+    const el = document.getElementById('ctrl-graph-status-bar');
+    if (!el) return;
+    if (!d.configurado) {
+      el.innerHTML = `<span style="color:var(--orange);">⚠ Microsoft Graph não configurado — adicione AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID no Railway.</span>`;
+      return;
+    }
+    const last = d.last_sync ? new Date(d.last_sync).toLocaleString('pt-BR') : 'nunca';
+    const st   = d.last_stats || {};
+    el.innerHTML = `
+      <span style="color:var(--green);font-weight:600;">● Planner conectado</span>
+      <span style="color:var(--text3);font-size:.78rem;margin-left:12px;">Último sync: ${last}
+        ${st.criadas!=null ? `· ${st.criadas} criadas · ${st.atualizadas} atualizadas` : ''}
+        ${(st.erros||[]).length ? `<span style="color:var(--orange)">· ${st.erros.length} erros</span>` : ''}
+      </span>
+      <button onclick="ctrlSyncPlanner(this)" style="margin-left:12px;background:var(--blue);color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">⟳ Sincronizar agora</button>
+    `;
+  } catch(e) {
+    const el = document.getElementById('ctrl-graph-status-bar');
+    if (el) el.innerHTML = `<span style="color:var(--text3);font-size:.78rem;">Graph: verificando...</span>`;
+  }
+}
+
+async function ctrlSyncPlanner(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Sincronizando...'; }
+  try {
+    const r = await ctrlFetch('/controle/graph/sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    _showToast(`✅ Sync Planner: ${r.criadas||0} novas demandas, ${r.atualizadas||0} atualizadas`, 'ok');
+    ctrlLoadGraphStatus();
+    ctrlLoadDemand();
+    ctrlLoadStats();
+  } catch(e) {
+    _showToast('❌ Erro no sync: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⟳ Sincronizar agora'; }
+  }
 }
 
 function ctrlSwitchSub(name, el) {
