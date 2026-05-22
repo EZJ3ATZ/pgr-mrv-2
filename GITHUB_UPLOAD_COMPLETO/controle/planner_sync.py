@@ -14,8 +14,12 @@ Chamado periodicamente pelo APScheduler (app.py) e manualmente via endpoint.
 
 import logging
 import json
+import threading
 import unicodedata
 from datetime import datetime, timezone
+
+# Lock global — impede dois syncs simultâneos (APScheduler + manual)
+_sync_lock = threading.Lock()
 
 from .graph import (
     graph_ok, get_teams_groups, get_plans_for_group,
@@ -202,6 +206,18 @@ def sync_planner(group_filter: str = None, label_filter: str = None) -> dict:
     """
     if not graph_ok():
         return {'erro': 'Credenciais Azure não configuradas ou inválidas.'}
+
+    # Evita execuções simultâneas (APScheduler + trigger manual)
+    if not _sync_lock.acquire(blocking=False):
+        return {'erro': 'Sync já em execução — aguarde terminar.'}
+
+    try:
+        return _sync_planner_interno(group_filter=group_filter, label_filter=label_filter)
+    finally:
+        _sync_lock.release()
+
+
+def _sync_planner_interno(group_filter: str = None, label_filter: str = None) -> dict:
 
     init_db()
     stats = {
