@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS amostradores (
     atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP,
     -- Controle de vencimento (laboratorio cobra apos N dias)
     data_envio_lab  TEXT,
-    dias_validade   INTEGER DEFAULT 30,
+    dias_validade   INTEGER DEFAULT 45,
     lote            TEXT,
     observacao_venc TEXT,
     FOREIGN KEY (empresa_id) REFERENCES empresas(id)
@@ -205,7 +205,7 @@ def _migrate(conn):
     cols_am = [r['name'] for r in conn.execute('PRAGMA table_info(amostradores)').fetchall()]
     novas_amostr = {
         'data_envio_lab':  'TEXT',    # quando foi enviado pro laboratorio
-        'dias_validade':   'INTEGER DEFAULT 30',  # padrao 30 dias antes da cobranca
+        'dias_validade':   'INTEGER DEFAULT 45',  # padrao 45 dias antes da cobranca
         'lote':            'TEXT',    # lote/serie do amostrador
         'observacao_venc': 'TEXT',
     }
@@ -256,7 +256,10 @@ def row_to_dict(row):
 
 def list_amostradores(filtros=None):
     sql = """
-        SELECT a.*, e.nome AS empresa_nome
+        SELECT a.*, e.nome AS empresa_nome,
+               CAST(julianday('now') - julianday(
+                 COALESCE(NULLIF(a.data_medicao,''), NULLIF(a.data_entrada,''), a.atualizado_em)
+               ) AS INTEGER) AS tempo_parado
         FROM amostradores a
         LEFT JOIN empresas e ON e.id = a.empresa_id
         WHERE 1=1
@@ -284,6 +287,7 @@ def list_demandas(filtros=None):
                (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='pendente') AS pendentes,
                (SELECT GROUP_CONCAT(m.agente, ' | ') FROM medicoes m WHERE m.demanda_id = d.id AND m.status!='realizado' LIMIT 5) AS agentes_pendentes,
                CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta,
+               CAST(julianday(d.prazo) - julianday('now') AS INTEGER) AS dias_para_prazo,
                (SELECT MAX(b.criado_em) FROM baixas b
                  JOIN medicoes m ON m.id = b.medicao_id WHERE m.demanda_id = d.id) AS ultima_baixa
         FROM demandas d
@@ -299,31 +303,50 @@ def list_demandas(filtros=None):
     if f.get('os'):
         sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
     if f.get('urgencia') == 'atrasada':
-        sql += " AND d.status != 'concluida' AND julianday('now') - julianday(d.criado_em) > 7"
-    # Ordenar: pendentes mais antigas primeiro
+        # Atrasada = prazo vencido e nao concluida
+        sql += (" AND d.status != 'concluida'"
+                " AND d.prazo IS NOT NULL AND d.prazo != ''"
+                " AND julianday(d.prazo) < julianday('now')")
+    # Ordenar: pendentes com prazo mais proximo primeiro
     sql += """ ORDER BY
         CASE WHEN d.status='concluida' THEN 1 ELSE 0 END,
+        CASE WHEN d.prazo IS NULL OR d.prazo = '' THEN 1 ELSE 0 END,
+        d.prazo ASC,
         d.criado_em ASC LIMIT 2000"""
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
 def list_demandas_por_empresa(filtros=None):
-    """Agrupa demandas por empresa com progresso total."""
+    """Agrupa demandas por empresa com progresso total.
+    Usa LOWER(TRIM(nome)) para consolidar empresas duplicadas importadas com nomes identicos.
+    """
     sql = """
-        SELECT e.id AS empresa_id, e.nome AS empresa_nome, e.cnpj,
+        SELECT MIN(e.id) AS empresa_id,
+               e.nome AS empresa_nome,
+               MAX(NULLIF(e.cnpj,'')) AS cnpj,
                COUNT(d.id) AS total_demandas,
                SUM(CASE WHEN d.status='concluida' THEN 1 ELSE 0 END) AS demandas_concluidas,
                SUM(CASE WHEN d.status!='concluida' THEN 1 ELSE 0 END) AS demandas_pendentes,
                COALESCE(SUM(d.progresso), 0) / NULLIF(COUNT(d.id),0) AS progresso_medio,
                (SELECT COUNT(*) FROM medicoes m JOIN demandas d2 ON d2.id=m.demanda_id
-                 WHERE d2.empresa_id = e.id) AS total_medicoes,
+                 WHERE d2.empresa_id IN (
+                     SELECT id FROM empresas e2
+                     WHERE LOWER(TRIM(e2.nome)) = LOWER(TRIM(e.nome))
+                 )) AS total_medicoes,
                (SELECT COUNT(*) FROM medicoes m JOIN demandas d2 ON d2.id=m.demanda_id
-                 WHERE d2.empresa_id = e.id AND m.status='realizado') AS medicoes_realizadas,
+                 WHERE d2.empresa_id IN (
+                     SELECT id FROM empresas e2
+                     WHERE LOWER(TRIM(e2.nome)) = LOWER(TRIM(e.nome))
+                 ) AND m.status='realizado') AS medicoes_realizadas,
                MIN(d.criado_em) AS demanda_mais_antiga,
-               MAX(d.prazo) AS prazo_mais_distante,
+               MIN(NULLIF(d.prazo,'')) AS prazo_mais_proximo,
                MAX(d.responsavel) AS responsavel,
-               MAX(d.contato_feito) AS contato_feito
+               MAX(d.contato_feito) AS contato_feito,
+               SUM(CASE WHEN d.status!='concluida'
+                          AND d.prazo IS NOT NULL AND d.prazo != ''
+                          AND julianday(d.prazo) < julianday('now')
+                   THEN 1 ELSE 0 END) AS demandas_atrasadas
         FROM empresas e
         JOIN demandas d ON d.empresa_id = e.id
         WHERE 1=1
@@ -335,13 +358,12 @@ def list_demandas_por_empresa(filtros=None):
     elif f.get('status') == 'concluida':
         sql += " AND d.status = 'concluida'"
     if f.get('empresa'):
-        sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
-    sql += """ GROUP BY e.id, e.nome, e.cnpj
+        sql += ' AND LOWER(e.nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
+    sql += """ GROUP BY LOWER(TRIM(e.nome))
         ORDER BY demandas_pendentes DESC, demanda_mais_antiga ASC
         LIMIT 1000"""
     with get_db() as conn:
         rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
-        # adicionar dias_aberta da mais antiga
         for r in rows:
             if r.get('demanda_mais_antiga'):
                 from datetime import datetime as _dt
@@ -353,6 +375,38 @@ def list_demandas_por_empresa(filtros=None):
             else:
                 r['dias_aberta'] = 0
         return rows
+
+
+def mesclar_empresas_duplicatas():
+    """Consolida empresas com mesmo nome (case-insensitive) em uma só.
+    Mantém o id menor e redireciona todas as demandas/amostradores.
+    Retorna quantas foram mescladas.
+    """
+    mescladas = 0
+    with get_db() as conn:
+        # Grupos de empresas com mesmo nome
+        grupos = conn.execute("""
+            SELECT LOWER(TRIM(nome)) AS nome_key, MIN(id) AS id_principal,
+                   COUNT(*) AS qtd
+            FROM empresas
+            GROUP BY LOWER(TRIM(nome))
+            HAVING COUNT(*) > 1
+        """).fetchall()
+
+        for g in grupos:
+            id_princ = g['id_principal']
+            # Buscar ids duplicados (todos menos o principal)
+            dups = [r['id'] for r in conn.execute(
+                "SELECT id FROM empresas WHERE LOWER(TRIM(nome)) = ? AND id != ?",
+                (g['nome_key'], id_princ)).fetchall()]
+            for dup_id in dups:
+                conn.execute("UPDATE demandas SET empresa_id=? WHERE empresa_id=?",
+                             (id_princ, dup_id))
+                conn.execute("UPDATE amostradores SET empresa_id=? WHERE empresa_id=?",
+                             (id_princ, dup_id))
+                conn.execute("DELETE FROM empresas WHERE id=?", (dup_id,))
+                mescladas += 1
+    return mescladas
 
 
 def get_empresa_demandas(empresa_id):
@@ -382,9 +436,18 @@ def get_demanda_completa(demanda_id):
         """, (demanda_id,)).fetchone()
         if not d: return None
         d = row_to_dict(d)
-        d['medicoes'] = [row_to_dict(r) for r in conn.execute(
+        meds = [row_to_dict(r) for r in conn.execute(
             'SELECT * FROM medicoes WHERE demanda_id = ? ORDER BY id',
             (demanda_id,)).fetchall()]
+        # Incluir baixas (com vazao) de cada medicao
+        for m in meds:
+            m['baixas'] = [row_to_dict(r) for r in conn.execute("""
+                SELECT b.avaliador, b.bomba, b.vazao_calibrada,
+                       b.volume_recomendado, b.tempo_calculado_min,
+                       b.tempo_calculado_max, b.data_medicao
+                FROM baixas b WHERE b.medicao_id = ?
+                ORDER BY b.id DESC""", (m['id'],)).fetchall()]
+        d['medicoes'] = meds
         return d
 
 
