@@ -1259,7 +1259,6 @@
   <!-- Sub: Demandas -->
   <div id="ctrl-sub-demand" style="display:none;">
     <div class="ctrl-filters">
-      <input type="text" id="ctrl-fd-os" placeholder="Número OS..." oninput="ctrlLoadDemand()">
       <input type="text" id="ctrl-fd-empresa" placeholder="Empresa..." oninput="ctrlLoadDemand()">
       <select id="ctrl-fd-status" onchange="ctrlLoadDemand()">
         <option value="">— Status —</option>
@@ -1276,11 +1275,13 @@
         <thead>
           <tr>
             <th style="width:30px;"></th>
-            <th>OS</th><th>Empresa</th><th>Progresso</th>
-            <th>Pendente</th><th>Parada</th><th>Status</th><th></th>
+            <th>Empresa</th>
+            <th>OS pendentes</th>
+            <th>Progresso</th>
+            <th>Urgência</th>
           </tr>
         </thead>
-        <tbody id="ctrl-tb-demand"><tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr></tbody>
+        <tbody id="ctrl-tb-demand"><tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3817,165 +3818,162 @@ async function ctrlLoadAmostr() {
 
 async function ctrlLoadDemand() {
   const q = new URLSearchParams();
-  const os = document.getElementById('ctrl-fd-os').value;
   const emp = document.getElementById('ctrl-fd-empresa').value;
   const st  = document.getElementById('ctrl-fd-status').value;
   const urg = document.getElementById('ctrl-fd-urg').value;
-  if (os) q.set('os', os);
   if (emp) q.set('empresa', emp);
   if (st) q.set('status', st);
   if (urg) q.set('urgencia', urg);
 
   const tb = document.getElementById('ctrl-tb-demand');
-  tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr>';
+  tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr>';
   try {
-    const data = await ctrlFetch('/controle/demandas?' + q.toString());
+    const data = await ctrlFetch('/controle/demandas_por_empresa?' + q.toString());
     ctrlDemandCache = data;
     if (!data.length) {
-      tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Nenhuma demanda encontrada.</td></tr>';
+      tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Nenhuma demanda encontrada.</td></tr>';
       return;
     }
-    tb.innerHTML = data.map(d => {
-      const pct = d.total_medicoes>0 ? Math.round((d.realizadas/d.total_medicoes)*100) : 0;
-      const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#666';
-      const diasPrazo = (d.dias_para_prazo !== null && d.dias_para_prazo !== undefined) ? d.dias_para_prazo : null;
-      const diasAberta = d.dias_aberta || 0;
-      let corDias, lblDias;
-      if (d.status === 'concluida') {
-        corDias = '#0a7'; lblDias = `✓ concluída`;
-      } else if (diasPrazo !== null && d.prazo) {
-        // Tem prazo definido — mostrar relação com deadline
-        if (diasPrazo < 0) {
-          corDias = '#e22'; lblDias = `⚠ ${Math.abs(diasPrazo)}d atrasada`;
-        } else if (diasPrazo === 0) {
-          corDias = '#e22'; lblDias = `⚠ vence hoje`;
-        } else if (diasPrazo <= 3) {
-          corDias = '#f80'; lblDias = `prazo em ${diasPrazo}d`;
-        } else if (diasPrazo <= 7) {
-          corDias = '#fc6'; lblDias = `prazo em ${diasPrazo}d`;
-        } else {
-          corDias = '#999'; lblDias = `prazo em ${diasPrazo}d`;
-        }
-      } else {
-        // Sem prazo — mostrar dias aberta
-        if (diasAberta > 30) {
-          corDias = '#e22'; lblDias = `${diasAberta}d aberta`;
-        } else if (diasAberta > 14) {
-          corDias = '#f80'; lblDias = `${diasAberta}d aberta`;
-        } else {
-          corDias = '#999'; lblDias = `${diasAberta}d aberta`;
-        }
+    tb.innerHTML = data.map(e => {
+      const total   = e.total_demandas || 0;
+      const concl   = e.demandas_concluidas || 0;
+      const pend    = e.demandas_pendentes || 0;
+      const pct     = total > 0 ? Math.round((concl / total) * 100) : 0;
+      const corBar  = pct >= 100 ? '#0a7' : pct > 0 ? '#f80' : '#666';
+      // Urgência: menor prazo entre as OS pendentes
+      let corUr = 'var(--text3)', lblUr = '—';
+      if (e.prazo_mais_proximo) {
+        const diff = Math.round((new Date(e.prazo_mais_proximo) - new Date()) / 86400000);
+        if (diff < 0)      { corUr = '#e22'; lblUr = `⚠ ${Math.abs(diff)}d atrasada`; }
+        else if (diff === 0){ corUr = '#e22'; lblUr = '⚠ vence hoje'; }
+        else if (diff <= 3) { corUr = '#f80'; lblUr = `prazo em ${diff}d`; }
+        else if (diff <= 7) { corUr = '#fc6'; lblUr = `prazo em ${diff}d`; }
+        else                { corUr = '#999'; lblUr = `prazo em ${diff}d`; }
       }
-      const agentesPend = d.agentes_pendentes || '';
-      const agentesList = agentesPend ? agentesPend.split(' | ').filter(Boolean) : [];
-      const pendCount = d.pendentes || 0;
       return `
-      <tr style="cursor:pointer;" onclick="ctrlToggleExpand(${d.id})">
-        <td><span id="ctrl-arrow-${d.id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
-        <td><b>${d.numero_os||'—'}</b></td>
-        <td>${d.empresa_nome||'—'}</td>
+      <tr style="cursor:pointer;" onclick="ctrlToggleExpandDemandEmp(${e.empresa_id})">
+        <td><span id="ctrl-dmarrow-${e.empresa_id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
+        <td><b>${e.empresa_nome}</b><br><span style="font-size:.7rem; color:var(--text3);">${e.cnpj||''}</span></td>
         <td>
-          ${d.realizadas}/${d.total_medicoes} (${pct}%)
-          <div style="width:100%; height:5px; background:rgba(255,255,255,.06); border-radius:3px; margin-top:3px; overflow:hidden;">
-            <div style="height:100%; width:${pct}%; background:${corBar};"></div>
+          <span style="color:#f80; font-weight:600;">${pend} OS pendente${pend!==1?'s':''}</span>
+          ${concl > 0 ? `<span style="color:var(--text3); font-size:.75rem;"> / ${concl} concluída${concl!==1?'s':''}</span>` : ''}
+        </td>
+        <td>
+          <div style="font-size:.75rem; margin-bottom:3px;">${pct}%</div>
+          <div style="width:90px;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${corBar};"></div>
           </div>
         </td>
-        <td>${pendCount > 0 ? `<span style="color:#f80;">${pendCount} pendente${pendCount>1?'s':''}</span>` : '<span style="color:#0a7;">—</span>'}</td>
-        <td><span style="color:${corDias}; font-weight:600;">${lblDias}</span></td>
-        <td><span class="ctrl-badge ${d.status||'pendente'}">${d.status||'pendente'}</span></td>
-        <td onclick="event.stopPropagation()">${d.status!=='concluida' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>` : ''}</td>
+        <td><span style="color:${corUr}; font-weight:600;">${lblUr}</span></td>
       </tr>
-      <tr id="ctrl-exp-${d.id}" style="display:none;">
-        <td colspan="8" style="background:rgba(255,255,255,.02); padding:14px 24px;">
-          <div id="ctrl-exp-content-${d.id}" style="color:var(--text3); font-size:.78rem;">Carregando detalhes...</div>
+      <tr id="ctrl-dmexp-${e.empresa_id}" style="display:none;">
+        <td colspan="5" style="background:rgba(255,255,255,.02); padding:14px 24px;">
+          <div id="ctrl-dmexp-content-${e.empresa_id}" style="color:var(--text3); font-size:.78rem;">Carregando...</div>
         </td>
       </tr>`;
     }).join('');
   } catch(e) {
-    tb.innerHTML = `<tr><td colspan="8" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="5" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
   }
 }
 
-async function ctrlToggleExpand(demId) {
-  const row = document.getElementById('ctrl-exp-'+demId);
-  const arrow = document.getElementById('ctrl-arrow-'+demId);
+async function ctrlToggleExpandDemandEmp(empresaId) {
+  const row   = document.getElementById('ctrl-dmexp-' + empresaId);
+  const arrow = document.getElementById('ctrl-dmarrow-' + empresaId);
   if (row.style.display === 'none') {
     row.style.display = '';
     arrow.style.transform = 'rotate(90deg)';
-    // Carregar detalhes
-    const cont = document.getElementById('ctrl-exp-content-'+demId);
+    const cont = document.getElementById('ctrl-dmexp-content-' + empresaId);
     try {
-      const d = await ctrlFetch('/controle/demandas/' + demId);
-      const meds = d.medicoes || [];
-
-      // Cabeçalho com info de contato e prazo
-      const prazo = d.prazo ? `<b>Prazo:</b> ${d.prazo}` : '';
-      const resp  = d.responsavel ? `<b>Resp.:</b> ${d.responsavel}` : '';
-      const contatoFeito = d.contato_feito;
-      const contatoHtml = `
-        <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; font-size:.8rem; color:var(--text2);">
-          ${prazo} ${resp}
-          <span style="margin-left:auto;">
-            ${contatoFeito
-              ? `<span style="color:#0a7;">✓ Contato realizado</span>
-                 <button onclick="ctrlDemandaContato(${demId}, false)" style="margin-left:6px; background:transparent; border:1px solid var(--border); color:var(--text3); padding:2px 7px; border-radius:3px; font-size:.7rem; cursor:pointer;">desfazer</button>`
-              : `<button onclick="ctrlDemandaContato(${demId}, true)" style="background:#39f; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.75rem; cursor:pointer;">📞 Marcar contato feito</button>`
-            }
-          </span>
-        </div>`;
-
-      if (!meds.length) { cont.innerHTML = contatoHtml + '<i>Sem medições.</i>'; return; }
-      cont.innerHTML = contatoHtml + `
-        <table style="width:100%; border-collapse:collapse;">
+      const emp  = await ctrlFetch('/controle/empresa/' + empresaId + '/demandas');
+      const dems = emp.demandas || [];
+      if (!dems.length) { cont.innerHTML = '<i>Sem OS.</i>'; return; }
+      cont.innerHTML = `
+        <table style="width:100%; border-collapse:collapse; font-size:.78rem;">
           <thead>
-            <tr style="border-bottom:1px solid var(--border); text-align:left; font-size:.75rem; color:var(--text3);">
-              <th style="padding:5px 8px;">Agente</th>
-              <th style="padding:5px 8px;">Amostr.</th>
-              <th style="padding:5px 8px;">Pontos</th>
+            <tr style="border-bottom:1px solid var(--border); text-align:left; color:var(--text3);">
+              <th style="padding:5px 8px;">OS</th>
+              <th style="padding:5px 8px;">Tarefa</th>
+              <th style="padding:5px 8px;">Prazo</th>
+              <th style="padding:5px 8px;">Responsável</th>
+              <th style="padding:5px 8px;">Progresso</th>
               <th style="padding:5px 8px;">Status</th>
-              <th style="padding:5px 8px;">Vazão (L/min)</th>
-              <th style="padding:5px 8px;">Tempo (min)</th>
-              <th style="padding:5px 8px;">Laudo</th>
+              <th style="padding:5px 8px;"></th>
             </tr>
           </thead>
           <tbody>
-            ${meds.map(m => {
-              const isDone = m.status === 'realizado';
-              const isParcial = m.status === 'parcial';
-              const cor = isDone ? '#0a7' : (isParcial ? '#f80' : '#e22');
-              // Baixas: pegar dados de vazão
-              const baixas = m.baixas || [];
-              let vazaoHtml = '—', tempoHtml = '—';
-              if (baixas.length > 0) {
-                const b = baixas[0]; // última baixa
-                vazaoHtml = b.vazao_calibrada ? `<b>${b.vazao_calibrada}</b>` : '—';
-                if (b.tempo_calculado_min && b.tempo_calculado_max) {
-                  tempoHtml = `${Math.round(b.tempo_calculado_min)}–${Math.round(b.tempo_calculado_max)}`;
-                } else if (b.tempo_calculado_min) {
-                  tempoHtml = `${Math.round(b.tempo_calculado_min)}`;
-                }
+            ${dems.map(d => {
+              const isDone = d.status === 'concluida';
+              const pct = d.total_medicoes > 0 ? Math.round((d.realizadas / d.total_medicoes) * 100) : (d.progresso || 0);
+              const corBar = pct >= 100 ? '#0a7' : pct > 0 ? '#f80' : '#444';
+              let prazoHtml = '—';
+              if (d.prazo) {
+                const diff = Math.round((new Date(d.prazo) - new Date()) / 86400000);
+                let cor = 'var(--text3)', badge = '';
+                if (isDone)         { cor = '#0a7'; }
+                else if (diff < 0)  { cor = '#e22'; badge = ` <span style="background:#e22;color:#fff;padding:1px 5px;border-radius:3px;font-size:.65rem;">ATRASADA ${Math.abs(diff)}d</span>`; }
+                else if (diff === 0){ cor = '#e22'; badge = ` <span style="background:#e22;color:#fff;padding:1px 5px;border-radius:3px;font-size:.65rem;">HOJE</span>`; }
+                else if (diff <= 3) { cor = '#f80'; badge = ` <span style="color:#f80;font-size:.7rem;">${diff}d</span>`; }
+                prazoHtml = `<span style="color:${cor};">${d.prazo}${badge}</span>`;
               }
               return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
-                <td style="padding:5px 8px;"><b>${m.agente||'—'}</b></td>
-                <td style="padding:5px 8px; color:#999; font-size:.78rem;">${m.tipo_amostrador||'—'}</td>
-                <td style="padding:5px 8px;">${m.qtd_pontos_feita||0}/${m.qtd_pontos_prevista||1}</td>
-                <td style="padding:5px 8px;"><span style="color:${cor}; font-weight:600;">${m.status||'—'}</span></td>
-                <td style="padding:5px 8px; font-size:.82rem;">${vazaoHtml}</td>
-                <td style="padding:5px 8px; font-size:.82rem;">${tempoHtml}</td>
-                <td style="padding:5px 8px;">${m.necessita_laudo === 'S' ? '<span style="color:#fc6;">📄 Sim</span>' : '—'}</td>
+                <td style="padding:5px 8px;"><b>${d.numero_os || '—'}</b></td>
+                <td style="padding:5px 8px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa || '—').slice(0, 50)}</td>
+                <td style="padding:5px 8px;">${prazoHtml}</td>
+                <td style="padding:5px 8px; color:var(--text3);">${d.responsavel || '—'}</td>
+                <td style="padding:5px 8px;">
+                  <div style="font-size:.72rem; margin-bottom:2px;">${pct}%</div>
+                  <div style="width:70px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:${corBar};"></div>
+                  </div>
+                </td>
+                <td style="padding:5px 8px;"><span class="ctrl-badge ${isDone ? 'concluida' : 'pendente'}">${isDone ? 'concluída' : 'pendente'}</span></td>
+                <td style="padding:5px 8px;">${isDone ? '' : `<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
               </tr>`;
             }).join('')}
           </tbody>
-        </table>
-      `;
-    } catch(e) {
-      cont.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`;
+        </table>`;
+    } catch(err) {
+      cont.innerHTML = `<span style="color:#e22;">Erro: ${err.message}</span>`;
     }
   } else {
     row.style.display = 'none';
     arrow.style.transform = 'rotate(0)';
   }
 }
+
+// --- legado: mantido para compatibilidade com ctrlAbrirBaixaDemand ---
+async function ctrlToggleExpand(demId) {
+  const row = document.getElementById('ctrl-exp-'+demId);
+  const arrow = document.getElementById('ctrl-arrow-'+demId);
+  if (!row) return;
+  if (row.style.display === 'none') {
+    row.style.display = '';
+    if (arrow) arrow.style.transform = 'rotate(90deg)';
+    const cont = document.getElementById('ctrl-exp-content-'+demId);
+    try {
+      const d = await ctrlFetch('/controle/demandas/' + demId);
+      const meds = d.medicoes || [];
+      const prazo = d.prazo ? `<b>Prazo:</b> ${d.prazo}` : '';
+      const resp  = d.responsavel ? `<b>Resp.:</b> ${d.responsavel}` : '';
+      const contatoFeito = d.contato_feito;
+      const contatoHtml = `<div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; font-size:.8rem; color:var(--text2);">
+          ${prazo} ${resp}
+          <span style="margin-left:auto;">
+            ${contatoFeito
+              ? `<span style="color:#0a7;">✓ Contato realizado</span>`
+              : `<button onclick="ctrlDemandaContato(${demId}, true)" style="background:#39f; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.75rem; cursor:pointer;">📞 Marcar contato feito</button>`}
+          </span>
+        </div>`;
+      if (!meds.length) { cont.innerHTML = contatoHtml + '<i>Sem medições.</i>'; return; }
+      cont.innerHTML = contatoHtml + `<i>${meds.length} medição(ões) cadastrada(s).</i>`;
+    } catch(err) { cont.innerHTML = `<span style="color:#e22;">Erro: ${err.message}</span>`; }
+  } else {
+    row.style.display = 'none';
+    if (arrow) arrow.style.transform = 'rotate(0)';
+  }
+}
+
 
 // CNPJ lookup no cadastro de empresa (modal Nova Medição)
 let _ctrlCNPJTimer = null;
