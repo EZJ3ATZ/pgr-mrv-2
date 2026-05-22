@@ -5824,8 +5824,8 @@ let _empData = [];
 
 async function empLoad() {
   try {
-    const r = await ctrlFetch('/controle/demandas/por-empresa?limite=500');
-    _empData = r.empresas || [];
+    const r = await ctrlFetch('/controle/demandas_por_empresa');
+    _empData = Array.isArray(r) ? r : (r.empresas || []);
     empRender();
     // KPIs
     const total = _empData.length;
@@ -5947,7 +5947,7 @@ async function indLoad() {
   try {
     const r = await ctrlFetch('/controle/stats');
     const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=(v??'—'); };
-    set('ind-total-med',      (r.medicoes_pendentes||0) + (r.medicoes_realizadas||0));
+    set('ind-total-med',      (r.medicoes_realizadas||0) + (r.medicoes_pendentes||0));
     set('ind-amostr-ativos',  (r.estoque||0) + (r.laboratorio||0));
     set('ind-lab',            r.laboratorio||0);
     set('ind-dem-abertas',    r.demandas_pendentes||0);
