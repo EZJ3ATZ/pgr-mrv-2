@@ -107,6 +107,11 @@ def graph_get(path: str, params: dict = None) -> dict:
     if params:
         url += ('&' if '?' in url else '?') + urllib.parse.urlencode(params)
 
+    # Codifica espaços e aspas simples na query string (Python 3.14 é mais estrito)
+    if '?' in url:
+        base_url, qs = url.split('?', 1)
+        url = base_url + '?' + qs.replace(' ', '%20').replace("'", '%27')
+
     req = urllib.request.Request(url, headers=_headers(), method='GET')
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
