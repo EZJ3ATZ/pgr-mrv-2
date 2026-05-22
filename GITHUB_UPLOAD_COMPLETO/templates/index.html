@@ -1142,7 +1142,7 @@
       <span>Medi&#231;&#245;es e Amostradores</span>
     </div>
 
-    <div class="sidebar-item" data-name="demandas-os" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },300);">
+    <div class="sidebar-item" data-name="demandas-os" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
       </svg>
@@ -1169,7 +1169,7 @@
       <span>Agentes</span>
     </div>
 
-    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', null); },300);">
+    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', null); },500);">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
       </svg>
@@ -2755,7 +2755,7 @@
       </div>
       <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório de Amostradores</div>
       <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Status atual, histórico de uso, vencimentos e empresa vinculada por amostrador.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),300);" style="background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Amostradores →</button>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),500);" style="background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Amostradores →</button>
     </div>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -4476,7 +4476,7 @@ function ctrlSwitchSub(name, el) {
   ctrlLoadStats(name);
   if (name === 'demand') ctrlLoadDemand();
   if (name === 'empresa') ctrlLoadPorEmpresa();
-  if (name === 'amostr') { ctrlSwitchAmostrView('estoque'); ctrlLoadAmostr(); }
+  if (name === 'amostr') { ctrlSwitchAmostrView('estoque'); }
   if (name === 'nova') ctrlNvInit();
   if (name === 'import') ctrlLoadSyncLog();
   if (name === 'prev') ctrlLoadPrevisao();
@@ -6103,7 +6103,7 @@ async function indLoad() {
       const amSt = (an && an.status_amostradores) || {};
       const statuses = [
         {label:'Estoque',      val: amSt['Estoque']    ?? r.estoque    ?? 0, cor:'var(--green)',  bg:'rgba(16,185,129,.1)'},
-        {label:'Laborat&#243;rio', val: amSt['Laboratorio'] ?? r.laboratorio ?? 0, cor:'var(--blue)',   bg:'rgba(96,165,250,.1)'},
+        {label:'Laboratório', val: amSt['Laboratorio'] ?? r.laboratorio ?? 0, cor:'var(--blue)',   bg:'rgba(96,165,250,.1)'},
         {label:'Reservados',   val: amSt['Reservado']  ?? r.reservados ?? 0, cor:'var(--yellow)', bg:'rgba(245,158,11,.1)'},
         {label:'Devolvidos',   val: amSt['Devolvido']  ?? r.devolvidos ?? 0, cor:'var(--text3)',  bg:'var(--surface3)'},
       ];
