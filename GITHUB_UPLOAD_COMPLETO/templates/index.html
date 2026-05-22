@@ -1129,6 +1129,13 @@
         <option value="">— Tipo —</option>
       </select>
       <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
+      <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
+        <option value="entrada_asc">📅 Entrada: mais antiga</option>
+        <option value="entrada_desc">📅 Entrada: mais nova</option>
+        <option value="parado_desc">⏳ Mais parado</option>
+        <option value="codigo_asc">🔤 Código A-Z</option>
+        <option value="tipo_asc">🔤 Tipo A-Z</option>
+      </select>
       <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
     </div>
     <div class="ctrl-table-wrap">
@@ -3702,13 +3709,10 @@ async function ctrlLoadStats(contexto) {
         ${venc > 0 ? `<div class="ctrl-stat red"><div class="ctrl-stat-label">⏱ Vencendo/Vencidos</div><div class="ctrl-stat-value">${venc}</div></div>` : ''}
       `;
     } else {
-      // Contexto empresas/demandas: focar em pendências e estoque chave
+      // Contexto empresas/demandas: focar só em pendências de OS
       html = `
         <div class="ctrl-stat red"><div class="ctrl-stat-label">OS Pendentes</div><div class="ctrl-stat-value">${s.demandas_pendentes||0}</div></div>
         <div class="ctrl-stat green"><div class="ctrl-stat-label">OS Concluídas</div><div class="ctrl-stat-value">${s.demandas_concluidas||0}</div></div>
-        <div class="ctrl-stat green"><div class="ctrl-stat-label">Em Estoque</div><div class="ctrl-stat-value">${s.estoque||0}</div></div>
-        <div class="ctrl-stat blue"><div class="ctrl-stat-label">No Laboratório</div><div class="ctrl-stat-value">${s.laboratorio||0}</div></div>
-        ${(s.venc_vencidos||0) > 0 ? `<div class="ctrl-stat red"><div class="ctrl-stat-label">⏱ Lab Vencido</div><div class="ctrl-stat-value">${s.venc_vencidos}</div></div>` : ''}
       `;
     }
     document.getElementById('ctrl-stats').innerHTML = html;
@@ -3744,6 +3748,16 @@ async function ctrlLoadAmostr() {
       tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhum amostrador encontrado. Use "Importar Planilhas" para carregar.</td></tr>';
       return;
     }
+    // Ordenação client-side
+    const sort = document.getElementById('ctrl-f-sort')?.value || 'entrada_asc';
+    data.sort((a,b) => {
+      if (sort === 'entrada_asc')  return (a.data_entrada||'') < (b.data_entrada||'') ? -1 : 1;
+      if (sort === 'entrada_desc') return (a.data_entrada||'') > (b.data_entrada||'') ? -1 : 1;
+      if (sort === 'parado_desc')  return (b.tempo_parado||0) - (a.tempo_parado||0);
+      if (sort === 'codigo_asc')   return (a.codigo||'').localeCompare(b.codigo||'');
+      if (sort === 'tipo_asc')     return (a.tipo||'').localeCompare(b.tipo||'');
+      return 0;
+    });
     tb.innerHTML = data.map(a => {
       const st = (a.status || '').toLowerCase();
       const parado = a.tempo_parado !== null && a.tempo_parado !== undefined ? a.tempo_parado : null;
@@ -4065,13 +4079,23 @@ async function ctrlLoadPrevisao() {
 
     // Agentes sem guia
     const sg = data.agentes_sem_guia || [];
+    const sf = data.agentes_fisicos || [];
+    let semGuiaHtml = '';
+    if (sf.length > 0) {
+      semGuiaHtml += `
+        <div style="background:rgba(99,179,237,.07); border-left:3px solid #63b3ed; border-radius:6px; padding:10px 14px; font-size:.8rem; margin-bottom:8px;">
+          <b style="color:#63b3ed;">🔊 Agentes físicos</b> — não utilizam amostrador, não entram no cálculo:<br>
+          ${sf.map(a => `<span style="background:rgba(99,179,237,.12); border-radius:3px; padding:1px 6px; margin:2px; display:inline-block;">${a}</span>`).join('')}
+        </div>`;
+    }
     if (sg.length > 0) {
-      semGuia.innerHTML = `
+      semGuiaHtml += `
         <div style="background:rgba(245,158,11,.07); border-left:3px solid #f59e0b; border-radius:6px; padding:10px 14px; font-size:.8rem;">
-          <b style="color:#f59e0b;">ℹ Agentes sem método cadastrado no guia</b> (não incluídos no cálculo):<br>
+          <b style="color:#f59e0b;">ℹ Agentes químicos sem método no guia</b> (não incluídos no cálculo — adicione ao guia para habilitar):<br>
           ${sg.map(a => `<span style="background:rgba(245,158,11,.12); border-radius:3px; padding:1px 6px; margin:2px; display:inline-block;">${a}</span>`).join('')}
         </div>`;
     }
+    if (semGuiaHtml) semGuia.innerHTML = semGuiaHtml;
   } catch(e) {
     tb.innerHTML = `<tr><td colspan="7" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
   }
