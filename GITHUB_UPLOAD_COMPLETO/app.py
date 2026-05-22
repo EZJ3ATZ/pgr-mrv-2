@@ -52,10 +52,14 @@ def _start_planner_scheduler():
             except Exception as e:
                 print(f'[scheduler] Planner sync erro: {e}')
 
+        from datetime import datetime as _dt, timedelta as _td
         scheduler = BackgroundScheduler(daemon=True)
         scheduler.add_job(
             _sync_job,
-            trigger=IntervalTrigger(minutes=SYNC_INTERVAL_MINUTES),
+            trigger=IntervalTrigger(
+                minutes=SYNC_INTERVAL_MINUTES,
+                start_date=_dt.now() + _td(minutes=SYNC_INTERVAL_MINUTES),  # não dispara no boot
+            ),
             id='planner_sync',
             name='Microsoft Planner Sync',
             replace_existing=True,
