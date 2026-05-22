@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ferramentas SST — Grupo Ocupacional</title>
+  <title>OCUPACIONAL ENGENHARIA — Plataforma de Engenharia Ocupacional</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      /* Brand */
-      --orange:      #F47B2A;
-      --orange-d:    #D4631C;
-      --orange-dim:  #241206;
-      --orange-glow: rgba(244,123,42,.18);
+      /* Brand — verde engenharia */
+      --orange:      #22C55E;
+      --orange-d:    #16A34A;
+      --orange-dim:  #052e16;
+      --orange-glow: rgba(34,197,94,.18);
 
       /* Backgrounds */
       --bg:       #07090E;
@@ -1042,8 +1042,8 @@
       </svg>
     </div>
     <div class="logo-wordmark">
-      <div class="logo-name">Grupo Ocupacional</div>
-      <div class="logo-sub">Plataforma SST · MRV</div>
+      <div class="logo-name">OCUPACIONAL ENGENHARIA</div>
+      <div class="logo-sub">Plataforma de Engenharia Ocupacional</div>
     </div>
   </div>
 
@@ -1104,7 +1104,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
       </svg>
       <span>Gerador de PGR</span>
-      <span class="sidebar-badge new">NR-1</span>
+      <span class="sidebar-badge" style="background:var(--orange);color:#fff;font-size:.57rem;padding:1px 5px;border-radius:4px;font-weight:700;">NR-1</span>
     </div>
 
     <div class="sidebar-item" data-name="calor" onclick="goToTab('calor')">
@@ -1132,21 +1132,93 @@
   <div class="sidebar-divider"></div>
 
   <div class="sidebar-section">
-    <span class="sidebar-label">Gest&#227;o</span>
+    <span class="sidebar-label">Medi&#231;&#245;es</span>
 
     <div class="sidebar-item" data-name="controle" onclick="goToTab('controle'); ctrlInit();">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
       </svg>
-      <span>Controle de Medi&#231;&#245;es</span>
+      <span>Medi&#231;&#245;es e Amostradores</span>
     </div>
 
-    <div class="sidebar-nova" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', document.querySelector('[onclick*=nova]')),300);">
+    <div class="sidebar-item" data-name="demandas-os" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demandas', document.querySelector('[data-sub=demandas]')); },300);">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
       </svg>
-      <span>Nova Medi&#231;&#227;o</span>
+      <span>Demandas / OS</span>
     </div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section">
+    <span class="sidebar-label">Cadastros</span>
+
+    <div class="sidebar-item" data-name="empresas" onclick="goToTab('empresas')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M10 6h4m-4 4h4m-4 4h4"/>
+      </svg>
+      <span>Empresas</span>
+    </div>
+
+    <div class="sidebar-item" data-name="agentes" onclick="goToTab('agentes')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
+      </svg>
+      <span>Agentes</span>
+    </div>
+
+    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', document.querySelector('[data-sub=amostr]')); },300);">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
+      </svg>
+      <span>Amostradores</span>
+    </div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section">
+    <span class="sidebar-label">An&#225;lise</span>
+
+    <div class="sidebar-item" data-name="relatorios" onclick="goToTab('relatorios')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+      <span>Relat&#243;rios</span>
+    </div>
+
+    <div class="sidebar-item" data-name="indicadores" onclick="goToTab('indicadores')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+      </svg>
+      <span>Indicadores</span>
+    </div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-item" data-name="configuracoes" onclick="goToTab('configuracoes')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/>
+      </svg>
+      <span>Configura&#231;&#245;es</span>
+    </div>
+
+    <div class="sidebar-item" data-name="ajuda" onclick="goToTab('ajuda')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
+      </svg>
+      <span>Ajuda</span>
+    </div>
+  </div>
+
+  <div class="sidebar-nova" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', document.querySelector('[onclick*=nova]')),300);">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+    </svg>
+    <span>Nova Medi&#231;&#227;o</span>
   </div>
 
 </aside>
@@ -1231,7 +1303,7 @@
               <div style="font-size:.7rem;color:var(--text3);">NR-15 An.13</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
               <div style="font-size:.7rem;color:var(--text2);flex:1;">PGR / Riscos</div>
               <div style="font-size:.7rem;color:var(--text3);">NR-1</div>
             </div>
@@ -2554,6 +2626,316 @@
 
 </div>
 
+<!-- ══ Painel EMPRESAS ══════════════════════════════════════════════════ -->
+<div id="tab-empresas" class="tab-panel">
+<div class="page" style="max-width:1100px;">
+  <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div class="page-title">Empresas</div>
+      <div class="page-sub">Cadastro e histórico de todas as empresas atendidas</div>
+    </div>
+    <button class="btn" onclick="goToTab('controle'); ctrlInit();" style="background:var(--orange);color:#fff;border:none;display:flex;align-items:center;gap:7px;cursor:pointer;padding:9px 18px;border-radius:8px;font-size:.82rem;font-weight:600;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+      Nova OS
+    </button>
+  </div>
+
+  <!-- KPIs -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;">Total de Empresas</div>
+      <div style="font-size:1.9rem;font-weight:800;color:var(--text);" id="emp-kpi-total">—</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;">Com OS Ativa</div>
+      <div style="font-size:1.9rem;font-weight:800;color:var(--orange);" id="emp-kpi-ativa">—</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;">Pendentes de Coleta</div>
+      <div style="font-size:1.9rem;font-weight:800;color:var(--yellow);" id="emp-kpi-pend">—</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-weight:600;">Concluídas este mês</div>
+      <div style="font-size:1.9rem;font-weight:800;color:var(--green);" id="emp-kpi-conc">—</div>
+    </div>
+  </div>
+
+  <!-- Busca -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <input type="text" id="emp-busca" placeholder="&#128269; Buscar empresa..." oninput="empFiltrar()" style="flex:1;max-width:380px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-size:.83rem;">
+    <select id="emp-ordem" onchange="empFiltrar()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-size:.83rem;">
+      <option value="nome">A → Z</option>
+      <option value="pend">Mais pendentes</option>
+      <option value="data">Mais recentes</option>
+    </select>
+  </div>
+
+  <!-- Lista de empresas -->
+  <div id="emp-lista" style="display:flex;flex-direction:column;gap:8px;">
+    <div style="color:var(--text3);font-size:.82rem;padding:40px;text-align:center;">Carregando empresas...</div>
+  </div>
+</div>
+</div>
+
+<!-- ══ Painel AGENTES ══════════════════════════════════════════════════ -->
+<div id="tab-agentes" class="tab-panel">
+<div class="page" style="max-width:900px;">
+  <div class="page-head">
+    <div class="page-title">Agentes de Risco</div>
+    <div class="page-sub">Referência de agentes físicos e químicos utilizados nas medições</div>
+  </div>
+
+  <!-- Filtros -->
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <input type="text" id="ag-busca" placeholder="&#128269; Buscar agente, método, CAS..." oninput="agFiltrar()" style="flex:1;min-width:240px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-size:.83rem;">
+    <select id="ag-tipo" onchange="agFiltrar()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-size:.83rem;">
+      <option value="">Todos os tipos</option>
+      <option value="quimico">Químico</option>
+      <option value="fisico">Físico</option>
+      <option value="biologico">Biológico</option>
+    </select>
+  </div>
+
+  <!-- Tabela de agentes — baseada em métodos já cadastrados no sistema -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Agente</th>
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Tipo</th>
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Método / Norma</th>
+          <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">CAS / Ref.</th>
+          <th style="text-align:right;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Vazão (L/min)</th>
+        </tr>
+      </thead>
+      <tbody id="ag-tbody">
+        <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--text3);font-size:.82rem;">Carregando agentes...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ══ Painel RELATÓRIOS ════════════════════════════════════════════════ -->
+<div id="tab-relatorios" class="tab-panel">
+<div class="page" style="max-width:900px;">
+  <div class="page-head">
+    <div class="page-title">Centro de Relatórios</div>
+    <div class="page-sub">Exporte dados e gere relatórios consolidados</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:40px;height:40px;background:var(--orange-dim);border:1px solid rgba(34,197,94,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="18" height="18" fill="none" stroke="var(--orange)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/></svg>
+      </div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório de Demandas</div>
+      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Todas as OS com status, empresa, agente e prazo. Filtrável por período e empresa.</div>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demandas',null),300);" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Demandas →</button>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:40px;height:40px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="18" height="18" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/></svg>
+      </div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório de Amostradores</div>
+      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Status atual, histórico de uso, vencimentos e empresa vinculada por amostrador.</div>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),300);" style="background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Amostradores →</button>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:40px;height:40px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="18" height="18" fill="none" stroke="var(--yellow)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Vencimentos Próximos</div>
+      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Amostradores no laboratório com data de vencimento se aproximando — evite cobranças extras.</div>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('vencimento',null),300);" style="background:rgba(245,158,11,.08);color:var(--yellow);border:1px solid rgba(245,158,11,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Vencimentos →</button>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:40px;height:40px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="18" height="18" fill="none" stroke="var(--purple)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M10 6h4m-4 4h4m-4 4h4"/></svg>
+      </div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório por Empresa</div>
+      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Histórico completo por empresa: todas as OS, medições realizadas e status consolidado.</div>
+      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('porEmpresa',null),300);" style="background:rgba(167,139,250,.08);color:var(--purple);border:1px solid rgba(167,139,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver por Empresa →</button>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="width:40px;height:40px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <svg width="18" height="18" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/></svg>
+      </div>
+      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Gerar PGR</div>
+      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Gere o Programa de Gerenciamento de Riscos completo em formato DOCX.</div>
+      <button onclick="goToTab('pgr');" style="background:rgba(16,185,129,.08);color:var(--green);border:1px solid rgba(16,185,129,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Gerar PGR →</button>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══ Painel INDICADORES ══════════════════════════════════════════════ -->
+<div id="tab-indicadores" class="tab-panel">
+<div class="page" style="max-width:1000px;">
+  <div class="page-head">
+    <div class="page-title">Indicadores</div>
+    <div class="page-sub">Visão analítica da operação — atualizado em tempo real</div>
+  </div>
+
+  <!-- KPIs principais -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:28px;" id="ind-kpis">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Total de Medições</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--text);" id="ind-total-med">—</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">realizadas no sistema</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Amostradores Ativos</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--orange);" id="ind-amostr-ativos">—</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">em campo ou estoque</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">No Laboratório</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--blue);" id="ind-lab">—</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">aguardando laudo</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Demandas Abertas</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--yellow);" id="ind-dem-abertas">—</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">pendentes de coleta</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Empresas Ativas</div>
+      <div style="font-size:2rem;font-weight:800;color:var(--green);" id="ind-empresas">—</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">com OS registradas</div>
+    </div>
+  </div>
+
+  <!-- Distribuição por agente -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;">
+    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Distribuição por Tipo de Medição</div>
+    <div id="ind-dist" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="color:var(--text3);font-size:.8rem;">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- Status dos amostradores -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
+    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Status dos Amostradores</div>
+    <div id="ind-status-amostr" style="display:flex;flex-wrap:wrap;gap:12px;">
+      <div style="color:var(--text3);font-size:.8rem;">Carregando...</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══ Painel CONFIGURAÇÕES ════════════════════════════════════════════ -->
+<div id="tab-configuracoes" class="tab-panel">
+<div class="page" style="max-width:700px;">
+  <div class="page-head">
+    <div class="page-title">Configurações</div>
+    <div class="page-sub">Preferências do sistema e dados da organização</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5"/></svg></div>
+      <div><div class="card-title">Dados da Organização</div><div class="card-desc">Informações que aparecem nos laudos e relatórios</div></div>
+    </div>
+    <div class="grid2 field">
+      <div><label>Razão Social</label><input type="text" value="OCUPACIONAL ENGENHARIA" readonly style="opacity:.6;cursor:not-allowed;"></div>
+      <div><label>CNPJ</label><input type="text" value="—" readonly style="opacity:.6;cursor:not-allowed;"></div>
+    </div>
+    <div class="grid2 field">
+      <div><label>Responsável Técnico</label><input type="text" value="Matheus Costa" readonly style="opacity:.6;cursor:not-allowed;"></div>
+      <div><label>Cargo</label><input type="text" value="Técnico de Segurança do Trabalho" readonly style="opacity:.6;cursor:not-allowed;"></div>
+    </div>
+    <div style="font-size:.74rem;color:var(--text3);margin-top:8px;">&#9432; Para alterar os dados da organização, entre em contato com o suporte.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <div><div class="card-title">Sistema</div><div class="card-desc">Informações técnicas da plataforma</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:.81rem;">
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text2);">Versão</span>
+        <span style="color:var(--text);font-weight:600;">v2.0 — Maio 2026</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text2);">Ambiente</span>
+        <span style="color:var(--green);font-weight:600;">&#9679; Produção (Railway)</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text2);">Banco de dados</span>
+        <span style="color:var(--text);font-weight:600;">SQLite</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;">
+        <span style="color:var(--text2);">Backend</span>
+        <span style="color:var(--text);font-weight:600;">Flask · Python 3</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══ Painel AJUDA ════════════════════════════════════════════════════ -->
+<div id="tab-ajuda" class="tab-panel">
+<div class="page" style="max-width:800px;">
+  <div class="page-head">
+    <div class="page-title">Ajuda & Documentação</div>
+    <div class="page-sub">Guias rápidos e referências de uso</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px;">
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
+      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:8px;">&#128196; Como gerar um PGR</div>
+      <ol style="color:var(--text2);font-size:.8rem;line-height:2;padding-left:18px;">
+        <li>Acesse <strong style="color:var(--text);">Gerador de PGR</strong> no menu lateral</li>
+        <li>Preencha os dados da empresa (CNPJ, endereço, CNAE)</li>
+        <li>Importe o PDF da empresa para preencher automaticamente</li>
+        <li>Selecione os GHEs e cargos correspondentes</li>
+        <li>Clique em <strong style="color:var(--orange);">Gerar PGR</strong> — o DOCX será baixado</li>
+      </ol>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
+      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:8px;">&#128203; Como registrar uma nova medição</div>
+      <ol style="color:var(--text2);font-size:.8rem;line-height:2;padding-left:18px;">
+        <li>Acesse <strong style="color:var(--text);">Medições e Amostradores</strong> → <strong style="color:var(--text);">Nova Medição</strong></li>
+        <li>Selecione a empresa e a OS (Ordem de Serviço)</li>
+        <li>Escolha o amostrador e informe a vazão calibrada</li>
+        <li>O sistema calcula automaticamente o tempo de coleta</li>
+        <li>Confirme a baixa — o amostrador vai para Laboratório</li>
+      </ol>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
+      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:8px;">&#128202; Importar demandas do Planner</div>
+      <ol style="color:var(--text2);font-size:.8rem;line-height:2;padding-left:18px;">
+        <li>Exporte as demandas do Microsoft Planner como Excel</li>
+        <li>Acesse <strong style="color:var(--text);">Demandas/OS</strong> → ícone de importação</li>
+        <li>Faça upload do arquivo Excel</li>
+        <li>As demandas serão importadas automaticamente</li>
+      </ol>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--orange-dim);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:20px 24px;">
+      <div style="font-size:.88rem;font-weight:700;color:var(--orange);margin-bottom:8px;">&#128222; Suporte</div>
+      <div style="font-size:.8rem;color:var(--text2);line-height:1.7;">
+        Para dúvidas e problemas técnicos, entre em contato:<br>
+        <strong style="color:var(--text);">E-mail:</strong> engenharia19@ocupacional.com.br<br>
+        <strong style="color:var(--text);">Plataforma:</strong> https://gerador-de-pgr-mrv-production.up.railway.app/
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
 </main><!-- /main-content -->
 </div><!-- /layout -->
 
@@ -2572,6 +2954,10 @@ function goToTab(name) {
   const navEl = document.querySelector(`.sidebar-item[data-name="${name}"]`);
   if (navEl) navEl.classList.add('active');
   window.scrollTo(0, 0);
+  // Carregar dados das novas abas
+  if (name === 'empresas') empLoad();
+  if (name === 'agentes')  agLoad();
+  if (name === 'indicadores') indLoad();
 }
 
 // Compatibilidade: switchTab ainda funciona (chamado em alguns lugares)
@@ -5429,6 +5815,180 @@ async function ctrlConfirmarBaixa() {
   } catch(e) {
     alert('Erro: ' + e.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EMPRESAS
+// ═══════════════════════════════════════════════════════════════════════
+let _empData = [];
+
+async function empLoad() {
+  try {
+    const r = await ctrlFetch('/controle/demandas/por-empresa?limite=500');
+    _empData = r.empresas || [];
+    empRender();
+    // KPIs
+    const total = _empData.length;
+    const ativas = _empData.filter(e => (e.demandas_pendentes||0) > 0).length;
+    const pend = _empData.reduce((s,e) => s + (e.demandas_pendentes||0), 0);
+    const conc = _empData.reduce((s,e) => s + (e.demandas_concluidas||0), 0);
+    const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    set('emp-kpi-total', total);
+    set('emp-kpi-ativa', ativas);
+    set('emp-kpi-pend',  pend);
+    set('emp-kpi-conc',  conc);
+  } catch(e) {
+    const el = document.getElementById('emp-lista');
+    if(el) el.innerHTML = `<div style="color:var(--red);padding:20px;">Erro: ${e.message}</div>`;
+  }
+}
+
+function empFiltrar() {
+  empRender();
+}
+
+function empRender() {
+  const busca = (document.getElementById('emp-busca')?.value||'').toLowerCase();
+  const ordem = document.getElementById('emp-ordem')?.value || 'nome';
+  let lista = _empData.filter(e => !busca || (e.empresa_nome||'').toLowerCase().includes(busca));
+  if (ordem === 'pend') lista.sort((a,b) => (b.demandas_pendentes||0) - (a.demandas_pendentes||0));
+  else if (ordem === 'data') lista.sort((a,b) => (b.demanda_mais_antiga||'') < (a.demanda_mais_antiga||'') ? -1 : 1);
+  else lista.sort((a,b) => (a.empresa_nome||'').localeCompare(b.empresa_nome||''));
+  const el = document.getElementById('emp-lista');
+  if (!el) return;
+  if (!lista.length) { el.innerHTML = '<div style="color:var(--text3);padding:40px;text-align:center;">Nenhuma empresa encontrada.</div>'; return; }
+  el.innerHTML = lista.map(e => {
+    const pend = e.demandas_pendentes || 0;
+    const conc = e.demandas_concluidas || 0;
+    const total = pend + conc;
+    const pct = total ? Math.round(conc/total*100) : 0;
+    const cor = pend === 0 ? 'var(--green)' : pend > 3 ? 'var(--red)' : 'var(--yellow)';
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:border-color .2s;"
+           onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'"
+           onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('porEmpresa',null); },300);">
+        <div style="width:40px;height:40px;background:var(--orange-dim);border:1px solid rgba(34,197,94,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--orange);flex-shrink:0;">
+          ${(e.empresa_nome||'?')[0].toUpperCase()}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.87rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.empresa_nome||'—'}</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:2px;">${total} OS${total !== 1 ? '' : ''} · ${pct}% concluídas</div>
+          <div style="height:4px;background:var(--surface3);border-radius:4px;margin-top:6px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:var(--orange);border-radius:4px;transition:width .4s;"></div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:1.1rem;font-weight:800;color:${cor};">${pend}</div>
+          <div style="font-size:.67rem;color:var(--text3);">pendentes</div>
+        </div>
+        <svg width="14" height="14" fill="none" stroke="var(--text3)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AGENTES
+// ═══════════════════════════════════════════════════════════════════════
+let _agData = [];
+
+async function agLoad() {
+  try {
+    const r = await ctrlFetch('/controle/metodos');
+    _agData = r.metodos || [];
+    agFiltrar();
+  } catch(e) {
+    // fallback: carregar a lista estática dos métodos
+    _agData = [
+      {nome:'Poeira Total', tipo:'quimico', metodo:'NIOSH 0500', cas:'—', vazao_min:1.5, vazao_max:2.5},
+      {nome:'Poeira Mineral (Sílica)', tipo:'quimico', metodo:'NIOSH 7500', cas:'14808-60-7', vazao_min:1.7, vazao_max:2.0},
+      {nome:'Ruído (Dosimetria)', tipo:'fisico', metodo:'NR-15 An.1', cas:'—', vazao_min:null, vazao_max:null},
+      {nome:'Calor / IBUTG', tipo:'fisico', metodo:'NR-15 An.3', cas:'—', vazao_min:null, vazao_max:null},
+      {nome:'Benzeno', tipo:'quimico', metodo:'NIOSH 1501', cas:'71-43-2', vazao_min:0.1, vazao_max:0.2},
+      {nome:'Tolueno', tipo:'quimico', metodo:'NIOSH 1501', cas:'108-88-3', vazao_min:0.1, vazao_max:0.2},
+      {nome:'Estireno', tipo:'quimico', metodo:'NIOSH 1501', cas:'100-42-5', vazao_min:0.1, vazao_max:0.2},
+      {nome:'Hexano (n-Hexano)', tipo:'quimico', metodo:'NIOSH 1500', cas:'110-54-3', vazao_min:0.1, vazao_max:0.2},
+      {nome:'Formaldeído', tipo:'quimico', metodo:'NIOSH 2541', cas:'50-00-0', vazao_min:0.5, vazao_max:1.0},
+    ];
+    agFiltrar();
+  }
+}
+
+function agFiltrar() {
+  const busca = (document.getElementById('ag-busca')?.value||'').toLowerCase();
+  const tipo  = document.getElementById('ag-tipo')?.value||'';
+  let lista = _agData.filter(a => {
+    const match = !busca || (a.nome||'').toLowerCase().includes(busca) || (a.metodo||'').toLowerCase().includes(busca) || (a.cas||'').toLowerCase().includes(busca);
+    const tMatch = !tipo || (a.tipo||'') === tipo;
+    return match && tMatch;
+  });
+  const tbody = document.getElementById('ag-tbody');
+  if (!tbody) return;
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--text3);">Nenhum agente encontrado.</td></tr>'; return; }
+  const tipoCor = {quimico:'var(--purple)', fisico:'var(--blue)', biologico:'var(--red)'};
+  const tipoBg  = {quimico:'rgba(167,139,250,.1)', fisico:'rgba(96,165,250,.1)', biologico:'rgba(239,68,68,.1)'};
+  tbody.innerHTML = lista.map(a => `
+    <tr style="border-bottom:1px solid var(--border);transition:background .15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <td style="padding:11px 16px;font-size:.82rem;font-weight:600;color:var(--text);">${a.nome||'—'}</td>
+      <td style="padding:11px 16px;">
+        <span style="background:${tipoBg[a.tipo]||'var(--surface3)'};color:${tipoCor[a.tipo]||'var(--text3)'};font-size:.67rem;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:capitalize;">${a.tipo||'—'}</span>
+      </td>
+      <td style="padding:11px 16px;font-size:.8rem;color:var(--text2);">${a.metodo||'—'}</td>
+      <td style="padding:11px 16px;font-size:.78rem;color:var(--text3);font-family:monospace;">${a.cas||'—'}</td>
+      <td style="padding:11px 16px;text-align:right;font-size:.8rem;color:var(--text2);">${a.vazao_min ? `${a.vazao_min}–${a.vazao_max}` : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INDICADORES
+// ═══════════════════════════════════════════════════════════════════════
+async function indLoad() {
+  try {
+    const r = await ctrlFetch('/controle/stats');
+    const set = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=(v??'—'); };
+    set('ind-total-med',      (r.medicoes_pendentes||0) + (r.medicoes_realizadas||0));
+    set('ind-amostr-ativos',  (r.estoque||0) + (r.laboratorio||0));
+    set('ind-lab',            r.laboratorio||0);
+    set('ind-dem-abertas',    r.demandas_pendentes||0);
+    set('ind-empresas',       r.empresas_ativas||0);
+
+    // Distribuição por tipo
+    const dist = document.getElementById('ind-dist');
+    if (dist && r.por_agente) {
+      const total = r.por_agente.reduce((s,a)=>s+a.qtd,0)||1;
+      dist.innerHTML = r.por_agente.slice(0,8).map(a => {
+        const pct = Math.round(a.qtd/total*100);
+        return `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-size:.78rem;color:var(--text2);width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.agente||'Outros'}</div>
+            <div style="flex:1;height:6px;background:var(--surface3);border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:var(--orange);border-radius:4px;"></div>
+            </div>
+            <div style="font-size:.75rem;color:var(--text3);width:42px;text-align:right;">${a.qtd} (${pct}%)</div>
+          </div>`;
+      }).join('');
+    } else if (dist) {
+      dist.innerHTML = '<div style="color:var(--text3);font-size:.8rem;">Dados de distribuição não disponíveis.</div>';
+    }
+
+    // Status amostradores
+    const sa = document.getElementById('ind-status-amostr');
+    if (sa) {
+      const statuses = [
+        {label:'Estoque', val: r.estoque||0, cor:'var(--green)', bg:'rgba(16,185,129,.1)'},
+        {label:'Laboratório', val: r.laboratorio||0, cor:'var(--blue)', bg:'rgba(96,165,250,.1)'},
+        {label:'Reservados', val: r.reservados||0, cor:'var(--yellow)', bg:'rgba(245,158,11,.1)'},
+        {label:'Devolvidos', val: r.devolvidos||0, cor:'var(--text3)', bg:'var(--surface3)'},
+      ];
+      sa.innerHTML = statuses.map(s => `
+        <div style="background:${s.bg};border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px 20px;min-width:120px;">
+          <div style="font-size:1.5rem;font-weight:800;color:${s.cor};">${s.val}</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-top:3px;">${s.label}</div>
+        </div>
+      `).join('');
+    }
+  } catch(e) { console.error('indLoad:', e); }
 }
 </script>
 </body>
