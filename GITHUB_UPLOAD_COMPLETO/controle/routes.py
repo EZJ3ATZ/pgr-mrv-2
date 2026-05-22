@@ -263,7 +263,36 @@ def get_agentes():
                 'unidade': entry.get('unidade', ''),
                 'cuidados': entry.get('cuidados', ''),
             })
-        agentes.sort(key=lambda x: x['nome'])
+        # Adicionar grupos BTX e BTXE (nao existem individualmente no guia)
+        grupos = [
+            {
+                'nome': 'BTX (Benzeno + Tolueno + Xileno)',
+                'cas': '71-43-2 / 108-88-3 / 1330-20-7',
+                'metodo': 'NIOSH 1501',
+                'metodo_desc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
+                'vazao': '0,02 A 0,2 L/MIN',
+                'volume': '2 A 10 L',
+                'amostrador': 'SKC 226-01 (TCP*****)',
+                'amostrador_desc': 'TUBO DE CARVAO ATIVADO COCONUT SHELL CHARCOAL, 6X70 mm, 2 SECOES DE 50/100 mg',
+                'tipo_amostrador': 'TCP',
+                'unidade': 'ppm',
+                'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
+            },
+            {
+                'nome': 'BTXE (Benzeno + Tolueno + Xileno + Etilbenzeno)',
+                'cas': '71-43-2 / 108-88-3 / 1330-20-7 / 100-41-4',
+                'metodo': 'NIOSH 1501',
+                'metodo_desc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
+                'vazao': '0,02 A 0,2 L/MIN',
+                'volume': '2 A 10 L',
+                'amostrador': 'SKC 226-01 (TCP*****)',
+                'amostrador_desc': 'TUBO DE CARVAO ATIVADO COCONUT SHELL CHARCOAL, 6X70 mm, 2 SECOES DE 50/100 mg',
+                'tipo_amostrador': 'TCP',
+                'unidade': 'ppm',
+                'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
+            },
+        ]
+        agentes = grupos + agentes
         return jsonify({'agentes': agentes, 'total': len(agentes)})
     except Exception as e:
         return jsonify({'erro': str(e), 'agentes': []}), 500
