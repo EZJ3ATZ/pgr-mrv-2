@@ -1649,3 +1649,127 @@ def gerar_relatorio_ruido():
     return send_file(buf, as_attachment=True,
         download_name=f'planilha_ruido_{nome_safe}_{data_safe}.pdf',
         mimetype='application/pdf')
+
+
+# ══════════════════════════════════════════════════════════════════════
+# MICROSOFT GRAPH — Planner, Outlook, SharePoint
+# ══════════════════════════════════════════════════════════════════════
+
+@controle_bp.route('/graph/status')
+def graph_status():
+    """Verifica conexão com Microsoft Graph."""
+    try:
+        from .graph import graph_ok, CLIENT_ID, TENANT_ID
+        from .planner_sync import get_sync_status
+        ok   = graph_ok()
+        sync = get_sync_status()
+        return jsonify({
+            'configurado':  ok,
+            'client_id':   (CLIENT_ID[:8] + '...') if CLIENT_ID else '',
+            'tenant_id':   (TENANT_ID[:8] + '...') if TENANT_ID else '',
+            'last_sync':   sync.get('last_sync'),
+            'last_stats':  sync.get('stats', {}),
+        })
+    except Exception as e:
+        return jsonify({'configurado': False, 'erro': str(e)}), 500
+
+
+@controle_bp.route('/graph/sync', methods=['POST'])
+def graph_sync_manual():
+    """Dispara sync manual do Planner."""
+    init_db()
+    try:
+        from .planner_sync import sync_planner
+        d = request.json or {}
+        group_filter = d.get('group_id')
+        stats = sync_planner(group_filter=group_filter)
+        if 'erro' in stats:
+            return jsonify(stats), 400
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/graph/groups')
+def graph_list_groups():
+    """Lista grupos Teams/Microsoft 365 disponíveis."""
+    try:
+        from .graph import get_teams_groups
+        grupos = get_teams_groups()
+        return jsonify([{
+            'id':        g['id'],
+            'nome':      g.get('displayName', ''),
+            'descricao': g.get('description', ''),
+            'email':     g.get('mail', ''),
+        } for g in grupos])
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/graph/plans')
+def graph_list_plans():
+    """Lista planos do Planner de um grupo (query param: group_id)."""
+    gid = request.args.get('group_id', '')
+    if not gid:
+        return jsonify({'erro': 'group_id obrigatorio'}), 400
+    try:
+        from .graph import get_plans_for_group, get_plan_buckets
+        planos = get_plans_for_group(gid)
+        result = []
+        for p in planos:
+            buckets = []
+            try:
+                buckets = [{'id': b['id'], 'nome': b.get('name', '')}
+                           for b in get_plan_buckets(p['id'])]
+            except Exception:
+                pass
+            result.append({'id': p['id'], 'titulo': p.get('title', ''), 'buckets': buckets})
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/graph/users')
+def graph_list_users():
+    """Lista usuários Microsoft da organização."""
+    try:
+        from .graph import list_org_users
+        users = list_org_users()
+        return jsonify([{
+            'id':    u['id'],
+            'nome':  u.get('displayName', ''),
+            'email': u.get('mail') or u.get('userPrincipalName', ''),
+            'cargo': u.get('jobTitle', ''),
+            'dept':  u.get('department', ''),
+        } for u in users])
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/eventos')
+def api_eventos():
+    """Retorna log de eventos operacionais (últimos 200)."""
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT e.*, u.display_name AS ms_user_nome, u.email AS ms_user_email
+            FROM eventos e
+            LEFT JOIN ms_users u ON u.ms_id = e.ms_user_id
+            ORDER BY e.criado_em DESC LIMIT 200
+        """).fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
+@controle_bp.route('/eventos', methods=['POST'])
+def api_registrar_evento():
+    """Registra evento manualmente (ações do usuário)."""
+    init_db()
+    d = request.json or {}
+    with get_db() as conn:
+        conn.execute(
+            'INSERT INTO eventos (tipo,descricao,ref_id,ref_tipo,usuario,criado_em) '
+            'VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)',
+            (d.get('tipo', 'acao'), d.get('descricao', ''),
+             d.get('ref_id'), d.get('ref_tipo'), d.get('usuario', 'sistema'))
+        )
+    return jsonify({'ok': True})
