@@ -4079,10 +4079,11 @@ async function ctrlLoadPrevisao() {
       const corFalta = x.falta > 0 ? '#e22' : '#0a7';
       const fundoFalta = x.falta > 0 ? 'rgba(239,68,68,.08)' : '';
       // Top 3 demandas
-      const demStr = (x.medicoes || []).slice(0, 3).map(m =>
-        `<span style="font-size:.7rem; color:var(--text3);">${m.empresa} ${m.os ? `(OS ${m.os})` : ''}</span>`
+      const meds = x.medicoes || [];
+      const demStr = meds.map(m =>
+        `<span style="font-size:.7rem; color:var(--text3);">${m.empresa}${m.os ? ` <span style="color:var(--text2);">(OS ${m.os})</span>` : ''}${m.prazo ? ` <span style="color:#f80;">${m.prazo}</span>` : ''}</span>`
       ).join('<br>');
-      const mais = (x.medicoes || []).length > 3 ? `<span style="font-size:.7rem; color:var(--text3);">+${x.medicoes.length-3} mais</span>` : '';
+      const mais = '';
       return `<tr style="background:${fundoFalta};">
         <td style="padding:7px 10px;"><b>${x.tipo}</b></td>
         <td style="padding:7px 10px; font-size:.78rem; color:var(--text3);">${x.metodo||'—'}</td>
@@ -4090,7 +4091,7 @@ async function ctrlLoadPrevisao() {
         <td style="padding:7px 10px; text-align:center; font-weight:600;">${x.qtd_necessaria}</td>
         <td style="padding:7px 10px; text-align:center; color:${x.em_estoque > 0 ? '#0a7':'#e22'}; font-weight:600;">${x.em_estoque}</td>
         <td style="padding:7px 10px; text-align:center; color:${corFalta}; font-weight:700;">${x.falta > 0 ? x.falta : '✓'}</td>
-        <td style="padding:7px 10px;">${demStr}${mais}</td>
+        <td style="padding:7px 10px; max-width:300px;"><div style="max-height:120px; overflow-y:auto;">${demStr}</div></td>
       </tr>`;
     }).join('');
 
