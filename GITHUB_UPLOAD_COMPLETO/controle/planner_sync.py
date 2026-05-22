@@ -177,7 +177,7 @@ def _find_category_ids(category_map: dict, label_filter: str) -> set:
     Ex: label_filter='medições' → {'category1', 'category3'}
     """
     needle = label_filter.lower().strip()
-    return {k for k, v in category_map.items() if needle in v.lower()}
+    return {k for k, v in category_map.items() if v and needle in v.lower()}
 
 
 def sync_planner(group_filter: str = None, label_filter: str = None) -> dict:
