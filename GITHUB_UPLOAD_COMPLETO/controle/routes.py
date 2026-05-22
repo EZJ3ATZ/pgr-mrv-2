@@ -700,8 +700,17 @@ def previsao_estoque():
             ORDER BY d.prazo ASC NULLS LAST
         """).fetchall()]
 
+    AGENTES_FISICOS = {
+        'Ruído', 'Ruido', 'Calor', 'Frio', 'Iluminação', 'Iluminacao',
+        'Radiação Ionizante', 'Radiacao Ionizante', 'Radiação Não Ionizante',
+        'Vibração Localizada - Mãos e Braços', 'Vibracao Localizada - Maos e Bracos',
+        'Vibração de Corpo Inteiro', 'Vibracao de Corpo Inteiro',
+        'Pressão Hiperbárica', 'Pressao Hiperbarica',
+    }
+
     necessidades = {}   # tipo -> {qtd_necessaria, falta, medicoes[]}
     agentes_sem_guia = set()
+    agentes_fisicos_presentes = set()
 
     for m in meds:
         agente = m.get('agente', '')
@@ -712,6 +721,9 @@ def previsao_estoque():
 
         metodos = _buscar_metodos_agente(agente)
         if not metodos:
+            if agente in AGENTES_FISICOS or any(f in agente for f in ['Ruído','Ruido','Calor','Vibração','Vibracao','Frio','Radiação','Radiacao','Iluminação']):
+                agentes_fisicos_presentes.add(agente)
+                continue
             agentes_sem_guia.add(agente)
             # Tenta usar tipo_amostrador ja cadastrado na medicao
             tipo_raw = (m.get('tipo_amostrador') or '').upper().strip()
@@ -766,6 +778,7 @@ def previsao_estoque():
     return jsonify({
         'necessidades': lista,
         'agentes_sem_guia': sorted(agentes_sem_guia),
+        'agentes_fisicos': sorted(agentes_fisicos_presentes),
         'total_medicoes_pendentes': len(meds),
     })
 
