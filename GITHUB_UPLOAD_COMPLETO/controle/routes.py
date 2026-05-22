@@ -1842,6 +1842,17 @@ def api_reclassificar():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/empresas/mesclar', methods=['POST'])
+def api_mesclar_empresas():
+    """Mescla empresas duplicadas (mesmo nome normalizado)."""
+    init_db()
+    try:
+        n = mesclar_empresas_duplicatas()
+        return jsonify({'ok': True, 'mescladas': n})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/eventos', methods=['POST'])
 def api_registrar_evento():
     """Registra evento manualmente (ações do usuário)."""
