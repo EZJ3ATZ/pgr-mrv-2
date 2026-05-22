@@ -123,6 +123,110 @@ CREATE TABLE IF NOT EXISTS sync_log (
     usuario         TEXT,
     criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ── Planilhas Digitais de Campo ────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS coletas_ruido (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id          INTEGER,
+    empresa_id          INTEGER,
+    empresa_nome        TEXT,
+    acompanhante        TEXT,
+    cargo_acompanhante  TEXT,
+    tecnico             TEXT,
+    data_coleta         TEXT,
+    hora_inicio         TEXT,
+    hora_termino        TEXT,
+    calibracao_inicial  REAL,
+    calibracao_final    REAL,
+    desvio_calibracao   REAL,
+    status_calibracao   TEXT DEFAULT 'pendente',
+    observacao          TEXT,
+    status              TEXT DEFAULT 'rascunho',
+    criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (demanda_id) REFERENCES demandas(id),
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_col_ruido_empresa ON coletas_ruido(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_col_ruido_status  ON coletas_ruido(status);
+
+CREATE TABLE IF NOT EXISTS coletas_ruido_func (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    coleta_id       INTEGER NOT NULL,
+    seq             INTEGER DEFAULT 1,
+    nome            TEXT,
+    cargo           TEXT,
+    setor           TEXT,
+    almoco          INTEGER DEFAULT 0,
+    serie_dosimetro TEXT,
+    FOREIGN KEY (coleta_id) REFERENCES coletas_ruido(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_col_ruido_func ON coletas_ruido_func(coleta_id);
+
+CREATE TABLE IF NOT EXISTS coletas_quimico (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id          INTEGER,
+    empresa_id          INTEGER,
+    empresa_nome        TEXT,
+    responsavel_coleta  TEXT,
+    cidade              TEXT,
+    unidade             TEXT,
+    data_coleta         TEXT,
+    dia_semana          TEXT,
+    turno               TEXT,
+    nome_funcionario    TEXT,
+    jornada             TEXT,
+    funcao              TEXT,
+    setor               TEXT,
+    local_atividade     TEXT,
+    atividade           TEXT,
+    ventilacao          TEXT,
+    ambiente            TEXT,
+    condicoes_meteo     TEXT,
+    temperatura         TEXT,
+    umidade             TEXT,
+    outras_condicoes    TEXT,
+    substancias         TEXT,
+    fracao              TEXT,
+    tempo_exposto       TEXT,
+    bomba               TEXT,
+    id_bomba            TEXT,
+    data_cal_bomba      TEXT,
+    id_calibrador       TEXT,
+    acessorios          TEXT,
+    epis                TEXT,
+    epc                 TEXT,
+    observacao          TEXT,
+    status              TEXT DEFAULT 'rascunho',
+    criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (demanda_id) REFERENCES demandas(id),
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_col_quim_empresa ON coletas_quimico(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_col_quim_status  ON coletas_quimico(status);
+
+CREATE TABLE IF NOT EXISTS coletas_quimico_amostr (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    coleta_id       INTEGER NOT NULL,
+    seq             INTEGER DEFAULT 1,
+    id_amostrador   TEXT,
+    tipo_amostrador TEXT,
+    substancia      TEXT,
+    vazao_inicial   REAL,
+    vazao_final     REAL,
+    vazao_media     REAL,
+    hora_inicio     TEXT,
+    hora_final      TEXT,
+    intervalos      TEXT,
+    tempo_min       REAL,
+    volume_L        REAL,
+    variacao_vazao  REAL,
+    status_variacao TEXT DEFAULT 'pendente',
+    FOREIGN KEY (coleta_id) REFERENCES coletas_quimico(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_col_quim_amostr ON coletas_quimico_amostr(coleta_id);
 """
 
 
@@ -575,3 +679,293 @@ def stats_dashboard():
                                           AND julianday(data_envio_lab) + COALESCE(dias_validade,45) - 4) AS venc_alerta
         """).fetchone()
         return dict(r)
+
+
+# ── Coletas de Campo ──────────────────────────────────────────────────
+
+def list_coletas_ruido(filtros=None):
+    f = filtros or {}
+    sql = """
+        SELECT cr.*, e.nome AS empresa_nome_join,
+               COUNT(crf.id) AS total_func
+        FROM coletas_ruido cr
+        LEFT JOIN empresas e ON e.id = cr.empresa_id
+        LEFT JOIN coletas_ruido_func crf ON crf.coleta_id = cr.id
+        WHERE 1=1
+    """
+    params = []
+    if f.get('empresa'):
+        sql += ' AND LOWER(cr.empresa_nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
+    if f.get('status'):
+        sql += ' AND cr.status = ?'; params.append(f['status'])
+    sql += ' GROUP BY cr.id ORDER BY cr.atualizado_em DESC LIMIT 200'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def get_coleta_ruido(cid):
+    with get_db() as conn:
+        c = conn.execute('SELECT * FROM coletas_ruido WHERE id=?', (cid,)).fetchone()
+        if not c: return None
+        c = row_to_dict(c)
+        c['funcionarios'] = [row_to_dict(r) for r in conn.execute(
+            'SELECT * FROM coletas_ruido_func WHERE coleta_id=? ORDER BY seq', (cid,)).fetchall()]
+        return c
+
+
+def save_coleta_ruido(data):
+    """Insere ou atualiza coleta de ruido. Retorna id."""
+    cid = data.get('id')
+    campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'acompanhante',
+              'cargo_acompanhante', 'tecnico', 'data_coleta', 'hora_inicio',
+              'hora_termino', 'calibracao_inicial', 'calibracao_final',
+              'desvio_calibracao', 'status_calibracao', 'observacao', 'status']
+    vals = {c: data.get(c) for c in campos}
+    # Calcular desvio automaticamente se tiver os dois valores
+    ci = vals.get('calibracao_inicial')
+    cf = vals.get('calibracao_final')
+    if ci is not None and cf is not None:
+        try:
+            desvio = abs(float(cf) - float(ci))
+            vals['desvio_calibracao'] = round(desvio, 2)
+            vals['status_calibracao'] = 'divergente' if desvio > 1.0 else 'conforme'
+        except: pass
+
+    with get_db() as conn:
+        if cid:
+            sets = ', '.join(f'{k}=?' for k in vals)
+            sets += ', atualizado_em=CURRENT_TIMESTAMP'
+            conn.execute(f'UPDATE coletas_ruido SET {sets} WHERE id=?',
+                         list(vals.values()) + [cid])
+        else:
+            cols = ', '.join(vals.keys())
+            phs  = ', '.join(['?'] * len(vals))
+            cur  = conn.execute(
+                f'INSERT INTO coletas_ruido ({cols}) VALUES ({phs})',
+                list(vals.values()))
+            cid = cur.lastrowid
+
+        # Salvar funcionarios (replace all)
+        if 'funcionarios' in data:
+            conn.execute('DELETE FROM coletas_ruido_func WHERE coleta_id=?', (cid,))
+            for i, func in enumerate(data['funcionarios'], 1):
+                conn.execute("""
+                    INSERT INTO coletas_ruido_func
+                        (coleta_id, seq, nome, cargo, setor, almoco, serie_dosimetro)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (cid, i, func.get('nome',''), func.get('cargo',''),
+                     func.get('setor',''), 1 if func.get('almoco') else 0,
+                     func.get('serie_dosimetro','')))
+    return cid
+
+
+def list_coletas_quimico(filtros=None):
+    f = filtros or {}
+    sql = """
+        SELECT cq.*, COUNT(cqa.id) AS total_amostradores
+        FROM coletas_quimico cq
+        LEFT JOIN coletas_quimico_amostr cqa ON cqa.coleta_id = cq.id
+        WHERE 1=1
+    """
+    params = []
+    if f.get('empresa'):
+        sql += ' AND LOWER(cq.empresa_nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
+    if f.get('status'):
+        sql += ' AND cq.status = ?'; params.append(f['status'])
+    sql += ' GROUP BY cq.id ORDER BY cq.atualizado_em DESC LIMIT 200'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def get_coleta_quimico(cid):
+    with get_db() as conn:
+        c = conn.execute('SELECT * FROM coletas_quimico WHERE id=?', (cid,)).fetchone()
+        if not c: return None
+        c = row_to_dict(c)
+        c['amostradores'] = [row_to_dict(r) for r in conn.execute(
+            'SELECT * FROM coletas_quimico_amostr WHERE coleta_id=? ORDER BY seq', (cid,)).fetchall()]
+        return c
+
+
+def save_coleta_quimico(data):
+    """Insere ou atualiza coleta quimica. Retorna id."""
+    cid = data.get('id')
+    campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'responsavel_coleta',
+              'cidade', 'unidade', 'data_coleta', 'dia_semana', 'turno',
+              'nome_funcionario', 'jornada', 'funcao', 'setor', 'local_atividade',
+              'atividade', 'ventilacao', 'ambiente', 'condicoes_meteo',
+              'temperatura', 'umidade', 'outras_condicoes', 'substancias',
+              'fracao', 'tempo_exposto', 'bomba', 'id_bomba', 'data_cal_bomba',
+              'id_calibrador', 'acessorios', 'epis', 'epc', 'observacao', 'status']
+    vals = {c: data.get(c) for c in campos}
+
+    with get_db() as conn:
+        if cid:
+            sets = ', '.join(f'{k}=?' for k in vals)
+            sets += ', atualizado_em=CURRENT_TIMESTAMP'
+            conn.execute(f'UPDATE coletas_quimico SET {sets} WHERE id=?',
+                         list(vals.values()) + [cid])
+        else:
+            cols = ', '.join(vals.keys())
+            phs  = ', '.join(['?'] * len(vals))
+            cur  = conn.execute(
+                f'INSERT INTO coletas_quimico ({cols}) VALUES ({phs})',
+                list(vals.values()))
+            cid = cur.lastrowid
+
+        # Salvar amostradores (replace all)
+        if 'amostradores' in data:
+            conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
+            for i, am in enumerate(data['amostradores'], 1):
+                # Calcular automaticamente
+                vi = am.get('vazao_inicial') or 0
+                vf = am.get('vazao_final') or 0
+                vm = (vi + vf) / 2 if (vi and vf) else 0
+                t  = am.get('tempo_min') or 0
+                vol = round(vm * t, 3) if (vm and t) else 0
+                dv  = round(abs(vi - vf) / vi * 100, 2) if vi else 0
+                conn.execute("""
+                    INSERT INTO coletas_quimico_amostr
+                        (coleta_id, seq, id_amostrador, tipo_amostrador, substancia,
+                         vazao_inicial, vazao_final, vazao_media, hora_inicio, hora_final,
+                         intervalos, tempo_min, volume_L, variacao_vazao, status_variacao)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (cid, i, am.get('id_amostrador',''), am.get('tipo_amostrador',''),
+                     am.get('substancia',''), vi, vf, round(vm,3),
+                     am.get('hora_inicio',''), am.get('hora_final',''),
+                     am.get('intervalos',''), t, vol, dv,
+                     'divergente' if dv > 5 else '
+
+
+# ── Coletas de Campo ──────────────────────────────────────────────────
+
+def list_coletas_ruido(filtros=None):
+    f = filtros or {}
+    sql = (
+        'SELECT cr.*, COUNT(crf.id) AS total_func '
+        'FROM coletas_ruido cr '
+        'LEFT JOIN coletas_ruido_func crf ON crf.coleta_id = cr.id '
+        'WHERE 1=1'
+    )
+    params = []
+    if f.get('empresa'):
+        sql += ' AND LOWER(cr.empresa_nome) LIKE LOWER(?)'; params.append('%' + f['empresa'] + '%')
+    if f.get('status'):
+        sql += ' AND cr.status = ?'; params.append(f['status'])
+    sql += ' GROUP BY cr.id ORDER BY cr.atualizado_em DESC LIMIT 200'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def get_coleta_ruido(cid):
+    with get_db() as conn:
+        c = conn.execute('SELECT * FROM coletas_ruido WHERE id=?', (cid,)).fetchone()
+        if not c: return None
+        c = row_to_dict(c)
+        c['funcionarios'] = [row_to_dict(r) for r in conn.execute(
+            'SELECT * FROM coletas_ruido_func WHERE coleta_id=? ORDER BY seq', (cid,)).fetchall()]
+        return c
+
+
+def save_coleta_ruido(data):
+    cid = data.get('id')
+    campos = ['empresa_id','empresa_nome','demanda_id','acompanhante',
+              'cargo_acompanhante','tecnico','data_coleta','hora_inicio',
+              'hora_termino','calibracao_inicial','calibracao_final',
+              'desvio_calibracao','status_calibracao','observacao','status']
+    vals = {c: data.get(c) for c in campos}
+    ci = vals.get('calibracao_inicial')
+    cf = vals.get('calibracao_final')
+    if ci is not None and cf is not None:
+        try:
+            desvio = abs(float(cf) - float(ci))
+            vals['desvio_calibracao'] = round(desvio, 2)
+            vals['status_calibracao'] = 'divergente' if desvio > 1.0 else 'conforme'
+        except: pass
+    with get_db() as conn:
+        if cid:
+            sets = ', '.join(k + '=?' for k in vals) + ', atualizado_em=CURRENT_TIMESTAMP'
+            conn.execute('UPDATE coletas_ruido SET ' + sets + ' WHERE id=?', list(vals.values()) + [cid])
+        else:
+            cols = ', '.join(vals.keys())
+            phs  = ', '.join(['?'] * len(vals))
+            cur  = conn.execute('INSERT INTO coletas_ruido (' + cols + ') VALUES (' + phs + ')', list(vals.values()))
+            cid  = cur.lastrowid
+        if 'funcionarios' in data:
+            conn.execute('DELETE FROM coletas_ruido_func WHERE coleta_id=?', (cid,))
+            for i, func in enumerate(data['funcionarios'], 1):
+                conn.execute(
+                    'INSERT INTO coletas_ruido_func (coleta_id,seq,nome,cargo,setor,almoco,serie_dosimetro) VALUES (?,?,?,?,?,?,?)',
+                    (cid, i, func.get('nome',''), func.get('cargo',''), func.get('setor',''),
+                     1 if func.get('almoco') else 0, func.get('serie_dosimetro','')))
+    return cid
+
+
+def list_coletas_quimico(filtros=None):
+    f = filtros or {}
+    sql = (
+        'SELECT cq.*, COUNT(cqa.id) AS total_amostradores '
+        'FROM coletas_quimico cq '
+        'LEFT JOIN coletas_quimico_amostr cqa ON cqa.coleta_id = cq.id '
+        'WHERE 1=1'
+    )
+    params = []
+    if f.get('empresa'):
+        sql += ' AND LOWER(cq.empresa_nome) LIKE LOWER(?)'; params.append('%' + f['empresa'] + '%')
+    if f.get('status'):
+        sql += ' AND cq.status = ?'; params.append(f['status'])
+    sql += ' GROUP BY cq.id ORDER BY cq.atualizado_em DESC LIMIT 200'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def get_coleta_quimico(cid):
+    with get_db() as conn:
+        c = conn.execute('SELECT * FROM coletas_quimico WHERE id=?', (cid,)).fetchone()
+        if not c: return None
+        c = row_to_dict(c)
+        c['amostradores'] = [row_to_dict(r) for r in conn.execute(
+            'SELECT * FROM coletas_quimico_amostr WHERE coleta_id=? ORDER BY seq', (cid,)).fetchall()]
+        return c
+
+
+def save_coleta_quimico(data):
+    cid = data.get('id')
+    campos = ['empresa_id','empresa_nome','demanda_id','responsavel_coleta',
+              'cidade','unidade','data_coleta','dia_semana','turno',
+              'nome_funcionario','jornada','funcao','setor','local_atividade',
+              'atividade','ventilacao','ambiente','condicoes_meteo',
+              'temperatura','umidade','outras_condicoes','substancias',
+              'fracao','tempo_exposto','bomba','id_bomba','data_cal_bomba',
+              'id_calibrador','acessorios','epis','epc','observacao','status']
+    vals = {c: data.get(c) for c in campos}
+    with get_db() as conn:
+        if cid:
+            sets = ', '.join(k + '=?' for k in vals) + ', atualizado_em=CURRENT_TIMESTAMP'
+            conn.execute('UPDATE coletas_quimico SET ' + sets + ' WHERE id=?', list(vals.values()) + [cid])
+        else:
+            cols = ', '.join(vals.keys())
+            phs  = ', '.join(['?'] * len(vals))
+            cur  = conn.execute('INSERT INTO coletas_quimico (' + cols + ') VALUES (' + phs + ')', list(vals.values()))
+            cid  = cur.lastrowid
+        if 'amostradores' in data:
+            conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
+            for i, am in enumerate(data['amostradores'], 1):
+                vi  = float(am.get('vazao_inicial') or 0)
+                vf  = float(am.get('vazao_final') or 0)
+                vm  = (vi + vf) / 2 if vi and vf else 0
+                t   = float(am.get('tempo_min') or 0)
+                vol = round(vm * t, 3) if vm and t else 0
+                dv  = round(abs(vi - vf) / vi * 100, 2) if vi else 0
+                conn.execute(
+                    'INSERT INTO coletas_quimico_amostr '
+                    '(coleta_id,seq,id_amostrador,tipo_amostrador,substancia,'
+                    'vazao_inicial,vazao_final,vazao_media,hora_inicio,hora_final,'
+                    'intervalos,tempo_min,volume_L,variacao_vazao,status_variacao) '
+                    'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    (cid, i, am.get('id_amostrador',''), am.get('tipo_amostrador',''),
+                     am.get('substancia',''), vi, vf, round(vm,3),
+                     am.get('hora_inicio',''), am.get('hora_final',''),
+                     am.get('intervalos',''), t, vol, dv,
+                     'divergente' if dv > 5 else 'conforme'))
+    return cid
