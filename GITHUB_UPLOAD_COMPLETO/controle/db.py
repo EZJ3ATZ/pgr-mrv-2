@@ -91,6 +91,11 @@ CREATE TABLE IF NOT EXISTS medicoes (
 );
 CREATE INDEX IF NOT EXISTS idx_med_demanda ON medicoes(demanda_id);
 CREATE INDEX IF NOT EXISTS idx_med_status  ON medicoes(status);
+CREATE INDEX IF NOT EXISTS idx_med_agente  ON medicoes(agente);
+CREATE INDEX IF NOT EXISTS idx_dem_status  ON demandas(status);
+CREATE INDEX IF NOT EXISTS idx_dem_empresa ON demandas(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_dem_prazo   ON demandas(prazo);
+CREATE INDEX IF NOT EXISTS idx_emp_nome    ON empresas(nome);
 
 CREATE TABLE IF NOT EXISTS baixas (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,8 +143,12 @@ def list_sync_log(limit=20):
 
 
 def _connect():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    conn.execute('PRAGMA cache_size=10000')
+    conn.execute('PRAGMA temp_store=MEMORY')
     conn.execute('PRAGMA foreign_keys = ON')
     return conn
 
@@ -325,26 +334,18 @@ def list_demandas(filtros=None):
 
 def list_demandas_por_empresa(filtros=None):
     """Agrupa demandas por empresa com progresso total.
-    Usa LOWER(TRIM(nome)) para consolidar empresas duplicadas importadas com nomes identicos.
+    Usa JOIN direto (sem subqueries correlacionadas) para performance maxima.
     """
     sql = """
-        SELECT MIN(e.id) AS empresa_id,
+        SELECT e.id AS empresa_id,
                e.nome AS empresa_nome,
-               MAX(NULLIF(e.cnpj,'')) AS cnpj,
-               COUNT(d.id) AS total_demandas,
+               e.cnpj,
+               COUNT(DISTINCT d.id) AS total_demandas,
                SUM(CASE WHEN d.status='concluida' THEN 1 ELSE 0 END) AS demandas_concluidas,
                SUM(CASE WHEN d.status!='concluida' THEN 1 ELSE 0 END) AS demandas_pendentes,
-               COALESCE(SUM(d.progresso), 0) / NULLIF(COUNT(d.id),0) AS progresso_medio,
-               (SELECT COUNT(*) FROM medicoes m JOIN demandas d2 ON d2.id=m.demanda_id
-                 WHERE d2.empresa_id IN (
-                     SELECT id FROM empresas e2
-                     WHERE LOWER(TRIM(e2.nome)) = LOWER(TRIM(e.nome))
-                 )) AS total_medicoes,
-               (SELECT COUNT(*) FROM medicoes m JOIN demandas d2 ON d2.id=m.demanda_id
-                 WHERE d2.empresa_id IN (
-                     SELECT id FROM empresas e2
-                     WHERE LOWER(TRIM(e2.nome)) = LOWER(TRIM(e.nome))
-                 ) AND m.status='realizado') AS medicoes_realizadas,
+               COALESCE(SUM(d.progresso), 0) / NULLIF(COUNT(DISTINCT d.id),0) AS progresso_medio,
+               COUNT(m.id) AS total_medicoes,
+               SUM(CASE WHEN m.status='realizado' THEN 1 ELSE 0 END) AS medicoes_realizadas,
                MIN(d.criado_em) AS demanda_mais_antiga,
                MIN(NULLIF(d.prazo,'')) AS prazo_mais_proximo,
                MAX(d.responsavel) AS responsavel,
@@ -352,9 +353,11 @@ def list_demandas_por_empresa(filtros=None):
                SUM(CASE WHEN d.status!='concluida'
                           AND d.prazo IS NOT NULL AND d.prazo != ''
                           AND julianday(d.prazo) < julianday('now')
-                   THEN 1 ELSE 0 END) AS demandas_atrasadas
+                   THEN 1 ELSE 0 END) AS demandas_atrasadas,
+               GROUP_CONCAT(DISTINCT d.numero_os) AS numeros_os
         FROM empresas e
         JOIN demandas d ON d.empresa_id = e.id
+        LEFT JOIN medicoes m ON m.demanda_id = d.id
         WHERE 1=1
     """
     params = []
@@ -371,7 +374,7 @@ def list_demandas_por_empresa(filtros=None):
         'data':  'demanda_mais_antiga ASC',
         'pend':  'demandas_pendentes DESC, demanda_mais_antiga ASC',
     }.get(ordem, 'empresa_nome ASC')
-    sql += f" GROUP BY LOWER(TRIM(e.nome)) ORDER BY {order_clause} LIMIT 1000"
+    sql += f" GROUP BY e.id, e.nome ORDER BY {order_clause} LIMIT 500"
     with get_db() as conn:
         rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
         for r in rows:
@@ -543,35 +546,32 @@ def contar_vencendo():
 
 
 def stats_dashboard():
-    """Estatisticas rapidas para a tela principal."""
+    """Estatisticas rapidas para a tela principal — consulta unica otimizada."""
     with get_db() as conn:
-        stats = {}
-        stats['total_amostradores'] = conn.execute(
-            'SELECT COUNT(*) AS c FROM amostradores').fetchone()['c']
-        stats['estoque'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Estoque'").fetchone()['c']
-        stats['laboratorio'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Laboratorio'").fetchone()['c']
-        stats['reservados'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Reservado'").fetchone()['c']
-        stats['devolvidos'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM amostradores WHERE status='Devolvido'").fetchone()['c']
-        stats['medicoes_realizadas'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM medicoes WHERE status='realizado'").fetchone()['c']
-        stats['demandas_pendentes'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE status!='concluida'").fetchone()['c']
-        stats['demandas_concluidas'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE status='concluida'").fetchone()['c']
-        stats['medicoes_pendentes'] = conn.execute(
-            "SELECT COUNT(*) AS c FROM medicoes WHERE status='pendente'").fetchone()['c']
-        stats['empresas_ativas'] = conn.execute(
-            "SELECT COUNT(DISTINCT empresa_id) AS c FROM demandas WHERE status!='concluida'").fetchone()['c']
-        # Vencimento de amostradores no laboratorio
-        venc = contar_vencendo()
-        stats.update({
-            'venc_vencidos':     venc['vencidos'],
-            'venc_urgente':      venc['urgente'],
-            'venc_alerta':       venc['alerta'],
-            'venc_total_no_lab': venc['total_no_lab'],
-        })
-        return stats
+        r = conn.execute("""
+            SELECT
+              (SELECT COUNT(*) FROM amostradores) AS total_amostradores,
+              (SELECT COUNT(*) FROM amostradores WHERE status='Estoque') AS estoque,
+              (SELECT COUNT(*) FROM amostradores WHERE status='Laboratorio') AS laboratorio,
+              (SELECT COUNT(*) FROM amostradores WHERE status='Reservado') AS reservados,
+              (SELECT COUNT(*) FROM amostradores WHERE status='Devolvido') AS devolvidos,
+              (SELECT COUNT(*) FROM medicoes WHERE status='realizado') AS medicoes_realizadas,
+              (SELECT COUNT(*) FROM medicoes WHERE status='pendente') AS medicoes_pendentes,
+              (SELECT COUNT(*) FROM demandas WHERE status!='concluida') AS demandas_pendentes,
+              (SELECT COUNT(*) FROM demandas WHERE status='concluida') AS demandas_concluidas,
+              (SELECT COUNT(DISTINCT empresa_id) FROM demandas WHERE status!='concluida') AS empresas_ativas,
+              (SELECT COUNT(*) FROM amostradores
+               WHERE data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status != 'Devolvido') AS venc_total_no_lab,
+              (SELECT COUNT(*) FROM amostradores
+               WHERE data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status != 'Devolvido'
+                 AND julianday('now') > julianday(data_envio_lab) + COALESCE(dias_validade,45)) AS venc_vencidos,
+              (SELECT COUNT(*) FROM amostradores
+               WHERE data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status != 'Devolvido'
+                 AND julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,45) - 3
+                                          AND julianday(data_envio_lab) + COALESCE(dias_validade,45)) AS venc_urgente,
+              (SELECT COUNT(*) FROM amostradores
+               WHERE data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status != 'Devolvido'
+                 AND julianday('now') BETWEEN julianday(data_envio_lab) + COALESCE(dias_validade,45) - 7
+                                          AND julianday(data_envio_lab) + COALESCE(dias_validade,45) - 4) AS venc_alerta
+        """).fetchone()
+        return dict(r)
