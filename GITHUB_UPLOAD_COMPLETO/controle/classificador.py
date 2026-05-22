@@ -2,18 +2,26 @@
 """
 Classificador de tarefas Planner.
 
-Diferencia automaticamente:
-  - operacional  → demanda real de cliente (OS, empresa, medição)
-  - interna      → gestão interna da equipe (treinamentos, reuniões, POPs...)
-  - administrativa → sem sinais claros de nenhum dos dois
+Tipos:
+  - medicao      → medição de campo real: tem OS + atribuída a Wesley/Matheus/Helbert
+                   ou bucket claramente de medição
+  - laudo        → documento técnico: AET, ergonomia, LTCAT, etc.
+  - operacional  → demanda de cliente sem tipo específico (OS sem técnico de campo,
+                   sufixo societário, bucket operacional)
+  - interna      → gestão interna (treinamentos, reuniões, POPs...)
+  - administrativa → sem indicadores claros
 
 Critérios (ordem de prioridade):
-  1. Bucket indica claramente interno  → interna
-  2. Número de OS no título            → operacional
-  3. Sufixo societário (LTDA/S.A/...)  → operacional
-  4. Palavras-chave internas           → interna
-  5. Bucket operacional                → operacional
-  6. Sem indicadores                   → administrativa
+  1. Bucket interno              → interna
+  2. Palavra-chave de laudo (AET/ergonomia/LTCAT…) → laudo
+  3. OS + técnico de medição     → medicao
+  4. OS sem técnico de campo     → operacional
+  5. Sufixo societário           → operacional
+  6. Palavras-chave internas     → interna
+  7. Técnico de medição + bucket operacional → medicao
+  8. Bucket operacional          → operacional
+  9. Sem bucket (seed)           → operacional
+ 10. Demais                      → administrativa
 """
 
 import re
@@ -21,16 +29,31 @@ import unicodedata
 
 # ── Patterns ─────────────────────────────────────────────────────────
 
-# OS: 5-8 dígitos no início ou após "MEDIÇÕES -"
-_RE_OS_INICIO = re.compile(r'^(\d{4,8})\s*[-–,]')
-_RE_OS_MED    = re.compile(r'MEDI[CÇ][ÕO]ES?\s*[-–]\s*(\d{4,8})', re.IGNORECASE)
-_RE_OS_VIRGULA= re.compile(r'^(\d{4,8})\s*,')           # "57937, Nome Empresa"
+# OS: 4-8 dígitos no início ou após "MEDIÇÕES -"
+_RE_OS_INICIO  = re.compile(r'^(\d{4,8})\s*[-–,]')
+_RE_OS_MED     = re.compile(r'MEDI[CÇ][ÕO]ES?\s*[-–]\s*(\d{4,8})', re.IGNORECASE)
+_RE_OS_VIRGULA = re.compile(r'^(\d{4,8})\s*,')   # "57937, Nome Empresa"
 
 # Sufixos societários
 _RE_SUFIXO = re.compile(
     r'\b(ltda|s\.?a\.?|eireli|me|epp|ss|scp|s\.s)\b',
     re.IGNORECASE
 )
+
+# Laudos/documentos técnicos — NÃO são medições de campo
+_RE_LAUDO = re.compile(
+    r'\baet\b'             # Análise Ergonômica do Trabalho
+    r'|ergon[oô]m'         # ergonomia, ergonômico
+    r'|\bltcat\b'          # Laudo Técnico das Condições do Ambiente de Trabalho
+    r'|\bppra\b'           # Programa de Prevenção de Riscos Ambientais
+    r'|laudo\s+de\s+insalubr'
+    r'|laudo\s+de\s+periculosidade'
+    r'|avali[aá][cç][aã]o\s+(ergon|de\s+posto)',
+    re.IGNORECASE
+)
+
+# Nomes dos técnicos de medição de campo
+_NOMES_MEDICAO = {'wesley', 'matheus', 'helbert'}
 
 # Buckets que indicam tarefas INTERNAS
 _BUCKETS_INTERNOS = {
@@ -47,7 +70,7 @@ _BUCKETS_INTERNOS = {
     'avançar',
 }
 
-# Buckets operacionais (medições de clientes)
+# Buckets operacionais (medições/demandas de clientes)
 _BUCKETS_OPERACIONAIS = {
     'medições', 'medicoes',
     'verde', 'amarela', 'vermelho', 'laranja',
@@ -78,7 +101,7 @@ _PALAVRAS_INTERNAS = {
     'formulário', 'formulario', 'forms', 'form',
     'implantação', 'implantacao', 'implantar',
     'suporte de tv', 'suporte tv',
-    'validação', 'validacao',  # sem empresa = interna
+    'validação', 'validacao',
     'definição', 'definicao', 'definir sla',
     'organizar mutirão', 'mutirão', 'mutirao',
     'kickoff',
@@ -108,6 +131,12 @@ def _normalizar(txt: str) -> str:
     return unicodedata.normalize('NFKD', txt).encode('ascii', 'ignore').decode().lower()
 
 
+def _e_tecnico_medicao(assignee: str) -> bool:
+    """Verifica se o responsável é um técnico de medição de campo."""
+    a = _normalizar(assignee or '')
+    return any(nome in a for nome in _NOMES_MEDICAO)
+
+
 def extrair_os(titulo: str) -> str | None:
     """
     Extrai número de OS do título da tarefa Planner.
@@ -129,48 +158,60 @@ def extrair_os(titulo: str) -> str | None:
     return None
 
 
-def classificar(titulo: str, bucket: str = '', descricao: str = '') -> str:
+def classificar(titulo: str, bucket: str = '', descricao: str = '',
+                assignee: str = '') -> str:
     """
-    Classifica a tarefa em: 'operacional' | 'interna' | 'administrativa'.
+    Classifica a tarefa em:
+      'medicao' | 'laudo' | 'operacional' | 'interna' | 'administrativa'
 
     Args:
         titulo:    título da tarefa no Planner
         bucket:    bucket/coluna da tarefa
         descricao: descrição da tarefa (opcional)
+        assignee:  nome do responsável (display_name do ms_users)
 
     Returns:
         str: classificação
     """
-    t   = _normalizar(titulo   or '')
-    b   = _normalizar(bucket   or '')
-    d   = _normalizar(descricao or '')
+    t = _normalizar(titulo   or '')
+    b = _normalizar(bucket   or '')
 
     # 1. Bucket claramente interno
     if any(bi in b for bi in _BUCKETS_INTERNOS):
         return 'interna'
 
-    # 2. OS no título → operacional (critério mais forte)
+    # 2. Laudo/documento técnico (AET, ergonomia…) → laudo
+    if _RE_LAUDO.search(titulo or ''):
+        return 'laudo'
+
+    # 3. OS no título
     if extrair_os(titulo):
+        # Técnico de medição atribuído → medição de campo real
+        if _e_tecnico_medicao(assignee):
+            return 'medicao'
+        # OS sem técnico de campo → operacional genérico
         return 'operacional'
 
-    # 3. Sufixo societário no título → operacional
+    # 4. Sufixo societário → operacional (é cliente)
     if _RE_SUFIXO.search(titulo or ''):
         return 'operacional'
 
-    # 4. Palavras internas no título (substring)
+    # 5. Palavras internas no título
     for p in _PALAVRAS_INTERNAS:
         if p in t:
             return 'interna'
 
-    # 5. Bucket operacional → operacional
+    # 6. Técnico de medição + bucket operacional → medição
+    if _e_tecnico_medicao(assignee) and any(bo in b for bo in _BUCKETS_OPERACIONAIS):
+        return 'medicao'
+
+    # 7. Bucket operacional → operacional
     if any(bo in b for bo in _BUCKETS_OPERACIONAIS):
-        # ainda pode ser interna se não tem empresa identificável
-        # mas sem indicadores de interno, considera operacional
         return 'operacional'
 
-    # 6. Bucket vazio (384 do seed) → não é Planner, mantém como está
+    # 8. Sem bucket (seed) → operacional (já tem empresa vinculada)
     if not bucket:
-        return 'operacional'  # vem do seed, já tem empresa
+        return 'operacional'
 
     # Sem indicadores claros
     return 'administrativa'
@@ -179,36 +220,44 @@ def classificar(titulo: str, bucket: str = '', descricao: str = '') -> str:
 def reclassificar_lote(conn) -> dict:
     """
     Reclassifica TODAS as demandas do Planner (origem='planner').
-    Também extrai OS do título e preenche numero_os quando vazio.
+    Usa assignee (display_name do ms_users) para distinguir medição de campo.
+    Extrai OS do título e preenche numero_os quando vazio.
 
-    Returns: estatísticas
+    Returns: estatísticas por tipo
     """
-    rows = conn.execute(
-        "SELECT id, titulo, planner_bucket, descricao FROM demandas WHERE origem='planner'"
-    ).fetchall()
+    rows = conn.execute("""
+        SELECT d.id, d.titulo, d.planner_bucket, d.descricao,
+               COALESCE(u.display_name, '') AS assignee_name
+        FROM demandas d
+        LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
+        WHERE d.origem = 'planner'
+    """).fetchall()
 
     stats = {
         'total':         len(rows),
+        'medicao':       0,
+        'laudo':         0,
         'operacional':   0,
         'interna':       0,
-        'administrativa':0,
+        'administrativa': 0,
         'os_extraida':   0,
     }
 
     for row in rows:
-        tid    = row['id']
-        titulo = row['titulo'] or ''
-        bucket = row['planner_bucket'] or ''
-        desc   = row['descricao'] or ''
+        tid      = row['id']
+        titulo   = row['titulo'] or ''
+        bucket   = row['planner_bucket'] or ''
+        desc     = row['descricao'] or ''
+        assignee = row['assignee_name'] or ''
 
-        tipo = classificar(titulo, bucket, desc)
+        tipo = classificar(titulo, bucket, desc, assignee)
         os   = extrair_os(titulo)
 
         conn.execute(
             'UPDATE demandas SET tipo_demanda=?, numero_os=COALESCE(numero_os, ?) WHERE id=?',
             (tipo, os, tid)
         )
-        stats[tipo] += 1
+        stats[tipo] = stats.get(tipo, 0) + 1
         if os:
             stats['os_extraida'] += 1
 
