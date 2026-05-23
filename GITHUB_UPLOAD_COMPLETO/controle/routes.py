@@ -13,7 +13,9 @@ from .db import (
     registrar_sync, list_sync_log,
     list_demandas_por_empresa, get_empresa_demandas,
     list_amostradores_vencendo, contar_vencendo,
-    mesclar_empresas_duplicatas
+    mesclar_empresas_duplicatas,
+    list_raw_tasks, stats_raw_pipeline,
+    list_operational_demands, list_operational_por_empresa,
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -1672,6 +1674,38 @@ def graph_status():
         })
     except Exception as e:
         return jsonify({'configurado': False, 'erro': str(e)}), 500
+
+
+# ── Pipeline / Operational Demands ───────────────────────────────────
+
+@controle_bp.route('/operacional')
+def get_operacional():
+    """Demandas operacionais limpas (só clientes reais, sem interna/administrativa)."""
+    init_db()
+    return jsonify(list_operational_demands(request.args.to_dict()))
+
+
+@controle_bp.route('/operacional/por_empresa')
+def get_operacional_por_empresa():
+    """Demandas operacionais agrupadas por empresa."""
+    init_db()
+    return jsonify(list_operational_por_empresa(request.args.to_dict()))
+
+
+@controle_bp.route('/pipeline/raw_tasks')
+def get_raw_tasks():
+    """Raw tasks do Planner (staging — todas, com status do pipeline)."""
+    init_db()
+    limit = min(int(request.args.get('limit', 200)), 1000)
+    filtros = {k: v for k, v in request.args.to_dict().items() if k != 'limit'}
+    return jsonify(list_raw_tasks(filtros, limit=limit))
+
+
+@controle_bp.route('/pipeline/stats')
+def get_pipeline_stats():
+    """Estatísticas do pipeline: quantas ignoradas por bucket, etc."""
+    init_db()
+    return jsonify(stats_raw_pipeline())
 
 
 @controle_bp.route('/graph/sync', methods=['POST'])
