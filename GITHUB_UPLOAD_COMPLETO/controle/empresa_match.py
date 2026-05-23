@@ -27,8 +27,19 @@ _SUFIXOS = {
 
 # Regex para extrair número de OS do título
 _RE_OS     = re.compile(r'(?:^|(?:os|o\.s\.?)\s*)(\d{4,8})', re.IGNORECASE)
-_RE_OS_NUM = re.compile(r'^(\d{4,8})\s*[-–]')          # "6482868 - Nome"
 _RE_CNPJ   = re.compile(r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}')
+
+# Padrões de OS no início do título (número puro, sem letras coladas)
+_RE_OS_DASH  = re.compile(r'^(\d{4,8})\s*[-–]\s*(.+)', re.DOTALL)   # "6077430 - Empresa"
+_RE_OS_COMMA = re.compile(r'^(\d{4,8})\s*,\s*(.+)', re.DOTALL)       # "54394, Empresa, ..."
+_RE_OS_SPACE = re.compile(r'^(\d{5,8})\s+([A-Za-zÀ-ÿ].+)', re.DOTALL)  # "6466572 Empresa" (min 5 dig)
+
+# Sufixos de status a remover do nome da empresa
+_RE_SUFIXO_DIAS   = re.compile(r',?\s*\d+\s+DIAS?\b.*$', re.IGNORECASE | re.DOTALL)
+_RE_SUFIXO_ANTIGO = re.compile(r'[-–,]?\s*PROCESSO\s+ANTIGO.*$', re.IGNORECASE | re.DOTALL)
+
+# Prefixos de label/setor a remover: "AET/MEDIÇÕES - ", "SST - ", etc.
+_RE_PREFIXO_LABEL = re.compile(r'^[A-Za-zÀ-ÿ]{2,10}[/\-][A-Za-zÀ-ÿ]{2,15}\s*[-–]\s*', re.IGNORECASE)
 
 
 # ── Normalização ──────────────────────────────────────────────────────
@@ -56,33 +67,66 @@ def similaridade(a: str, b: str) -> float:
 
 # ── Extração de campos do título ──────────────────────────────────────
 
+def _limpar_nome_empresa(raw: str) -> str:
+    """
+    Limpa nome extraído de título Planner com formatos variados.
+    Remove sufixos de status ("516 DIAS", "PROCESSO ANTIGO"),
+    duplicatas separadas por vírgula e separadores finais.
+    """
+    if not raw:
+        return ''
+    raw = _RE_SUFIXO_DIAS.sub('', raw).strip()
+    raw = _RE_SUFIXO_ANTIGO.sub('', raw).strip()
+    # Se tem vírgula → pega só a primeira parte (remove repetições e filiais no título)
+    if ',' in raw:
+        primeira = raw.split(',')[0].strip()
+        if primeira:
+            raw = primeira
+    return raw.strip(' ,;-–')
+
+
 def extrair_campos(titulo: str) -> dict:
     """
     Extrai OS, CNPJ e nome da empresa do título de uma tarefa Planner.
 
-    Formatos reconhecidos:
-      "6482868 - Associação Atlética Banco do Brasil"
-      "OS 12345 - Empresa X"
-      "45.678.901/0001-23 Empresa Y"
-      "Empresa Z Ltda - Filial SP"
+    Formatos reconhecidos (sem depender de padrão fixo):
+      "6077430 - Empresa"                           → OS + dash
+      "54394, Empresa, Empresa, 516 DIAS - ANTIGO"  → OS + vírgula
+      "6466572 Empresa"                             → OS + espaço (5+ dígitos)
+      "OS 12345 - Empresa"                          → prefixo "OS"
+      "AET/MEDIÇÕES - Empresa"                      → prefixo de setor
+      "2A Engenharia" / "3 Corações"                → NÃO confunde com OS
     """
     resultado = {'os': None, 'cnpj': None, 'nome': titulo.strip()}
+    t = titulo.strip()
 
     # CNPJ
-    m = _RE_CNPJ.search(titulo)
+    m = _RE_CNPJ.search(t)
     if m:
         resultado['cnpj'] = re.sub(r'\D', '', m.group())
 
-    # OS — formato "NNNNN - Nome" no início
-    m = _RE_OS_NUM.match(titulo.strip())
-    if m:
-        resultado['os']   = m.group(1)
-        resultado['nome'] = titulo.strip()[m.end():].strip(' -–')
+    # Tenta detectar OS no início: dash → vírgula → espaço (nessa ordem de confiança)
+    os_num = nome_raw = None
+    for pat in (_RE_OS_DASH, _RE_OS_COMMA, _RE_OS_SPACE):
+        m = pat.match(t)
+        if m:
+            os_num   = m.group(1)
+            nome_raw = m.group(2)
+            break
+
+    if os_num:
+        resultado['os']   = os_num
+        nome_limpo = _limpar_nome_empresa(nome_raw)
+        resultado['nome'] = nome_limpo if nome_limpo else t
     else:
-        # OS — formato "OS NNNNN" em qualquer posição
-        m = _RE_OS.search(titulo)
+        # Fallback: "OS NNNN" em qualquer posição do título
+        m = _RE_OS.search(t)
         if m:
             resultado['os'] = m.group(1)
+        # Remove prefixo de setor/label tipo "AET/MEDIÇÕES - "
+        m = _RE_PREFIXO_LABEL.match(t)
+        if m:
+            resultado['nome'] = t[m.end():].strip()
 
     return resultado
 
