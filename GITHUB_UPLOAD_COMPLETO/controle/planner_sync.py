@@ -422,15 +422,8 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                     continue
 
                 stats['tarefas_total'] += len(tarefas)
-
-                # Aplicar filtro de label
-                if label_filter and category_ids:
-                    tarefas_filtradas = [t for t in tarefas if _task_has_label(t, category_ids)]
-                    stats['ignoradas'] += len(tarefas) - len(tarefas_filtradas)
-                    tarefas = tarefas_filtradas
-
                 stats['tarefas_filtradas'] += len(tarefas)
-                log.info('[planner_sync] plano "%s" → %d tarefas para importar', pnome, len(tarefas))
+                log.info('[planner_sync] plano "%s" → %d tarefas para processar', pnome, len(tarefas))
 
                 for tarefa in tarefas:
                     tid = tarefa['id']
@@ -453,7 +446,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         bucket = bucket_map.get(tarefa.get('bucketId', ''), '')
                         titulo = tarefa.get('title', 'Sem título')
 
-                        # ── FASE 1: Gravar raw (ALL tasks) ───────────────
+                        # ── FASE 1: Gravar raw (TODAS as tasks, sem exceção) ─
                         raw_data = {
                             'planner_plan_id':    tarefa.get('planId', ''),
                             'planner_plan_nome':  pnome,
@@ -479,19 +472,30 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         else:
                             stats['raw_atualizadas'] += 1
 
-                        # ── FASE 2: Filtro de bucket ──────────────────────
-                        deve_processar, motivo_bucket = _is_operacional_bucket(bucket)
-
-                        if not deve_processar:
-                            mark_raw_task(conn, raw_id, 'ignored', motivo_bucket)
-                            stats['bucket_ignoradas'] += 1
-                            _mlog.debug('task_ignorada', extra={
-                                'planner_task_id': tid,
-                                'titulo':          titulo[:60],
-                                'bucket':          bucket,
-                                'motivo':          motivo_bucket,
-                            })
-                            continue  # NÃO vai para demandas
+                        # ── FASE 2: Filtro de label (a verdade operacional) ──
+                        # REGRA: só passa task com label "Medições" aplicado.
+                        # NÃO usar bucket, título ou regex como filtro principal.
+                        if label_filter:
+                            tem_label = (
+                                bool(category_ids) and
+                                _task_has_label(tarefa, category_ids)
+                            )
+                            if not tem_label:
+                                motivo = (
+                                    f"sem label '{label_filter}'"
+                                    if category_ids
+                                    else f"label '{label_filter}' não configurado no plano '{pnome}'"
+                                )
+                                mark_raw_task(conn, raw_id, 'ignored', motivo)
+                                stats['bucket_ignoradas'] += 1
+                                _mlog.debug('task_ignorada_label', extra={
+                                    'planner_task_id': tid,
+                                    'titulo':          titulo[:60],
+                                    'bucket':          bucket,
+                                    'motivo':          motivo,
+                                    'applied_cats':    tarefa.get('appliedCategories', {}),
+                                })
+                                continue  # NÃO vai para demandas
 
                         # ── Cachear assignee(s) ───────────────────────────
                         for uid in list(tarefa.get('assignments', {}).keys()):
