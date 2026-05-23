@@ -1139,21 +1139,26 @@ def analytics():
         """).fetchall()
         dem_por_status = {r['status']: r['qtd'] for r in dem_rows}
 
-        # Evolucao mensal (ultimos 12 meses) — usa amostradores.data_medicao
+        # Evolucao mensal — OS concluídas por mês usando data real do Planner
         evolucao = [row_to_dict(r) for r in conn.execute("""
-            SELECT strftime('%Y-%m', data_medicao) AS mes, COUNT(*) AS qtd
-            FROM amostradores
-            WHERE data_medicao IS NOT NULL
-              AND data_medicao >= date('now','-12 months')
+            SELECT strftime('%Y-%m', concluido_em_ms) AS mes, COUNT(*) AS qtd
+            FROM demandas
+            WHERE concluido_em_ms IS NOT NULL
+              AND concluido_em_ms >= date('now','-18 months')
+              AND (LOWER(COALESCE(planner_bucket,'')) LIKE '%entregue%'
+                   OR LOWER(COALESCE(planner_bucket,'')) LIKE '%conclu%'
+                   OR status = 'concluida')
+              AND origem = 'planner'
             GROUP BY mes ORDER BY mes
         """).fetchall()]
 
-        # Demandas abertas por mes
+        # Demandas abertas por mês — data real de criação no Planner
         demandas_por_mes = [row_to_dict(r) for r in conn.execute("""
-            SELECT strftime('%Y-%m', criado_em) AS mes, COUNT(*) AS qtd
+            SELECT strftime('%Y-%m', COALESCE(criado_em_ms, criado_em)) AS mes, COUNT(*) AS qtd
             FROM demandas
-            WHERE criado_em IS NOT NULL
-              AND criado_em >= date('now','-12 months')
+            WHERE COALESCE(criado_em_ms, criado_em) IS NOT NULL
+              AND COALESCE(criado_em_ms, criado_em) >= date('now','-18 months')
+              AND origem = 'planner'
             GROUP BY mes ORDER BY mes
         """).fetchall()]
 
@@ -1200,7 +1205,8 @@ def analytics():
 
 # ── Coletas de Campo ──────────────────────────────────────────────────
 from .db import (list_coletas_ruido, get_coleta_ruido, save_coleta_ruido,
-                 list_coletas_quimico, get_coleta_quimico, save_coleta_quimico)
+                 list_coletas_quimico, get_coleta_quimico, save_coleta_quimico,
+                 save_coleta_outros)
 
 @controle_bp.route('/coletas/ruido')
 def api_list_coletas_ruido():
@@ -1314,6 +1320,33 @@ def api_salvar_medicao_wizard():
         }
         cid = save_coleta_quimico(payload_q)
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico'})
+
+    elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
+        from .db import save_coleta_outros
+        gen = d.get('campo_generico') or {}
+        payload_out = {
+            'tipo':         tipo,
+            'empresa_id':   d.get('empresa_id'),
+            'empresa_nome': d.get('empresa_nome', ''),
+            'demanda_id':   d.get('demanda_id'),
+            'numero_os':    d.get('os', ''),
+            'avaliador':    d.get('avaliador', ''),
+            'data_coleta':  d.get('data', ''),
+            'acompanhante': gen.get('acomp', ''),
+            'hora_inicio':  gen.get('hora_ini', ''),
+            'hora_termino': gen.get('hora_fim', ''),
+            'unidade':      d.get('unidade', ''),
+            'cidade':       d.get('cidade', ''),
+            'observacao':   gen.get('obs', ''),
+            'status':       'concluida',
+            # campos específicos de cada tipo salvos como extras → dados_json
+            'pontos':       d.get('pontos') or gen.get('pontos', ''),
+            'regime':       d.get('regime') or gen.get('regime', ''),
+            'tipo_vibr':    d.get('tipo_vibr') or gen.get('tipo_vibr', ''),
+            'fonte_vibr':   d.get('fonte_vibr') or gen.get('fonte_vibr', ''),
+        }
+        cid = save_coleta_outros(payload_out)
+        return jsonify({'ok': True, 'id': cid, 'tipo': tipo})
 
     return jsonify({'ok': True, 'aviso': 'tipo nao mapeado, nao salvo'})
 
