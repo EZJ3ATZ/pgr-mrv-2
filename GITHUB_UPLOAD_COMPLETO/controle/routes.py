@@ -1873,6 +1873,34 @@ def api_mesclar_empresas():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/admin/saude')
+def admin_saude():
+    """Diagnóstico completo do banco e integrações."""
+    init_db()
+    try:
+        from .monitoring import diagnostico_banco
+        return jsonify(diagnostico_banco())
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+
+
+@controle_bp.route('/admin/log_evento', methods=['POST'])
+def admin_log_evento():
+    """Registra evento de analytics (PostHog server-side)."""
+    d = request.json or {}
+    try:
+        from .monitoring import track_evento
+        track_evento(
+            d.get('evento', 'acao_usuario'),
+            usuario=d.get('usuario', 'web'),
+            **{k: v for k, v in d.items() if k not in ('evento', 'usuario')}
+        )
+    except Exception:
+        pass
+    return jsonify({'ok': True})
+
+
 @controle_bp.route('/eventos', methods=['POST'])
 def api_registrar_evento():
     """Registra evento manualmente (ações do usuário)."""
