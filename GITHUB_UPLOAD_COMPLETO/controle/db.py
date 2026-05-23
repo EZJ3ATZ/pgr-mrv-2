@@ -696,7 +696,7 @@ def get_demanda_completa(demanda_id):
 
 
 def upsert_empresa(cnpj, nome, **extra):
-    """Insere ou atualiza empresa por CNPJ. Retorna id."""
+    """Insere ou atualiza empresa por CNPJ (ou nome quando sem CNPJ). Retorna id."""
     cnpj = (cnpj or '').strip()
     nome = (nome or '').strip()
     if not nome: return None
@@ -705,6 +705,12 @@ def upsert_empresa(cnpj, nome, **extra):
             r = conn.execute('SELECT id FROM empresas WHERE cnpj = ?', (cnpj,)).fetchone()
             if r:
                 return r['id']
+        # Sem CNPJ (ou CNPJ não encontrado): busca por nome case-insensitive
+        r = conn.execute(
+            'SELECT id FROM empresas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))', (nome,)
+        ).fetchone()
+        if r:
+            return r['id']
         cur = conn.execute(
             'INSERT INTO empresas (cnpj, nome, unidade, contato, telefone, email, cidade, uf) '
             'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
