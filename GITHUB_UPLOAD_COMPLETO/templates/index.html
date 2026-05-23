@@ -5915,13 +5915,14 @@ async function planSalvar(status) {
       document.getElementById('plan-os-info').style.display = 'none';
       _planRenderizarAgentes();
       await planCarregarLista();
-      // Oferecer ir para campo se confirmado
+      // Oferecer ir para campo se confirmado (sem confirm() — usa toast com botão)
       if (status === 'confirmado' && r.id) {
-        setTimeout(() => {
-          if (confirm('Planejamento confirmado! Ir para Planilha de Campo agora?')) {
-            planIrParaCampo(r.id);
-          }
-        }, 300);
+        const pid = r.id;
+        const toastEl = document.createElement('div');
+        toastEl.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid var(--blue);color:var(--text);padding:14px 20px;border-radius:10px;z-index:9999;display:flex;align-items:center;gap:14px;box-shadow:0 4px 24px rgba(0,0,0,.5);';
+        toastEl.innerHTML = `<span>✅ Planejamento confirmado!</span><button onclick="planIrParaCampo(${pid});this.closest('div').remove();" style="background:var(--blue);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-family:inherit;">Ir para Campo →</button><button onclick="this.closest('div').remove();" style="background:transparent;color:var(--text2);border:none;cursor:pointer;font-size:1.1rem;">✕</button>`;
+        document.body.appendChild(toastEl);
+        setTimeout(() => toastEl.remove(), 8000);
       }
     } else {
       _showToast('Erro: ' + (r.erro || 'falha ao salvar'), 'err');
