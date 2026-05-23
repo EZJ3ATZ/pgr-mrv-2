@@ -5582,9 +5582,12 @@ async function ctrlNvOsChange(val) {
       const r = await fetch('/controle/demandas/por_os/' + encodeURIComponent(os));
       const j = await r.json();
       if (!j.encontrado) {
+        window._nvDemandaId = null;
         painel.innerHTML = '<span style="color:var(--text3)">OS não encontrada no Planner</span>';
         return;
       }
+      // Armazena demanda_id para vincular à coleta
+      window._nvDemandaId = j.id;
       const _tl = {ruido:'🔊 Ruído', vibracao_vci:'〰️ VCI', vibracao_vbma:'〰️ VMB', vibracao:'〰️ Vibração', calor:'🌡️ Calor', particulado:'🌫️ Particulado', quimico:'⚗️ Químico'};
       const agentes = j.agentes || [];
       // auto-seleciona tipo se unívoco
@@ -7892,6 +7895,7 @@ async function nvSalvarMedicao() {
     const payload = {
       empresa_id:   window._ctrlNvEmpresa?.id || null,
       empresa_nome: document.getElementById('ctrl-nv-empresa')?.value || '',
+      demanda_id:   window._nvDemandaId || null,
       os:           document.getElementById('ctrl-nv-os')?.value || '',
       data:         document.getElementById('ctrl-nv-data')?.value || '',
       prazo:        document.getElementById('nv-prazo')?.value || '',
