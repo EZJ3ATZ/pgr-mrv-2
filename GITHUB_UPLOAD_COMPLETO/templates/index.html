@@ -2412,7 +2412,11 @@
         <div><label>Responsável na Empresa</label><input type="text" id="nv-resp-empresa" placeholder="Nome do responsável"></div>
       </div>
       <div class="nv-g4 nv-f" style="margin-bottom:12px;">
-        <div><label>N° da OS</label><input type="text" id="ctrl-nv-os" placeholder="opcional"></div>
+        <div>
+          <label>N° da OS</label>
+          <input type="text" id="ctrl-nv-os" placeholder="opcional" oninput="ctrlNvOsChange(this.value)" autocomplete="off">
+          <div id="ctrl-nv-os-sugestao" style="display:none;margin-top:6px;padding:9px 11px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:6px;font-size:.78rem;"></div>
+        </div>
         <div><label>Data da Coleta</label><input type="date" id="ctrl-nv-data"></div>
         <div><label>Prazo de Entrega</label><input type="date" id="nv-prazo"></div>
         <div><label>Técnico Responsável</label>
@@ -5565,6 +5569,41 @@ async function ctrlNvInit() {
   // Adiciona Ruído e Calor que não estão na guia de químicos
   const todos = ['Ruído', 'Calor', 'Vibração de Corpo Inteiro', 'Vibração Localizada - Mãos e Braços', ...nomes];
   dl.innerHTML = todos.map(n => `<option value="${n}">`).join('');
+}
+
+let _nvOsTimer = null;
+async function ctrlNvOsChange(val) {
+  const painel = document.getElementById('ctrl-nv-os-sugestao');
+  clearTimeout(_nvOsTimer);
+  const os = val.trim();
+  if (!os || os.length < 2) { painel.style.display = 'none'; return; }
+  _nvOsTimer = setTimeout(async () => {
+    painel.style.display = '';
+    painel.innerHTML = '<span style="color:var(--text3)">Buscando OS...</span>';
+    try {
+      const r = await fetch('/controle/demandas/por_os/' + encodeURIComponent(os));
+      const j = await r.json();
+      if (!j.encontrado) {
+        painel.innerHTML = '<span style="color:var(--text3)">OS não encontrada no Planner</span>';
+        return;
+      }
+      const _tl = {ruido:'🔊 Ruído', vibracao_vci:'〰️ VCI', vibracao_vbma:'〰️ VMB', vibracao:'〰️ Vibração', calor:'🌡️ Calor', particulado:'🌫️ Particulado', quimico:'⚗️ Químico'};
+      const agentes = j.agentes || [];
+      // auto-seleciona tipo se unívoco
+      const tipos = [...new Set(agentes.map(a => a.tipo.replace('_vci','').replace('_vbma','')))];
+      const tipoSelect = document.getElementById('nv-tipo');
+      if (tipos.length === 1 && tipoSelect && tipoSelect.value === '') {
+        tipoSelect.value = tipos[0];
+        tipoSelect.dispatchEvent(new Event('change'));
+      }
+      const cards = agentes.length
+        ? agentes.map(a => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 8px;background:rgba(57,153,255,.13);border-radius:12px;font-size:.77rem;">${_tl[a.tipo]||a.tipo} <b>${a.qtd}pt</b> — ${a.texto}</span>`).join('')
+        : '<span style="color:var(--text3)">Nenhum agente identificado na OS</span>';
+      painel.innerHTML = `<b style="color:var(--blue)">OS encontrada:</b> ${j.titulo}<br><div style="margin-top:5px;">${cards}</div>`;
+    } catch(e) {
+      painel.innerHTML = '<span style="color:var(--red)">Erro ao buscar OS</span>';
+    }
+  }, 400);
 }
 
 async function ctrlNvBuscarEmpresa(q) {
