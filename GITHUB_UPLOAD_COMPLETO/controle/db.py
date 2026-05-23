@@ -519,7 +519,8 @@ def _migrate(conn):
             JOIN empresas e ON e.id = d.empresa_id
             LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
             WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
-              AND d.empresa_id > 0;
+              AND d.empresa_id > 0
+              AND d.origem = 'planner';
         ''')
     except Exception as e:
         print(f'[migrate] view operational_demands: {e}')
@@ -912,6 +913,7 @@ def list_operational_demands(filtros=None):
         LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
+          AND d.origem = 'planner'
     """
     params = []
     f = filtros or {}
@@ -953,6 +955,7 @@ def list_operational_por_empresa(filtros=None):
         LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
+          AND d.origem = 'planner'
     """
     params = []
     f = filtros or {}
