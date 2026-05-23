@@ -2059,25 +2059,40 @@ def graph_debug_email():
 @controle_bp.route('/graph/debug_email_body')
 def graph_debug_email_body():
     """
-    Lê o corpo dos e-mails Uniscientific, extrai códigos de amostradores
+    Lê e-mails RA da Uniscientific, extrai códigos de amostradores dos anexos PDF
     e cruza com o estoque local.
-    Uso: /controle/graph/debug_email_body?caixa=email@dominio.com
+    Uso: /controle/graph/debug_email_body?caixa=email@dominio.com&max=10
     """
     import re as _re
+    import base64 as _b64
     from .graph import graph_get, graph_paginate
 
-    caixa = request.args.get('caixa', 'administrativocomercial@ocupacional.com.br')
+    caixa = request.args.get('caixa', 'bernardojunqueira@ocupacional.com.br')
+    max_emails = int(request.args.get('max', '15'))
 
-    # Padrões de código de amostrador (ajustar conforme os reais)
-    # Ex: 1091AV3, 9808AV2, B-001, dosímetro nº 123
-    PADROES_CODIGO = [
-        _re.compile(r'\b\d{4}AV\d\b'),               # 1091AV3
-        _re.compile(r'\b\d{3,5}AV\d{1,2}\b'),        # variações
-        _re.compile(r'\b[A-Z]{1,3}-?\d{3,6}\b'),     # B-001, TCP-12345
-        _re.compile(r'(?:dosímetro|dosimetro|amostrador)[^\d]*(\d{3,6})', _re.I),
-        _re.compile(r'(?:código|codigo|cod\.?|nº|n\.?)[^\d]*(\d{4,8})', _re.I),
-        _re.compile(r'\b\d{4,8}\b'),                  # números soltos (fallback)
-    ]
+    # Padrão de amostrador: 4 dígitos + AV + 1-2 dígitos  ex: 1091AV3
+    PAD_AMOSTRADOR = _re.compile(r'\b(\d{3,5}AV\d{1,2})\b', _re.I)
+
+    def _pdf_to_text(pdf_bytes):
+        """Extrai texto de PDF bytes via pdfminer."""
+        try:
+            from pdfminer.high_level import extract_text_to_fp
+            from pdfminer.layout import LAParams
+            import io as _io
+            out = _io.StringIO()
+            extract_text_to_fp(_io.BytesIO(pdf_bytes), out, laparams=LAParams())
+            return out.getvalue()
+        except Exception:
+            pass
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(stream=pdf_bytes, filetype='pdf')
+            return '\n'.join(page.get_text() for page in doc)
+        except Exception:
+            pass
+        # fallback: regex no raw bytes (funciona para PDFs simples)
+        raw = pdf_bytes.decode('latin-1', errors='ignore')
+        return raw
 
     resultado = {
         'caixa': caixa,
@@ -2090,64 +2105,114 @@ def graph_debug_email_body():
     # 1. Buscar user_id da caixa
     try:
         users = graph_paginate('/users?$select=id,mail,userPrincipalName&$top=100')
-        user = next((u for u in users if caixa.lower() in (u.get('mail','') or u.get('userPrincipalName','')).lower()), None)
+        user = next((u for u in users if caixa.lower() in
+                     (u.get('mail','') or u.get('userPrincipalName','')).lower()), None)
         if not user:
             return jsonify({'erro': f'Caixa {caixa} não encontrada nos usuários'})
         uid = user['id']
     except Exception as e:
         return jsonify({'erro': str(e)})
 
-    # 2. Buscar e-mails Uniscientific com corpo
+    # 2. Buscar e-mails RA da Uniscientific (remetente resultados@uniscientificgroup.com.br)
     try:
         data = graph_get(
             f'/users/{uid}/messages'
-            f'?$search="Uniscientific"'
-            f'&$top=25'
-            f'&$select=id,subject,from,receivedDateTime,hasAttachments,body'
+            f'?$search="resultados@uniscientificgroup.com.br"'
+            f'&$top={max_emails}'
+            f'&$select=id,subject,from,receivedDateTime,hasAttachments'
+            f'&$orderby=receivedDateTime desc'
         )
         msgs = data.get('value', [])
-    except Exception as e:
-        return jsonify({'erro': f'Falha ao buscar emails: {e}'})
+    except Exception:
+        # fallback: busca por "RA " no assunto
+        try:
+            data = graph_get(
+                f'/users/{uid}/messages'
+                f'?$search="Uniscientific"'
+                f'&$top={max_emails}'
+                f'&$select=id,subject,from,receivedDateTime,hasAttachments'
+                f'&$orderby=receivedDateTime desc'
+            )
+            msgs = data.get('value', [])
+        except Exception as e2:
+            return jsonify({'erro': f'Falha ao buscar emails: {e2}'})
 
     todos_codigos = set()
 
     for msg in msgs:
-        body_content = msg.get('body', {}).get('content', '') or ''
-        # Remover HTML
-        body_text = _re.sub(r'<[^>]+>', ' ', body_content)
-        body_text = _re.sub(r'\s+', ' ', body_text).strip()
+        mid     = msg['id']
+        assunto = msg.get('subject', '')[:80]
+        sender  = msg.get('from', {}).get('emailAddress', {}).get('address', '')
+        data_r  = msg.get('receivedDateTime', '')[:10]
+        tem_anx = msg.get('hasAttachments', False)
 
-        codigos_msg = set()
-        for pat in PADROES_CODIGO[:4]:  # só padrões específicos (não números soltos)
-            for m in pat.finditer(body_text):
-                cod = m.group(1) if m.lastindex else m.group(0)
-                if len(cod) >= 4:
-                    codigos_msg.add(cod.strip())
+        email_info = {
+            'assunto':    assunto,
+            'de':         sender,
+            'data':       data_r,
+            'tem_anexo':  tem_anx,
+            'anexos':     [],
+            'codigos':    [],
+        }
 
-        sender = msg.get('from', {}).get('emailAddress', {}).get('address', '')
-        resultado['emails_analisados'].append({
-            'assunto':  msg.get('subject', '')[:80],
-            'de':       sender,
-            'data':     msg.get('receivedDateTime', '')[:10],
-            'anexo':    msg.get('hasAttachments', False),
-            'codigos':  list(codigos_msg),
-            'preview':  body_text[:300],
-        })
-        todos_codigos.update(codigos_msg)
+        if not tem_anx:
+            resultado['emails_analisados'].append(email_info)
+            continue
+
+        # 3. Listar anexos do email
+        try:
+            anx_data = graph_get(f'/users/{uid}/messages/{mid}/attachments'
+                                  f'?$select=id,name,contentType,size,contentBytes')
+            anexos = anx_data.get('value', [])
+        except Exception as e:
+            email_info['erro_anexo'] = str(e)
+            resultado['emails_analisados'].append(email_info)
+            continue
+
+        for anx in anexos:
+            anx_nome = anx.get('name', '')
+            anx_tipo = anx.get('contentType', '')
+            anx_size = anx.get('size', 0)
+            codigos_anx = []
+
+            email_info['anexos'].append({
+                'nome': anx_nome,
+                'tipo': anx_tipo,
+                'size_kb': round(anx_size / 1024, 1),
+            })
+
+            # Processar apenas PDFs com contentBytes
+            if 'pdf' in anx_tipo.lower() or anx_nome.lower().endswith('.pdf'):
+                cb = anx.get('contentBytes', '')
+                if cb:
+                    try:
+                        pdf_bytes = _b64.b64decode(cb)
+                        texto = _pdf_to_text(pdf_bytes)
+                        # Extrair códigos de amostrador
+                        for m in PAD_AMOSTRADOR.finditer(texto):
+                            cod = m.group(1).upper()
+                            codigos_anx.append(cod)
+                            todos_codigos.add(cod)
+                    except Exception as e_pdf:
+                        email_info['anexos'][-1]['erro_pdf'] = str(e_pdf)[:100]
+                else:
+                    email_info['anexos'][-1]['aviso'] = 'contentBytes vazio (anexo grande?)'
+
+            email_info['codigos'].extend(codigos_anx)
+
+        resultado['emails_analisados'].append(email_info)
 
     resultado['codigos_encontrados'] = sorted(todos_codigos)
 
-    # 3. Cruzar com estoque local
+    # 4. Cruzar com estoque local
     try:
         with get_db() as conn:
-            # Status geral do estoque
-            stats = conn.execute('''
+            stats_rows = conn.execute('''
                 SELECT status, tipo, COUNT(*) as qtd
                 FROM amostradores GROUP BY status, tipo ORDER BY qtd DESC
             ''').fetchall()
-            resultado['estoque_atual'] = [dict(r) for r in stats]
+            resultado['estoque_atual'] = [dict(r) for r in stats_rows]
 
-            # Cruzar códigos dos emails com DB
             cruzamento = []
             for cod in sorted(todos_codigos):
                 rows = conn.execute(
@@ -2163,9 +2228,10 @@ def graph_debug_email_body():
     except Exception as e:
         resultado['erro_db'] = str(e)
 
-    encontrados = sum(1 for c in resultado['cruzamento_estoque'] if c['encontrado_no_estoque'])
+    encontrados = sum(1 for c in resultado['cruzamento_estoque'] if c.get('encontrado_no_estoque'))
     resultado['resumo'] = {
         'emails_lidos': len(msgs),
+        'emails_com_anexo': sum(1 for e in resultado['emails_analisados'] if e.get('tem_anexo')),
         'codigos_extraidos': len(todos_codigos),
         'codigos_no_estoque': encontrados,
         'codigos_ausentes_estoque': len(todos_codigos) - encontrados,
