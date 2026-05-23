@@ -381,7 +381,7 @@ CREATE INDEX IF NOT EXISTS idx_visita_planejamento ON visitas_tecnicas(planejame
 -- Alimenta BI, produtividade, financeiro (cobrança de revisita).
 CREATE TABLE IF NOT EXISTS execucao_campo (
     id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-    visita_id              INTEGER NOT NULL,
+    visita_id              INTEGER,   -- NULL quando registrado direto da planilha de campo sem visita formal
     planejamento_id        INTEGER,
     agentes_executados     TEXT,   -- JSON [{tipo,agente,qtd_feita}]
     agentes_nao_executados TEXT,   -- JSON [{tipo,agente,qtd_prevista}]
@@ -635,6 +635,39 @@ def _migrate(conn):
                 conn.execute(f'ALTER TABLE visitas_tecnicas ADD COLUMN {col} {tipo}')
             except Exception as e:
                 print(f'[migrate] visitas_tecnicas.{col}: {e}')
+
+    # ── execucao_campo: tornar visita_id nullable (recriar tabela se necessário) ──
+    try:
+        pragma = conn.execute('PRAGMA table_info(execucao_campo)').fetchall()
+        if pragma:
+            visita_col = next((r for r in pragma if r['name'] == 'visita_id'), None)
+            # Detecta NOT NULL pela coluna notnull=1
+            if visita_col and visita_col['notnull'] == 1:
+                conn.executescript('''
+                    CREATE TABLE IF NOT EXISTS execucao_campo_new (
+                        id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+                        visita_id              INTEGER,
+                        planejamento_id        INTEGER,
+                        agentes_executados     TEXT,
+                        agentes_nao_executados TEXT,
+                        agentes_adicionados    TEXT,
+                        justificativa_causa    TEXT,
+                        cobravel               INTEGER DEFAULT 0,
+                        observacao             TEXT,
+                        criado_em              TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (visita_id)       REFERENCES visitas_tecnicas(id),
+                        FOREIGN KEY (planejamento_id) REFERENCES planejamentos(id)
+                    );
+                    INSERT INTO execucao_campo_new
+                      SELECT id,visita_id,planejamento_id,agentes_executados,
+                             agentes_nao_executados,agentes_adicionados,
+                             justificativa_causa,cobravel,observacao,criado_em
+                      FROM execucao_campo;
+                    DROP TABLE execucao_campo;
+                    ALTER TABLE execucao_campo_new RENAME TO execucao_campo;
+                ''')
+    except Exception as e:
+        print(f'[migrate] execucao_campo nullable: {e}')
 
     # ── coletas_*: adicionar visita_id e planejamento_id ────────────
     for tbl in ('coletas_ruido', 'coletas_quimico', 'coletas_outros'):
