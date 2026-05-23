@@ -1718,7 +1718,7 @@ def graph_sync_manual():
         from flask import current_app
         d = request.json or {}
         group_filter = d.get('group_id')
-        label_filter = d.get('label_filter')
+        label_filter = d.get('label_filter', 'Medições')  # padrão: só tasks com label Medições
 
         app = current_app._get_current_object()
 
@@ -1741,6 +1741,47 @@ def graph_sync_manual():
         return jsonify({'ok': True, 'mensagem': 'Sync iniciado em background — verifique /graph/status em alguns minutos'})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/graph/debug_labels')
+def graph_debug_labels():
+    """Debug: retorna os labels (categoryDescriptions) de todos os planos conhecidos.
+    Útil para validar qual categoryN corresponde a 'Medições'."""
+    init_db()
+    try:
+        from .graph import graph_ok, get_plans_for_group, get_teams_groups, get_plan_category_map
+        if not graph_ok():
+            return jsonify({'erro': 'Sem autenticação Graph API'}), 503
+        grupos = get_teams_groups()
+        resultado = []
+        for g in grupos[:10]:  # limita a 10 grupos para não demorar
+            gid   = g.get('id', '')
+            gnome = g.get('displayName', '')
+            try:
+                planos = get_plans_for_group(gid)
+            except Exception:
+                continue
+            for p in planos[:5]:
+                pid   = p.get('id', '')
+                pnome = p.get('title', '')
+                try:
+                    cat_map = get_plan_category_map(pid)
+                    # Filtrar só labels não-nulos
+                    labels = {k: v for k, v in cat_map.items() if v}
+                    medicoes_cats = [k for k, v in cat_map.items() if v and 'medic' in v.lower().replace('ç','c').replace('õ','o')]
+                    resultado.append({
+                        'grupo':         gnome,
+                        'plano':         pnome,
+                        'plan_id':       pid,
+                        'labels':        labels,
+                        'medicoes_cats': medicoes_cats,
+                    })
+                except Exception as e:
+                    resultado.append({'grupo': gnome, 'plano': pnome, 'erro': str(e)})
+        return jsonify(resultado)
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
 
 
 @controle_bp.route('/graph/sync_error')
