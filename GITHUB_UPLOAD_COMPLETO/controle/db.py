@@ -250,6 +250,39 @@ CREATE TABLE IF NOT EXISTS ms_sync_state (
     atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ── Pipeline Planner ────────────────────────────────────────────────────
+-- Staging: TODOS os tasks brutos do Planner (nunca alimenta frontend)
+CREATE TABLE IF NOT EXISTS planner_raw_tasks (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    planner_task_id     TEXT UNIQUE NOT NULL,
+    planner_plan_id     TEXT,
+    planner_plan_nome   TEXT,
+    planner_bucket_id   TEXT,
+    planner_bucket      TEXT,
+    planner_group_id    TEXT,
+    planner_group_nome  TEXT,
+    titulo              TEXT,
+    descricao           TEXT,
+    checklist_json      TEXT,
+    raw_json            TEXT,
+    percent_complete    INTEGER DEFAULT 0,
+    prazo               TEXT,
+    criado_em_ms        TEXT,
+    concluido_em_ms     TEXT,
+    ms_assignee_id      TEXT,
+    ms_assignees_json   TEXT,
+    etiquetas_json      TEXT,
+    -- Pipeline state
+    sync_status         TEXT DEFAULT 'raw',   -- raw | ignored | processed
+    ignored_reason      TEXT,                  -- motivo do ignore (bucket, tipo, etc.)
+    synced_at           TEXT DEFAULT CURRENT_TIMESTAMP,
+    processed_at        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_raw_planner_task ON planner_raw_tasks(planner_task_id);
+CREATE INDEX IF NOT EXISTS idx_raw_bucket        ON planner_raw_tasks(planner_bucket);
+CREATE INDEX IF NOT EXISTS idx_raw_sync_status   ON planner_raw_tasks(sync_status);
+CREATE INDEX IF NOT EXISTS idx_raw_synced_at     ON planner_raw_tasks(synced_at);
+
 CREATE TABLE IF NOT EXISTS eventos (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     tipo        TEXT NOT NULL,
@@ -434,6 +467,62 @@ def _migrate(conn):
         ''')
     except Exception:
         pass
+
+    # ── planner_raw_tasks (staging) ──────────────────────────────────
+    # Criada via SCHEMA, mas garante migração se banco pré-existente
+    raw_cols_needed = {
+        'planner_plan_id':    'TEXT',
+        'planner_plan_nome':  'TEXT',
+        'planner_bucket_id':  'TEXT',
+        'planner_bucket':     'TEXT',
+        'planner_group_id':   'TEXT',
+        'planner_group_nome': 'TEXT',
+        'titulo':             'TEXT',
+        'descricao':          'TEXT',
+        'checklist_json':     'TEXT',
+        'raw_json':           'TEXT',
+        'percent_complete':   'INTEGER DEFAULT 0',
+        'prazo':              'TEXT',
+        'criado_em_ms':       'TEXT',
+        'concluido_em_ms':    'TEXT',
+        'ms_assignee_id':     'TEXT',
+        'ms_assignees_json':  'TEXT',
+        'etiquetas_json':     'TEXT',
+        'sync_status':        "TEXT DEFAULT 'raw'",
+        'ignored_reason':     'TEXT',
+        'synced_at':          'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'processed_at':       'TEXT',
+    }
+    try:
+        existing_raw = [r['name'] for r in conn.execute('PRAGMA table_info(planner_raw_tasks)').fetchall()]
+        for col, tipo in raw_cols_needed.items():
+            if col not in existing_raw:
+                try:
+                    conn.execute(f'ALTER TABLE planner_raw_tasks ADD COLUMN {col} {tipo}')
+                except Exception:
+                    pass
+    except Exception:
+        pass  # tabela não existe ainda — SCHEMA vai criá-la
+
+    # ── VIEW operational_demands ─────────────────────────────────────
+    # Visão limpa sobre demandas: só tasks reais de clientes (não interna/administrativa)
+    try:
+        conn.executescript('''
+            DROP VIEW IF EXISTS operational_demands;
+            CREATE VIEW operational_demands AS
+            SELECT d.*,
+                   e.nome AS empresa_nome,
+                   e.cnpj AS empresa_cnpj,
+                   e.pendente AS empresa_pendente,
+                   COALESCE(u.display_name, '') AS responsavel_nome
+            FROM demandas d
+            JOIN empresas e ON e.id = d.empresa_id
+            LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
+            WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
+              AND d.empresa_id > 0;
+        ''')
+    except Exception as e:
+        print(f'[migrate] view operational_demands: {e}')
 
 
 def _auto_seed():
@@ -693,6 +782,195 @@ def get_demanda_completa(demanda_id):
                 ORDER BY b.id DESC""", (m['id'],)).fetchall()]
         d['medicoes'] = meds
         return d
+
+
+def upsert_raw_task(conn, task_id: str, data: dict) -> tuple:
+    """
+    Insere ou atualiza task bruta no staging planner_raw_tasks.
+    Retorna (id, 'created'|'updated').
+    """
+    existing = conn.execute(
+        'SELECT id FROM planner_raw_tasks WHERE planner_task_id=?', (task_id,)
+    ).fetchone()
+
+    if existing:
+        conn.execute('''
+            UPDATE planner_raw_tasks SET
+                planner_plan_id=?, planner_plan_nome=?,
+                planner_bucket_id=?, planner_bucket=?,
+                planner_group_id=?, planner_group_nome=?,
+                titulo=?, descricao=?, checklist_json=?, raw_json=?,
+                percent_complete=?, prazo=?, criado_em_ms=?, concluido_em_ms=?,
+                ms_assignee_id=?, ms_assignees_json=?, etiquetas_json=?,
+                sync_status='raw', ignored_reason=NULL,
+                synced_at=CURRENT_TIMESTAMP, processed_at=NULL
+            WHERE planner_task_id=?
+        ''', (
+            data.get('planner_plan_id'), data.get('planner_plan_nome'),
+            data.get('planner_bucket_id'), data.get('planner_bucket'),
+            data.get('planner_group_id'), data.get('planner_group_nome'),
+            data.get('titulo'), data.get('descricao'),
+            data.get('checklist_json'), data.get('raw_json'),
+            data.get('percent_complete', 0), data.get('prazo'),
+            data.get('criado_em_ms'), data.get('concluido_em_ms'),
+            data.get('ms_assignee_id'), data.get('ms_assignees_json'),
+            data.get('etiquetas_json'),
+            task_id,
+        ))
+        return existing['id'], 'updated'
+
+    cur = conn.execute('''
+        INSERT INTO planner_raw_tasks (
+            planner_task_id, planner_plan_id, planner_plan_nome,
+            planner_bucket_id, planner_bucket, planner_group_id, planner_group_nome,
+            titulo, descricao, checklist_json, raw_json,
+            percent_complete, prazo, criado_em_ms, concluido_em_ms,
+            ms_assignee_id, ms_assignees_json, etiquetas_json,
+            sync_status, synced_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'raw',CURRENT_TIMESTAMP)
+    ''', (
+        task_id,
+        data.get('planner_plan_id'), data.get('planner_plan_nome'),
+        data.get('planner_bucket_id'), data.get('planner_bucket'),
+        data.get('planner_group_id'), data.get('planner_group_nome'),
+        data.get('titulo'), data.get('descricao'),
+        data.get('checklist_json'), data.get('raw_json'),
+        data.get('percent_complete', 0), data.get('prazo'),
+        data.get('criado_em_ms'), data.get('concluido_em_ms'),
+        data.get('ms_assignee_id'), data.get('ms_assignees_json'),
+        data.get('etiquetas_json'),
+    ))
+    return cur.lastrowid, 'created'
+
+
+def mark_raw_task(conn, raw_id: int, status: str, ignored_reason: str = None):
+    """Atualiza status de pipeline do raw task."""
+    if status == 'ignored':
+        conn.execute(
+            "UPDATE planner_raw_tasks SET sync_status='ignored', ignored_reason=? WHERE id=?",
+            (ignored_reason, raw_id)
+        )
+    elif status == 'processed':
+        conn.execute(
+            "UPDATE planner_raw_tasks SET sync_status='processed', "
+            "ignored_reason=NULL, processed_at=CURRENT_TIMESTAMP WHERE id=?",
+            (raw_id,)
+        )
+
+
+def list_raw_tasks(filtros=None, limit=200):
+    """Lista raw tasks com filtros: status, bucket, grupo."""
+    f = filtros or {}
+    sql = 'SELECT * FROM planner_raw_tasks WHERE 1=1'
+    params = []
+    if f.get('status'):
+        sql += ' AND sync_status=?'; params.append(f['status'])
+    if f.get('bucket'):
+        sql += ' AND LOWER(planner_bucket) LIKE LOWER(?)'; params.append(f'%{f["bucket"]}%')
+    if f.get('grupo'):
+        sql += ' AND LOWER(planner_group_nome) LIKE LOWER(?)'; params.append(f'%{f["grupo"]}%')
+    sql += f' ORDER BY synced_at DESC LIMIT {int(limit)}'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def stats_raw_pipeline():
+    """Contagem por status do pipeline de raw tasks."""
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT sync_status, COUNT(*) AS qtd,
+                   COUNT(DISTINCT planner_bucket) AS buckets_distintos
+            FROM planner_raw_tasks
+            GROUP BY sync_status
+        ''').fetchall()
+        buckets = conn.execute('''
+            SELECT planner_bucket, sync_status, COUNT(*) AS qtd
+            FROM planner_raw_tasks
+            GROUP BY planner_bucket, sync_status
+            ORDER BY qtd DESC LIMIT 50
+        ''').fetchall()
+        return {
+            'por_status': [row_to_dict(r) for r in rows],
+            'por_bucket': [row_to_dict(r) for r in buckets],
+        }
+
+
+def list_operational_demands(filtros=None):
+    """Lê da VIEW operational_demands — dados limpos, apenas clientes reais."""
+    sql = """
+        SELECT d.*,
+               e.nome AS empresa_nome,
+               e.cnpj AS empresa_cnpj,
+               e.pendente AS empresa_pendente,
+               COALESCE(u.display_name, d.responsavel) AS responsavel_nome,
+               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id) AS total_medicoes,
+               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas,
+               CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta,
+               CAST(julianday(d.prazo) - julianday('now') AS INTEGER) AS dias_para_prazo
+        FROM demandas d
+        JOIN empresas e ON e.id = d.empresa_id
+        LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
+        WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
+          AND d.empresa_id > 0
+    """
+    params = []
+    f = filtros or {}
+    if f.get('status'):
+        sql += ' AND d.status=?'; params.append(f['status'])
+    if f.get('empresa'):
+        sql += ' AND LOWER(e.nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
+    if f.get('os'):
+        sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
+    if f.get('tipo'):
+        sql += ' AND d.tipo_demanda=?'; params.append(f['tipo'])
+    sql += ' ORDER BY d.criado_em DESC LIMIT 1000'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def list_operational_por_empresa(filtros=None):
+    """Agrupa operational_demands por empresa para a tela principal."""
+    sql = """
+        SELECT e.id AS empresa_id,
+               e.nome AS empresa_nome,
+               e.cnpj,
+               e.pendente AS empresa_pendente,
+               COUNT(DISTINCT d.id) AS total_demandas,
+               SUM(CASE WHEN d.status='concluida' THEN 1 ELSE 0 END) AS demandas_concluidas,
+               SUM(CASE WHEN d.status!='concluida' THEN 1 ELSE 0 END) AS demandas_pendentes,
+               COALESCE(SUM(d.percent_complete), 0) / NULLIF(COUNT(DISTINCT d.id), 0) AS progresso_medio,
+               GROUP_CONCAT(DISTINCT NULLIF(d.numero_os,'')) AS numeros_os,
+               MIN(NULLIF(d.prazo,'')) AS prazo_mais_proximo,
+               COALESCE(MAX(u.display_name), MAX(d.responsavel)) AS responsavel,
+               COUNT(DISTINCT d.tipo_demanda) AS tipos_count,
+               GROUP_CONCAT(DISTINCT d.tipo_demanda) AS tipos,
+               SUM(CASE WHEN d.status!='concluida'
+                          AND d.prazo IS NOT NULL AND d.prazo != ''
+                          AND julianday(d.prazo) < julianday('now')
+                   THEN 1 ELSE 0 END) AS demandas_atrasadas
+        FROM empresas e
+        JOIN demandas d ON d.empresa_id = e.id
+        LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
+        WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
+          AND d.empresa_id > 0
+    """
+    params = []
+    f = filtros or {}
+    if f.get('status') == 'pendente':
+        sql += " AND d.status != 'concluida'"
+    elif f.get('status') == 'concluida':
+        sql += " AND d.status = 'concluida'"
+    if f.get('empresa'):
+        sql += ' AND LOWER(e.nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
+    sql += ' GROUP BY e.id, e.nome ORDER BY empresa_nome ASC LIMIT 500'
+    with get_db() as conn:
+        rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+        for r in rows:
+            if r.get('numeros_os'):
+                # Filtra nulls e duplicatas
+                os_list = [x.strip() for x in (r['numeros_os'] or '').split(',') if x.strip()]
+                r['numeros_os'] = ','.join(dict.fromkeys(os_list))
+        return rows
 
 
 def upsert_empresa(cnpj, nome, **extra):
