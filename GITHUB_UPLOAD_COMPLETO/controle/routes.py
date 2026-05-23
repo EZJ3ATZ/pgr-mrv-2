@@ -1938,6 +1938,30 @@ def graph_debug_groups():
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
 
 
+@controle_bp.route('/graph/debug_empresa_titulos')
+def graph_debug_empresa_titulos():
+    """Debug: retorna títulos das demandas vinculadas a uma empresa (por id ou nome parcial)."""
+    try:
+        empresa_id = request.args.get('empresa_id', type=int)
+        search = request.args.get('search', '')
+        with get_db() as conn:
+            if empresa_id:
+                rows = conn.execute(
+                    'SELECT d.id, d.titulo, d.empresa_id, e.nome empresa_nome, d.origem FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id WHERE d.empresa_id=? LIMIT 20',
+                    (empresa_id,)
+                ).fetchall()
+            elif search:
+                rows = conn.execute(
+                    "SELECT d.id, d.titulo, d.empresa_id, e.nome empresa_nome, d.origem FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id WHERE d.titulo LIKE ? OR e.nome LIKE ? LIMIT 20",
+                    (f'%{search}%', f'%{search}%')
+                ).fetchall()
+            else:
+                return jsonify({'erro': 'passe empresa_id= ou search='})
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/graph/sync_error')
 def graph_sync_error():
     """Retorna o último erro de sync para debug."""
