@@ -161,19 +161,28 @@ def _parse_date(s) -> str | None:
         return None
 
 
+def _bucket_is_concluido(bucket_name: str) -> bool:
+    """Retorna True se o bucket indica que a demanda foi finalizada operacionalmente."""
+    b = (bucket_name or '').lower()
+    return 'entregue' in b or 'conclu' in b
+
+
 def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> dict:
     """Converte um task do Planner para o formato interno de demanda."""
     assignees = list(task.get('assignments', {}).keys())
     assignee_id   = assignees[0] if assignees else None
     all_assignees = assignees
 
-    completed = task.get('percentComplete', 0) == 100
-    status_raw = 'concluida' if completed else (
-        'em_andamento' if task.get('percentComplete', 0) > 0 else 'aberta'
-    )
-
     titulo = task.get('title', 'Sem título')
     bucket = bucket_map.get(task.get('bucketId', ''), '')
+
+    # Bucket "Entregue / Concluído" é o sinal operacional real de conclusão.
+    # percentComplete == 100 é sinal secundário (pode estar incompleto no bucket ativo).
+    is_done_bucket = _bucket_is_concluido(bucket)
+    completed      = task.get('percentComplete', 0) == 100
+    status_raw = 'concluida' if (is_done_bucket or completed) else (
+        'em_andamento' if task.get('percentComplete', 0) > 0 else 'aberta'
+    )
 
     return {
         'planner_task_id':    task['id'],
