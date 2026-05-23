@@ -394,12 +394,21 @@ def get_demanda_por_os(os_num):
         if not row:
             return jsonify({'encontrado': False}), 200
         agentes = extrair_agentes(row['descricao'] or '')
+        # Buscar empresa vinculada
+        with get_db() as conn:
+            dem_full = conn.execute(
+                '''SELECT d.empresa_id, e.nome AS empresa_nome
+                   FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id
+                   WHERE d.id=?''', (row['id'],)
+            ).fetchone()
         return jsonify({
-            'encontrado': True,
-            'id': row['id'],
-            'titulo': row['titulo'],
-            'agentes': agentes,
-            'resumo': resumo_agentes(agentes),
+            'encontrado':  True,
+            'id':          row['id'],
+            'titulo':      row['titulo'],
+            'empresa_id':  dem_full['empresa_id'] if dem_full else None,
+            'empresa_nome':dem_full['empresa_nome'] if dem_full else '',
+            'agentes':     agentes,
+            'resumo':      resumo_agentes(agentes),
         })
     except Exception as e:
         import traceback
