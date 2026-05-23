@@ -1210,11 +1210,18 @@
       <span>Saúde do Sistema</span>
     </div>
 
-    <div class="sidebar-item" data-name="coleta" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', document.querySelector('[onclick*=nova]')),300);" title="Coletas integradas em Nova Medição">
+    <div class="sidebar-item" data-name="planejamento" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan', null),300);" title="Planejamento pré-visita">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h6m-6 4h4"/>
+      </svg>
+      <span>Planejamento</span>
+    </div>
+
+    <div class="sidebar-item" data-name="campo" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', null),300);" title="Planilha de campo — execução real">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
       </svg>
-      <span>Nova Coleta</span>
+      <span>Planilha de Campo</span>
     </div>
   </div>
 
@@ -2147,7 +2154,8 @@
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('demand', this)">Demandas/OS</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('amostr', this)">Amostradores</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('prev', this)">Previsão</div>
-      <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:var(--green);color:#fff;font-weight:700;">+ Nova Medição</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('plan', this)" style="background:var(--blue);color:#fff;font-weight:700;">📋 Planejamento</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:var(--green);color:#fff;font-weight:700;">📍 Planilha de Campo</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
     </div>
   </div>
@@ -2337,7 +2345,118 @@
     </div>
   </div>
 
-  <!-- ══ CENTRAL OPERACIONAL DE COLETA — Wizard 6 Etapas ══ -->
+  <!-- ══ PLANEJAMENTO DE MEDIÇÃO ══ -->
+  <div id="ctrl-sub-plan" style="display:none;">
+  <style>
+    .plan-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+    .plan-card-title{font-weight:800;font-size:.95rem;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .plan-f{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+    .plan-f label{font-size:.78rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+    .plan-f input,.plan-f select,.plan-f textarea{background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-size:.86rem;font-family:inherit;outline:none;}
+    .plan-f input:focus,.plan-f select:focus{border-color:var(--blue);}
+    .plan-g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .plan-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+    .plan-status-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+    .plan-status-rascunho{background:rgba(156,163,175,.15);color:#9ca3af;}
+    .plan-status-confirmado{background:rgba(57,153,255,.15);color:#39f;}
+    .plan-status-em_execucao{background:rgba(245,158,11,.15);color:var(--yellow);}
+    .plan-status-concluido{background:rgba(34,197,94,.15);color:var(--green);}
+    .plan-status-cancelado{background:rgba(239,68,68,.15);color:#ef4444;}
+    .plan-agente-item{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:7px;padding:7px 11px;margin-bottom:6px;font-size:.83rem;}
+    .plan-equip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+    .plan-equip-chip{background:rgba(57,153,255,.1);border:1px solid rgba(57,153,255,.2);color:#39f;border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:600;}
+    .plan-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;}
+    .plan-row-info{flex:1;min-width:0;}
+    .plan-row-empresa{font-weight:700;font-size:.88rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .plan-row-meta{font-size:.75rem;color:var(--text3);margin-top:2px;}
+    .plan-btn-campo{background:var(--green);color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+    .plan-btn-campo:hover{opacity:.85;}
+  </style>
+
+  <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:10px;">
+    📋 Planejamento de Medição
+    <span style="font-size:.75rem;font-weight:400;color:var(--text3);">Pré-visita — antes de sair para campo</span>
+  </div>
+
+  <!-- Lista de planejamentos existentes -->
+  <div class="plan-card">
+    <div class="plan-card-title">Planejamentos Recentes</div>
+    <div id="plan-lista-loading" style="color:var(--text3);font-size:.83rem;">Carregando...</div>
+    <div id="plan-lista"></div>
+  </div>
+
+  <!-- Formulário: novo planejamento -->
+  <div class="plan-card">
+    <div class="plan-card-title">➕ Novo Planejamento</div>
+
+    <!-- OS / busca automática -->
+    <div class="plan-f" style="position:relative;">
+      <label>N° da OS</label>
+      <input type="text" id="plan-nv-os" placeholder="Digite a OS para buscar empresa e agentes automaticamente..." oninput="planOsChange(this.value)" autocomplete="off">
+      <div id="plan-os-info" style="display:none;margin-top:6px;padding:9px 11px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:6px;font-size:.78rem;"></div>
+    </div>
+
+    <div class="plan-g2">
+      <div class="plan-f">
+        <label>Empresa</label>
+        <input type="text" id="plan-empresa-nome" placeholder="Preenchida automaticamente pela OS" readonly style="cursor:not-allowed;opacity:.7;">
+        <input type="hidden" id="plan-empresa-id">
+      </div>
+      <div class="plan-f">
+        <label>Técnico Responsável</label>
+        <select id="plan-tecnico">
+          <option>Matheus Costa</option>
+          <option>Kelly Elissama Firmino</option>
+          <option>Helbert</option>
+          <option>Wesley</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="plan-g2">
+      <div class="plan-f">
+        <label>Data Prevista da Visita</label>
+        <input type="date" id="plan-data-prevista">
+      </div>
+      <div class="plan-f">
+        <label>Demanda vinculada</label>
+        <input type="text" id="plan-demanda-info" readonly placeholder="—" style="cursor:not-allowed;opacity:.7;font-size:.78rem;">
+        <input type="hidden" id="plan-demanda-id">
+      </div>
+    </div>
+
+    <!-- Agentes previstos -->
+    <div class="plan-f">
+      <label>Agentes Previstos</label>
+      <div id="plan-agentes-lista" style="margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" onclick="planAddAgente('ruido')" style="background:rgba(34,197,94,.12);color:var(--green);border:1px solid var(--green);padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Ruído</button>
+        <button type="button" onclick="planAddAgente('quimico')" style="background:rgba(57,153,255,.1);color:#39f;border:1px solid #39f;padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Químico</button>
+        <button type="button" onclick="planAddAgente('calor')" style="background:rgba(245,158,11,.1);color:var(--yellow);border:1px solid var(--yellow);padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Calor</button>
+        <button type="button" onclick="planAddAgente('vibracao')" style="background:rgba(167,139,250,.1);color:var(--purple);border:1px solid var(--purple);padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Vibração</button>
+      </div>
+    </div>
+
+    <!-- Equipamentos sugeridos (calculado automaticamente) -->
+    <div id="plan-equipamentos-preview" style="display:none;" class="plan-f">
+      <label>Equipamentos Necessários (calculado automaticamente)</label>
+      <div id="plan-equip-chips" class="plan-equip-list"></div>
+    </div>
+
+    <div class="plan-f">
+      <label>Observação</label>
+      <textarea id="plan-obs" rows="2" placeholder="Pontos prioritários, restrições de acesso, contato na empresa..." style="resize:vertical;"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button onclick="planSalvar('rascunho')" style="flex:1;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:11px;border-radius:8px;font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;">💾 Salvar Rascunho</button>
+      <button onclick="planSalvar('confirmado')" style="flex:1;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:8px;font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;">✅ Confirmar Planejamento</button>
+    </div>
+  </div>
+
+  </div><!-- /ctrl-sub-plan -->
+
+  <!-- ══ CENTRAL OPERACIONAL DE COLETA — Planilha de Campo ══ -->
   <div id="ctrl-sub-nova" style="display:none;">
   <style>
     .nv-prog{display:flex;align-items:flex-start;justify-content:center;gap:0;margin-bottom:24px;padding:18px 0 0;}
@@ -2378,8 +2497,9 @@
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
     <div>
-      <div style="font-size:1.05rem;font-weight:800;color:var(--text);letter-spacing:-.01em;">🎯 Central Operacional de Coleta</div>
-      <div style="font-size:.78rem;color:var(--text3);margin-top:2px;">Do planejamento ao laudo — tudo em um fluxo só</div>
+      <div style="font-size:1.05rem;font-weight:800;color:var(--text);letter-spacing:-.01em;">📍 Planilha de Campo</div>
+      <div style="font-size:.78rem;color:var(--text3);margin-top:2px;">Execução real — o que foi feito em campo</div>
+      <div id="nv-planejamento-vinculado" style="display:none;margin-top:4px;padding:4px 9px;background:rgba(57,153,255,.1);border-radius:6px;font-size:.75rem;color:#39f;"></div>
     </div>
     <button onclick="nvReset()" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;">↺ Reiniciar</button>
   </div>
@@ -5173,7 +5293,7 @@ function ctrlSwitchSub(name, el) {
   }
   _ctrlSubAtiva = name;
   _ctrlStatsCache = null;
-  ['amostr','empresa','demand','prev','nova','import'].forEach(s => {
+  ['amostr','empresa','demand','prev','nova','plan','import'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
@@ -5184,6 +5304,7 @@ function ctrlSwitchSub(name, el) {
   if (name === 'nova') ctrlNvInit();
   if (name === 'import') ctrlLoadSyncLog();
   if (name === 'prev') ctrlLoadPrevisao();
+  if (name === 'plan') planInit();
 }
 
 function ctrlSwitchAmostrView(view) {
@@ -5538,6 +5659,257 @@ async function ctrlLoadSyncLog() {
   } catch(e) {
     tb.innerHTML = `<tr><td colspan="6" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PLANEJAMENTO DE MEDIÇÃO
+   Etapa pré-visita. Dados puxados do Planner/OS + confirmação técnico.
+   ══════════════════════════════════════════════════════════════════ */
+
+window._planAgentes = [];   // [{tipo, agente, qtd}]
+let _planOsDebounce = null;
+
+async function planInit() {
+  await planCarregarLista();
+}
+
+async function planCarregarLista() {
+  const loading = document.getElementById('plan-lista-loading');
+  const lista   = document.getElementById('plan-lista');
+  if (loading) loading.style.display = 'block';
+  if (lista)   lista.innerHTML = '';
+  try {
+    const res = await ctrlFetch('/controle/planejamentos?limit=20');
+    if (loading) loading.style.display = 'none';
+    if (!res || res.length === 0) {
+      if (lista) lista.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Nenhum planejamento criado ainda.</div>';
+      return;
+    }
+    const cores = {rascunho:'rgba(156,163,175,.15)', confirmado:'rgba(57,153,255,.15)', em_execucao:'rgba(245,158,11,.15)', concluido:'rgba(34,197,94,.15)', cancelado:'rgba(239,68,68,.15)'};
+    const textos = {rascunho:'Rascunho', confirmado:'Confirmado', em_execucao:'Em Execução', concluido:'Concluído', cancelado:'Cancelado'};
+    lista.innerHTML = res.map(p => {
+      const agentes = _planParseAgentes(p.agentes_previstos);
+      const resumoAgentes = agentes.map(a => {
+        const label = {ruido:'🔊 Ruído', quimico:'🧪 Químico', calor:'🌡 Calor', vibracao:'📳 Vibração'};
+        return `${label[a.tipo]||a.tipo} ×${a.qtd}`;
+      }).join(' · ') || '—';
+      return `<div class="plan-row">
+        <div class="plan-row-info">
+          <div class="plan-row-empresa">${p.empresa_nome || 'Empresa não vinculada'}</div>
+          <div class="plan-row-meta">
+            OS: <b>${p.numero_os || '—'}</b> ·
+            Técnico: ${p.tecnico} ·
+            Data: ${p.data_prevista || '—'} ·
+            ${resumoAgentes}
+          </div>
+          <div style="margin-top:4px;">
+            <span class="plan-status-badge plan-status-${p.status||'rascunho'}">${textos[p.status]||p.status||'rascunho'}</span>
+            ${p.qtd_dosim_prevista > 0 ? `<span style="margin-left:6px;font-size:.72rem;color:var(--text3);">🎧 ${p.qtd_dosim_prevista} dosím.</span>` : ''}
+            ${p.qtd_bombas_previstas > 0 ? `<span style="margin-left:6px;font-size:.72rem;color:var(--text3);">🔬 ${p.qtd_bombas_previstas} bomba(s)</span>` : ''}
+          </div>
+        </div>
+        ${p.status !== 'concluido' && p.status !== 'cancelado'
+          ? `<button class="plan-btn-campo" onclick="planIrParaCampo(${p.id})">📍 Ir para Campo</button>`
+          : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    if (lista) lista.innerHTML = `<div style="color:#ef4444;font-size:.82rem;">Erro: ${e.message}</div>`;
+  }
+}
+
+function _planParseAgentes(raw) {
+  if (!raw) return [];
+  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; }
+  catch { return []; }
+}
+
+function planOsChange(val) {
+  clearTimeout(_planOsDebounce);
+  if (!val || val.length < 4) { _planLimparDemanda(); return; }
+  _planOsDebounce = setTimeout(() => _planBuscarOs(val), 400);
+}
+
+async function _planBuscarOs(os) {
+  const info = document.getElementById('plan-os-info');
+  info.style.display = 'block';
+  info.innerHTML = '<span style="color:var(--text3);">Buscando OS...</span>';
+  try {
+    const r = await ctrlFetch('/controle/demandas/por_os/' + encodeURIComponent(os));
+    if (!r || r.erro) { info.innerHTML = '<span style="color:#ef4444;">OS não encontrada no banco.</span>'; _planLimparDemanda(); return; }
+
+    // Preencher empresa
+    document.getElementById('plan-empresa-id').value   = r.empresa_id || '';
+    document.getElementById('plan-empresa-nome').value = r.empresa_nome || '';
+    document.getElementById('plan-demanda-id').value   = r.id || '';
+    document.getElementById('plan-demanda-info').value = r.titulo ? r.titulo.substring(0,60) : 'Demanda #' + r.id;
+
+    // Preencher agentes se disponíveis
+    const agentes = r.agentes || [];
+    if (agentes.length > 0) {
+      window._planAgentes = agentes.map(a => ({
+        tipo:   a.tipo_medicao || 'quimico',
+        agente: a.nome_agente || a.agente || '',
+        qtd:    a.qtd || 1,
+      }));
+      _planRenderizarAgentes();
+      info.innerHTML = `<b>✅ ${r.empresa_nome}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
+    } else {
+      info.innerHTML = `<b>✅ ${r.empresa_nome}</b> — OS encontrada. Adicione os agentes manualmente.`;
+    }
+  } catch(e) {
+    info.innerHTML = `<span style="color:#ef4444;">Erro: ${e.message}</span>`;
+    _planLimparDemanda();
+  }
+}
+
+function _planLimparDemanda() {
+  document.getElementById('plan-empresa-id').value   = '';
+  document.getElementById('plan-empresa-nome').value = '';
+  document.getElementById('plan-demanda-id').value   = '';
+  document.getElementById('plan-demanda-info').value = '';
+  const info = document.getElementById('plan-os-info');
+  if (info) info.style.display = 'none';
+}
+
+function planAddAgente(tipo) {
+  const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
+  const agente = tipo === 'quimico' ? (prompt('Nome do agente químico (ex: Tolueno, Poeira Respirável):') || '') : labels[tipo];
+  if (!agente && tipo !== 'ruido') return;
+  const qtd = parseInt(prompt(`Quantidade de ${labels[tipo]}:`) || '1');
+  if (isNaN(qtd) || qtd < 1) return;
+  window._planAgentes.push({tipo, agente: agente || labels[tipo], qtd});
+  _planRenderizarAgentes();
+}
+
+function _planRenderizarAgentes() {
+  const lista = document.getElementById('plan-agentes-lista');
+  const tipos = {ruido:'🔊', quimico:'🧪', calor:'🌡', vibracao:'📳'};
+  if (!window._planAgentes || window._planAgentes.length === 0) {
+    lista.innerHTML = '<div style="color:var(--text3);font-size:.78rem;">Nenhum agente adicionado.</div>';
+    document.getElementById('plan-equipamentos-preview').style.display = 'none';
+    return;
+  }
+  lista.innerHTML = window._planAgentes.map((a, i) =>
+    `<div class="plan-agente-item">
+      <span>${tipos[a.tipo]||''} <b>${a.agente}</b> ×${a.qtd}</span>
+      <button type="button" onclick="planRemoverAgente(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 4px;">✕</button>
+    </div>`
+  ).join('');
+  _planAtualizarEquipamentos();
+}
+
+function planRemoverAgente(idx) {
+  window._planAgentes.splice(idx, 1);
+  _planRenderizarAgentes();
+}
+
+function _planAtualizarEquipamentos() {
+  const agentes = window._planAgentes || [];
+  const dosim  = agentes.filter(a => a.tipo === 'ruido').reduce((s,a) => s + (a.qtd||1), 0);
+  const bombas = agentes.filter(a => a.tipo === 'quimico').reduce((s,a) => s + (a.qtd||1), 0);
+  const calor  = agentes.some(a => a.tipo === 'calor');
+  const vibr   = agentes.some(a => a.tipo === 'vibracao');
+
+  const equip = [];
+  if (dosim)  { equip.push(`🎧 ${dosim} dosím.`); equip.push('📏 1 calibrador'); }
+  if (bombas) { equip.push(`🔬 ${bombas} bomba(s)`); equip.push('💨 1 cal. vazão'); }
+  if (calor)  { equip.push('🌡 Termômetro IBUTG'); }
+  if (vibr)   { equip.push('📳 Acelerômetro'); }
+
+  const preview = document.getElementById('plan-equipamentos-preview');
+  const chips   = document.getElementById('plan-equip-chips');
+  if (equip.length > 0) {
+    preview.style.display = 'flex';
+    chips.innerHTML = equip.map(e => `<span class="plan-equip-chip">${e}</span>`).join('');
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function planSalvar(status) {
+  const os          = (document.getElementById('plan-nv-os')?.value || '').trim();
+  const empresa_id  = parseInt(document.getElementById('plan-empresa-id')?.value || '0');
+  const tecnico     = document.getElementById('plan-tecnico')?.value || '';
+  const data_prev   = document.getElementById('plan-data-prevista')?.value || '';
+  const demanda_id  = parseInt(document.getElementById('plan-demanda-id')?.value || '0') || null;
+  const obs         = document.getElementById('plan-obs')?.value || '';
+
+  if (!empresa_id) { _showToast('Informe a OS ou vincule uma empresa.', 'err'); return; }
+  if (!tecnico)    { _showToast('Selecione o técnico.', 'err'); return; }
+  if ((window._planAgentes || []).length === 0) { _showToast('Adicione pelo menos um agente previsto.', 'err'); return; }
+
+  const payload = {
+    empresa_id,
+    tecnico,
+    numero_os:        os,
+    data_prevista:    data_prev,
+    demanda_id:       demanda_id,
+    agentes_previstos: window._planAgentes,
+    observacao:       obs,
+    status,
+  };
+
+  try {
+    const r = await ctrlFetch('/controle/planejamentos', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (r.ok) {
+      const msg = status === 'confirmado' ? '✅ Planejamento confirmado!' : '💾 Rascunho salvo.';
+      _showToast(msg, 'ok');
+      // Limpar form
+      window._planAgentes = [];
+      ['plan-nv-os','plan-empresa-nome','plan-empresa-id','plan-demanda-id',
+       'plan-demanda-info','plan-data-prevista','plan-obs'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      document.getElementById('plan-os-info').style.display = 'none';
+      _planRenderizarAgentes();
+      await planCarregarLista();
+      // Oferecer ir para campo se confirmado
+      if (status === 'confirmado' && r.id) {
+        setTimeout(() => {
+          if (confirm('Planejamento confirmado! Ir para Planilha de Campo agora?')) {
+            planIrParaCampo(r.id);
+          }
+        }, 300);
+      }
+    } else {
+      _showToast('Erro: ' + (r.erro || 'falha ao salvar'), 'err');
+    }
+  } catch(e) {
+    _showToast('Erro: ' + e.message, 'err');
+  }
+}
+
+function planIrParaCampo(planejamento_id) {
+  // Vai para a aba de Campo e seta o planejamento vinculado
+  window._campoPlanejamentoId = planejamento_id;
+  ctrlSwitchSub('nova', null);
+  // Pré-selecionar o planejamento no wizard de campo
+  setTimeout(() => ctrlNvVincularPlanejamento(planejamento_id), 500);
+}
+
+async function ctrlNvVincularPlanejamento(pid) {
+  try {
+    const p = await ctrlFetch('/controle/planejamentos/' + pid);
+    if (!p) return;
+    // Preencher OS
+    const osEl = document.getElementById('ctrl-nv-os');
+    if (osEl && p.numero_os) { osEl.value = p.numero_os; ctrlNvOsChange(p.numero_os); }
+    // Preencher técnico
+    const tecEl = document.getElementById('ctrl-nv-avaliador');
+    if (tecEl && p.tecnico) {
+      [...tecEl.options].forEach(o => { if (o.text.includes(p.tecnico.split(' ')[0])) tecEl.value = o.value; });
+    }
+    // Guardar ID do planejamento
+    window._nvPlanejamentoId = pid;
+    _showToast(`Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');
+  } catch(e) { /* silencioso */ }
 }
 
 /* ── NOVA MEDIÇÃO — workflow completo ────────────────────────────── */
@@ -7893,10 +8265,11 @@ function nvGerarResumo() {
 async function nvSalvarMedicao() {
   try {
     const payload = {
-      empresa_id:   window._ctrlNvEmpresa?.id || null,
-      empresa_nome: document.getElementById('ctrl-nv-empresa')?.value || '',
-      demanda_id:   window._nvDemandaId || null,
-      os:           document.getElementById('ctrl-nv-os')?.value || '',
+      empresa_id:      window._ctrlNvEmpresa?.id || null,
+      empresa_nome:    document.getElementById('ctrl-nv-empresa')?.value || '',
+      demanda_id:      window._nvDemandaId || null,
+      planejamento_id: window._nvPlanejamentoId || null,
+      os:              document.getElementById('ctrl-nv-os')?.value || '',
       data:         document.getElementById('ctrl-nv-data')?.value || '',
       prazo:        document.getElementById('nv-prazo')?.value || '',
       avaliador:    document.getElementById('ctrl-nv-avaliador')?.value || '',
