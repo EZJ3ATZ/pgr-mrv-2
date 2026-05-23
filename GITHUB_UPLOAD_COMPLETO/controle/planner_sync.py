@@ -371,9 +371,14 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
     log.info('[planner_sync] %d grupos | label_filter=%s', len(grupos), label_filter)
 
-    with get_db() as conn:
-        # Demandas do Planner não têm empresa vinculada — desabilita FK temporariamente
+    conn = None
+    try:
+        from .db import _connect
+        conn = _connect()
         conn.execute('PRAGMA foreign_keys = OFF')
+        _task_count = 0  # contador para commits intermediários
+        COMMIT_INTERVAL = 300  # commit a cada 300 tasks
+
         for grupo in grupos:
             stats['grupos'] += 1
             gid   = grupo['id']
@@ -432,8 +437,14 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         bucket = bucket_map.get(tarefa.get('bucketId', ''), '')
                         titulo = tarefa.get('title', 'Sem título')
 
-                        # ── FASE 1: Gravar raw SEM detalhes (economiza N requests) ─
-                        # Detalhes (desc/checklist) são buscados só para tasks que passam no filtro
+                        # ── PRÉ-FILTRO rápido: verificar label ANTES de gravar raw ─────
+                        # Evita gravar 8000 tasks ignoradas no DB
+                        tem_label = True
+                        if label_filter and category_ids:
+                            tem_label = _task_has_label(tarefa, category_ids)
+
+                        # ── FASE 1: Gravar raw (apenas tasks operacionais + amostra audit) ─
+                        # raw_json omitido para tasks ignoradas para economizar espaço/memória
                         raw_data = {
                             'planner_plan_id':    tarefa.get('planId', ''),
                             'planner_plan_nome':  pnome,
@@ -444,7 +455,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                             'titulo':             titulo,
                             'descricao':          '',
                             'checklist_json':     '[]',
-                            'raw_json':           json.dumps(tarefa, ensure_ascii=False),
+                            'raw_json':           json.dumps(tarefa, ensure_ascii=False) if tem_label else '',
                             'percent_complete':   tarefa.get('percentComplete', 0),
                             'prazo':              _parse_date(tarefa.get('dueDateTime')),
                             'criado_em_ms':       _parse_date(tarefa.get('createdDateTime')),
@@ -461,12 +472,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
                         # ── FASE 2: Filtro de label (a verdade operacional) ──
                         # REGRA: só passa task com label "Medições" aplicado.
-                        # NÃO usar bucket, título ou regex como filtro principal.
                         if label_filter:
-                            tem_label = (
-                                bool(category_ids) and
-                                _task_has_label(tarefa, category_ids)
-                            )
                             if not tem_label:
                                 motivo = (
                                     f"sem label '{label_filter}'"
@@ -475,13 +481,13 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                                 )
                                 mark_raw_task(conn, raw_id, 'ignored', motivo)
                                 stats['bucket_ignoradas'] += 1
-                                _mlog.debug('task_ignorada_label', extra={
-                                    'planner_task_id': tid,
-                                    'titulo':          titulo[:60],
-                                    'bucket':          bucket,
-                                    'motivo':          motivo,
-                                    'applied_cats':    tarefa.get('appliedCategories', {}),
-                                })
+
+                                # Commit intermediário para não perder progresso
+                                _task_count += 1
+                                if _task_count % COMMIT_INTERVAL == 0:
+                                    conn.commit()
+                                    log.info('[planner_sync] checkpoint commit: %d tasks processadas', _task_count)
+
                                 continue  # NÃO vai para demandas
 
                         # ── Buscar detalhes SOMENTE para tasks que passaram no filtro ──
@@ -596,6 +602,8 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
             stats['match_empresas'] = {'erro': str(e)}
 
         # ── Mesclar duplicatas ─────────────────────────────────────────
+        # Commit antes: mesclar_empresas_duplicatas abre conexão própria
+        conn.commit()
         log.info('[planner_sync] mesclando empresas duplicadas...')
         try:
             from .db import mesclar_empresas_duplicatas
@@ -621,6 +629,14 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
             INSERT OR REPLACE INTO ms_sync_state (chave, valor, atualizado_em)
             VALUES ('last_sync_stats', ?, CURRENT_TIMESTAMP)
         ''', (json.dumps(stats),))
+        conn.commit()
+
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     stats['concluido_em'] = datetime.now(timezone.utc).isoformat()
     _mlog.info('sync_concluido', extra={
