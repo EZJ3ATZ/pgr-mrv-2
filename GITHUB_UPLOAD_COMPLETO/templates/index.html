@@ -8209,11 +8209,11 @@ async function saudeReclassificar() {
 
 async function saudeSync() {
   const el = document.getElementById('saude-acao-result');
-  if(el) el.textContent = 'Sync iniciado em background (~20 min)...';
+  if(el) el.textContent = 'Sync iniciado (filtrando label "Medições")...';
   const r = await fetch('/controle/graph/sync', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({})
+    body: JSON.stringify({ label_filter: 'Medições' })
   }).then(r=>r.json());
   if(el) el.textContent = r.mensagem || r.erro || JSON.stringify(r);
 }
