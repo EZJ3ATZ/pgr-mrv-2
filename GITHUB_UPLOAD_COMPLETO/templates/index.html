@@ -6035,6 +6035,7 @@ window._ctrlNvBombasCache = null;
 async function ctrlNvInit() {
   // Data hoje
   document.getElementById('ctrl-nv-data').value = new Date().toISOString().slice(0,10);
+  nvGotoStep(1);
   // Carregar bombas
   if (!window._ctrlNvBombasCache) {
     try { window._ctrlNvBombasCache = await ctrlFetch('/controle/bombas'); }
@@ -8518,13 +8519,7 @@ async function nvConcluirOS() {
   _showToast('✅ OS concluída!','ok');
 }
 
-// Inicializar wizard quando entra no sub
-const _nvOrigCtrlNvInit = typeof ctrlNvInit === 'function' ? ctrlNvInit : null;
-function ctrlNvInit() {
-  if (_nvOrigCtrlNvInit) _nvOrigCtrlNvInit();
-  document.getElementById('ctrl-nv-data').value = new Date().toISOString().slice(0,10);
-  nvGotoStep(1);
-}
+// nvGotoStep(1) é chamado na própria ctrlNvInit acima
 
 // ═══════════════════════════════════════════════════════════════════════
 // BUSCA GLOBAL (Ctrl+K)
