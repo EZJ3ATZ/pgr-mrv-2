@@ -164,7 +164,16 @@ def graph_paginate(path: str, max_pages: int = 20) -> list:
 # ── Helpers de alto nível ─────────────────────────────────────────────
 
 def get_teams_groups() -> list:
-    """Lista todos os grupos Microsoft 365 que têm Teams (e portanto Planner)."""
+    """Lista todos os grupos Microsoft 365 com Planner (inclui grupos sem Teams)."""
+    # Busca TODOS os grupos M365 — o filtro Teams excluia grupos Planner sem Teams habilitado
+    return graph_paginate(
+        '/groups?$select=id,displayName,description,mail'
+        '&$top=100'
+    )
+
+
+def get_teams_groups_with_teams() -> list:
+    """Lista apenas grupos com Teams habilitado."""
     return graph_paginate(
         "/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')"
         "&$select=id,displayName,description,mail"
