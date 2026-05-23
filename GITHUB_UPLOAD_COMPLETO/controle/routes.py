@@ -2056,6 +2056,123 @@ def graph_debug_email():
     return jsonify(resultado)
 
 
+@controle_bp.route('/graph/debug_email_body')
+def graph_debug_email_body():
+    """
+    Lê o corpo dos e-mails Uniscientific, extrai códigos de amostradores
+    e cruza com o estoque local.
+    Uso: /controle/graph/debug_email_body?caixa=email@dominio.com
+    """
+    import re as _re
+    from .graph import graph_get, graph_paginate
+
+    caixa = request.args.get('caixa', 'administrativocomercial@ocupacional.com.br')
+
+    # Padrões de código de amostrador (ajustar conforme os reais)
+    # Ex: 1091AV3, 9808AV2, B-001, dosímetro nº 123
+    PADROES_CODIGO = [
+        _re.compile(r'\b\d{4}AV\d\b'),               # 1091AV3
+        _re.compile(r'\b\d{3,5}AV\d{1,2}\b'),        # variações
+        _re.compile(r'\b[A-Z]{1,3}-?\d{3,6}\b'),     # B-001, TCP-12345
+        _re.compile(r'(?:dosímetro|dosimetro|amostrador)[^\d]*(\d{3,6})', _re.I),
+        _re.compile(r'(?:código|codigo|cod\.?|nº|n\.?)[^\d]*(\d{4,8})', _re.I),
+        _re.compile(r'\b\d{4,8}\b'),                  # números soltos (fallback)
+    ]
+
+    resultado = {
+        'caixa': caixa,
+        'emails_analisados': [],
+        'codigos_encontrados': [],
+        'cruzamento_estoque': [],
+        'resumo': {}
+    }
+
+    # 1. Buscar user_id da caixa
+    try:
+        users = graph_paginate('/users?$select=id,mail,userPrincipalName&$top=100')
+        user = next((u for u in users if caixa.lower() in (u.get('mail','') or u.get('userPrincipalName','')).lower()), None)
+        if not user:
+            return jsonify({'erro': f'Caixa {caixa} não encontrada nos usuários'})
+        uid = user['id']
+    except Exception as e:
+        return jsonify({'erro': str(e)})
+
+    # 2. Buscar e-mails Uniscientific com corpo
+    try:
+        data = graph_get(
+            f'/users/{uid}/messages'
+            f'?$search="Uniscientific"'
+            f'&$top=25'
+            f'&$select=id,subject,from,receivedDateTime,hasAttachments,body'
+        )
+        msgs = data.get('value', [])
+    except Exception as e:
+        return jsonify({'erro': f'Falha ao buscar emails: {e}'})
+
+    todos_codigos = set()
+
+    for msg in msgs:
+        body_content = msg.get('body', {}).get('content', '') or ''
+        # Remover HTML
+        body_text = _re.sub(r'<[^>]+>', ' ', body_content)
+        body_text = _re.sub(r'\s+', ' ', body_text).strip()
+
+        codigos_msg = set()
+        for pat in PADROES_CODIGO[:4]:  # só padrões específicos (não números soltos)
+            for m in pat.finditer(body_text):
+                cod = m.group(1) if m.lastindex else m.group(0)
+                if len(cod) >= 4:
+                    codigos_msg.add(cod.strip())
+
+        sender = msg.get('from', {}).get('emailAddress', {}).get('address', '')
+        resultado['emails_analisados'].append({
+            'assunto':  msg.get('subject', '')[:80],
+            'de':       sender,
+            'data':     msg.get('receivedDateTime', '')[:10],
+            'anexo':    msg.get('hasAttachments', False),
+            'codigos':  list(codigos_msg),
+            'preview':  body_text[:300],
+        })
+        todos_codigos.update(codigos_msg)
+
+    resultado['codigos_encontrados'] = sorted(todos_codigos)
+
+    # 3. Cruzar com estoque local
+    try:
+        with get_db() as conn:
+            # Status geral do estoque
+            stats = conn.execute('''
+                SELECT status, tipo, COUNT(*) as qtd
+                FROM amostradores GROUP BY status, tipo ORDER BY qtd DESC
+            ''').fetchall()
+            resultado['estoque_atual'] = [dict(r) for r in stats]
+
+            # Cruzar códigos dos emails com DB
+            cruzamento = []
+            for cod in sorted(todos_codigos):
+                rows = conn.execute(
+                    "SELECT id, codigo, tipo, status, empresa_id, data_envio_lab FROM amostradores WHERE codigo LIKE ?",
+                    (f'%{cod}%',)
+                ).fetchall()
+                cruzamento.append({
+                    'codigo_email': cod,
+                    'encontrado_no_estoque': len(rows) > 0,
+                    'registros': [dict(r) for r in rows],
+                })
+            resultado['cruzamento_estoque'] = cruzamento
+    except Exception as e:
+        resultado['erro_db'] = str(e)
+
+    encontrados = sum(1 for c in resultado['cruzamento_estoque'] if c['encontrado_no_estoque'])
+    resultado['resumo'] = {
+        'emails_lidos': len(msgs),
+        'codigos_extraidos': len(todos_codigos),
+        'codigos_no_estoque': encontrados,
+        'codigos_ausentes_estoque': len(todos_codigos) - encontrados,
+    }
+    return jsonify(resultado)
+
+
 @controle_bp.route('/graph/debug_plan')
 def graph_debug_plan():
     """Debug: inspeciona labels de um plano específico por plan_id.
