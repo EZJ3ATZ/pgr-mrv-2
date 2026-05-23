@@ -234,6 +234,30 @@ CREATE TABLE IF NOT EXISTS coletas_quimico_amostr (
 );
 CREATE INDEX IF NOT EXISTS idx_col_quim_amostr ON coletas_quimico_amostr(coleta_id);
 
+CREATE TABLE IF NOT EXISTS coletas_outros (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo            TEXT NOT NULL,
+    empresa_id      INTEGER,
+    empresa_nome    TEXT,
+    demanda_id      INTEGER,
+    numero_os       TEXT,
+    avaliador       TEXT,
+    data_coleta     TEXT,
+    acompanhante    TEXT,
+    hora_inicio     TEXT,
+    hora_termino    TEXT,
+    unidade         TEXT,
+    cidade          TEXT,
+    observacao      TEXT,
+    dados_json      TEXT,
+    status          TEXT DEFAULT 'concluida',
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_col_outros_tipo    ON coletas_outros(tipo);
+CREATE INDEX IF NOT EXISTS idx_col_outros_empresa ON coletas_outros(empresa_id);
+
 -- ── Microsoft Graph / Planner ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS ms_users (
     ms_id        TEXT PRIMARY KEY,
@@ -880,6 +904,31 @@ def mark_raw_task(conn, raw_id: int, status: str, ignored_reason: str = None):
         )
 
 
+def save_coleta_outros(data):
+    """Salva coleta genérica (calor, vibração, etc.) em coletas_outros."""
+    import json as _json
+    cid = data.get('id')
+    campos = ['tipo','empresa_id','empresa_nome','demanda_id','numero_os',
+              'avaliador','data_coleta','acompanhante','hora_inicio','hora_termino',
+              'unidade','cidade','observacao','status']
+    vals = {c: data.get(c) for c in campos if c != 'dados_json'}
+    # Salva campos extras como JSON
+    extras = {k: v for k, v in data.items() if k not in campos + ['id', 'dados_json']}
+    vals['dados_json'] = _json.dumps(extras, ensure_ascii=False) if extras else None
+    with get_db() as conn:
+        if cid:
+            sets = ', '.join(k + '=?' for k in vals) + ', atualizado_em=CURRENT_TIMESTAMP'
+            conn.execute('UPDATE coletas_outros SET ' + sets + ' WHERE id=?',
+                         list(vals.values()) + [cid])
+        else:
+            cols = ', '.join(vals.keys())
+            phs  = ', '.join(['?'] * len(vals))
+            cur  = conn.execute('INSERT INTO coletas_outros (' + cols + ') VALUES (' + phs + ')',
+                                list(vals.values()))
+            cid  = cur.lastrowid
+    return cid
+
+
 def list_raw_tasks(filtros=None, limit=200):
     """Lista raw tasks com filtros: status, bucket, grupo."""
     f = filtros or {}
@@ -918,26 +967,43 @@ def stats_raw_pipeline():
 
 
 def list_operational_demands(filtros=None):
-    """Lê da VIEW operational_demands — dados limpos, apenas clientes reais."""
+    """Lê demandas operacionais — JOIN único em vez de N+1 subqueries."""
+    f = filtros or {}
+    try:
+        limit = min(int(f.get('limit', 200)), 1000)
+    except (ValueError, TypeError):
+        limit = 200
     sql = """
         SELECT d.*,
                e.nome AS empresa_nome,
                e.cnpj AS empresa_cnpj,
                e.pendente AS empresa_pendente,
                COALESCE(u.display_name, d.responsavel) AS responsavel_nome,
-               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id) AS total_medicoes,
-               (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas,
+               COALESCE(mm.total_medicoes, 0) AS total_medicoes,
+               COALESCE(mm.realizadas, 0) AS realizadas,
                CAST(julianday('now') - julianday(COALESCE(d.criado_em_ms, d.criado_em)) AS INTEGER) AS dias_aberta,
-               CAST(julianday(d.prazo) - julianday('now') AS INTEGER) AS dias_para_prazo
+               CAST(julianday(d.prazo) - julianday('now') AS INTEGER) AS dias_para_prazo,
+               CASE
+                 WHEN LOWER(COALESCE(d.planner_bucket,'')) LIKE '%entregue%'
+                   OR LOWER(COALESCE(d.planner_bucket,'')) LIKE '%conclu%'
+                 THEN 'concluida'
+                 WHEN d.status = 'em_andamento' THEN 'em_andamento'
+                 ELSE 'aberta'
+               END AS operational_status
         FROM demandas d
         JOIN empresas e ON e.id = d.empresa_id
         LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
+        LEFT JOIN (
+            SELECT demanda_id,
+                   COUNT(*) AS total_medicoes,
+                   SUM(CASE WHEN status='realizado' THEN 1 ELSE 0 END) AS realizadas
+            FROM medicoes GROUP BY demanda_id
+        ) mm ON mm.demanda_id = d.id
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
           AND d.origem = 'planner'
     """
     params = []
-    f = filtros or {}
     if f.get('status'):
         sql += ' AND d.status=?'; params.append(f['status'])
     if f.get('empresa'):
@@ -946,7 +1012,7 @@ def list_operational_demands(filtros=None):
         sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
     if f.get('tipo'):
         sql += ' AND d.tipo_demanda=?'; params.append(f['tipo'])
-    sql += ' ORDER BY d.criado_em DESC LIMIT 1000'
+    sql += f' ORDER BY d.criado_em DESC LIMIT {limit}'
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
@@ -959,11 +1025,17 @@ def list_operational_por_empresa(filtros=None):
                e.cnpj,
                e.pendente AS empresa_pendente,
                COUNT(DISTINCT d.id) AS total_demandas,
-               SUM(CASE WHEN d.status='concluida' THEN 1 ELSE 0 END) AS demandas_concluidas,
-               SUM(CASE WHEN d.status!='concluida' THEN 1 ELSE 0 END) AS demandas_pendentes,
-               COALESCE(SUM(d.percent_complete), 0) / NULLIF(COUNT(DISTINCT d.id), 0) AS progresso_medio,
+               COUNT(DISTINCT CASE WHEN d.status='concluida' THEN d.id END) AS demandas_concluidas,
+               COUNT(DISTINCT CASE WHEN d.status!='concluida' THEN d.id END) AS demandas_pendentes,
+               ROUND(COUNT(DISTINCT CASE WHEN d.status='concluida' THEN d.id END) * 100.0
+                     / NULLIF(COUNT(DISTINCT d.id), 0), 1) AS progresso_medio,
                GROUP_CONCAT(DISTINCT NULLIF(d.numero_os,'')) AS numeros_os,
-               MIN(NULLIF(d.prazo,'')) AS prazo_mais_proximo,
+               MIN(CASE
+                     WHEN d.status != 'concluida'
+                       AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%entregue%'
+                       AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%conclu%'
+                     THEN NULLIF(d.prazo,'')
+                   END) AS prazo_mais_proximo,
                COALESCE(MAX(u.display_name), MAX(d.responsavel)) AS responsavel,
                COUNT(DISTINCT d.tipo_demanda) AS tipos_count,
                GROUP_CONCAT(DISTINCT d.tipo_demanda) AS tipos,
