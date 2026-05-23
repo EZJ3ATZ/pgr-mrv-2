@@ -12,6 +12,16 @@ except ImportError:
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max (fotos)
 
+# ── Observabilidade: logging estruturado + Sentry ─────────────────────
+try:
+    from controle.monitoring import setup_logging, init_sentry
+    setup_logging()
+    init_sentry(app)
+except Exception as _mon_err:
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger(__name__).warning(f'[monitoring] não iniciado: {_mon_err}')
+
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 TPL_DIR    = os.path.join(BASE_DIR, 'tpl')
 MODEL_DIR  = os.path.join(BASE_DIR, 'modelo_unpacked')
