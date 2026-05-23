@@ -2453,8 +2453,6 @@ def graph_lab_flow():
                     'n_codigos': len(codigos_ra),
                     'anexos':    anexos_info,
                 })
-        except Exception:
-            pass
 
     # ── 4. Cruzamento ────────────────────────────────────────────────
     todos_enviados  = set()
