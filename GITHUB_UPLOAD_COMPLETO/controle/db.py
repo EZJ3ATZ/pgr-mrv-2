@@ -321,6 +321,41 @@ CREATE TABLE IF NOT EXISTS eventos (
 CREATE INDEX IF NOT EXISTS idx_eventos_tipo     ON eventos(tipo);
 CREATE INDEX IF NOT EXISTS idx_eventos_ref      ON eventos(ref_id, ref_tipo);
 CREATE INDEX IF NOT EXISTS idx_eventos_criado   ON eventos(criado_em);
+
+-- ── Estrutura futura — produtividade e visitas técnicas ────────────────
+-- NÃO gerar métricas agora. Apenas armazenar dados para BI futuro.
+CREATE TABLE IF NOT EXISTS visitas_tecnicas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id      INTEGER,
+    empresa_id      INTEGER,
+    tecnico         TEXT NOT NULL,
+    data_visita     TEXT NOT NULL,
+    hora_inicio     TEXT,
+    hora_termino    TEXT,
+    tipo_visita     TEXT DEFAULT 'medicao',  -- medicao | acompanhamento | retrabalho | outro
+    retrabalho      INTEGER DEFAULT 0,       -- 1 se for revisita/retrabalho
+    justificativa   TEXT,
+    resultado       TEXT,
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (demanda_id) REFERENCES demandas(id),
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_visita_tecnico  ON visitas_tecnicas(tecnico);
+CREATE INDEX IF NOT EXISTS idx_visita_demanda  ON visitas_tecnicas(demanda_id);
+CREATE INDEX IF NOT EXISTS idx_visita_data     ON visitas_tecnicas(data_visita);
+
+CREATE TABLE IF NOT EXISTS metricas_operacionais (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id      INTEGER,
+    tecnico         TEXT,
+    lead_time_dias  INTEGER,   -- criado_em_ms → concluido_em_ms
+    delay_dias      INTEGER,   -- prazo → concluido_em_ms (negativo = adiantado)
+    retrabalho      INTEGER DEFAULT 0,
+    visitas_total   INTEGER DEFAULT 0,
+    calculado_em    TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (demanda_id) REFERENCES demandas(id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_metricas_demanda ON metricas_operacionais(demanda_id);
 """
 
 
@@ -429,10 +464,15 @@ def _migrate(conn):
     # ── amostradores: controle de vencimento no laboratorio ──
     cols_am = [r['name'] for r in conn.execute('PRAGMA table_info(amostradores)').fetchall()]
     novas_amostr = {
-        'data_envio_lab':  'TEXT',    # quando foi enviado pro laboratorio
-        'dias_validade':   'INTEGER DEFAULT 45',  # padrao 45 dias antes da cobranca
-        'lote':            'TEXT',    # lote/serie do amostrador
-        'observacao_venc': 'TEXT',
+        'data_envio_lab':    'TEXT',
+        'dias_validade':     'INTEGER DEFAULT 45',
+        'lote':              'TEXT',
+        'observacao_venc':   'TEXT',
+        # Certificados de calibração
+        'cert_numero':       'TEXT',   # número do certificado
+        'cert_validade':     'TEXT',   # data de validade (YYYY-MM-DD)
+        'cert_laboratorio':  'TEXT',   # laboratório emissor
+        'cert_arquivo':      'TEXT',   # caminho/URL do arquivo (futuro)
     }
     for col, tipo in novas_amostr.items():
         if col not in cols_am:
