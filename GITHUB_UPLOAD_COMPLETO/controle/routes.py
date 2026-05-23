@@ -2331,13 +2331,19 @@ def graph_lab_flow():
         return jsonify({'erro': str(e)})
 
     def _buscar_msgs(uid, pasta, termo):
-        """$search sem $orderby (incompatíveis no Graph API)."""
+        """$search sem $orderby (incompatíveis no Graph API).
+           pasta ignorada — usa /messages global para maior cobertura."""
         try:
-            url = (f'/users/{uid}/mailFolders/{pasta}/messages'
+            url = (f'/users/{uid}/messages'
                    f'?$search="{termo}"&$top={max_emails}'
                    f'&$select=id,subject,from,receivedDateTime,hasAttachments')
-            return graph_get(url).get('value', [])
-        except Exception:
+            data = graph_get(url)
+            resultado.setdefault('_debug_buscas', []).append(
+                {'uid_prefix': uid[:8], 'termo': termo, 'qtd': len(data.get('value', []))})
+            return data.get('value', [])
+        except Exception as e:
+            resultado.setdefault('_debug_buscas', []).append(
+                {'uid_prefix': uid[:8], 'termo': termo, 'erro': str(e)[:100]})
             return []
 
     def _processar_anexo_excel(uid, mid, anx):
@@ -2361,7 +2367,7 @@ def graph_lab_flow():
         if not uid:
             continue
         seen_mids = set()
-        for pasta in ['sentItems', 'inbox']:
+        for pasta in ['inbox']:   # pasta ignorada internamente mas mantém estrutura
             for termo in termos_cadeia:
                 for msg in _buscar_msgs(uid, pasta, termo):
                     if not msg.get('hasAttachments') or msg['id'] in seen_mids:
