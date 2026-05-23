@@ -32,6 +32,15 @@ from .classificador import extrair_os, classificar
 
 log = logging.getLogger(__name__)
 
+# Monitoring opcional (não quebra se não disponível)
+try:
+    from .monitoring import get_logger as _get_log, capturar_erro, track_evento
+    _mlog = _get_log('planner_sync')
+except Exception:
+    _mlog = log
+    def capturar_erro(exc, **ctx): pass
+    def track_evento(ev, **kw): pass
+
 # ── Mapeamento de prioridade Planner → interna ─────────────────────────
 PRIORITY_MAP = {
     0: 'urgente',    # Urgent
@@ -350,7 +359,15 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                             _registrar_evento(conn, 'demanda_criada_planner',
                                               f'Tarefa Planner importada: {d["titulo"][:80]}',
                                               did, 'demanda')
-                            log.info('[planner_sync] NOVA demanda: %s', d['titulo'][:60])
+                            _mlog.info('demanda_criada', extra={
+                                'planner_task_id': tid,
+                                'titulo':          d['titulo'][:80],
+                                'bucket':          d['planner_bucket'],
+                                'tipo_demanda':    d['tipo_demanda'],
+                                'numero_os':       d['numero_os'],
+                                'assignee_id':     d['ms_assignee_id'],
+                                'demanda_id':      did,
+                            })
                         elif acao == 'updated':
                             stats['atualizadas'] += 1
 
@@ -358,6 +375,12 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         msg = f'Tarefa {tid[:8]}: {e}'
                         log.warning('[planner_sync] %s', msg)
                         stats['erros'].append(msg)
+                        capturar_erro(e,
+                            operacao='planner_sync',
+                            planner_task_id=tid,
+                            plano=pnome,
+                            grupo=gnome,
+                        )
 
         # Atualizar estado do último sync
         conn.execute('''
@@ -403,7 +426,22 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
         ''', (json.dumps(stats),))
 
     stats['concluido_em'] = datetime.now(timezone.utc).isoformat()
-    log.info('[planner_sync] sync concluído: %s', stats)
+    _mlog.info('sync_concluido', extra={
+        'criadas':       stats.get('criadas', 0),
+        'atualizadas':   stats.get('atualizadas', 0),
+        'erros':         len(stats.get('erros', [])),
+        'mescladas':     stats.get('mescladas', 0),
+        'medicao':       stats.get('reclassificacao', {}).get('medicao', 0),
+        'laudo':         stats.get('reclassificacao', {}).get('laudo', 0),
+        'operacional':   stats.get('reclassificacao', {}).get('operacional', 0),
+        'os_extraida':   stats.get('reclassificacao', {}).get('os_extraida', 0),
+    })
+    track_evento('planner_sync_concluido',
+        criadas=stats.get('criadas', 0),
+        atualizadas=stats.get('atualizadas', 0),
+        erros=len(stats.get('erros', [])),
+        mescladas=stats.get('mescladas', 0),
+    )
     return stats
 
 
