@@ -429,24 +429,11 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                     tid = tarefa['id']
 
                     try:
-                        # ── Buscar detalhes (desc + checklist) ───────────
-                        details = get_task_details(tid)
-                        desc = details.get('description', '')
-                        checklist_raw = details.get('checklist', {})
-                        checklist = [
-                            {
-                                'titulo':    v.get('title', ''),
-                                'concluido': v.get('isChecked', False),
-                                'ordem':     v.get('orderHint', ''),
-                            }
-                            for v in checklist_raw.values()
-                        ] if isinstance(checklist_raw, dict) else []
-                        checklist_json = json.dumps(checklist, ensure_ascii=False)
-
                         bucket = bucket_map.get(tarefa.get('bucketId', ''), '')
                         titulo = tarefa.get('title', 'Sem título')
 
-                        # ── FASE 1: Gravar raw (TODAS as tasks, sem exceção) ─
+                        # ── FASE 1: Gravar raw SEM detalhes (economiza N requests) ─
+                        # Detalhes (desc/checklist) são buscados só para tasks que passam no filtro
                         raw_data = {
                             'planner_plan_id':    tarefa.get('planId', ''),
                             'planner_plan_nome':  pnome,
@@ -455,8 +442,8 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                             'planner_group_id':   gid,
                             'planner_group_nome': gnome,
                             'titulo':             titulo,
-                            'descricao':          desc,
-                            'checklist_json':     checklist_json,
+                            'descricao':          '',
+                            'checklist_json':     '[]',
                             'raw_json':           json.dumps(tarefa, ensure_ascii=False),
                             'percent_complete':   tarefa.get('percentComplete', 0),
                             'prazo':              _parse_date(tarefa.get('dueDateTime')),
@@ -496,6 +483,25 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                                     'applied_cats':    tarefa.get('appliedCategories', {}),
                                 })
                                 continue  # NÃO vai para demandas
+
+                        # ── Buscar detalhes SOMENTE para tasks que passaram no filtro ──
+                        details = get_task_details(tid)
+                        desc = details.get('description', '')
+                        checklist_raw = details.get('checklist', {})
+                        checklist = [
+                            {
+                                'titulo':    v.get('title', ''),
+                                'concluido': v.get('isChecked', False),
+                                'ordem':     v.get('orderHint', ''),
+                            }
+                            for v in checklist_raw.values()
+                        ] if isinstance(checklist_raw, dict) else []
+                        checklist_json = json.dumps(checklist, ensure_ascii=False)
+                        # Atualizar raw com os detalhes agora disponíveis
+                        conn.execute(
+                            'UPDATE planner_raw_tasks SET descricao=?, checklist_json=? WHERE id=?',
+                            (desc, checklist_json, raw_id)
+                        )
 
                         # ── Cachear assignee(s) ───────────────────────────
                         for uid in list(tarefa.get('assignments', {}).keys()):
