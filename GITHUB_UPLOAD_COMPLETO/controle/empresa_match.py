@@ -142,6 +142,8 @@ def extrair_campos(titulo: str) -> dict:
     if os_num:
         resultado['os']   = os_num
         nome_limpo = _limpar_nome_empresa(nome_raw)
+        # Também remove prefixo de label após OS (ex: "6122998- AET/MEDIÇÕES - Cinafe")
+        nome_limpo = _strip_prefixo_label(nome_limpo)
         resultado['nome'] = nome_limpo if nome_limpo else t
     else:
         # Fallback: "OS NNNN" em qualquer posição do título
