@@ -2880,12 +2880,16 @@
     <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px;">
       <button id="ctrl-escopo-tab-desc" onclick="ctrlEscopoTab('desc')" style="background:var(--accent);color:#fff;border:none;border-radius:4px 4px 0 0;padding:5px 14px;font-size:.75rem;cursor:pointer;">📝 Descrição</button>
       <button id="ctrl-escopo-tab-check" onclick="ctrlEscopoTab('check')" style="background:transparent;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;padding:5px 14px;font-size:.75rem;color:var(--text3);cursor:pointer;">✅ Checklist</button>
+      <button id="ctrl-escopo-tab-agentes" onclick="ctrlEscopoTab('agentes')" style="background:transparent;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;padding:5px 14px;font-size:.75rem;color:var(--text3);cursor:pointer;">🔬 Agentes</button>
     </div>
     <div id="ctrl-escopo-panel-desc" style="min-height:120px;">
       <pre id="ctrl-escopo-desc" style="white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:.82rem;color:var(--text2);line-height:1.6;margin:0;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:12px;max-height:380px;overflow-y:auto;"></pre>
     </div>
     <div id="ctrl-escopo-panel-check" style="display:none;min-height:80px;">
       <div id="ctrl-escopo-checklist" style="font-size:.82rem;"></div>
+    </div>
+    <div id="ctrl-escopo-panel-agentes" style="display:none;min-height:80px;">
+      <div id="ctrl-escopo-agentes" style="font-size:.82rem;"></div>
     </div>
   </div>
 </div>
@@ -6434,8 +6438,32 @@ function ctrlVerEscopo(demandaId) {
       clEl.innerHTML = '<span style="color:var(--text3);font-size:.8rem;">(Sem checklist)</span>';
     }
   } catch(e) { clEl.innerHTML = '<span style="color:var(--text3);">(Sem checklist)</span>'; }
+  // Agentes — carrega async
+  const agEl = document.getElementById('ctrl-escopo-agentes');
+  agEl.innerHTML = '<span style="color:var(--text3);font-size:.8rem;">Carregando...</span>';
+  fetch('/controle/demandas/' + demandaId + '/agentes')
+    .then(r => r.json())
+    .then(j => { agEl.innerHTML = _ctrlRenderAgentes(j.agentes || []); })
+    .catch(() => { agEl.innerHTML = '<span style="color:var(--text3);font-size:.8rem;">(Erro ao carregar)</span>'; });
   ctrlEscopoTab('desc');
   document.getElementById('ctrl-escopo-overlay').style.display = 'flex';
+}
+
+function _ctrlRenderAgentes(agentes) {
+  if (!agentes.length) return '<span style="color:var(--text3);font-size:.8rem;">Nenhum agente identificado na descrição.<br>O texto pode estar em formato não reconhecido.</span>';
+  const _tipoLabel = {ruido:'🔊 Ruído', vibracao_vci:'〰️ VCI', vibracao_vbma:'〰️ VMB', vibracao:'〰️ Vibração', calor:'🌡️ Calor', particulado:'🌫️ Particulado', quimico:'⚗️ Químico'};
+  const _tipoColor = {ruido:'var(--green)', vibracao_vci:'var(--purple)', vibracao_vbma:'#a78bfa', vibracao:'var(--purple)', calor:'var(--orange)', particulado:'var(--yellow)', quimico:'var(--blue)'};
+  return agentes.map(a => {
+    const label = _tipoLabel[a.tipo] || a.tipo;
+    const cor = _tipoColor[a.tipo] || 'var(--accent)';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;">
+      <span style="font-size:1.1rem;min-width:28px;text-align:center;background:rgba(255,255,255,.06);border-radius:4px;padding:2px 6px;font-weight:700;color:${cor};">${a.qtd}×</span>
+      <div style="flex:1;">
+        <div style="font-size:.82rem;color:var(--text);font-weight:600;">${a.texto}</div>
+        <div style="font-size:.72rem;color:var(--text3);margin-top:1px;">${label}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function ctrlFecharEscopo() {
@@ -6443,13 +6471,16 @@ function ctrlFecharEscopo() {
 }
 
 function ctrlEscopoTab(tab) {
-  const isDesc = tab === 'desc';
-  document.getElementById('ctrl-escopo-panel-desc').style.display = isDesc ? '' : 'none';
-  document.getElementById('ctrl-escopo-panel-check').style.display = isDesc ? 'none' : '';
-  document.getElementById('ctrl-escopo-tab-desc').style.background = isDesc ? 'var(--accent)' : 'transparent';
-  document.getElementById('ctrl-escopo-tab-desc').style.color = isDesc ? '#fff' : 'var(--text3)';
-  document.getElementById('ctrl-escopo-tab-check').style.background = isDesc ? 'transparent' : 'var(--accent)';
-  document.getElementById('ctrl-escopo-tab-check').style.color = isDesc ? 'var(--text3)' : '#fff';
+  const tabs = ['desc', 'check', 'agentes'];
+  tabs.forEach(t => {
+    const active = t === tab;
+    document.getElementById('ctrl-escopo-panel-' + t).style.display = active ? '' : 'none';
+    const btn = document.getElementById('ctrl-escopo-tab-' + t);
+    if (btn) {
+      btn.style.background = active ? 'var(--accent)' : 'transparent';
+      btn.style.color = active ? '#fff' : 'var(--text3)';
+    }
+  });
 }
 
 async function ctrlAbrirBaixaDemand(demId) {
