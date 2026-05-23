@@ -1784,6 +1784,70 @@ def graph_debug_labels():
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
 
 
+@controle_bp.route('/graph/debug_plan')
+def graph_debug_plan():
+    """Debug: inspeciona labels de um plano específico por plan_id.
+    Uso: /controle/graph/debug_plan?plan_id=<ID>"""
+    plan_id = request.args.get('plan_id', '').strip()
+    if not plan_id:
+        return jsonify({'erro': 'Informe ?plan_id=<ID do plano no Planner>'}), 400
+    try:
+        from .graph import graph_ok, get_plan_category_map, get_plan_buckets, get_plan_tasks
+        if not graph_ok():
+            return jsonify({'erro': 'Sem autenticação Graph API'}), 503
+        cat_map = get_plan_category_map(plan_id)
+        labels_nao_nulos = {k: v for k, v in cat_map.items() if v}
+        medicoes_cats = [k for k, v in cat_map.items() if v and 'medic' in v.lower().replace('ç', 'c').replace('õ', 'o')]
+        buckets = get_plan_buckets(plan_id)
+        tasks_sample = get_plan_tasks(plan_id)
+        # Mostra applied categories de até 5 tarefas
+        tasks_info = [
+            {'titulo': t.get('title', '')[:80],
+             'appliedCategories': t.get('appliedCategories', {}),
+             'bucket_id': t.get('bucketId', '')}
+            for t in tasks_sample[:10]
+        ]
+        return jsonify({
+            'plan_id': plan_id,
+            'all_labels': cat_map,
+            'labels_nao_nulos': labels_nao_nulos,
+            'medicoes_cats': medicoes_cats,
+            'buckets': [{'id': b['id'], 'nome': b.get('name', '')} for b in buckets],
+            'total_tasks': len(tasks_sample),
+            'tasks_sample': tasks_info,
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+
+
+@controle_bp.route('/graph/debug_groups')
+def graph_debug_groups():
+    """Debug: lista TODOS os grupos M365, com contagem de planos Planner."""
+    try:
+        from .graph import graph_ok, get_teams_groups, get_plans_for_group
+        if not graph_ok():
+            return jsonify({'erro': 'Sem autenticação Graph API'}), 503
+        grupos = get_teams_groups()
+        resultado = []
+        for g in grupos:
+            gid   = g.get('id', '')
+            gnome = g.get('displayName', '')
+            try:
+                planos = get_plans_for_group(gid)
+                if planos:
+                    resultado.append({
+                        'id': gid, 'nome': gnome,
+                        'planos': [{'id': p['id'], 'titulo': p.get('title', '')} for p in planos]
+                    })
+            except Exception:
+                pass  # grupo sem Planner
+        return jsonify({'total_grupos': len(grupos), 'grupos_com_planner': resultado})
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+
+
 @controle_bp.route('/graph/sync_error')
 def graph_sync_error():
     """Retorna o último erro de sync para debug."""
