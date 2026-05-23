@@ -16,6 +16,9 @@ from .db import (
     mesclar_empresas_duplicatas,
     list_raw_tasks, stats_raw_pipeline,
     list_operational_demands, list_operational_por_empresa,
+    # Planejamento + Visitas
+    criar_planejamento, get_planejamento, list_planejamentos, update_planejamento_status,
+    criar_visita, get_visita, list_visitas, concluir_visita,
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -2250,3 +2253,153 @@ def api_registrar_evento():
              d.get('ref_id'), d.get('ref_tipo'), d.get('usuario', 'sistema'))
         )
     return jsonify({'ok': True})
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ── PLANEJAMENTO DE MEDIÇÃO ───────────────────────────────────────────
+# Etapa pré-visita. Dados vêm do Planner/OS + confirmação do técnico.
+# ══════════════════════════════════════════════════════════════════════
+
+@controle_bp.route('/planejamentos', methods=['GET'])
+def api_list_planejamentos():
+    """Lista planejamentos com filtros: tecnico, status, empresa_id, demanda_id."""
+    init_db()
+    f = {k: v for k, v in request.args.items()}
+    return jsonify(list_planejamentos(f))
+
+
+@controle_bp.route('/planejamentos', methods=['POST'])
+def api_criar_planejamento():
+    """
+    Cria planejamento de medição.
+    Body: {demanda_id, empresa_id, numero_os, tecnico, data_prevista,
+           agentes_previstos:[{tipo,agente,qtd}], observacao}
+    Sistema calcula automaticamente qtd_dosim_prevista e qtd_bombas_previstas.
+    """
+    init_db()
+    d = request.json or {}
+    if not d.get('empresa_id') or not d.get('tecnico'):
+        return jsonify({'erro': 'empresa_id e tecnico são obrigatórios'}), 400
+
+    # Cálculo automático de equipamentos pelos agentes previstos
+    agentes = d.get('agentes_previstos') or []
+    if isinstance(agentes, str):
+        import json as _j; agentes = _j.loads(agentes)
+
+    qtd_dosim  = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'ruido')
+    qtd_bombas = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'quimico')
+
+    d['qtd_dosim_prevista']   = qtd_dosim
+    d['qtd_bombas_previstas'] = qtd_bombas
+
+    # Equipamentos sugeridos automaticamente
+    equip = []
+    if qtd_dosim > 0:
+        equip.append({'tipo': 'dosimetro', 'qtd': qtd_dosim, 'obs': 'NHO-01'})
+        equip.append({'tipo': 'calibrador', 'qtd': 1, 'obs': 'Calibrador de campo'})
+    if qtd_bombas > 0:
+        equip.append({'tipo': 'bomba', 'qtd': qtd_bombas, 'obs': 'Bomba de amostragem'})
+        equip.append({'tipo': 'calibrador_bomba', 'qtd': 1, 'obs': 'Rotâmetro/calibrador de vazão'})
+    has_calor   = any(a.get('tipo') == 'calor' for a in agentes)
+    has_vibracao= any(a.get('tipo') in ('vibracao', 'vibracao_vci', 'vibracao_vbma') for a in agentes)
+    if has_calor:
+        equip.append({'tipo': 'termometro_ibutg', 'qtd': 1, 'obs': 'IBUTG NR-15 Anexo 3'})
+    if has_vibracao:
+        equip.append({'tipo': 'acelerometro', 'qtd': 1, 'obs': 'ISO 2631 / NR-9'})
+    d['equipamentos_json'] = equip
+
+    try:
+        pid = criar_planejamento(d)
+        return jsonify({'ok': True, 'id': pid})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/planejamentos/<int:pid>', methods=['GET'])
+def api_get_planejamento(pid):
+    init_db()
+    p = get_planejamento(pid)
+    if not p:
+        return jsonify({'erro': 'não encontrado'}), 404
+    return jsonify(p)
+
+
+@controle_bp.route('/planejamentos/<int:pid>/status', methods=['POST'])
+def api_update_planejamento_status(pid):
+    """Atualiza status do planejamento: rascunho | confirmado | em_execucao | concluido | cancelado."""
+    init_db()
+    d = request.json or {}
+    status = d.get('status')
+    VALIDOS = {'rascunho', 'confirmado', 'em_execucao', 'concluido', 'cancelado'}
+    if status not in VALIDOS:
+        return jsonify({'erro': f'status inválido. Válidos: {VALIDOS}'}), 400
+    update_planejamento_status(pid, status)
+    return jsonify({'ok': True})
+
+
+# ── VISITA TÉCNICA ────────────────────────────────────────────────────
+
+@controle_bp.route('/visitas', methods=['GET'])
+def api_list_visitas():
+    """Lista visitas com filtros: tecnico, demanda_id, planejamento_id."""
+    init_db()
+    f = {k: v for k, v in request.args.items()}
+    return jsonify(list_visitas(f))
+
+
+@controle_bp.route('/visitas', methods=['POST'])
+def api_criar_visita():
+    """
+    Cria visita técnica (abertura da visita — técnico chegou na empresa).
+    Body: {planejamento_id, demanda_id, empresa_id, tecnico, data_visita,
+           hora_inicio, tipo_visita}
+    """
+    init_db()
+    d = request.json or {}
+    if not d.get('tecnico') or not d.get('data_visita'):
+        return jsonify({'erro': 'tecnico e data_visita são obrigatórios'}), 400
+    try:
+        vid = criar_visita(d)
+        return jsonify({'ok': True, 'id': vid})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/visitas/<int:vid>', methods=['GET'])
+def api_get_visita(vid):
+    init_db()
+    v = get_visita(vid)
+    if not v:
+        return jsonify({'erro': 'não encontrado'}), 404
+    return jsonify(v)
+
+
+@controle_bp.route('/visitas/<int:vid>/concluir', methods=['POST'])
+def api_concluir_visita(vid):
+    """
+    Conclui visita técnica. Cria execucao_campo automaticamente.
+    Body: {resultado: concluido|parcial|cancelado,
+           justificativa, justificativa_causa, cobravel,
+           agentes_executados, agentes_nao_executados, agentes_adicionados,
+           hora_termino, observacao}
+    Regra: se resultado != 'concluido' → justificativa_causa obrigatória.
+    """
+    init_db()
+    d = request.json or {}
+    resultado = d.get('resultado', 'concluido')
+
+    # Justificativa obrigatória para não-conclusão
+    if resultado != 'concluido' and not d.get('justificativa_causa'):
+        return jsonify({
+            'erro': 'justificativa_causa obrigatória quando resultado não é concluido',
+            'causas_validas': [
+                'cliente', 'funcionario_ausente', 'setor_interditado',
+                'clima', 'equipamento', 'tempo', 'tecnico', 'outro'
+            ]
+        }), 400
+
+    try:
+        concluir_visita(vid, d)
+        return jsonify({'ok': True, 'resultado': resultado})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
