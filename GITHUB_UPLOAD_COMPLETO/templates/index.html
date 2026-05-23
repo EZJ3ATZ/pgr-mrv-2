@@ -5779,11 +5779,52 @@ function _planLimparDemanda() {
 
 function planAddAgente(tipo) {
   const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
-  const agente = tipo === 'quimico' ? (prompt('Nome do agente químico (ex: Tolueno, Poeira Respirável):') || '') : labels[tipo];
-  if (!agente && tipo !== 'ruido') return;
-  const qtd = parseInt(prompt(`Quantidade de ${labels[tipo]}:`) || '1');
+  // Remove modal anterior se existir
+  const old = document.getElementById('plan-add-modal');
+  if (old) old.remove();
+
+  const nomeField = tipo === 'quimico'
+    ? `<div class="plan-f" style="margin-bottom:8px;">
+        <label>Nome do agente</label>
+        <input type="text" id="plan-modal-agente" placeholder="Ex: Tolueno, Poeira Respirável..." autocomplete="off" style="width:100%;">
+       </div>`
+    : `<input type="hidden" id="plan-modal-agente" value="${labels[tipo]}">`;
+
+  const cor = {ruido:'var(--green)',quimico:'#39f',calor:'var(--yellow)',vibracao:'var(--purple)'}[tipo]||'var(--blue)';
+
+  const modal = document.createElement('div');
+  modal.id = 'plan-add-modal';
+  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;`;
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;width:340px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+      <div style="font-weight:800;font-size:.95rem;margin-bottom:14px;color:${cor};">${labels[tipo]}</div>
+      ${nomeField}
+      <div class="plan-f" style="margin-bottom:16px;">
+        <label>Quantidade</label>
+        <input type="number" id="plan-modal-qtd" value="1" min="1" max="20" style="width:100%;">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('plan-add-modal').remove()"
+          style="flex:1;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:9px;border-radius:7px;cursor:pointer;font-family:inherit;">Cancelar</button>
+        <button onclick="planConfirmarAgente('${tipo}')"
+          style="flex:1;background:${cor};color:#fff;border:none;padding:9px;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;">Adicionar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  // Focar no campo correto
+  setTimeout(() => {
+    const el = document.getElementById(tipo === 'quimico' ? 'plan-modal-agente' : 'plan-modal-qtd');
+    if (el) el.focus();
+  }, 50);
+}
+
+function planConfirmarAgente(tipo) {
+  const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
+  const agente = (document.getElementById('plan-modal-agente')?.value || '').trim() || labels[tipo];
+  const qtd    = parseInt(document.getElementById('plan-modal-qtd')?.value || '1');
+  document.getElementById('plan-add-modal')?.remove();
   if (isNaN(qtd) || qtd < 1) return;
-  window._planAgentes.push({tipo, agente: agente || labels[tipo], qtd});
+  window._planAgentes.push({tipo, agente, qtd});
   _planRenderizarAgentes();
 }
 
