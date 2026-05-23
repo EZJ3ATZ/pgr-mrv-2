@@ -375,6 +375,28 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
             log.warning('[planner_sync] match empresas erro: %s', e)
             stats['match_empresas'] = {'erro': str(e)}
 
+        # ── Mesclar duplicatas ─────────────────────────────────────────
+        log.info('[planner_sync] mesclando empresas duplicadas...')
+        try:
+            from .db import mesclar_empresas_duplicatas
+            mescladas = mesclar_empresas_duplicatas()
+            stats['mescladas'] = mescladas
+            log.info('[planner_sync] %d empresas mescladas', mescladas)
+        except Exception as e:
+            log.warning('[planner_sync] mesclar erro: %s', e)
+            stats['mescladas'] = 0
+
+        # ── Reclassificar demandas ─────────────────────────────────────
+        log.info('[planner_sync] reclassificando demandas...')
+        try:
+            from .classificador import reclassificar_lote
+            reclass_stats = reclassificar_lote(conn)
+            stats['reclassificacao'] = reclass_stats
+            log.info('[planner_sync] reclassificacao: %s', reclass_stats)
+        except Exception as e:
+            log.warning('[planner_sync] reclassificar erro: %s', e)
+            stats['reclassificacao'] = {'erro': str(e)}
+
         conn.execute('''
             INSERT OR REPLACE INTO ms_sync_state (chave, valor, atualizado_em)
             VALUES ('last_sync_stats', ?, CURRENT_TIMESTAMP)
