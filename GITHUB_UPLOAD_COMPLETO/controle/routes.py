@@ -2330,80 +2330,88 @@ def graph_lab_flow():
     except Exception as e:
         return jsonify({'erro': str(e)})
 
-    # ── 2. Cadeia de Custódia (Excel) ────────────────────────────────
-    termos_cadeia = ['cadeia de custodia', 'cadeia custódia', 'cadeia de custódia',
-                     'chain of custody', 'envio laboratorio', 'envio ao lab']
+    def _buscar_msgs(uid, pasta, termo):
+        """$search sem $orderby (incompatíveis no Graph API)."""
+        try:
+            url = (f'/users/{uid}/mailFolders/{pasta}/messages'
+                   f'?$search="{termo}"&$top={max_emails}'
+                   f'&$select=id,subject,from,receivedDateTime,hasAttachments')
+            return graph_get(url).get('value', [])
+        except Exception:
+            return []
+
+    def _processar_anexo_excel(uid, mid, anx):
+        cb = anx.get('contentBytes', '')
+        content = _b64.b64decode(cb) if cb else _get_attachment_bytes(uid, mid, anx['id'])
+        return _extrair_xlsx(content) if content else set()
+
+    def _processar_anexo_pdf(uid, mid, anx):
+        cb = anx.get('contentBytes', '')
+        content = _b64.b64decode(cb) if cb else _get_attachment_bytes(uid, mid, anx['id'])
+        if content:
+            cods, preview = _extrair_pdf(content)
+            return cods, preview
+        return set(), ''
+
+    # ── 2. Cadeia de Custódia (Excel em Sent/Inbox) ──────────────────
+    termos_cadeia = ['cadeia', 'custódia', 'custodia']
 
     for caixa in CAIXAS_ALVO:
         uid = uid_map.get(caixa.lower())
         if not uid:
             continue
-        for termo in termos_cadeia[:2]:
-            try:
-                data = graph_get(
-                    f'/users/{uid}/messages'
-                    f'?$search="{termo}"'
-                    f'&$top={max_emails}'
-                    f'&$select=id,subject,from,receivedDateTime,sentDateTime,hasAttachments,toRecipients'
-                    f'&$orderby=receivedDateTime desc'
-                )
-                for msg in data.get('value', []):
-                    if not msg.get('hasAttachments'):
+        seen_mids = set()
+        for pasta in ['sentItems', 'inbox']:
+            for termo in termos_cadeia:
+                for msg in _buscar_msgs(uid, pasta, termo):
+                    if not msg.get('hasAttachments') or msg['id'] in seen_mids:
                         continue
+                    seen_mids.add(msg['id'])
                     mid = msg['id']
-                    # Listar anexos
                     try:
                         anx_list = graph_get(f'/users/{uid}/messages/{mid}/attachments'
                                               f'?$select=id,name,contentType,size,contentBytes')
                         for anx in anx_list.get('value', []):
                             nome = anx.get('name', '')
                             tipo = anx.get('contentType', '')
-                            if not (nome.lower().endswith(('.xlsx', '.xls')) or 'spreadsheet' in tipo.lower() or 'excel' in tipo.lower()):
+                            is_xls = (nome.lower().endswith(('.xlsx', '.xls'))
+                                      or 'spreadsheet' in tipo.lower()
+                                      or 'excel' in tipo.lower())
+                            if not is_xls:
                                 continue
-                            cb = anx.get('contentBytes', '')
-                            content = _b64.b64decode(cb) if cb else _get_attachment_bytes(uid, mid, anx['id'])
-                            codigos = _extrair_xlsx(content) if content else set()
+                            codigos = _processar_anexo_excel(uid, mid, anx)
                             resultado['cadeias_custodia'].append({
                                 'caixa':     caixa,
                                 'assunto':   msg.get('subject', '')[:80],
-                                'data':      (msg.get('sentDateTime') or msg.get('receivedDateTime', ''))[:10],
+                                'data':      msg.get('receivedDateTime', '')[:10],
                                 'arquivo':   nome,
                                 'codigos':   sorted(codigos),
                                 'n_codigos': len(codigos),
                             })
                     except Exception:
                         pass
-            except Exception:
-                pass
 
     # ── 3. Resultados RA (PDF da Uniscientific) ──────────────────────
-    remetentes_ra = ['resultados@uniscientificgroup.com.br',
-                     'resultados02@uniscientificgroup.com.br',
-                     'no-reply@uniscientificgroup.com.br']
-
+    # Busca por "Uniscientific" (funciona conforme testado anteriormente)
     for caixa in CAIXAS_ALVO:
         uid = uid_map.get(caixa.lower())
         if not uid:
             continue
-        try:
-            data = graph_get(
-                f'/users/{uid}/messages'
-                f'?$search="resultados@uniscientificgroup"'
-                f'&$top={max_emails}'
-                f'&$select=id,subject,from,receivedDateTime,hasAttachments'
-                f'&$orderby=receivedDateTime desc'
-            )
-            for msg in data.get('value', []):
+        seen_mids = set()
+        for termo in ['Uniscientific', 'uniscientific']:
+            for msg in _buscar_msgs(uid, 'inbox', termo):
                 sender = msg.get('from', {}).get('emailAddress', {}).get('address', '').lower()
-                if not any(r in sender for r in ['uniscientific', 'resultados']):
+                # Só emails da Uniscientific (não respostas internas)
+                if 'uniscientific' not in sender:
                     continue
+                if msg['id'] in seen_mids:
+                    continue
+                seen_mids.add(msg['id'])
                 mid = msg['id']
                 assunto = msg.get('subject', '')
-                data_r = msg.get('receivedDateTime', '')[:10]
-
-                # Extrair RA number do assunto
+                data_r  = msg.get('receivedDateTime', '')[:10]
                 ra_match = _re.search(r'RA\s*(\d{6,10})', assunto, _re.I)
-                ra_num = ra_match.group(1) if ra_match else ''
+                ra_num   = ra_match.group(1) if ra_match else ''
 
                 codigos_ra = set()
                 anexos_info = []
@@ -2418,26 +2426,26 @@ def graph_lab_flow():
                             size = anx.get('size', 0)
                             if not ('pdf' in tipo.lower() or nome.lower().endswith('.pdf')):
                                 continue
-                            cb = anx.get('contentBytes', '')
-                            content = _b64.b64decode(cb) if cb else _get_attachment_bytes(uid, mid, anx['id'])
-                            if content:
-                                cods, preview = _extrair_pdf(content)
-                                codigos_ra.update(cods)
-                                anexos_info.append({'nome': nome, 'kb': round(size/1024,1), 'preview': preview[:200]})
+                            cods, preview = _processar_anexo_pdf(uid, mid, anx)
+                            codigos_ra.update(cods)
+                            info = {'nome': nome, 'kb': round(size/1024, 1)}
+                            if preview:
+                                info['preview'] = preview[:200]
                             else:
-                                anexos_info.append({'nome': nome, 'kb': round(size/1024,1), 'aviso': 'sem conteúdo'})
+                                info['aviso'] = 'sem conteúdo'
+                            anexos_info.append(info)
                     except Exception as e:
                         anexos_info.append({'erro': str(e)[:100]})
 
                 resultado['resultados_ra'].append({
-                    'caixa':    caixa,
-                    'assunto':  assunto[:80],
-                    'ra_num':   ra_num,
-                    'data':     data_r,
-                    'sender':   sender,
-                    'codigos':  sorted(codigos_ra),
+                    'caixa':     caixa,
+                    'assunto':   assunto[:80],
+                    'ra_num':    ra_num,
+                    'data':      data_r,
+                    'sender':    sender,
+                    'codigos':   sorted(codigos_ra),
                     'n_codigos': len(codigos_ra),
-                    'anexos':   anexos_info,
+                    'anexos':    anexos_info,
                 })
         except Exception:
             pass
