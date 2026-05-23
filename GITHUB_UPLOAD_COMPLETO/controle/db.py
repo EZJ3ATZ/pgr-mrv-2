@@ -504,8 +504,20 @@ def _migrate(conn):
     except Exception:
         pass  # tabela não existe ainda — SCHEMA vai criá-la
 
+    # ── Reclassifica demandas existentes pelo bucket operacional ─────
+    # Corrige registros que foram inseridos antes da regra bucket→status.
+    try:
+        conn.execute("""
+            UPDATE demandas SET status='concluida'
+            WHERE (LOWER(COALESCE(planner_bucket,'')) LIKE '%entregue%'
+                   OR LOWER(COALESCE(planner_bucket,'')) LIKE '%conclu%')
+              AND status != 'concluida'
+              AND origem = 'planner'
+        """)
+    except Exception as e:
+        print(f'[migrate] reclassifica_bucket: {e}')
+
     # ── VIEW operational_demands ─────────────────────────────────────
-    # Visão limpa sobre demandas: só tasks reais de clientes (não interna/administrativa)
     try:
         conn.executescript('''
             DROP VIEW IF EXISTS operational_demands;
@@ -514,7 +526,14 @@ def _migrate(conn):
                    e.nome AS empresa_nome,
                    e.cnpj AS empresa_cnpj,
                    e.pendente AS empresa_pendente,
-                   COALESCE(u.display_name, '') AS responsavel_nome
+                   COALESCE(u.display_name, '') AS responsavel_nome,
+                   CASE
+                     WHEN LOWER(COALESCE(d.planner_bucket,'')) LIKE '%entregue%'
+                       OR LOWER(COALESCE(d.planner_bucket,'')) LIKE '%conclu%'
+                     THEN 'concluida'
+                     WHEN d.status = 'em_andamento' THEN 'em_andamento'
+                     ELSE 'aberta'
+                   END AS operational_status
             FROM demandas d
             JOIN empresas e ON e.id = d.empresa_id
             LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
@@ -595,7 +614,7 @@ def list_demandas(filtros=None):
                (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas,
                (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='pendente') AS pendentes,
                (SELECT GROUP_CONCAT(m.agente, ' | ') FROM medicoes m WHERE m.demanda_id = d.id AND m.status!='realizado' LIMIT 5) AS agentes_pendentes,
-               CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta,
+               CAST(julianday('now') - julianday(COALESCE(d.criado_em_ms, d.criado_em)) AS INTEGER) AS dias_aberta,
                CAST(julianday(d.prazo) - julianday('now') AS INTEGER) AS dias_para_prazo,
                (SELECT MAX(b.criado_em) FROM baixas b
                  JOIN medicoes m ON m.id = b.medicao_id WHERE m.demanda_id = d.id) AS ultima_baixa
@@ -651,6 +670,8 @@ def list_demandas_por_empresa(filtros=None):
                COALESCE(MAX(d.responsavel), MAX(u.display_name)) AS responsavel,
                MAX(d.contato_feito) AS contato_feito,
                SUM(CASE WHEN d.status!='concluida'
+                          AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%entregue%'
+                          AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%conclu%'
                           AND d.prazo IS NOT NULL AND d.prazo != ''
                           AND julianday(d.prazo) < julianday('now')
                    THEN 1 ELSE 0 END) AS demandas_atrasadas,
@@ -906,7 +927,7 @@ def list_operational_demands(filtros=None):
                COALESCE(u.display_name, d.responsavel) AS responsavel_nome,
                (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id) AS total_medicoes,
                (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id = d.id AND m.status='realizado') AS realizadas,
-               CAST(julianday('now') - julianday(d.criado_em) AS INTEGER) AS dias_aberta,
+               CAST(julianday('now') - julianday(COALESCE(d.criado_em_ms, d.criado_em)) AS INTEGER) AS dias_aberta,
                CAST(julianday(d.prazo) - julianday('now') AS INTEGER) AS dias_para_prazo
         FROM demandas d
         JOIN empresas e ON e.id = d.empresa_id
@@ -947,6 +968,8 @@ def list_operational_por_empresa(filtros=None):
                COUNT(DISTINCT d.tipo_demanda) AS tipos_count,
                GROUP_CONCAT(DISTINCT d.tipo_demanda) AS tipos,
                SUM(CASE WHEN d.status!='concluida'
+                          AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%entregue%'
+                          AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%conclu%'
                           AND d.prazo IS NOT NULL AND d.prazo != ''
                           AND julianday(d.prazo) < julianday('now')
                    THEN 1 ELSE 0 END) AS demandas_atrasadas
