@@ -2383,6 +2383,43 @@ def api_get_visita(vid):
     return jsonify(v)
 
 
+@controle_bp.route('/planejamentos/<int:pid>/execucao', methods=['POST'])
+def api_registrar_execucao(pid):
+    """
+    Registra o resultado da execução de campo de um planejamento.
+    Chamado automaticamente após nvSalvarMedicao quando há agentes não medidos.
+    Body: {resultado, agentes_nao_executados, medicao_id}
+    """
+    import json as _json
+    init_db()
+    d = request.json or {}
+    resultado            = d.get('resultado', 'parcial')
+    agentes_nao          = d.get('agentes_nao_executados', [])
+    medicao_id           = d.get('medicao_id')
+
+    try:
+        with get_db() as conn:
+            # Registrar em execucao_campo (sem visita_id)
+            conn.execute('''
+                INSERT INTO execucao_campo
+                  (planejamento_id, agentes_nao_executados, justificativa_causa, observacao)
+                VALUES (?, ?, ?, ?)
+            ''', (
+                pid,
+                _json.dumps(agentes_nao, ensure_ascii=False),
+                agentes_nao[0].get('causa', '') if agentes_nao else '',
+                '; '.join(f"{a.get('agente','?')} — {a.get('observacao','')}" for a in agentes_nao),
+            ))
+            # Atualizar status do planejamento
+            conn.execute(
+                "UPDATE planejamentos SET status=? WHERE id=?",
+                (resultado, pid)
+            )
+        return jsonify({'ok': True, 'resultado': resultado})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/visitas/<int:vid>/concluir', methods=['POST'])
 def api_concluir_visita(vid):
     """
