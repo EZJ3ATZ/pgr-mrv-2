@@ -26,8 +26,8 @@ from .graph import (
     get_plan_buckets, get_plan_tasks, get_plan_category_map,
     get_task_details, get_user,
 )
-from .db import get_db, init_db
-from .empresa_match import match_todas_demandas
+from .db import get_db, init_db, upsert_raw_task, mark_raw_task
+from .empresa_match import match_todas_demandas, encontrar_empresa, extrair_campos, obter_ou_criar_pendente
 from .classificador import extrair_os, classificar
 
 log = logging.getLogger(__name__)
@@ -54,6 +54,101 @@ PRIORITY_MAP = {
     8: 'baixa',
     9: 'baixa',      # Low
 }
+
+
+# ── Filtro de pipeline ────────────────────────────────────────────────
+
+# Buckets que representam demandas operacionais reais de clientes
+_BUCKETS_OPERACIONAIS_PIPELINE = {
+    'medições', 'medicoes',           # bucket principal
+    'verde', 'amarela', 'vermelho', 'laranja',  # status de medições
+    '🔴 em andamento', 'em andamento',
+    'entregas técnicas', 'entregas tecnicas',
+    'entregue / concluído', 'entregue',
+    'concluído ✅', 'concluído', 'concluido',
+    'clientes da base',
+    'demandas para análise', 'demandas para analise',
+    'novas demandas', 'engenharia - novas demandas',
+    'renovação', 'renovacao',
+    'inclusão de funcionários',
+    'ajustes pontuais',
+    'correção',
+    'pcmso',
+}
+
+# Buckets que são explicitamente internos/admin — nunca viram demanda operacional
+_BUCKETS_IGNORADOS = {
+    'treinamento', 'treinamentos',
+    'tarefas administrativas', 'administrativo',
+    'reunião gestores', 'reuniao gestores',
+    'kickoff', 'materiais',
+    'projetos principais',
+    'lista de pendências', 'lista de pendencias',
+    'email respondido', 'emails respondidos',
+    'emails pendentes', 'email pendente',
+    'tarefas pendentes',
+    'avançar', 'recursos humanos', 'rh', 'onboarding',
+    'financeiro', 'compras', 'contratação',
+}
+
+
+def _bucket_normalizado(bucket: str) -> str:
+    """Remove acentos, minúsculas, strip."""
+    import unicodedata as _ud
+    return _ud.normalize('NFKD', bucket or '').encode('ascii', 'ignore').decode().lower().strip()
+
+
+def _is_operacional_bucket(bucket: str) -> tuple[bool, str]:
+    """
+    Retorna (deve_processar: bool, motivo: str).
+
+    Lógica:
+    1. Se bucket normalizado está em _BUCKETS_IGNORADOS → ignorar
+    2. Se bucket contém 'medic' → processar (Medições, Medicoes, etc.)
+    3. Se bucket normalizado está em _BUCKETS_OPERACIONAIS_PIPELINE → processar
+    4. Senão → ignorar (bucket desconhecido — não poluir operational)
+    """
+    b = _bucket_normalizado(bucket)
+    if not b:
+        return False, 'bucket vazio'
+    if b in _BUCKETS_IGNORADOS:
+        return False, f"bucket interno: '{bucket}'"
+    if 'medic' in b:
+        return True, 'medicoes'
+    if b in _BUCKETS_OPERACIONAIS_PIPELINE:
+        return True, 'operacional'
+    return False, f"bucket desconhecido: '{bucket}'"
+
+
+def _extrair_os_multi(titulo: str, desc: str, checklist: list) -> tuple[str | None, str]:
+    """
+    Extrai número de OS de múltiplas fontes.
+    Retorna (os_numero, fonte: 'titulo'|'descricao'|'checklist'|None).
+    """
+    os_num = extrair_os(titulo)
+    if os_num:
+        return os_num, 'titulo'
+
+    # Tentar na descrição
+    if desc:
+        os_num = extrair_os(desc)
+        if os_num:
+            return os_num, 'descricao'
+        # Procurar em linhas da descrição
+        for linha in desc.splitlines():
+            os_num = extrair_os(linha.strip())
+            if os_num:
+                return os_num, 'descricao'
+
+    # Tentar em itens do checklist
+    if checklist:
+        for item in checklist:
+            t = item.get('titulo', '') or ''
+            os_num = extrair_os(t)
+            if os_num:
+                return os_num, 'checklist'
+
+    return None, 'nenhuma'
 
 
 def _parse_date(s) -> str | None:
@@ -138,7 +233,8 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
         ))
         return existing['id'], 'updated'
     else:
-        # empresa_id=0 como sentinela para demandas vindas do Planner (sem empresa vinculada)
+        # empresa_id do pipeline (ou 0 como sentinela quando ainda não resolvido)
+        emp_id = d.get('empresa_id', 0) or 0
         cur = conn.execute('''
             INSERT INTO demandas (
                 empresa_id,
@@ -150,8 +246,8 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
                 etiquetas_json, descricao, checklist,
                 numero_os, tipo_demanda,
                 origem, criado_em, atualizado_em
-            ) VALUES (0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-        ''', (
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+        ''', (emp_id,
             d['planner_task_id'], d['planner_plan_id'], d['planner_plan_nome'],
             d['planner_bucket_id'], d['planner_bucket'],
             d['planner_group_id'], d['planner_group_nome'],
@@ -242,16 +338,24 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
     init_db()
     stats = {
-        'grupos':        0,
-        'planos':        0,
-        'tarefas_total': 0,
+        'grupos':           0,
+        'planos':           0,
+        'tarefas_total':    0,
         'tarefas_filtradas': 0,
-        'criadas':       0,
-        'atualizadas':   0,
-        'ignoradas':     0,
-        'erros':         [],
-        'label_filter':  label_filter,
-        'iniciado_em':   datetime.now(timezone.utc).isoformat(),
+        'criadas':          0,
+        'atualizadas':      0,
+        'ignoradas':        0,
+        # Pipeline
+        'raw_criadas':      0,
+        'raw_atualizadas':  0,
+        'bucket_ignoradas': 0,
+        'sem_os':           0,
+        'empresa_fuzzy':    0,
+        'empresa_pendente': 0,
+        'parse_erros':      0,
+        'erros':            [],
+        'label_filter':     label_filter,
+        'iniciado_em':      datetime.now(timezone.utc).isoformat(),
     }
 
     try:
@@ -332,49 +436,132 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                     tid = tarefa['id']
 
                     try:
-                        # Buscar detalhes (descrição + checklist)
+                        # ── Buscar detalhes (desc + checklist) ───────────
                         details = get_task_details(tid)
                         desc = details.get('description', '')
                         checklist_raw = details.get('checklist', {})
                         checklist = [
                             {
-                                'titulo':     v.get('title', ''),
-                                'concluido':  v.get('isChecked', False),
-                                'ordem':      v.get('orderHint', ''),
+                                'titulo':    v.get('title', ''),
+                                'concluido': v.get('isChecked', False),
+                                'ordem':     v.get('orderHint', ''),
                             }
                             for v in checklist_raw.values()
                         ] if isinstance(checklist_raw, dict) else []
                         checklist_json = json.dumps(checklist, ensure_ascii=False)
 
-                        # Cachear assignee(s) no banco
+                        bucket = bucket_map.get(tarefa.get('bucketId', ''), '')
+                        titulo = tarefa.get('title', 'Sem título')
+
+                        # ── FASE 1: Gravar raw (ALL tasks) ───────────────
+                        raw_data = {
+                            'planner_plan_id':    tarefa.get('planId', ''),
+                            'planner_plan_nome':  pnome,
+                            'planner_bucket_id':  tarefa.get('bucketId', ''),
+                            'planner_bucket':     bucket,
+                            'planner_group_id':   gid,
+                            'planner_group_nome': gnome,
+                            'titulo':             titulo,
+                            'descricao':          desc,
+                            'checklist_json':     checklist_json,
+                            'raw_json':           json.dumps(tarefa, ensure_ascii=False),
+                            'percent_complete':   tarefa.get('percentComplete', 0),
+                            'prazo':              _parse_date(tarefa.get('dueDateTime')),
+                            'criado_em_ms':       _parse_date(tarefa.get('createdDateTime')),
+                            'concluido_em_ms':    _parse_date(tarefa.get('completedDateTime')),
+                            'ms_assignee_id':     (list(tarefa.get('assignments', {}).keys()) or [None])[0],
+                            'ms_assignees_json':  json.dumps(list(tarefa.get('assignments', {}).keys())),
+                            'etiquetas_json':     json.dumps(tarefa.get('appliedCategories', {})),
+                        }
+                        raw_id, raw_acao = upsert_raw_task(conn, tid, raw_data)
+                        if raw_acao == 'created':
+                            stats['raw_criadas'] += 1
+                        else:
+                            stats['raw_atualizadas'] += 1
+
+                        # ── FASE 2: Filtro de bucket ──────────────────────
+                        deve_processar, motivo_bucket = _is_operacional_bucket(bucket)
+
+                        if not deve_processar:
+                            mark_raw_task(conn, raw_id, 'ignored', motivo_bucket)
+                            stats['bucket_ignoradas'] += 1
+                            _mlog.debug('task_ignorada', extra={
+                                'planner_task_id': tid,
+                                'titulo':          titulo[:60],
+                                'bucket':          bucket,
+                                'motivo':          motivo_bucket,
+                            })
+                            continue  # NÃO vai para demandas
+
+                        # ── Cachear assignee(s) ───────────────────────────
                         for uid in list(tarefa.get('assignments', {}).keys()):
                             _upsert_ms_user(conn, uid)
 
-                        # Mapear e fazer upsert
+                        # ── FASE 3: Parser ────────────────────────────────
+                        os_num, os_fonte = _extrair_os_multi(titulo, desc, checklist)
+                        if not os_num:
+                            stats['sem_os'] += 1
+                            _mlog.debug('task_sem_os', extra={
+                                'planner_task_id': tid,
+                                'titulo':          titulo[:60],
+                                'bucket':          bucket,
+                            })
+
+                        # Mapear demanda com OS multi-fonte
                         d = _task_to_demanda(tarefa, bucket_map, plano, grupo)
+                        d['numero_os'] = os_num  # sobrescreve com resultado multi-fonte
+
+                        # ── FASE 4: Normalização de empresa ───────────────
+                        empresa_id, emp_score, emp_metodo = encontrar_empresa(conn, titulo)
+                        if empresa_id:
+                            if emp_metodo == 'nome_fuzzy':
+                                stats['empresa_fuzzy'] += 1
+                        else:
+                            campos = extrair_campos(titulo)
+                            empresa_id = obter_ou_criar_pendente(conn, titulo, campos)
+                            emp_metodo = 'pendente'
+                            stats['empresa_pendente'] += 1
+
+                        d['empresa_id']              = empresa_id
+                        d['empresa_match_score']     = round(emp_score or 0.0, 3)
+                        d['empresa_match_metodo']    = emp_metodo
+
+                        # ── FASE 5: Upsert → demandas (operational) ───────
                         did, acao = _upsert_demanda(conn, d, desc, checklist_json)
+                        # Atualizar empresa_id no demandas (upsert não passa empresa_id no UPDATE)
+                        conn.execute(
+                            '''UPDATE demandas SET empresa_id=?, empresa_match_score=?,
+                               empresa_match_metodo=? WHERE id=? AND empresa_id=0''',
+                            (empresa_id, d['empresa_match_score'], emp_metodo, did)
+                        )
+
+                        mark_raw_task(conn, raw_id, 'processed')
 
                         if acao == 'created':
                             stats['criadas'] += 1
                             _registrar_evento(conn, 'demanda_criada_planner',
-                                              f'Tarefa Planner importada: {d["titulo"][:80]}',
+                                              f'[{bucket}] {titulo[:80]}',
                                               did, 'demanda')
                             _mlog.info('demanda_criada', extra={
                                 'planner_task_id': tid,
-                                'titulo':          d['titulo'][:80],
-                                'bucket':          d['planner_bucket'],
+                                'titulo':          titulo[:60],
+                                'bucket':          bucket,
                                 'tipo_demanda':    d['tipo_demanda'],
-                                'numero_os':       d['numero_os'],
+                                'numero_os':       os_num,
+                                'os_fonte':        os_fonte,
+                                'empresa_id':      empresa_id,
+                                'empresa_metodo':  emp_metodo,
                                 'assignee_id':     d['ms_assignee_id'],
                                 'demanda_id':      did,
                             })
-                        elif acao == 'updated':
+                        else:
                             stats['atualizadas'] += 1
 
                     except Exception as e:
                         msg = f'Tarefa {tid[:8]}: {e}'
                         log.warning('[planner_sync] %s', msg)
                         stats['erros'].append(msg)
+                        stats['parse_erros'] += 1
                         capturar_erro(e,
                             operacao='planner_sync',
                             planner_task_id=tid,
