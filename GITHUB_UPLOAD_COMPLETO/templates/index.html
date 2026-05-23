@@ -2841,6 +2841,13 @@
   <div id="nv-s6" class="nv-step" style="display:none;">
     <div class="nv-card">
       <div class="nv-card-title">Etapa 6 — Finalização</div>
+
+      <!-- ── Agentes do Planejamento (só aparece quando vinculado) ── -->
+      <div id="nv-agentes-plano" style="display:none;margin-bottom:16px;">
+        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:8px;">📋 Agentes Planejados — marque o que foi medido</div>
+        <div id="nv-agentes-plano-lista"></div>
+      </div>
+
       <div id="nv-final-resumo" style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:16px;font-size:.84rem;color:var(--text2);">Resumo da coleta aparecerá aqui.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <button onclick="nvSalvarMedicao()" style="background:var(--green);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">✅ Salvar Medição</button>
@@ -5952,10 +5959,71 @@ async function ctrlNvVincularPlanejamento(pid) {
     if (tecEl && p.tecnico) {
       [...tecEl.options].forEach(o => { if (o.text.includes(p.tecnico.split(' ')[0])) tecEl.value = o.value; });
     }
-    // Guardar ID do planejamento
+    // Guardar ID do planejamento e agentes previstos
     window._nvPlanejamentoId = pid;
+    try {
+      window._nvAgentesPlano = typeof p.agentes_previstos === 'string'
+        ? JSON.parse(p.agentes_previstos || '[]')
+        : (p.agentes_previstos || []);
+    } catch(_) { window._nvAgentesPlano = []; }
+    nvRenderAgentesPlano(window._nvAgentesPlano);
     _showToast(`Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');
   } catch(e) { /* silencioso */ }
+}
+
+function nvRenderAgentesPlano(agentes) {
+  const container = document.getElementById('nv-agentes-plano');
+  const lista     = document.getElementById('nv-agentes-plano-lista');
+  if (!container || !lista) return;
+  if (!agentes || agentes.length === 0) { container.style.display = 'none'; return; }
+  const icons = {ruido:'🔊', quimico:'🧪', calor:'🌡️', vibracao:'📳'};
+  lista.innerHTML = agentes.map((ag, i) => `
+    <div id="nv-ag-row-${i}" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;transition:border-color .2s;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="nv-ag-check-${i}" checked onchange="nvToggleAgente(this,${i})"
+          style="width:17px;height:17px;cursor:pointer;accent-color:var(--green);">
+        <span style="font-size:.88rem;">${icons[ag.tipo]||'📋'} ${ag.agente||ag.tipo} ×${ag.qtd||1}</span>
+        <span id="nv-ag-badge-${i}" style="margin-left:auto;font-size:.78rem;font-weight:700;color:var(--green);">✅ Medido</span>
+      </label>
+      <div id="nv-ag-just-${i}" style="display:none;margin-top:10px;background:var(--yellow-bg);border:1px solid var(--yellow-bd);border-radius:6px;padding:10px;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--yellow);margin-bottom:8px;">⚠️ Por que não foi medido?</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;">
+          <label style="display:flex;align-items:flex-start;gap:7px;font-size:.82rem;cursor:pointer;">
+            <input type="radio" name="nv-ag-causa-${i}" value="empresa" style="margin-top:2px;">
+            <span><b>Culpa da empresa</b> — setor fechado, acesso negado, funcionário ausente</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:7px;font-size:.82rem;cursor:pointer;">
+            <input type="radio" name="nv-ag-causa-${i}" value="imprevisto" style="margin-top:2px;">
+            <span><b>Imprevisto</b> — clima, falha de equipamento, emergência na obra</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:7px;font-size:.82rem;cursor:pointer;">
+            <input type="radio" name="nv-ag-causa-${i}" value="tecnico" style="margin-top:2px;">
+            <span><b>Culpa do técnico</b> — tempo insuficiente, erro de planejamento</span>
+          </label>
+        </div>
+        <textarea id="nv-ag-obs-${i}" placeholder="Detalhe o motivo (obrigatório)..."
+          style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:8px;font-family:inherit;font-size:.82rem;resize:vertical;min-height:60px;"></textarea>
+      </div>
+    </div>
+  `).join('');
+  container.style.display = 'block';
+}
+
+function nvToggleAgente(cb, idx) {
+  const justDiv = document.getElementById(`nv-ag-just-${idx}`);
+  const badge   = document.getElementById(`nv-ag-badge-${idx}`);
+  const row     = document.getElementById(`nv-ag-row-${idx}`);
+  if (cb.checked) {
+    justDiv.style.display = 'none';
+    badge.textContent     = '✅ Medido';
+    badge.style.color     = 'var(--green)';
+    row.style.borderColor = 'var(--border)';
+  } else {
+    justDiv.style.display = 'block';
+    badge.textContent     = '⚠️ Não medido';
+    badge.style.color     = 'var(--yellow)';
+    row.style.borderColor = 'var(--yellow-bd)';
+  }
 }
 
 /* ── NOVA MEDIÇÃO — workflow completo ────────────────────────────── */
@@ -8351,9 +8419,37 @@ async function nvSalvarMedicao() {
         fonte_vibr:document.getElementById('nv-plan-fonte-vibr')?.value||'',
       } : null,
     };
+    // Coletar agentes não medidos (do planejamento vinculado)
+    const agentesPlano = window._nvAgentesPlano || [];
+    const naoMedidos = [];
+    agentesPlano.forEach((ag, i) => {
+      const cb = document.getElementById(`nv-ag-check-${i}`);
+      if (cb && !cb.checked) {
+        const causa = document.querySelector(`input[name="nv-ag-causa-${i}"]:checked`)?.value || '';
+        const obs   = document.getElementById(`nv-ag-obs-${i}`)?.value?.trim() || '';
+        naoMedidos.push({...ag, causa, observacao: obs});
+      }
+    });
+    if (naoMedidos.length > 0) payload.agentes_nao_executados = naoMedidos;
+
     const resp = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
     window._nvSavedId   = resp.id   || null;
     window._nvSavedTipo = resp.tipo || _nvTipo;
+
+    // Se houve agentes não medidos, registrar no planejamento
+    if (naoMedidos.length > 0 && window._nvPlanejamentoId) {
+      const resultado = naoMedidos.length === agentesPlano.length ? 'cancelado' : 'parcial';
+      await ctrlFetch(`/controle/planejamentos/${window._nvPlanejamentoId}/execucao`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          resultado,
+          agentes_nao_executados: naoMedidos,
+          medicao_id: resp.id || null,
+        })
+      }).catch(() => {});
+    }
+
     document.getElementById('nv-final-status').innerHTML='<span style="color:var(--green);">✅ Medição salva com sucesso!</span>';
     _showToast('✅ Medição salva!','ok');
     return resp;
@@ -8418,7 +8514,6 @@ async function nvGerarLaudo() {
 }
 
 async function nvConcluirOS() {
-  if (!confirm('Marcar esta OS/Demanda como concluída?')) return;
   await nvSalvarMedicao();
   _showToast('✅ OS concluída!','ok');
 }
