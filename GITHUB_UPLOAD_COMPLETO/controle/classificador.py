@@ -29,9 +29,10 @@ import unicodedata
 
 # ── Patterns ─────────────────────────────────────────────────────────
 
-# OS: 4-8 dígitos no início ou após "MEDIÇÕES -"
+# OS: 4-8 dígitos no início ou após "MEDIÇÕES"
 _RE_OS_INICIO  = re.compile(r'^(\d{4,8})\s*[-–,]')
-_RE_OS_MED     = re.compile(r'MEDI[CÇ][ÕO]ES?\s*[-–]\s*(\d{4,8})', re.IGNORECASE)
+_RE_OS_ESPACO  = re.compile(r'^(\d{4,8})\s+[A-Za-zÀ-ú\(]')  # "6429857 Santa Cecilia..."
+_RE_OS_MED     = re.compile(r'MEDI[CÇ][ÕO]ES?\s*[-–\s]\s*(\d{4,8})', re.IGNORECASE)
 _RE_OS_VIRGULA = re.compile(r'^(\d{4,8})\s*,')   # "57937, Nome Empresa"
 
 # Sufixos societários
@@ -149,7 +150,7 @@ def extrair_os(titulo: str) -> str | None:
     if not titulo:
         return None
     t = titulo.strip()
-    m = _RE_OS_INICIO.match(t) or _RE_OS_VIRGULA.match(t)
+    m = _RE_OS_INICIO.match(t) or _RE_OS_VIRGULA.match(t) or _RE_OS_ESPACO.match(t)
     if m:
         return m.group(1)
     m = _RE_OS_MED.search(t)
