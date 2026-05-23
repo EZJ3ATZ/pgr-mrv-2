@@ -353,6 +353,19 @@ def get_demanda(did):
     return (jsonify(d), 200) if d else (jsonify({'erro': 'nao encontrada'}), 404)
 
 
+@controle_bp.route('/demandas/<int:did>/agentes')
+def get_demanda_agentes(did):
+    """Retorna agentes de medição extraídos da descrição da OS."""
+    from .parser_agentes import extrair_agentes, resumo_agentes
+    init_db()
+    with get_db() as conn:
+        row = conn.execute('SELECT descricao FROM demandas WHERE id=?', (did,)).fetchone()
+    if not row:
+        return jsonify({'erro': 'nao encontrada'}), 404
+    agentes = extrair_agentes(row['descricao'] or '')
+    return jsonify({'agentes': agentes, 'resumo': resumo_agentes(agentes)})
+
+
 @controle_bp.route('/demandas', methods=['POST'])
 def cria_demanda():
     init_db()
