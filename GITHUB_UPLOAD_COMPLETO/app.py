@@ -46,16 +46,18 @@ def _start_planner_scheduler():
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.interval import IntervalTrigger
+        from apscheduler.triggers.date import DateTrigger
         from controle.planner_sync import sync_planner
         from controle.graph import graph_ok
 
         SYNC_INTERVAL_MINUTES = int(os.environ.get('PLANNER_SYNC_INTERVAL', '15'))
+        PLANNER_GROUP_ID = '4c80214b-6801-414a-9fc7-27feff0b3de6'
 
         def _sync_job():
             if not graph_ok():
                 return
             try:
-                stats = sync_planner(label_filter='Medições')
+                stats = sync_planner(label_filter='Medições', group_filter=PLANNER_GROUP_ID)
                 print(f'[scheduler] Planner sync: {stats.get("criadas",0)} criadas, '
                       f'{stats.get("atualizadas",0)} atualizadas, '
                       f'{stats.get("erros",[]).__len__()} erros')
@@ -64,11 +66,21 @@ def _start_planner_scheduler():
 
         from datetime import datetime as _dt, timedelta as _td
         scheduler = BackgroundScheduler(daemon=True)
+
+        # Boot-sync: roda 1x, 60s após o startup — restaura dados do Planner após redeploy
+        scheduler.add_job(
+            _sync_job,
+            trigger=DateTrigger(run_date=_dt.now() + _td(seconds=60)),
+            id='planner_boot_sync',
+            name='Planner Boot Sync (1x)',
+            replace_existing=True,
+        )
+
         scheduler.add_job(
             _sync_job,
             trigger=IntervalTrigger(
                 minutes=SYNC_INTERVAL_MINUTES,
-                start_date=_dt.now() + _td(minutes=SYNC_INTERVAL_MINUTES),  # não dispara no boot
+                start_date=_dt.now() + _td(minutes=SYNC_INTERVAL_MINUTES),
             ),
             id='planner_sync',
             name='Microsoft Planner Sync',
@@ -76,7 +88,7 @@ def _start_planner_scheduler():
             max_instances=1,
         )
         scheduler.start()
-        print(f'[scheduler] Planner sync a cada {SYNC_INTERVAL_MINUTES} minutos iniciado')
+        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos iniciado')
     except ImportError:
         print('[scheduler] APScheduler nao instalado — sync automatico desabilitado')
     except Exception as e:
