@@ -55,7 +55,7 @@ def _start_planner_scheduler():
             if not graph_ok():
                 return
             try:
-                stats = sync_planner()
+                stats = sync_planner(label_filter='Medições')
                 print(f'[scheduler] Planner sync: {stats.get("criadas",0)} criadas, '
                       f'{stats.get("atualizadas",0)} atualizadas, '
                       f'{stats.get("erros",[]).__len__()} erros')
