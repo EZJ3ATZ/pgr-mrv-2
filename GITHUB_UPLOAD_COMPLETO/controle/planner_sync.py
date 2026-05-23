@@ -120,6 +120,35 @@ def _is_operacional_bucket(bucket: str) -> tuple[bool, str]:
     return False, f"bucket desconhecido: '{bucket}'"
 
 
+def _extrair_os_comentarios(group_id: str, thread_id: str) -> str | None:
+    """
+    Tenta extrair número de OS dos comentários/posts da conversação da tarefa.
+    Usa a API de Groups threads — requer Group.Read.All.
+    Retorna o OS encontrado ou None.
+    """
+    import re as _re
+    _tag_re = _re.compile(r'<[^>]+>')
+    try:
+        from .graph import get_group_thread_posts
+        posts = get_group_thread_posts(group_id, thread_id)
+        for post in posts:
+            body = (post.get('body') or {}).get('content', '') or ''
+            # Remover HTML tags
+            text = _tag_re.sub(' ', body)
+            # Tentar no texto inteiro
+            os_num = extrair_os(text)
+            if os_num:
+                return os_num
+            # Linha a linha
+            for linha in text.splitlines():
+                os_num = extrair_os(linha.strip())
+                if os_num:
+                    return os_num
+    except Exception as e:
+        log.debug('[planner_sync] comentarios OS erro: %s', e)
+    return None
+
+
 def _extrair_os_multi(titulo: str, desc: str, checklist: list) -> tuple[str | None, str]:
     """
     Extrai número de OS de múltiplas fontes.
@@ -524,6 +553,15 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
                         # ── FASE 3: Parser ────────────────────────────────
                         os_num, os_fonte = _extrair_os_multi(titulo, desc, checklist)
+
+                        # Tentar nos comentários se ainda não encontrou OS
+                        if not os_num:
+                            thread_id = tarefa.get('conversationThreadId')
+                            if thread_id:
+                                os_num = _extrair_os_comentarios(gid, thread_id)
+                                if os_num:
+                                    os_fonte = 'comentarios'
+
                         if not os_num:
                             stats['sem_os'] += 1
                             _mlog.debug('task_sem_os', extra={
