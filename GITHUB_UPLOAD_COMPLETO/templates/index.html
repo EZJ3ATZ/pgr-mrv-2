@@ -5737,7 +5737,11 @@ async function _planBuscarOs(os) {
   info.innerHTML = '<span style="color:var(--text3);">Buscando OS...</span>';
   try {
     const r = await ctrlFetch('/controle/demandas/por_os/' + encodeURIComponent(os));
-    if (!r || r.erro) { info.innerHTML = '<span style="color:#ef4444;">OS não encontrada no banco.</span>'; _planLimparDemanda(); return; }
+    if (!r || r.erro || r.encontrado === false) {
+      info.innerHTML = '<span style="color:#ef4444;">OS não encontrada no banco. Vincule manualmente a empresa.</span>';
+      _planLimparDemanda();
+      return;
+    }
 
     // Preencher empresa
     document.getElementById('plan-empresa-id').value   = r.empresa_id || '';
@@ -5754,9 +5758,9 @@ async function _planBuscarOs(os) {
         qtd:    a.qtd || 1,
       }));
       _planRenderizarAgentes();
-      info.innerHTML = `<b>✅ ${r.empresa_nome}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
+      info.innerHTML = `<b>✅ ${r.empresa_nome||'Empresa vinculada'}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
     } else {
-      info.innerHTML = `<b>✅ ${r.empresa_nome}</b> — OS encontrada. Adicione os agentes manualmente.`;
+      info.innerHTML = `<b>✅ ${r.empresa_nome||'Empresa vinculada'}</b> — OS encontrada. Adicione os agentes manualmente.`;
     }
   } catch(e) {
     info.innerHTML = `<span style="color:#ef4444;">Erro: ${e.message}</span>`;
