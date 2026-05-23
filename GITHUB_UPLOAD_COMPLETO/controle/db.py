@@ -1062,8 +1062,10 @@ def criar_planejamento(data: dict) -> int:
         v = data.get(c)
         if isinstance(v, (dict, list)):
             v = _json.dumps(v, ensure_ascii=False)
-        vals[c] = v
-    vals.setdefault('status', 'rascunho')
+        if v is not None:   # não inserir NULLs explícitos — usar DEFAULT da tabela
+            vals[c] = v
+    if 'status' not in vals:
+        vals['status'] = 'rascunho'
     cols = ', '.join(vals.keys())
     phs  = ', '.join(['?'] * len(vals))
     with get_db() as conn:
