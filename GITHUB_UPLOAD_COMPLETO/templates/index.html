@@ -5356,13 +5356,11 @@ async function ctrlLoadPorEmpresa() {
       const pend = e.demandas_pendentes || 0;
       const pct = total > 0 ? Math.round((concl/total)*100) : 0;
       const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#666';
-      const dias = e.dias_aberta || 0;
+      const atrasadas = e.demandas_atrasadas || 0;
       let corDias, lblDias;
-      if (pend === 0) { corDias = '#0a7'; lblDias = `✓ todas concluídas`; }
-      else if (dias > 30) { corDias = '#e22'; lblDias = `${dias}d ⚠ atrasada`; }
-      else if (dias > 14) { corDias = '#f80'; lblDias = `${dias}d ⚠`; }
-      else if (dias > 7) { corDias = '#fc6'; lblDias = `${dias}d`; }
-      else { corDias = '#999'; lblDias = `${dias}d`; }
+      if (pend === 0)       { corDias = '#0a7'; lblDias = '✓ todas concluídas'; }
+      else if (atrasadas > 0){ corDias = '#e22'; lblDias = `⚠ ${atrasadas} atrasada${atrasadas>1?'s':''}`; }
+      else                  { corDias = '#999'; lblDias = 'no prazo'; }
 
       const contato = e.contato_feito ? 1 : 0;
       const contatoBtn = pend > 0 ? (contato
@@ -7918,6 +7916,16 @@ async function nvSalvarMedicao() {
         bomba:document.getElementById('nv-cq-bomba')?.value||'', id_bomba:document.getElementById('nv-cq-id-bomba')?.value||'',
         substancias:document.getElementById('nv-cq-substancias')?.value||'', fracao:document.getElementById('nv-cq-fracao')?.value||'',
         amostradores:_nvCqAmostr
+      } : null,
+      campo_generico: (_nvTipo !== 'ruido' && _nvTipo !== 'quimico') ? {
+        acomp:    document.getElementById('nv-gen-acomp')?.value||'',
+        hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
+        hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
+        obs:      document.getElementById('nv-gen-obs')?.value||'',
+        pontos:   document.getElementById('nv-plan-pontos-calor')?.value||'',
+        regime:   document.getElementById('nv-plan-regime')?.value||'',
+        tipo_vibr:document.getElementById('nv-plan-tipo-vibr')?.value||'',
+        fonte_vibr:document.getElementById('nv-plan-fonte-vibr')?.value||'',
       } : null,
     };
     const resp = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
