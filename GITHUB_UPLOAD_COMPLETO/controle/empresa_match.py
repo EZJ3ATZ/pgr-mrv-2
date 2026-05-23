@@ -38,11 +38,36 @@ _RE_OS_SPACE = re.compile(r'^(\d{5,8})\s+([A-Za-zÀ-ÿ].+)', re.DOTALL)  # "6466
 _RE_SUFIXO_DIAS   = re.compile(r',?\s*\d+\s+DIAS?\b.*$', re.IGNORECASE | re.DOTALL)
 _RE_SUFIXO_ANTIGO = re.compile(r'[-–,]?\s*PROCESSO\s+ANTIGO.*$', re.IGNORECASE | re.DOTALL)
 
-# Prefixos de label/setor a remover: "AET/MEDIÇÕES - ", "SST - ", etc.
-_RE_PREFIXO_LABEL = re.compile(r'^[A-Za-zÀ-ÿ]{2,10}[/\-][A-Za-zÀ-ÿ]{2,15}\s*[-–]\s*', re.IGNORECASE)
+# Separadores de label: " - " ou "- " com texto maiúsculo/acrônimo antes
+_RE_SEP_LABEL = re.compile(r'\s*[-–]\s*')
 
 
 # ── Normalização ──────────────────────────────────────────────────────
+
+def _strip_prefixo_label(titulo: str) -> str:
+    """
+    Remove prefixo de tipo/serviço de títulos Planner.
+    Handles: "AET/MEDIÇÕES - ", "LTCAT/PCA/PPR/AET/MEDIÇÕES - ", "LIP e MEDIÇÕES- ", "LTCAT/TREINAMENTO / MEDIÇÃO- "
+    Heurística: prefixo ≤50 chars com "/" OU 2+ palavras todas-maiúsculas, seguido de " - ".
+    """
+    t = titulo.strip()
+    for sep in [' - ', ' – ', '- ', '– ']:
+        idx = t.find(sep)
+        if idx <= 0 or idx > 50:
+            continue
+        prefixo = t[:idx].strip()
+        resto = t[idx + len(sep):].strip()
+        if not resto:
+            continue
+        if '/' in prefixo:
+            return resto
+        # Palavras significativas do prefixo (ignora conectores "e", "ou", "de")
+        palavras = [p for p in re.split(r'[\s/]+', prefixo)
+                    if len(p) > 1 and p.lower() not in ('e', 'ou', 'de')]
+        if len(palavras) >= 2 and all(p == p.upper() for p in palavras):
+            return resto
+    return t
+
 
 def _sem_acento(txt: str) -> str:
     return unicodedata.normalize('NFKD', txt).encode('ascii', 'ignore').decode().lower()
@@ -123,10 +148,10 @@ def extrair_campos(titulo: str) -> dict:
         m = _RE_OS.search(t)
         if m:
             resultado['os'] = m.group(1)
-        # Remove prefixo de setor/label tipo "AET/MEDIÇÕES - "
-        m = _RE_PREFIXO_LABEL.match(t)
-        if m:
-            resultado['nome'] = t[m.end():].strip()
+        # Remove prefixo de setor/label tipo "AET/MEDIÇÕES - ", "LTCAT/PCA - ", "LIP e MEDIÇÕES- "
+        nome_sem_prefixo = _strip_prefixo_label(t)
+        if nome_sem_prefixo != t:
+            resultado['nome'] = nome_sem_prefixo
 
     return resultado
 
