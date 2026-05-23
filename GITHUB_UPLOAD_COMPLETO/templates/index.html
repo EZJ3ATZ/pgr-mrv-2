@@ -2866,6 +2866,30 @@
   </div>
 </div>
 
+<!-- Modal Escopo / Descrição da OS -->
+<div class="ctrl-overlay" id="ctrl-escopo-overlay" onclick="if(event.target===this)ctrlFecharEscopo()" style="z-index:1100;">
+  <div class="ctrl-modal" style="max-width:680px;width:95%;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div>
+        <div style="font-size:.7rem;color:var(--text3);margin-bottom:2px;">OS <span id="ctrl-escopo-os" style="color:var(--accent);font-weight:700;"></span></div>
+        <div id="ctrl-escopo-titulo" style="font-size:.88rem;color:var(--text2);font-weight:500;max-width:540px;"></div>
+      </div>
+      <button onclick="ctrlFecharEscopo()" style="background:transparent;border:none;color:var(--text3);font-size:1.2rem;cursor:pointer;padding:4px 8px;">✕</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+      <button id="ctrl-escopo-tab-desc" onclick="ctrlEscopoTab('desc')" style="background:var(--accent);color:#fff;border:none;border-radius:4px 4px 0 0;padding:5px 14px;font-size:.75rem;cursor:pointer;">📝 Descrição</button>
+      <button id="ctrl-escopo-tab-check" onclick="ctrlEscopoTab('check')" style="background:transparent;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;padding:5px 14px;font-size:.75rem;color:var(--text3);cursor:pointer;">✅ Checklist</button>
+    </div>
+    <div id="ctrl-escopo-panel-desc" style="min-height:120px;">
+      <pre id="ctrl-escopo-desc" style="white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:.82rem;color:var(--text2);line-height:1.6;margin:0;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:12px;max-height:380px;overflow-y:auto;"></pre>
+    </div>
+    <div id="ctrl-escopo-panel-check" style="display:none;min-height:80px;">
+      <div id="ctrl-escopo-checklist" style="font-size:.82rem;"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Dar Baixa -->
 <div class="ctrl-overlay" id="ctrl-baixa-overlay" onclick="if(event.target===this) ctrlCloseBaixa()">
   <div class="ctrl-modal">
@@ -5407,6 +5431,8 @@ async function ctrlToggleExpandEmpresa(empresaId) {
           </thead>
           <tbody>
             ${dems.map(d => {
+              window._ctrlEscopoCache = window._ctrlEscopoCache || {};
+              window._ctrlEscopoCache[d.id] = { os: d.numero_os||'—', titulo: d.tarefa_display||d.titulo||'', desc: d.descricao||'', checklist: d.checklist||'[]' };
               const isDone = d.status === 'concluida';
               const pct = d.total_medicoes > 0 ? Math.round((d.realizadas/d.total_medicoes)*100) : (d.percent_complete || d.progresso || 0);
               const corBar = pct>=100 ? '#0a7' : pct>0 ? '#f80' : '#444';
@@ -5447,7 +5473,10 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                 </td>
                 <td style="padding:6px 8px; font-size:.75rem; color:var(--text3);">${d.responsavel_efetivo||d.responsavel||'—'}</td>
                 <td style="padding:6px 8px;"><span class="ctrl-badge ${isDone?'concluida':'pendente'}">${isDone?'concluída':'pendente'}</span></td>
-                <td style="padding:6px 8px;">${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
+                <td style="padding:6px 8px; white-space:nowrap;">
+                  <button onclick="event.stopPropagation(); ctrlVerEscopo(${d.id})" style="background:transparent;border:1px solid var(--border2);color:var(--text3);border-radius:4px;padding:2px 7px;font-size:.68rem;cursor:pointer;margin-right:4px;" title="Ver escopo / descrição da OS">📋 Escopo</button>
+                  ${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}
+                </td>
               </tr>${medHtml}`;
             }).join('')}
           </tbody>
@@ -6381,6 +6410,46 @@ async function ctrlAbrirBaixa(amostrId) {
   if (amostrId) document.getElementById('ctrl-bx-amostr').value = amostrId;
   document.getElementById('ctrl-bx-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('ctrl-baixa-overlay').classList.add('show');
+}
+
+function ctrlVerEscopo(demandaId) {
+  const data = (window._ctrlEscopoCache || {})[demandaId];
+  if (!data) return;
+  document.getElementById('ctrl-escopo-os').textContent = data.os;
+  document.getElementById('ctrl-escopo-titulo').textContent = data.titulo;
+  const descEl = document.getElementById('ctrl-escopo-desc');
+  descEl.textContent = data.desc || '(Sem descrição no Planner para esta OS)';
+  // Checklist
+  const clEl = document.getElementById('ctrl-escopo-checklist');
+  try {
+    const items = JSON.parse(data.checklist || '[]');
+    if (items.length) {
+      clEl.innerHTML = items.map(i =>
+        `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+          <span style="color:${i.concluido?'#0a7':'var(--text3)'};">${i.concluido?'☑':'☐'}</span>
+          <span style="color:${i.concluido?'var(--text3)':'var(--text2)'}; ${i.concluido?'text-decoration:line-through;':''}">${i.titulo||''}</span>
+        </div>`
+      ).join('');
+    } else {
+      clEl.innerHTML = '<span style="color:var(--text3);font-size:.8rem;">(Sem checklist)</span>';
+    }
+  } catch(e) { clEl.innerHTML = '<span style="color:var(--text3);">(Sem checklist)</span>'; }
+  ctrlEscopoTab('desc');
+  document.getElementById('ctrl-escopo-overlay').style.display = 'flex';
+}
+
+function ctrlFecharEscopo() {
+  document.getElementById('ctrl-escopo-overlay').style.display = 'none';
+}
+
+function ctrlEscopoTab(tab) {
+  const isDesc = tab === 'desc';
+  document.getElementById('ctrl-escopo-panel-desc').style.display = isDesc ? '' : 'none';
+  document.getElementById('ctrl-escopo-panel-check').style.display = isDesc ? 'none' : '';
+  document.getElementById('ctrl-escopo-tab-desc').style.background = isDesc ? 'var(--accent)' : 'transparent';
+  document.getElementById('ctrl-escopo-tab-desc').style.color = isDesc ? '#fff' : 'var(--text3)';
+  document.getElementById('ctrl-escopo-tab-check').style.background = isDesc ? 'transparent' : 'var(--accent)';
+  document.getElementById('ctrl-escopo-tab-check').style.color = isDesc ? 'var(--text3)' : '#fff';
 }
 
 async function ctrlAbrirBaixaDemand(demId) {
