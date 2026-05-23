@@ -2239,6 +2239,238 @@ def graph_debug_email_body():
     return jsonify(resultado)
 
 
+@controle_bp.route('/graph/lab_flow')
+def graph_lab_flow():
+    """
+    Mapeia o fluxo laboratorial real:
+    1. Emails com cadeia de custódia (Excel) → quando foi enviado ao lab
+    2. Emails RA da Uniscientific (PDF) → quando foi recebido o resultado
+    Cruza códigos de amostrador entre os dois.
+    Uso: /controle/graph/lab_flow?max=20
+    """
+    import re as _re
+    import base64 as _b64
+    import io as _io
+    from .graph import graph_get, graph_paginate
+
+    max_emails = int(request.args.get('max', '20'))
+
+    # Padrão código amostrador: tipo + número  ex: FV3131, FL22328, QZ15387, IOL24028
+    PAD_COD = _re.compile(r'\b([A-Z]{2,5}\d{3,6})\b')
+
+    def _extrair_xlsx(content_bytes):
+        """Extrai códigos de amostrador de um arquivo Excel."""
+        codigos = set()
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(_io.BytesIO(content_bytes), read_only=True, data_only=True)
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    for cell in row:
+                        if cell:
+                            txt = str(cell)
+                            for m in PAD_COD.finditer(txt):
+                                codigos.add(m.group(1).upper())
+        except Exception:
+            pass
+        return codigos
+
+    def _extrair_pdf(content_bytes):
+        """Extrai códigos de amostrador de um PDF."""
+        texto = ''
+        try:
+            from pdfminer.high_level import extract_text_to_fp
+            from pdfminer.layout import LAParams
+            out = _io.StringIO()
+            extract_text_to_fp(_io.BytesIO(content_bytes), out, laparams=LAParams())
+            texto = out.getvalue()
+        except Exception:
+            try:
+                import fitz
+                doc = fitz.open(stream=content_bytes, filetype='pdf')
+                texto = '\n'.join(p.get_text() for p in doc)
+            except Exception:
+                texto = content_bytes.decode('latin-1', errors='ignore')
+        codigos = set()
+        for m in PAD_COD.finditer(texto):
+            codigos.add(m.group(1).upper())
+        return codigos, texto[:500]
+
+    def _get_attachment_bytes(uid, mid, aid):
+        """Baixa contentBytes de um anexo individual."""
+        try:
+            anx = graph_get(f'/users/{uid}/messages/{mid}/attachments/{aid}')
+            cb = anx.get('contentBytes', '')
+            return _b64.b64decode(cb) if cb else None
+        except Exception:
+            return None
+
+    # Caixas a pesquisar (recebem resultados e enviam cadeia de custódia)
+    CAIXAS_ALVO = [
+        'bernardojunqueira@ocupacional.com.br',
+        'administrativoengenharia@ocupacional.com.br',
+        'coordenacao@ocupacional.com.br',
+        'engenharia19@ocupacional.com.br',
+    ]
+
+    resultado = {
+        'cadeias_custodia': [],   # Excel enviados ao lab
+        'resultados_ra':    [],   # PDFs recebidos da Uniscientific
+        'cruzamento':       [],
+        'resumo':           {}
+    }
+
+    # ── 1. Buscar todos os usuários uma vez ──────────────────────────
+    try:
+        users = graph_paginate('/users?$select=id,mail,userPrincipalName&$top=100')
+        uid_map = {}
+        for u in users:
+            m = (u.get('mail') or u.get('userPrincipalName', '')).lower()
+            uid_map[m] = u['id']
+    except Exception as e:
+        return jsonify({'erro': str(e)})
+
+    # ── 2. Cadeia de Custódia (Excel) ────────────────────────────────
+    termos_cadeia = ['cadeia de custodia', 'cadeia custódia', 'cadeia de custódia',
+                     'chain of custody', 'envio laboratorio', 'envio ao lab']
+
+    for caixa in CAIXAS_ALVO:
+        uid = uid_map.get(caixa.lower())
+        if not uid:
+            continue
+        for termo in termos_cadeia[:2]:
+            try:
+                data = graph_get(
+                    f'/users/{uid}/messages'
+                    f'?$search="{termo}"'
+                    f'&$top={max_emails}'
+                    f'&$select=id,subject,from,receivedDateTime,sentDateTime,hasAttachments,toRecipients'
+                    f'&$orderby=receivedDateTime desc'
+                )
+                for msg in data.get('value', []):
+                    if not msg.get('hasAttachments'):
+                        continue
+                    mid = msg['id']
+                    # Listar anexos
+                    try:
+                        anx_list = graph_get(f'/users/{uid}/messages/{mid}/attachments'
+                                              f'?$select=id,name,contentType,size,contentBytes')
+                        for anx in anx_list.get('value', []):
+                            nome = anx.get('name', '')
+                            tipo = anx.get('contentType', '')
+                            if not (nome.lower().endswith(('.xlsx', '.xls')) or 'spreadsheet' in tipo.lower() or 'excel' in tipo.lower()):
+                                continue
+                            cb = anx.get('contentBytes', '')
+                            content = _b64.b64decode(cb) if cb else _get_attachment_bytes(uid, mid, anx['id'])
+                            codigos = _extrair_xlsx(content) if content else set()
+                            resultado['cadeias_custodia'].append({
+                                'caixa':     caixa,
+                                'assunto':   msg.get('subject', '')[:80],
+                                'data':      (msg.get('sentDateTime') or msg.get('receivedDateTime', ''))[:10],
+                                'arquivo':   nome,
+                                'codigos':   sorted(codigos),
+                                'n_codigos': len(codigos),
+                            })
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+    # ── 3. Resultados RA (PDF da Uniscientific) ──────────────────────
+    remetentes_ra = ['resultados@uniscientificgroup.com.br',
+                     'resultados02@uniscientificgroup.com.br',
+                     'no-reply@uniscientificgroup.com.br']
+
+    for caixa in CAIXAS_ALVO:
+        uid = uid_map.get(caixa.lower())
+        if not uid:
+            continue
+        try:
+            data = graph_get(
+                f'/users/{uid}/messages'
+                f'?$search="resultados@uniscientificgroup"'
+                f'&$top={max_emails}'
+                f'&$select=id,subject,from,receivedDateTime,hasAttachments'
+                f'&$orderby=receivedDateTime desc'
+            )
+            for msg in data.get('value', []):
+                sender = msg.get('from', {}).get('emailAddress', {}).get('address', '').lower()
+                if not any(r in sender for r in ['uniscientific', 'resultados']):
+                    continue
+                mid = msg['id']
+                assunto = msg.get('subject', '')
+                data_r = msg.get('receivedDateTime', '')[:10]
+
+                # Extrair RA number do assunto
+                ra_match = _re.search(r'RA\s*(\d{6,10})', assunto, _re.I)
+                ra_num = ra_match.group(1) if ra_match else ''
+
+                codigos_ra = set()
+                anexos_info = []
+
+                if msg.get('hasAttachments'):
+                    try:
+                        anx_list = graph_get(f'/users/{uid}/messages/{mid}/attachments'
+                                              f'?$select=id,name,contentType,size,contentBytes')
+                        for anx in anx_list.get('value', []):
+                            nome = anx.get('name', '')
+                            tipo = anx.get('contentType', '')
+                            size = anx.get('size', 0)
+                            if not ('pdf' in tipo.lower() or nome.lower().endswith('.pdf')):
+                                continue
+                            cb = anx.get('contentBytes', '')
+                            content = _b64.b64decode(cb) if cb else _get_attachment_bytes(uid, mid, anx['id'])
+                            if content:
+                                cods, preview = _extrair_pdf(content)
+                                codigos_ra.update(cods)
+                                anexos_info.append({'nome': nome, 'kb': round(size/1024,1), 'preview': preview[:200]})
+                            else:
+                                anexos_info.append({'nome': nome, 'kb': round(size/1024,1), 'aviso': 'sem conteúdo'})
+                    except Exception as e:
+                        anexos_info.append({'erro': str(e)[:100]})
+
+                resultado['resultados_ra'].append({
+                    'caixa':    caixa,
+                    'assunto':  assunto[:80],
+                    'ra_num':   ra_num,
+                    'data':     data_r,
+                    'sender':   sender,
+                    'codigos':  sorted(codigos_ra),
+                    'n_codigos': len(codigos_ra),
+                    'anexos':   anexos_info,
+                })
+        except Exception:
+            pass
+
+    # ── 4. Cruzamento ────────────────────────────────────────────────
+    todos_enviados  = set()
+    todos_recebidos = set()
+    for c in resultado['cadeias_custodia']:
+        todos_enviados.update(c['codigos'])
+    for r in resultado['resultados_ra']:
+        todos_recebidos.update(r['codigos'])
+
+    for cod in sorted(todos_enviados | todos_recebidos):
+        resultado['cruzamento'].append({
+            'codigo':            cod,
+            'cadeia_custodia':   cod in todos_enviados,
+            'resultado_recebido': cod in todos_recebidos,
+            'status_lab':        'completo' if (cod in todos_enviados and cod in todos_recebidos)
+                                 else ('aguardando_resultado' if cod in todos_enviados
+                                 else 'resultado_sem_cadeia'),
+        })
+
+    resultado['resumo'] = {
+        'cadeias_encontradas':  len(resultado['cadeias_custodia']),
+        'resultados_ra':        len(resultado['resultados_ra']),
+        'codigos_enviados':     len(todos_enviados),
+        'codigos_com_resultado': len(todos_recebidos),
+        'aguardando_resultado': sum(1 for c in resultado['cruzamento'] if c['status_lab'] == 'aguardando_resultado'),
+        'completos':            sum(1 for c in resultado['cruzamento'] if c['status_lab'] == 'completo'),
+    }
+    return jsonify(resultado)
+
+
 @controle_bp.route('/graph/debug_plan')
 def graph_debug_plan():
     """Debug: inspeciona labels de um plano específico por plan_id.
