@@ -1969,6 +1969,93 @@ def graph_sync_mini():
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:2000]}), 500
 
 
+@controle_bp.route('/graph/debug_email')
+def graph_debug_email():
+    """
+    Debug: testa acesso a e-mails via Graph API.
+    Busca e-mails relacionados à Uniscientific / laboratório.
+    """
+    from .graph import graph_get, graph_paginate, list_emails
+    resultado = {
+        'usuarios_testados': [],
+        'emails_lab': [],
+        'resumo': {}
+    }
+
+    # 1. Pegar lista de usuarios (limitado a 30 para não travar)
+    try:
+        users = graph_paginate('/users?$select=id,displayName,mail,userPrincipalName&$top=30')
+    except Exception as e:
+        return jsonify({'erro': f'Falha ao listar usuarios: {e}'}), 500
+
+    # 2. Testar acesso a email de cada usuário
+    com_acesso = []
+    for u in users[:30]:
+        uid  = u.get('id', '')
+        mail = u.get('mail') or u.get('userPrincipalName', '')
+        try:
+            data = graph_get(f'/users/{uid}/messages?$top=1&$select=id,subject')
+            com_acesso.append({'uid': uid, 'mail': mail})
+            resultado['usuarios_testados'].append({'mail': mail, 'acesso': True})
+        except Exception as e:
+            err = str(e)
+            if 'MailboxNotEnabled' in err:
+                status = 'on_premise'
+            elif '403' in err:
+                status = 'sem_permissao'
+            else:
+                status = 'erro'
+            resultado['usuarios_testados'].append({'mail': mail, 'acesso': False, 'motivo': status})
+
+    # 3. Buscar e-mails lab nas caixas acessíveis
+    TERMOS = ['Uniscientific', 'cadeia de custodia', 'laudo quimico', 'resultado analise']
+    for u in com_acesso:
+        uid, mail = u['uid'], u['mail']
+        for termo in TERMOS:
+            try:
+                data = graph_get(
+                    f'/users/{uid}/messages'
+                    f'?$search="{termo}"'
+                    f'&$top=5&$select=subject,from,receivedDateTime,hasAttachments'
+                )
+                msgs = data.get('value', [])
+                for m in msgs:
+                    resultado['emails_lab'].append({
+                        'caixa':   mail,
+                        'termo':   termo,
+                        'assunto': m.get('subject', ''),
+                        'de':      m.get('from', {}).get('emailAddress', {}).get('address', ''),
+                        'data':    m.get('receivedDateTime', '')[:10],
+                        'anexo':   m.get('hasAttachments', False),
+                    })
+            except Exception:
+                pass
+
+    # 4. Verificar especificamente a conta engenharia19
+    eng = next((u for u in users if 'engenharia19' in (u.get('mail') or u.get('userPrincipalName','')).lower()), None)
+    if eng:
+        uid = eng['id']
+        try:
+            data = graph_get(f'/users/{uid}/messages?$top=10&$select=subject,from,receivedDateTime&$orderby=receivedDateTime desc')
+            resultado['conta_engenharia19'] = {
+                'encontrada': True,
+                'mail': eng.get('mail'),
+                'emails_recentes': [{'assunto': m.get('subject',''), 'data': m.get('receivedDateTime','')[:10]} for m in data.get('value', [])]
+            }
+        except Exception as e:
+            resultado['conta_engenharia19'] = {'encontrada': True, 'mail': eng.get('mail'), 'erro': str(e)[:100]}
+    else:
+        resultado['conta_engenharia19'] = {'encontrada': False}
+
+    resultado['resumo'] = {
+        'total_usuarios': len(users),
+        'com_email_online': len(com_acesso),
+        'emails_lab_encontrados': len(resultado['emails_lab']),
+        'permissao_mail_read_all': len(com_acesso) > 0,
+    }
+    return jsonify(resultado)
+
+
 @controle_bp.route('/graph/debug_plan')
 def graph_debug_plan():
     """Debug: inspeciona labels de um plano específico por plan_id.
