@@ -270,3 +270,22 @@ def list_emails(user_id: str, top: int = 50, folder: str = 'inbox') -> list:
         f'?$top={top}&$select=id,subject,from,receivedDateTime,bodyPreview,hasAttachments'
         f'&$orderby=receivedDateTime desc'
     )
+
+
+# ── Groups / Planner Conversations ──────────────────────────────────
+
+def get_group_thread_posts(group_id: str, thread_id: str) -> list:
+    """
+    Busca posts (comentários) de uma thread de conversação de um grupo.
+    Usado para extrair número de OS dos comentários de tarefas do Planner.
+    Requer permissão: Group.Read.All ou GroupMember.Read.All
+    """
+    try:
+        data = graph_get(
+            f'/groups/{group_id}/threads/{thread_id}/posts'
+            f'?$select=body,createdDateTime'
+        )
+        return data.get('value', [])
+    except Exception as e:
+        log.warning('[graph] get_group_thread_posts %s/%s: %s', group_id, thread_id, e)
+        return []
