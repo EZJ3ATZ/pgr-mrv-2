@@ -322,27 +322,80 @@ CREATE INDEX IF NOT EXISTS idx_eventos_tipo     ON eventos(tipo);
 CREATE INDEX IF NOT EXISTS idx_eventos_ref      ON eventos(ref_id, ref_tipo);
 CREATE INDEX IF NOT EXISTS idx_eventos_criado   ON eventos(criado_em);
 
--- ── Estrutura futura — produtividade e visitas técnicas ────────────────
--- NÃO gerar métricas agora. Apenas armazenar dados para BI futuro.
+-- ── Planejamento de Medição ────────────────────────────────────────────
+-- Criado ANTES da visita. Representa a intenção operacional do técnico.
+-- Dados vêm automaticamente do Planner/OS + confirmação do técnico.
+CREATE TABLE IF NOT EXISTS planejamentos (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id           INTEGER,
+    empresa_id           INTEGER NOT NULL,
+    numero_os            TEXT,
+    tecnico              TEXT NOT NULL,
+    data_prevista        TEXT,               -- previsão da visita
+    agentes_previstos    TEXT,               -- JSON: [{tipo,agente,qtd,metodo}]
+    qtd_dosim_prevista   INTEGER DEFAULT 0,  -- dosímetros necessários (calculado)
+    qtd_bombas_previstas INTEGER DEFAULT 0,  -- bombas necessárias (calculado)
+    equipamentos_json    TEXT,               -- lista sugerida de equipamentos
+    observacao           TEXT,
+    status               TEXT DEFAULT 'rascunho',
+    -- rascunho | confirmado | em_execucao | concluido | cancelado
+    criado_em            TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em        TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (demanda_id) REFERENCES demandas(id),
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+);
+CREATE INDEX IF NOT EXISTS idx_plan_demanda  ON planejamentos(demanda_id);
+CREATE INDEX IF NOT EXISTS idx_plan_tecnico  ON planejamentos(tecnico);
+CREATE INDEX IF NOT EXISTS idx_plan_status   ON planejamentos(status);
+CREATE INDEX IF NOT EXISTS idx_plan_data     ON planejamentos(data_prevista);
+
+-- ── Visita Técnica ─────────────────────────────────────────────────────
+-- Uma OS pode gerar várias visitas. Uma visita pode ser parcial.
 CREATE TABLE IF NOT EXISTS visitas_tecnicas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    planejamento_id INTEGER,               -- FK para o planejamento que originou
     demanda_id      INTEGER,
     empresa_id      INTEGER,
     tecnico         TEXT NOT NULL,
     data_visita     TEXT NOT NULL,
     hora_inicio     TEXT,
     hora_termino    TEXT,
-    tipo_visita     TEXT DEFAULT 'medicao',  -- medicao | acompanhamento | retrabalho | outro
-    retrabalho      INTEGER DEFAULT 0,       -- 1 se for revisita/retrabalho
-    justificativa   TEXT,
-    resultado       TEXT,
+    tipo_visita     TEXT DEFAULT 'medicao', -- medicao | acompanhamento | retrabalho | outro
+    resultado       TEXT DEFAULT 'pendente',-- pendente | concluido | parcial | cancelado
+    retrabalho      INTEGER DEFAULT 0,      -- 1 se for revisita
+    justificativa   TEXT,                   -- motivo de não-conclusão
+    observacao_geral TEXT,
     criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (planejamento_id) REFERENCES planejamentos(id),
     FOREIGN KEY (demanda_id) REFERENCES demandas(id),
     FOREIGN KEY (empresa_id) REFERENCES empresas(id)
 );
-CREATE INDEX IF NOT EXISTS idx_visita_tecnico  ON visitas_tecnicas(tecnico);
-CREATE INDEX IF NOT EXISTS idx_visita_demanda  ON visitas_tecnicas(demanda_id);
-CREATE INDEX IF NOT EXISTS idx_visita_data     ON visitas_tecnicas(data_visita);
+CREATE INDEX IF NOT EXISTS idx_visita_tecnico      ON visitas_tecnicas(tecnico);
+CREATE INDEX IF NOT EXISTS idx_visita_demanda      ON visitas_tecnicas(demanda_id);
+CREATE INDEX IF NOT EXISTS idx_visita_data         ON visitas_tecnicas(data_visita);
+CREATE INDEX IF NOT EXISTS idx_visita_planejamento ON visitas_tecnicas(planejamento_id);
+
+-- ── Execução em Campo ──────────────────────────────────────────────────
+-- Registra o delta: o que foi planejado vs o que foi executado de verdade.
+-- Alimenta BI, produtividade, financeiro (cobrança de revisita).
+CREATE TABLE IF NOT EXISTS execucao_campo (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+    visita_id              INTEGER NOT NULL,
+    planejamento_id        INTEGER,
+    agentes_executados     TEXT,   -- JSON [{tipo,agente,qtd_feita}]
+    agentes_nao_executados TEXT,   -- JSON [{tipo,agente,qtd_prevista}]
+    agentes_adicionados    TEXT,   -- JSON [{tipo,agente,qtd}] — novos não planejados
+    justificativa_causa    TEXT,   -- cliente | funcionario_ausente | setor_interditado
+                                   -- clima | equipamento | tempo | tecnico | outro
+    cobravel               INTEGER DEFAULT 0,  -- 1 = próxima visita pode ser cobrada
+    observacao             TEXT,
+    criado_em              TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (visita_id)       REFERENCES visitas_tecnicas(id),
+    FOREIGN KEY (planejamento_id) REFERENCES planejamentos(id)
+);
+CREATE INDEX IF NOT EXISTS idx_exec_visita       ON execucao_campo(visita_id);
+CREATE INDEX IF NOT EXISTS idx_exec_planejamento ON execucao_campo(planejamento_id);
 
 CREATE TABLE IF NOT EXISTS metricas_operacionais (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -567,6 +620,31 @@ def _migrate(conn):
                     pass
     except Exception:
         pass  # tabela não existe ainda — SCHEMA vai criá-la
+
+    # ── visitas_tecnicas: colunas novas (planejamento_id, resultado, atualizado_em) ──
+    cols_vt = [r['name'] for r in conn.execute('PRAGMA table_info(visitas_tecnicas)').fetchall()]
+    novas_vt = {
+        'planejamento_id':  'INTEGER',
+        'resultado':        "TEXT DEFAULT 'pendente'",
+        'observacao_geral': 'TEXT',
+        'atualizado_em':    'TEXT DEFAULT CURRENT_TIMESTAMP',
+    }
+    for col, tipo in novas_vt.items():
+        if col not in cols_vt:
+            try:
+                conn.execute(f'ALTER TABLE visitas_tecnicas ADD COLUMN {col} {tipo}')
+            except Exception as e:
+                print(f'[migrate] visitas_tecnicas.{col}: {e}')
+
+    # ── coletas_*: adicionar visita_id e planejamento_id ────────────
+    for tbl in ('coletas_ruido', 'coletas_quimico', 'coletas_outros'):
+        try:
+            cols_c = [r['name'] for r in conn.execute(f'PRAGMA table_info({tbl})').fetchall()]
+            for col in ('visita_id', 'planejamento_id'):
+                if col not in cols_c:
+                    conn.execute(f'ALTER TABLE {tbl} ADD COLUMN {col} INTEGER')
+        except Exception as e:
+            print(f'[migrate] {tbl} visita_id/planejamento_id: {e}')
 
     # ── Reclassifica demandas existentes pelo bucket operacional ─────
     # Corrige registros que foram inseridos antes da regra bucket→status.
@@ -967,6 +1045,186 @@ def save_coleta_outros(data):
                                 list(vals.values()))
             cid  = cur.lastrowid
     return cid
+
+
+# ── Planejamentos ────────────────────────────────────────────────────
+
+def criar_planejamento(data: dict) -> int:
+    """Cria um planejamento de medição. Retorna o id criado."""
+    import json as _json
+    campos = [
+        'demanda_id', 'empresa_id', 'numero_os', 'tecnico', 'data_prevista',
+        'agentes_previstos', 'qtd_dosim_prevista', 'qtd_bombas_previstas',
+        'equipamentos_json', 'observacao', 'status',
+    ]
+    vals = {}
+    for c in campos:
+        v = data.get(c)
+        if isinstance(v, (dict, list)):
+            v = _json.dumps(v, ensure_ascii=False)
+        vals[c] = v
+    vals.setdefault('status', 'rascunho')
+    cols = ', '.join(vals.keys())
+    phs  = ', '.join(['?'] * len(vals))
+    with get_db() as conn:
+        cur = conn.execute(
+            f'INSERT INTO planejamentos ({cols}) VALUES ({phs})',
+            list(vals.values())
+        )
+        return cur.lastrowid
+
+
+def get_planejamento(pid: int) -> dict | None:
+    with get_db() as conn:
+        r = conn.execute('SELECT * FROM planejamentos WHERE id=?', (pid,)).fetchone()
+        return row_to_dict(r)
+
+
+def list_planejamentos(filtros=None) -> list:
+    f = filtros or {}
+    sql = '''
+        SELECT p.*, e.nome AS empresa_nome,
+               d.titulo AS demanda_titulo
+        FROM planejamentos p
+        LEFT JOIN empresas e ON e.id = p.empresa_id
+        LEFT JOIN demandas d ON d.id = p.demanda_id
+        WHERE 1=1
+    '''
+    params = []
+    if f.get('tecnico'):
+        sql += ' AND p.tecnico LIKE ?'; params.append(f'%{f["tecnico"]}%')
+    if f.get('status'):
+        sql += ' AND p.status=?'; params.append(f['status'])
+    if f.get('empresa_id'):
+        sql += ' AND p.empresa_id=?'; params.append(f['empresa_id'])
+    if f.get('demanda_id'):
+        sql += ' AND p.demanda_id=?'; params.append(f['demanda_id'])
+    sql += ' ORDER BY p.data_prevista DESC, p.criado_em DESC LIMIT 500'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def update_planejamento_status(pid: int, status: str) -> bool:
+    with get_db() as conn:
+        conn.execute(
+            'UPDATE planejamentos SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?',
+            (status, pid)
+        )
+        return True
+
+
+# ── Visitas Técnicas ──────────────────────────────────────────────────
+
+def criar_visita(data: dict) -> int:
+    """Cria registro de visita técnica. Retorna o id criado."""
+    campos = [
+        'planejamento_id', 'demanda_id', 'empresa_id', 'tecnico',
+        'data_visita', 'hora_inicio', 'hora_termino',
+        'tipo_visita', 'resultado', 'retrabalho', 'justificativa', 'observacao_geral',
+    ]
+    vals = {c: data.get(c) for c in campos if data.get(c) is not None}
+    vals.setdefault('tipo_visita', 'medicao')
+    vals.setdefault('resultado', 'pendente')
+    cols = ', '.join(vals.keys())
+    phs  = ', '.join(['?'] * len(vals))
+    with get_db() as conn:
+        cur = conn.execute(
+            f'INSERT INTO visitas_tecnicas ({cols}) VALUES ({phs})',
+            list(vals.values())
+        )
+        # Atualizar status do planejamento para em_execucao
+        pid = data.get('planejamento_id')
+        if pid:
+            conn.execute(
+                "UPDATE planejamentos SET status='em_execucao', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                (pid,)
+            )
+        return cur.lastrowid
+
+
+def get_visita(vid: int) -> dict | None:
+    with get_db() as conn:
+        r = conn.execute('''
+            SELECT v.*,
+                   e.nome AS empresa_nome,
+                   p.numero_os, p.agentes_previstos, p.data_prevista
+            FROM visitas_tecnicas v
+            LEFT JOIN empresas e ON e.id = v.empresa_id
+            LEFT JOIN planejamentos p ON p.id = v.planejamento_id
+            WHERE v.id=?
+        ''', (vid,)).fetchone()
+        return row_to_dict(r)
+
+
+def list_visitas(filtros=None) -> list:
+    f = filtros or {}
+    sql = '''
+        SELECT v.*, e.nome AS empresa_nome, p.numero_os
+        FROM visitas_tecnicas v
+        LEFT JOIN empresas e ON e.id = v.empresa_id
+        LEFT JOIN planejamentos p ON p.id = v.planejamento_id
+        WHERE 1=1
+    '''
+    params = []
+    if f.get('tecnico'):
+        sql += ' AND v.tecnico LIKE ?'; params.append(f'%{f["tecnico"]}%')
+    if f.get('demanda_id'):
+        sql += ' AND v.demanda_id=?'; params.append(f['demanda_id'])
+    if f.get('planejamento_id'):
+        sql += ' AND v.planejamento_id=?'; params.append(f['planejamento_id'])
+    sql += ' ORDER BY v.data_visita DESC LIMIT 500'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def concluir_visita(vid: int, data: dict) -> bool:
+    """
+    Finaliza uma visita: atualiza resultado, cria registro execucao_campo.
+    data: {resultado, justificativa, agentes_executados, agentes_nao_executados,
+           agentes_adicionados, justificativa_causa, cobravel, observacao}
+    """
+    import json as _json
+    resultado = data.get('resultado', 'concluido')
+    with get_db() as conn:
+        conn.execute('''
+            UPDATE visitas_tecnicas
+            SET resultado=?, justificativa=?, hora_termino=COALESCE(hora_termino,?),
+                atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=?
+        ''', (resultado, data.get('justificativa'), data.get('hora_termino'), vid))
+
+        # Buscar planejamento_id da visita
+        row = conn.execute(
+            'SELECT planejamento_id FROM visitas_tecnicas WHERE id=?', (vid,)
+        ).fetchone()
+        plan_id = row['planejamento_id'] if row else None
+
+        # Criar execucao_campo
+        def _j(v):
+            return _json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v
+
+        conn.execute('''
+            INSERT INTO execucao_campo
+                (visita_id, planejamento_id, agentes_executados, agentes_nao_executados,
+                 agentes_adicionados, justificativa_causa, cobravel, observacao)
+            VALUES (?,?,?,?,?,?,?,?)
+        ''', (
+            vid, plan_id,
+            _j(data.get('agentes_executados')),
+            _j(data.get('agentes_nao_executados')),
+            _j(data.get('agentes_adicionados')),
+            data.get('justificativa_causa'),
+            int(data.get('cobravel', 0)),
+            data.get('observacao'),
+        ))
+
+        # Marcar planejamento como concluido se resultado = concluido
+        if plan_id and resultado == 'concluido':
+            conn.execute(
+                "UPDATE planejamentos SET status='concluido', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                (plan_id,)
+            )
+    return True
 
 
 def list_raw_tasks(filtros=None, limit=200):
