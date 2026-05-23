@@ -5313,7 +5313,7 @@ async function ctrlLoadPorEmpresa() {
   const tb = document.getElementById('ctrl-tb-empresa');
   tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr>';
   try {
-    const data = await ctrlFetch('/controle/demandas_por_empresa?' + q.toString());
+    const data = await ctrlFetch('/controle/operacional/por_empresa?' + q.toString());
     if (!data.length) {
       tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhuma empresa encontrada.</td></tr>';
       return;
@@ -5570,7 +5570,7 @@ async function ctrlNvSelecionarEmpresa(id, nome, cnpj, contato) {
   document.getElementById('ctrl-nv-empresa-list').style.display = 'none';
   // Verificar se já tem demanda aberta
   try {
-    const dems = await ctrlFetch('/controle/demandas?empresa=' + encodeURIComponent(nome));
+    const dems = await ctrlFetch('/controle/operacional?empresa=' + encodeURIComponent(nome));
     const abertas = dems.filter(d => d.status !== 'concluida');
     if (abertas.length > 0) {
       document.getElementById('ctrl-nv-empresa-status').innerHTML =
@@ -6023,7 +6023,7 @@ async function ctrlLoadDemand() {
   const tb = document.getElementById('ctrl-tb-demand');
   tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr>';
   try {
-    const data = await ctrlFetch('/controle/demandas_por_empresa?' + q.toString());
+    const data = await ctrlFetch('/controle/operacional/por_empresa?' + q.toString());
     ctrlDemandCache = data;
     if (!data.length) {
       tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Nenhuma demanda encontrada.</td></tr>';
@@ -6396,7 +6396,7 @@ window._ctrlBombas = null;
 async function _ctrlPrepararBaixa() {
   // Carregar demandas pendentes no select
   const demandas = ctrlDemandCache.length ? ctrlDemandCache :
-    await ctrlFetch('/controle/demandas?status=pendente');
+    await ctrlFetch('/controle/operacional?status=pendente');
   const selDem = document.getElementById('ctrl-bx-demand');
   selDem.innerHTML = '<option value="">— Selecione a OS —</option>' +
     demandas.filter(d=>d.status!=='concluida')
@@ -6613,7 +6613,7 @@ let _empData = [];
 
 async function empLoad() {
   try {
-    const r = await ctrlFetch('/controle/demandas_por_empresa');
+    const r = await ctrlFetch('/controle/operacional/por_empresa');
     _empData = Array.isArray(r) ? r : (r.empresas || []);
     empRender();
     // KPIs
@@ -8166,6 +8166,13 @@ function saudeRenderizar(d) {
       </button>
     `) : saudeSecao('Empresas Duplicadas', `<div style="color:#22c55e;font-size:.75rem;">✓ Nenhuma duplicata encontrada</div>`)}
 
+    <!-- Pipeline Stats -->
+    ${saudeSecao('📥 Pipeline Planner (Raw Tasks)', `
+      <div id="saude-pipeline-stats" style="font-size:.75rem;color:var(--text3);">
+        <button onclick="saudePipelineStats()" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:5px 12px;font-size:.72rem;font-weight:600;cursor:pointer;">Ver stats do pipeline</button>
+      </div>
+    `)}
+
     <!-- Ações rápidas -->
     ${saudeSecao('Ações Rápidas', `
       <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -8216,6 +8223,52 @@ async function saudeMatchEmpresas() {
   if(el) el.textContent = 'Vinculando...';
   const r = await fetch('/controle/demandas/match-empresas', { method: 'POST' }).then(r=>r.json());
   if(el) el.textContent = `✓ ${r.vinculadas||0} vinculadas · ${r.pendentes_criadas||0} pendentes criadas`;
+}
+
+async function saudePipelineStats() {
+  const el = document.getElementById('saude-pipeline-stats');
+  if (!el) return;
+  el.innerHTML = '<span style="color:var(--text3);font-size:.72rem;">Carregando...</span>';
+  try {
+    const r = await fetch('/controle/pipeline/stats').then(r=>r.json());
+    const por_status = (r.por_status||[]);
+    const raw    = (por_status.find(x=>x.sync_status==='raw')    || {}).qtd || 0;
+    const proc   = (por_status.find(x=>x.sync_status==='processed') || {}).qtd || 0;
+    const ign    = (por_status.find(x=>x.sync_status==='ignored')  || {}).qtd || 0;
+    const total  = raw + proc + ign;
+    const pct    = total ? Math.round(proc/total*100) : 0;
+    // Top buckets ignorados
+    const ign_buckets = (r.por_bucket||[])
+      .filter(b=>b.sync_status==='ignored')
+      .slice(0,5)
+      .map(b=>`<span style="color:var(--text3)">${b.planner_bucket||'(vazio)'}</span>: ${b.qtd}`)
+      .join(' · ') || '—';
+    const proc_buckets = (r.por_bucket||[])
+      .filter(b=>b.sync_status==='processed')
+      .slice(0,5)
+      .map(b=>`<span style="color:#4ade80">${b.planner_bucket||'(vazio)'}</span>: ${b.qtd}`)
+      .join(' · ') || '—';
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+        <div style="text-align:center;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);border-radius:8px;padding:10px;">
+          <div style="font-size:1.4rem;font-weight:700;color:#4ade80;">${proc.toLocaleString('pt-BR')}</div>
+          <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">Processadas</div>
+        </div>
+        <div style="text-align:center;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:8px;padding:10px;">
+          <div style="font-size:1.4rem;font-weight:700;color:#f87171;">${ign.toLocaleString('pt-BR')}</div>
+          <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">Filtradas (não-operacionais)</div>
+        </div>
+        <div style="text-align:center;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:10px;">
+          <div style="font-size:1.4rem;font-weight:700;color:#818cf8;">${pct}%</div>
+          <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">Taxa aprovação pipeline</div>
+        </div>
+      </div>
+      <div style="font-size:.7rem;margin-bottom:6px;"><span style="color:var(--text2);">Buckets processados:</span> ${proc_buckets}</div>
+      <div style="font-size:.7rem;"><span style="color:var(--text2);">Buckets ignorados:</span> ${ign_buckets}</div>
+    `;
+  } catch(e) {
+    el.innerHTML = `<span style="color:#ef4444;font-size:.72rem;">Erro: ${e.message}</span>`;
+  }
 }
 
 // Auto-carrega quando abre o painel
