@@ -1202,6 +1202,14 @@
       </svg>
       <span>Analytics BI</span>
     </div>
+
+    <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" title="Observabilidade e saúde do sistema">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+      </svg>
+      <span>Saúde do Sistema</span>
+    </div>
+
     <div class="sidebar-item" data-name="coleta" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', document.querySelector('[onclick*=nova]')),300);" title="Coletas integradas em Nova Medição">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
@@ -3247,6 +3255,26 @@
 </div>
 
 <!-- ══ Painel ANALYTICS BI ══════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════
+     PAINEL: SAÚDE DO SISTEMA
+     ══════════════════════════════════════════════════════════════════ -->
+<div id="tab-saude" class="tab-panel">
+<div class="page" style="max-width:1100px;">
+  <div class="page-head">
+    <div>
+      <div class="page-title">🛡️ Saúde do Sistema</div>
+      <div class="page-sub">Observabilidade, diagnósticos e métricas operacionais em tempo real</div>
+    </div>
+    <button onclick="saudeCarregar()" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:600;cursor:pointer;">
+      ↻ Atualizar
+    </button>
+  </div>
+
+  <div id="saude-loading" style="display:none;text-align:center;padding:40px;color:var(--text3);">Carregando diagnóstico...</div>
+  <div id="saude-conteudo"></div>
+</div>
+</div>
+
 <div id="tab-bi" class="tab-panel">
 <div class="page" style="max-width:1200px;">
   <div class="page-head">
@@ -3620,6 +3648,7 @@ function goToTab(name) {
   if (name === 'indicadores') indLoad();
   if (name === 'bi') biLoad();
   if (name === 'coleta') coletaLoad();
+  if (name === 'saude') saudeCarregar();
 }
 
 // Compatibilidade: switchTab ainda funciona (chamado em alguns lugares)
@@ -7940,6 +7969,268 @@ function gsSelect(i) {
     const kbd = document.getElementById('gs-kbd');
     if(kbd) kbd.style.display = '';
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PAINEL DE SAÚDE DO SISTEMA
+// ══════════════════════════════════════════════════════════════════════
+
+async function saudeCarregar() {
+  const loading = document.getElementById('saude-loading');
+  const cont    = document.getElementById('saude-conteudo');
+  if (!cont) return;
+  loading.style.display = 'block';
+  cont.innerHTML = '';
+  try {
+    const r = await fetch('/controle/admin/saude');
+    const d = await r.json();
+    loading.style.display = 'none';
+    cont.innerHTML = saudeRenderizar(d);
+  } catch(e) {
+    loading.style.display = 'none';
+    cont.innerHTML = `<div style="color:#ef4444;padding:20px;">Erro: ${e.message}</div>`;
+  }
+}
+
+function saudeCard(titulo, valor, sub, cor) {
+  cor = cor || '#6366f1';
+  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;min-width:160px;">
+    <div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">${titulo}</div>
+    <div style="font-size:1.6rem;font-weight:800;color:${cor};">${valor}</div>
+    ${sub ? `<div style="font-size:.7rem;color:var(--text3);margin-top:4px;">${sub}</div>` : ''}
+  </div>`;
+}
+
+function saudeSecao(titulo, conteudo) {
+  return `<div style="margin-bottom:24px;">
+    <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">${titulo}</div>
+    ${conteudo}
+  </div>`;
+}
+
+function saudeRenderizar(d) {
+  if (d.erro_diagnostico) {
+    return `<div style="color:#ef4444;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:16px;">${d.erro_diagnostico}<br><pre style="font-size:.65rem;margin-top:8px;opacity:.7;">${d.traceback||''}</pre></div>`;
+  }
+
+  const em = d.empresas    || {};
+  const de = d.demandas    || {};
+  const os = d.os          || {};
+  const pl = d.planner     || {};
+  const sy = d.sync        || {};
+  const am = d.amostradores|| {};
+
+  // Score geral de saúde
+  const scoreItems = [
+    em.duplicatas === 0,
+    de.sem_empresa === 0,
+    os.pct_com_os >= 60,
+    pl.pct_vinculadas >= 80,
+    sy.last_sync !== null,
+  ];
+  const score = Math.round(scoreItems.filter(Boolean).length / scoreItems.length * 100);
+  const corScore = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+  const labelScore = score >= 80 ? 'Saudável' : score >= 50 ? 'Atenção' : 'Crítico';
+
+  // Último sync
+  const lastSync = sy.last_sync ? new Date(sy.last_sync).toLocaleString('pt-BR') : '—';
+  const syncStats = sy.stats || {};
+
+  // Distribuição tipos
+  const tipos = pl.por_tipo || {};
+  const tipoHtml = Object.entries(tipos).sort((a,b)=>b[1]-a[1]).map(([t,q]) => {
+    const cores = {medicao:'#3b82f6',laudo:'#8b5cf6',operacional:'#f59e0b',interna:'#6b7280',administrativa:'#64748b'};
+    const cor = cores[t] || '#94a3b8';
+    const pct = pl.total_tarefas ? Math.round(q/pl.total_tarefas*100) : 0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${cor};flex-shrink:0;"></span>
+      <span style="font-size:.75rem;color:var(--text2);flex:1;">${t||'null'}</span>
+      <span style="font-size:.75rem;color:var(--text3);">${q}</span>
+      <div style="width:80px;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${cor};"></div>
+      </div>
+      <span style="font-size:.65rem;color:var(--text3);width:28px;text-align:right;">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  // Amostras sem OS
+  const semOsHtml = (os.sample_sem_os||[]).map(s =>
+    `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+      <td style="padding:4px 8px;font-size:.68rem;color:var(--text3);">${s.id}</td>
+      <td style="padding:4px 8px;font-size:.7rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.titulo||''}</td>
+      <td style="padding:4px 8px;font-size:.7rem;color:var(--text3);">${s.planner_bucket||''}</td>
+    </tr>`
+  ).join('');
+
+  // Duplicatas
+  const dupHtml = (em.top_duplicatas||[]).map(d2 =>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.72rem;">
+      <span style="color:var(--text2);max-width:80%;overflow:hidden;text-overflow:ellipsis;">${d2.nome_key}</span>
+      <span style="color:#ef4444;font-weight:700;">${d2.qtd}x</span>
+    </div>`
+  ).join('');
+
+  // Último erro de sync
+  const erroSync = sy.last_error
+    ? `<div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px;font-size:.68rem;color:#fca5a5;white-space:pre-wrap;font-family:monospace;max-height:150px;overflow:auto;">${sy.last_error}</div>`
+    : `<div style="color:#22c55e;font-size:.75rem;">✓ Nenhum erro registrado</div>`;
+
+  return `
+    <!-- Score geral -->
+    ${saudeSecao('Score de Saúde Geral', `
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div style="font-size:3rem;font-weight:900;color:${corScore};line-height:1;">${score}%</div>
+          <div style="font-size:.75rem;font-weight:700;color:${corScore};">${labelScore}</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${saudeCard('Empresas', em.total||0, `${em.pendentes||0} pendentes`, '#6366f1')}
+          ${saudeCard('Duplicatas', em.duplicatas||0, 'empresas', em.duplicatas > 0 ? '#ef4444' : '#22c55e')}
+          ${saudeCard('Planner Tasks', pl.total_tarefas||0, `${pl.pct_vinculadas||0}% vinculadas`, '#3b82f6')}
+          ${saudeCard('Sem Empresa', de.sem_empresa||0, 'demandas órfãs', de.sem_empresa > 0 ? '#f59e0b' : '#22c55e')}
+          ${saudeCard('OS Extraídas', os.com_os||0, `${os.pct_com_os||0}% do total`, '#f59e0b')}
+          ${saudeCard('Amostradores', am.total||0, `${am.no_lab||0} no lab`, '#8b5cf6')}
+        </div>
+      </div>
+    `)}
+
+    <!-- Sync status -->
+    ${saudeSecao('Último Sync Planner', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="font-size:.72rem;color:var(--text3);margin-bottom:8px;">Concluído em: <span style="color:var(--text2);">${lastSync}</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2);padding:3px 10px;border-radius:20px;font-size:.72rem;">✓ ${syncStats.criadas||0} criadas</span>
+            <span style="background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2);padding:3px 10px;border-radius:20px;font-size:.72rem;">↻ ${syncStats.atualizadas||0} atualizadas</span>
+            <span style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);padding:3px 10px;border-radius:20px;font-size:.72rem;">✗ ${(syncStats.erros||[]).length} erros</span>
+          </div>
+          ${syncStats.reclassificacao ? `
+          <div style="margin-top:10px;font-size:.72rem;color:var(--text3);">Reclassificação:
+            <span style="color:#3b82f6;">${syncStats.reclassificacao.medicao||0} medição</span> ·
+            <span style="color:#8b5cf6;">${syncStats.reclassificacao.laudo||0} laudo</span> ·
+            <span style="color:#f59e0b;">${syncStats.reclassificacao.operacional||0} operacional</span> ·
+            <span style="color:#22c55e;">${syncStats.reclassificacao.os_extraida||0} OS extraídas</span>
+          </div>` : ''}
+        </div>
+        <div>
+          <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin-bottom:6px;">ÚLTIMO ERRO DE SYNC</div>
+          ${erroSync}
+        </div>
+      </div>
+    `)}
+
+    <!-- Distribuição tipos -->
+    ${saudeSecao('Distribuição de Tipo de Demanda (Planner)', `
+      <div style="max-width:400px;">${tipoHtml || '<span style="color:var(--text3);font-size:.75rem;">Sem dados</span>'}</div>
+    `)}
+
+    <!-- OS e matching -->
+    ${saudeSecao('Qualidade de Dados', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin-bottom:8px;">EXTRAÇÃO DE OS</div>
+          <div style="display:flex;gap:16px;margin-bottom:10px;">
+            <div><span style="font-size:1.4rem;font-weight:800;color:#22c55e;">${os.com_os||0}</span><br><span style="font-size:.65rem;color:var(--text3);">com OS</span></div>
+            <div><span style="font-size:1.4rem;font-weight:800;color:#ef4444;">${os.sem_os||0}</span><br><span style="font-size:.65rem;color:var(--text3);">sem OS</span></div>
+          </div>
+          ${semOsHtml ? `
+          <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Exemplos sem OS (operacional):</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:1px solid rgba(255,255,255,.08);">
+              <th style="padding:3px 8px;font-size:.62rem;color:var(--text3);text-align:left;">ID</th>
+              <th style="padding:3px 8px;font-size:.62rem;color:var(--text3);text-align:left;">Título</th>
+              <th style="padding:3px 8px;font-size:.62rem;color:var(--text3);text-align:left;">Bucket</th>
+            </tr>
+            ${semOsHtml}
+          </table>` : ''}
+        </div>
+        <div>
+          <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin-bottom:8px;">VÍNCULO EMPRESA ← DEMANDA</div>
+          <div style="display:flex;gap:16px;margin-bottom:10px;">
+            <div><span style="font-size:1.4rem;font-weight:800;color:#22c55e;">${pl.vinculadas||0}</span><br><span style="font-size:.65rem;color:var(--text3);">vinculadas</span></div>
+            <div><span style="font-size:1.4rem;font-weight:800;color:${(de.sem_empresa||0)>0?'#ef4444':'#22c55e'};">${de.sem_empresa||0}</span><br><span style="font-size:.65rem;color:var(--text3);">sem empresa</span></div>
+          </div>
+          <div style="width:100%;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;margin-bottom:6px;">
+            <div style="height:100%;width:${pl.pct_vinculadas||0}%;background:#22c55e;"></div>
+          </div>
+          <div style="font-size:.7rem;color:var(--text3);">${pl.pct_vinculadas||0}% das tarefas Planner têm empresa vinculada</div>
+        </div>
+      </div>
+    `)}
+
+    <!-- Duplicatas -->
+    ${em.duplicatas > 0 ? saudeSecao(`⚠️ Empresas Duplicadas (${em.duplicatas})`, `
+      <div style="margin-bottom:10px;">${dupHtml}</div>
+      <button onclick="saudeMesclar()" style="background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:8px 16px;font-size:.75rem;font-weight:600;cursor:pointer;">
+        Mesclar duplicatas agora
+      </button>
+    `) : saudeSecao('Empresas Duplicadas', `<div style="color:#22c55e;font-size:.75rem;">✓ Nenhuma duplicata encontrada</div>`)}
+
+    <!-- Ações rápidas -->
+    ${saudeSecao('Ações Rápidas', `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <button onclick="saudeSync()" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:8px 16px;font-size:.75rem;font-weight:600;cursor:pointer;">↻ Sincronizar Planner</button>
+        <button onclick="saudeMesclar()" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);border-radius:8px;padding:8px 16px;font-size:.75rem;font-weight:600;cursor:pointer;">⊕ Mesclar Duplicatas</button>
+        <button onclick="saudeReclassificar()" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:8px 16px;font-size:.75rem;font-weight:600;cursor:pointer;">⟳ Reclassificar Demandas</button>
+        <button onclick="saudeMatchEmpresas()" style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:8px 16px;font-size:.75rem;font-weight:600;cursor:pointer;">🔗 Vincular Empresas</button>
+      </div>
+      <div id="saude-acao-result" style="margin-top:10px;font-size:.75rem;color:var(--text3);"></div>
+    `)}
+
+    <div style="font-size:.65rem;color:var(--text3);margin-top:16px;">
+      Dados obtidos em: ${new Date(d.timestamp||Date.now()).toLocaleString('pt-BR')} ·
+      Ambiente: <span style="color:var(--text2);">${d.env||'—'}</span> ·
+      Release: <span style="color:var(--text2);">${d.release||'—'}</span>
+    </div>
+  `;
+}
+
+async function saudeMesclar() {
+  const el = document.getElementById('saude-acao-result');
+  if(el) el.textContent = 'Mesclando...';
+  const r = await fetch('/controle/empresas/mesclar', { method: 'POST' }).then(r=>r.json());
+  if(el) el.textContent = `✓ ${r.mescladas} empresas mescladas`;
+  setTimeout(saudeCarregar, 1000);
+}
+
+async function saudeReclassificar() {
+  const el = document.getElementById('saude-acao-result');
+  if(el) el.textContent = 'Reclassificando...';
+  const r = await fetch('/controle/demandas/reclassificar', { method: 'POST' }).then(r=>r.json());
+  if(el) el.textContent = `✓ ${r.total} demandas: ${r.medicao} medição · ${r.laudo} laudo · ${r.operacional} operacional`;
+}
+
+async function saudeSync() {
+  const el = document.getElementById('saude-acao-result');
+  if(el) el.textContent = 'Sync iniciado em background (~20 min)...';
+  const r = await fetch('/controle/graph/sync', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({})
+  }).then(r=>r.json());
+  if(el) el.textContent = r.mensagem || r.erro || JSON.stringify(r);
+}
+
+async function saudeMatchEmpresas() {
+  const el = document.getElementById('saude-acao-result');
+  if(el) el.textContent = 'Vinculando...';
+  const r = await fetch('/controle/demandas/match-empresas', { method: 'POST' }).then(r=>r.json());
+  if(el) el.textContent = `✓ ${r.vinculadas||0} vinculadas · ${r.pendentes_criadas||0} pendentes criadas`;
+}
+
+// Auto-carrega quando abre o painel
+document.addEventListener('DOMContentLoaded', () => {
+  // PostHog — analytics operacional
+  const phKey = '{{ config.get("POSTHOG_KEY", "") if config is defined else "" }}';
+  if (phKey) {
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+" (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init(phKey, { api_host: 'https://app.posthog.com', autocapture: true, capture_pageview: true });
+  }
+});
+
+// Rastrear ações operacionais importantes
+function phTrack(evento, props) {
+  try { if(window.posthog) posthog.capture(evento, props||{}); } catch(e){}
 }
 
 </script>
