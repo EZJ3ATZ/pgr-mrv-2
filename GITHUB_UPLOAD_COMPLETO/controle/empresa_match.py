@@ -150,13 +150,33 @@ def obter_ou_criar_pendente(conn, titulo: str, campos: dict) -> int:
         if similaridade(p['nome'], nome_raw) > 0.90:
             return p['id']
 
-    cur = conn.execute(
-        '''INSERT INTO empresas (nome, cnpj, pendente, criado_em)
-           VALUES (?, ?, 1, CURRENT_TIMESTAMP)''',
-        (nome_raw, cnpj_raw or None)
-    )
-    log.info('[match] Empresa pendente criada: "%s"', nome_raw)
-    return cur.lastrowid
+    # Se tem CNPJ, verifica se já existe empresa com esse CNPJ
+    if cnpj_raw:
+        existing = conn.execute('SELECT id FROM empresas WHERE cnpj = ?', (cnpj_raw,)).fetchone()
+        if existing:
+            return existing['id']
+
+    try:
+        cur = conn.execute(
+            '''INSERT INTO empresas (nome, cnpj, pendente, criado_em)
+               VALUES (?, ?, 1, CURRENT_TIMESTAMP)''',
+            (nome_raw, cnpj_raw or None)
+        )
+        log.info('[match] Empresa pendente criada: "%s"', nome_raw)
+        return cur.lastrowid
+    except Exception:
+        # CNPJ duplicado ou outra constraint — reutiliza existente por nome
+        existing = conn.execute(
+            'SELECT id FROM empresas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?))', (nome_raw,)
+        ).fetchone()
+        if existing:
+            return existing['id']
+        # Último recurso: inserir sem CNPJ
+        cur = conn.execute(
+            'INSERT INTO empresas (nome, pendente, criado_em) VALUES (?, 1, CURRENT_TIMESTAMP)',
+            (nome_raw,)
+        )
+        return cur.lastrowid
 
 
 # ── Matching em lote ──────────────────────────────────────────────────
