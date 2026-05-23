@@ -370,6 +370,39 @@ def get_demanda_agentes(did):
         return jsonify({'erro': str(e), 'trace': traceback.format_exc()}), 500
 
 
+@controle_bp.route('/demandas/por_os/<os_num>')
+def get_demanda_por_os(os_num):
+    """Busca demanda pelo número de OS e retorna id, título e agentes extraídos."""
+    try:
+        from .parser_agentes import extrair_agentes, resumo_agentes
+        init_db()
+        os_clean = os_num.strip()
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT id, titulo, descricao FROM demandas WHERE numero_os=? LIMIT 1",
+                (os_clean,)
+            ).fetchone()
+            if not row:
+                # tenta busca parcial no título
+                row = conn.execute(
+                    "SELECT id, titulo, descricao FROM demandas WHERE titulo LIKE ? LIMIT 1",
+                    (f'%{os_clean}%',)
+                ).fetchone()
+        if not row:
+            return jsonify({'encontrado': False}), 200
+        agentes = extrair_agentes(row['descricao'] or '')
+        return jsonify({
+            'encontrado': True,
+            'id': row['id'],
+            'titulo': row['titulo'],
+            'agentes': agentes,
+            'resumo': resumo_agentes(agentes),
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'trace': traceback.format_exc()}), 500
+
+
 @controle_bp.route('/demandas', methods=['POST'])
 def cria_demanda():
     init_db()
