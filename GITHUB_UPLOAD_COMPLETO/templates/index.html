@@ -7686,6 +7686,17 @@ function _biMes(ym) {
 }
 
 // Drawer
+function biProdDrill(idx) {
+  if (!window._biProdEntries) return;
+  const [tec, v] = window._biProdEntries[idx];
+  const html = v.items.map(d =>
+    `<div style="padding:10px 0;border-bottom:1px solid #27272a;">
+      <div style="font-size:.82rem;font-weight:600;color:#e4e4e7;">${d.empresa_nome||'—'}</div>
+      <div style="font-size:.72rem;color:#71717a;margin-top:2px;">${d.status||'—'} · OS ${d.os_numero||d.numero_os||'—'} · ${d.prazo||'—'}</div>
+    </div>`
+  ).join('');
+  biDrawerOpen(`${tec} — ${v.total} OS`, html || '<div style="padding:20px;color:#71717a;text-align:center;">Sem dados</div>');
+}
 function biDrawerOpen(title, html) {
   document.getElementById('bi-drawer-title').textContent = title;
   document.getElementById('bi-drawer-body').innerHTML = html;
@@ -7955,19 +7966,21 @@ async function biLoad() {
       }
     });
     const prodEntries = Object.entries(prodMap).sort((a,b) => b[1].total - a[1].total);
+    window._biProdEntries = prodEntries; // armazenar para drill-down por índice
     const prodWrap = document.getElementById('bi-prod-wrap');
     if (prodWrap) {
       if (!prodEntries.length) {
         prodWrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--text3);font-size:.78rem;">Nenhuma demanda com responsável atribuído</div>';
       } else {
-        prodWrap.innerHTML = prodEntries.map(([tec, v]) => {
+        prodWrap.innerHTML = prodEntries.map(([tec, v], i) => {
           const pct = v.total ? Math.round(v.concluidas/v.total*100) : 0;
           const barColor = pct >= 80 ? '#4ade80' : pct >= 50 ? '#fb923c' : '#f87171';
-          return `<div onclick="biDrawerOpen('${tec.replace(/'/g,"\\'")} — ${v.total} OS',${JSON.stringify(v.items.map(d=>`<div style='padding:10px 0;border-bottom:1px solid #27272a;font-size:.8rem;'><b>${d.empresa_nome||'—'}</b><br><span style='color:#71717a;'>${d.status||'—'} · OS ${d.os_numero||'—'} · ${d.prazo||'—'}</span></div>`).join(''))})" style="display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:var(--surface2);transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='var(--surface2)'">
-            <div style="width:32px;height:32px;border-radius:50%;background:rgba(251,146,60,.15);color:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;flex-shrink:0;">${tec.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+          const initials = tec.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+          return `<div onclick="biProdDrill(${i})" style="display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:var(--surface2);transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='var(--surface2)'">
+            <div style="width:32px;height:32px;border-radius:50%;background:rgba(251,146,60,.15);color:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;flex-shrink:0;">${initials}</div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:.83rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${tec}</div>
-              <div style="margin-top:5px;background:var(--border);border-radius:4px;height:5px;overflow:hidden;"><div style="height:100%;background:${barColor};width:${pct}%;border-radius:4px;transition:width .6s;"></div></div>
+              <div style="margin-top:5px;background:var(--border);border-radius:4px;height:5px;overflow:hidden;"><div style="height:100%;background:${barColor};width:${pct}%;border-radius:4px;"></div></div>
             </div>
             <div style="display:flex;gap:12px;flex-shrink:0;text-align:center;font-size:.7rem;">
               <div><div style="font-weight:800;color:var(--text);font-size:.9rem;">${v.total}</div><div style="color:var(--text3);">total</div></div>
