@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { TrendingUp, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
-import RelatorioPlayer from '../components/RelatorioPlayer'
 
 // ── Paleta ────────────────────────────────────────────────────────────────
 const COLORS = {
@@ -249,8 +248,6 @@ export default function BI() {
         </div>
       </div>
 
-      {/* Remotion Player */}
-      <RelatorioPlayer stats={stats} />
     </div>
   )
 }
