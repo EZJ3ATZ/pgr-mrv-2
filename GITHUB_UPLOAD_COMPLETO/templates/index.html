@@ -8633,14 +8633,68 @@ function nvAdaptStep2() {
 // ═══ CADASTRO DE EQUIPAMENTOS — Sprint 4 ═══════════════════════════
 // Chave = N° Série  |  Atualize cert/validade a cada recalibração
 const NV_EQUIP_DB = {
-  // ── Dosímetros ──
-  'DOSIM-001': { tipo:'dosim', modelo:'Larson Davis SoundTrack LxT', cert:'', validade:'' },
-  // ── Calibradores acústicos ──
-  'Cel-282':   { tipo:'cal',   modelo:'Cel-282',                     cert:'', validade:'' },
-  '126958':    { tipo:'cal',   modelo:'DEFENDER 510M',                cert:'', validade:'' },
-  '414332019013': { tipo:'cal', modelo:'TSI 4143F',                  cert:'', validade:'' },
-  // ── Bombas gravimétricas ──
-  // 'BOMBA-001': { tipo:'bomba', modelo:'Gilair Plus', cert:'', validade:'' },
+
+  // ── DOSÍMETROS CHROMPACK SmartdB LITE (calibrados 19/08/2025, val. 19/08/2026) ──
+  '1149': { tipo:'dosim', modelo:'Chrompack SmartdB LITE', cert:'172.887', validade:'2026-08-19' },
+  '1150': { tipo:'dosim', modelo:'Chrompack SmartdB LITE', cert:'172.889', validade:'2026-08-19' },
+  '1151': { tipo:'dosim', modelo:'Chrompack SmartdB LITE', cert:'172.890', validade:'2026-08-19' },
+  '1152': { tipo:'dosim', modelo:'Chrompack SmartdB LITE', cert:'172.888', validade:'2026-08-19' },
+  '1153': { tipo:'dosim', modelo:'Chrompack SmartdB LITE', cert:'172.886', validade:'2026-08-19' },
+  '1154': { tipo:'dosim', modelo:'Chrompack SmartdB LITE', cert:'172.886', validade:'2026-08-19' },
+
+  // ── DOSÍMETROS CHROMPACK SmartdB (calibrados 2026 — cert# a confirmar) ──
+  '1085': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '1086': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '1088': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5062': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5063': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5064': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5065': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5066': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5308': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+  '5309': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'2503A35508', validade:'2026-03-20' },
+  '5311': { tipo:'dosim', modelo:'Chrompack SmartdB', cert:'', validade:'2027-01-01' },
+
+  // ── DOSÍMETROS INLITE DoseMax V2 (calibrados 28/08/2025, val. 28/08/2026) ──
+  '2507050490AA': { tipo:'dosim', modelo:'Inlite DoseMax V2', cert:'42.191-2025', validade:'2026-08-28' },
+  '2507050520AA': { tipo:'dosim', modelo:'Inlite DoseMax V2', cert:'42.189-2025', validade:'2026-08-28' },
+  '2507050710AA': { tipo:'dosim', modelo:'Inlite DoseMax V2', cert:'42.180-2025', validade:'2026-08-28' },
+  '2507050750AA': { tipo:'dosim', modelo:'Inlite DoseMax V2', cert:'42.190-2025', validade:'2026-08-28' },
+  '2507050810AA': { tipo:'dosim', modelo:'Inlite DoseMax V2', cert:'42.192-2025', validade:'2026-08-28' },
+
+  // ── DOSEBADGE CIRRUS (calibrados 02/04/2025, val. 02/04/2026) ──
+  'YF233':  { tipo:'dosim', modelo:'Cirrus DoseBadge', cert:'2504A35619', validade:'2026-04-02' },
+  '73289':  { tipo:'dosim', modelo:'Cirrus DoseBadge Leitor', cert:'2504A35620', validade:'2026-04-02' },
+
+  // ── CALIBRADORES ACÚSTICOS ──
+  '1575':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'2503A35509', validade:'2026-03-20' },
+  '0284':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'', validade:'2027-01-01' },
+  '1614':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'', validade:'2027-01-01' },
+
+  // ── CALIBRADOR DE FLUXO (Defender 510-M, cal. 14/08/2025, val. 14/08/2026) ──
+  '126958':  { tipo:'cal', modelo:'Defender 510-M (Bios)', cert:'172.712', validade:'2026-08-14' },
+
+  // ── CALIBRADOR INLITE CalPro (cal. 28/08/2025, val. 28/08/2026) ──
+  '25035711': { tipo:'cal', modelo:'Inlite CalPro', cert:'42.179-2025', validade:'2026-08-28' },
+
+  // ── BOMBAS INLITE VentusPro (cal. 28/08/2025, val. 28/08/2026) ──
+  '25040903102B': { tipo:'bomba', modelo:'Inlite VentusPro', cert:'42.187-2025', validade:'2026-08-28' },
+
+  // ── BOMBAS GILIAN BDX II (cal. 2025 — cert# a confirmar) ──
+  '38356': { tipo:'bomba', modelo:'Gilian BDX II', cert:'', validade:'2026-08-01' },
+  '38357': { tipo:'bomba', modelo:'Gilian BDX II', cert:'', validade:'2026-08-01' },
+  '38358': { tipo:'bomba', modelo:'Gilian BDX II', cert:'', validade:'2026-08-01' },
+  '38359': { tipo:'bomba', modelo:'Gilian BDX II', cert:'', validade:'2026-08-01' },
+
+  // ── BOMBAS SKC AIRLITE (cal. 2025 — cert# a confirmar) ──
+  'A060502': { tipo:'bomba', modelo:'SKC AirLite', cert:'', validade:'2026-08-01' },
+  'A061553': { tipo:'bomba', modelo:'SKC AirLite', cert:'', validade:'2026-08-01' },
+  'A061585': { tipo:'bomba', modelo:'SKC AirLite', cert:'', validade:'2026-08-01' },
+  'A062462': { tipo:'bomba', modelo:'SKC AirLite', cert:'', validade:'2026-08-01' },
+  'A63555':  { tipo:'bomba', modelo:'SKC AirLite', cert:'', validade:'2026-08-01' },
+
+  // ── SMARTVIB (cal. 18/08/2025, val. 18/08/2026) ──
+  '1241': { tipo:'dosim', modelo:'Chrompack SmartVib', cert:'172.872', validade:'2026-08-18' },
 };
 
 function nvEquipAutoFill(campo, valor) {
