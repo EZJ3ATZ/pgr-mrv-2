@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Demandas from './pages/Demandas'
 import Amostradores from './pages/Amostradores'
 import Empresas from './pages/Empresas'
+import BI from './pages/BI'
 import './index.css'
 
 const PAGES = {
@@ -13,6 +14,7 @@ const PAGES = {
   demandas:     Demandas,
   amostradores: Amostradores,
   empresas:     Empresas,
+  bi:           BI,
 }
 
 export default function App() {
