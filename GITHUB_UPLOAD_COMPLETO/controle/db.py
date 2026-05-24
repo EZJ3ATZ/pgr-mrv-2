@@ -1398,7 +1398,7 @@ def list_raw_tasks(filtros=None, limit=200):
     if f.get('titulo'):
         sql += ' AND LOWER(titulo) LIKE LOWER(?)'; params.append(f'%{f["titulo"]}%')
     if f.get('planner_id'):
-        sql += ' AND planner_id=?'; params.append(f['planner_id'])
+        sql += ' AND planner_task_id=?'; params.append(f['planner_id'])
     sql += f' ORDER BY synced_at DESC LIMIT {int(limit)}'
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
