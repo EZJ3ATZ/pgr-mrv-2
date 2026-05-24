@@ -1,25 +1,10 @@
-import { motion } from 'framer-motion'
-import {
-  Package, FlaskConical, ClipboardList, Building2,
-  TrendingUp, AlertTriangle, CheckCircle2, Clock, ArrowRight
-} from 'lucide-react'
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts'
 import { useStats } from '../hooks/useStats'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { Package, FlaskConical, ClipboardList, Building2, TrendingUp, AlertTriangle, CheckCircle2, Clock, ArrowRight, Activity } from 'lucide-react'
 
-// Animação de entrada para cards
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  show:   { opacity: 1, y: 0 },
-}
-
-const stagger = {
-  show: { transition: { staggerChildren: 0.07 } },
-}
-
-// Dados mock de produtividade (meses)
 const prodData = [
   { mes: 'Jan', medicoes: 18, laudos: 5 },
   { mes: 'Fev', medicoes: 24, laudos: 8 },
@@ -28,209 +13,167 @@ const prodData = [
   { mes: 'Mai', medicoes: 38, laudos: 14 },
 ]
 
-export default function Dashboard() {
-  const { data: stats, loading } = useStats()
-
-  const kpis = [
-    {
-      label: 'Medições realizadas',
-      value: stats?.medicoes_realizadas ?? '—',
-      sub: 'total histórico',
-      icon: CheckCircle2,
-      color: 'text-green',
-      bg: 'bg-green/10',
-    },
-    {
-      label: 'Amostradores em estoque',
-      value: stats?.estoque ?? '—',
-      sub: 'disponíveis',
-      icon: Package,
-      color: 'text-blue',
-      bg: 'bg-blue/10',
-    },
-    {
-      label: 'Demandas abertas',
-      value: stats?.demandas_pendentes ?? '—',
-      sub: 'pendentes de coleta',
-      icon: ClipboardList,
-      color: 'text-yellow',
-      bg: 'bg-yellow/10',
-    },
-    {
-      label: 'No laboratório',
-      value: stats?.laboratorio ?? '—',
-      sub: 'aguardando resultado',
-      icon: FlaskConical,
-      color: 'text-purple',
-      bg: 'bg-purple/10',
-    },
-    {
-      label: 'Empresas ativas',
-      value: stats?.empresas_ativas ?? '—',
-      sub: 'com OS registradas',
-      icon: Building2,
-      color: 'text-text1',
-      bg: 'bg-surface2',
-    },
-    {
-      label: 'Medições pendentes',
-      value: stats?.medicoes_pendentes ?? '—',
-      sub: 'a executar',
-      icon: Clock,
-      color: 'text-red',
-      bg: 'bg-red/10',
-    },
-  ]
-
-  // Dados do pie chart de amostradores
-  const pieData = stats ? [
-    { name: 'Estoque',    value: stats.estoque,    color: '#388bfd' },
-    { name: 'Laboratório', value: stats.laboratorio, color: '#bc8cff' },
-    { name: 'Reservados', value: stats.reservados,  color: '#d29922' },
-    { name: 'Devolvidos', value: stats.devolvidos,  color: '#3fb950' },
-  ].filter(d => d.value > 0) : []
-
+function KpiRow({ label, value, sub, icon: Icon, loading }) {
   return (
-    <div className="space-y-6">
-      {/* Título */}
-      <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between py-2.5">
+      <div className="flex items-center gap-2.5">
+        <div className="w-6 h-6 rounded bg-secondary flex items-center justify-center shrink-0">
+          <Icon size={12} className="text-muted-foreground" />
+        </div>
         <div>
-          <h1 className="text-text1 text-xl font-semibold">Dashboard</h1>
-          <p className="text-text2 text-sm mt-0.5">Visão geral operacional</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-text2">
-          <TrendingUp size={13} className="text-green" />
-          Atualizado agora
+          <p className="text-sm text-foreground">{label}</p>
+          <p className="text-[11px] text-muted-foreground">{sub}</p>
         </div>
       </div>
-
-      {/* KPI Grid */}
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-3 gap-4"
-      >
-        {kpis.map((kpi) => (
-          <motion.div key={kpi.label} variants={fadeUp}>
-            <KpiCard {...kpi} loading={loading} />
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {/* Charts row */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Produtividade — área chart */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="card col-span-2"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-text1 font-semibold text-sm">Produtividade</div>
-              <div className="text-text2 text-xs">Medições e laudos por mês</div>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={prodData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gMed" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#3fb950" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#3fb950" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gLaud" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#388bfd" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#388bfd" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="mes" tick={{ fill: '#8b949e', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#8b949e', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#e6edf3' }}
-              />
-              <Area type="monotone" dataKey="medicoes" name="Medições" stroke="#3fb950" fill="url(#gMed)" strokeWidth={2} dot={false} />
-              <Area type="monotone" dataKey="laudos"   name="Laudos"   stroke="#388bfd" fill="url(#gLaud)" strokeWidth={2} dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </motion.div>
-
-        {/* Amostradores — pie chart */}
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="card"
-        >
-          <div className="text-text1 font-semibold text-sm mb-1">Amostradores</div>
-          <div className="text-text2 text-xs mb-3">Distribuição por status</div>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {pieData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ background: '#161b22', border: '1px solid #30363d', borderRadius: 8, fontSize: 12 }}
-                />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  formatter={(value) => <span style={{ color: '#8b949e', fontSize: 11 }}>{value}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[180px] flex items-center justify-center text-text3 text-sm">
-              Carregando...
-            </div>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Alertas */}
-      {stats?.venc_urgente > 0 && (
-        <motion.div variants={fadeUp} initial="hidden" animate="show">
-          <div className="card border-red/30 bg-red/5 flex items-center gap-3">
-            <AlertTriangle size={16} className="text-red shrink-0" />
-            <div className="text-sm text-text1">
-              <span className="font-semibold text-red">{stats.venc_urgente}</span> amostrador(es) com vencimento urgente no laboratório
-            </div>
-            <button className="ml-auto flex items-center gap-1 text-xs text-red hover:underline">
-              Ver <ArrowRight size={12} />
-            </button>
-          </div>
-        </motion.div>
-      )}
+      {loading ? <Skeleton className="h-4 w-8" /> : <span className="text-sm font-semibold tabular-nums">{value ?? '—'}</span>}
     </div>
   )
 }
 
-function KpiCard({ label, value, sub, icon: Icon, color, bg, loading }) {
+export default function Dashboard() {
+  const { data: stats, loading } = useStats()
+
+  const kpis = [
+    { label: 'Medições realizadas',     value: stats?.medicoes_realizadas, sub: 'total histórico',      icon: CheckCircle2 },
+    { label: 'Em estoque',              value: stats?.estoque,             sub: 'disponíveis',          icon: Package },
+    { label: 'Demandas pendentes',      value: stats?.demandas_pendentes,  sub: 'aguardando coleta',    icon: ClipboardList },
+    { label: 'No laboratório',          value: stats?.laboratorio,         sub: 'aguardando resultado', icon: FlaskConical },
+    { label: 'Empresas ativas',         value: stats?.empresas_ativas,     sub: 'com OS registradas',   icon: Building2 },
+    { label: 'Medições pendentes',      value: stats?.medicoes_pendentes,  sub: 'a executar',           icon: Clock },
+  ]
+
+  const pieData = stats ? [
+    { name: 'Estoque',     value: stats.estoque,     color: '#3b82f6' },
+    { name: 'Laboratório', value: stats.laboratorio, color: '#8b5cf6' },
+    { name: 'Reservados',  value: stats.reservados,  color: '#f59e0b' },
+    { name: 'Devolvidos',  value: stats.devolvidos,  color: '#22c55e' },
+  ].filter(d => d.value > 0) : []
+
   return (
-    <div className="kpi-card group">
-      <div className="flex items-start justify-between">
-        <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center`}>
-          <Icon size={15} className={color} />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-foreground text-lg font-semibold">Painel Operacional</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">Visão geral em tempo real</p>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <TrendingUp size={12} className="text-green-500" />
+          Atualizado agora
         </div>
       </div>
-      <div className={`text-2xl font-bold mt-2 ${color} ${loading ? 'opacity-30' : ''}`}>
-        {loading ? '···' : value}
+
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-0 pt-4 px-4">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Activity size={11} /> Indicadores
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            {kpis.map((kpi, i) => (
+              <div key={kpi.label}>
+                <KpiRow {...kpi} loading={loading} />
+                {i < kpis.length - 1 && <Separator />}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-2">
+          <CardHeader className="pb-0 pt-4 px-4">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Evolução mensal</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={prodData} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gMed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.12} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gLaud" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.12} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="mes" tick={{ fill: 'hsl(215 12% 54%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'hsl(215 12% 54%)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: 'hsl(222 12% 11%)', border: '1px solid hsl(222 10% 20%)', borderRadius: 6, fontSize: 12, color: 'hsl(210 20% 92%)' }} />
+                <Area type="monotone" dataKey="medicoes" name="Medições" stroke="#22c55e" fill="url(#gMed)" strokeWidth={1.5} dot={false} />
+                <Area type="monotone" dataKey="laudos"   name="Laudos"   stroke="#3b82f6" fill="url(#gLaud)" strokeWidth={1.5} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+            <div className="flex gap-4 justify-end mt-1">
+              {[['#22c55e','Medições'],['#3b82f6','Laudos']].map(([c,l]) => (
+                <div key={l} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full" style={{ background: c }} />{l}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <div className="text-text1 text-xs font-medium">{label}</div>
-      <div className="text-text3 text-[11px]">{sub}</div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-0 pt-4 px-4">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amostradores</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 mt-1">
+            {pieData.length > 0 ? (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width={90} height={90}>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={25} outerRadius={40} paddingAngle={3} dataKey="value">
+                      {pieData.map(e => <Cell key={e.name} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ background: 'hsl(222 12% 11%)', border: '1px solid hsl(222 10% 20%)', borderRadius: 6, fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-2">
+                  {pieData.map(e => (
+                    <div key={e.name} className="flex items-center gap-2 text-xs">
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: e.color }} />
+                      <span className="text-muted-foreground">{e.name}</span>
+                      <span className="font-semibold ml-2">{e.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : <Skeleton className="h-20 w-20 rounded-full mx-auto mt-2" />}
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-2">
+          <CardHeader className="pb-0 pt-4 px-4">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Alertas</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3 mt-2">
+            {stats?.venc_urgente > 0 ? (
+              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-red-800/40 bg-red-950/20">
+                <AlertTriangle size={13} className="text-red-400 shrink-0" />
+                <p className="text-sm"><span className="font-semibold text-red-400">{stats.venc_urgente}</span> amostrador(es) com vencimento urgente</p>
+                <button className="ml-auto text-xs text-red-400 hover:underline flex items-center gap-1 shrink-0">Ver <ArrowRight size={11} /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-secondary/20">
+                <CheckCircle2 size={13} className="text-green-500 shrink-0" />
+                <p className="text-xs text-muted-foreground">Nenhum alerta crítico</p>
+              </div>
+            )}
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/50 mb-2">Acesso rápido</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[['Nova coleta', ClipboardList],['Dar baixa', Package],['Gerar PGR', CheckCircle2]].map(([label, Icon]) => (
+                  <button key={label} className="flex items-center gap-2 p-2.5 rounded-md border border-border hover:bg-secondary transition-colors text-xs text-muted-foreground hover:text-foreground">
+                    <Icon size={12} />{label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
