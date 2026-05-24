@@ -4,11 +4,13 @@ import Sidebar from './components/layout/Sidebar'
 import Header from './components/layout/Header'
 import Dashboard from './pages/Dashboard'
 import Demandas from './pages/Demandas'
+import Amostradores from './pages/Amostradores'
 import './index.css'
 
 const PAGES = {
-  dashboard: Dashboard,
-  demandas:  Demandas,
+  dashboard:    Dashboard,
+  demandas:     Demandas,
+  amostradores: Amostradores,
 }
 
 export default function App() {
