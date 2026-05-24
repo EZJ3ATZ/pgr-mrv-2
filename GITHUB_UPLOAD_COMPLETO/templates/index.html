@@ -2981,11 +2981,11 @@
       <div id="nv-equip-ruido" style="display:none;">
         <div class="nv-g2 nv-f" style="margin-bottom:12px;">
           <div><label>Dosímetro — Modelo</label><input type="text" id="nv-eq-dosim-modelo" placeholder="Ex: Larson Davis SoundTrack LxT"></div>
-          <div><label>N° Série Dosímetro</label><input type="text" id="nv-eq-dosim-sn" placeholder="SN"></div>
+          <div><label>N° Série Dosímetro</label><input type="text" id="nv-eq-dosim-sn" placeholder="SN" oninput="nvEquipAutoFill('dosim',this.value)"></div>
         </div>
         <div class="nv-g4 nv-f" style="margin-bottom:12px;">
           <div><label>Calibrador — Modelo</label><input type="text" id="nv-eq-cal-modelo" placeholder="Ex: Cel-282"></div>
-          <div><label>N° Série Calibrador</label><input type="text" id="nv-eq-cal-sn" placeholder="SN"></div>
+          <div><label>N° Série Calibrador</label><input type="text" id="nv-eq-cal-sn" placeholder="SN" oninput="nvEquipAutoFill('cal',this.value)"></div>
           <div><label>Cert. Calibração</label><input type="text" id="nv-eq-dosim-cert" placeholder="N°"></div>
           <div><label>Validade</label><input type="date" id="nv-eq-dosim-valid"></div>
         </div>
@@ -8573,6 +8573,50 @@ function nvAdaptStep2() {
   document.getElementById('nv-plan-calor').style.display    = t === 'calor'    ? '' : 'none';
   document.getElementById('nv-plan-vibracao').style.display = t === 'vibracao' ? '' : 'none';
 }
+
+// ═══ CADASTRO DE EQUIPAMENTOS — Sprint 4 ═══════════════════════════
+// Chave = N° Série  |  Atualize cert/validade a cada recalibração
+const NV_EQUIP_DB = {
+  // ── Dosímetros ──
+  'DOSIM-001': { tipo:'dosim', modelo:'Larson Davis SoundTrack LxT', cert:'', validade:'' },
+  // ── Calibradores acústicos ──
+  'Cel-282':   { tipo:'cal',   modelo:'Cel-282',                     cert:'', validade:'' },
+  '126958':    { tipo:'cal',   modelo:'DEFENDER 510M',                cert:'', validade:'' },
+  '414332019013': { tipo:'cal', modelo:'TSI 4143F',                  cert:'', validade:'' },
+  // ── Bombas gravimétricas ──
+  // 'BOMBA-001': { tipo:'bomba', modelo:'Gilair Plus', cert:'', validade:'' },
+};
+
+function nvEquipAutoFill(campo, valor) {
+  if (!valor || valor.length < 3) return;
+  const eq = NV_EQUIP_DB[valor] || NV_EQUIP_DB[Object.keys(NV_EQUIP_DB).find(k => k.toLowerCase() === valor.toLowerCase())];
+  if (!eq) return;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) { el.value = val; el.style.borderColor='var(--green)'; setTimeout(()=>el.style.borderColor='',2000); } };
+  const showBadge = (targetId) => {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    let badge = el.parentElement.querySelector('.nv-autofill-badge');
+    if (!badge) { badge = document.createElement('div'); badge.className='nv-autofill-badge'; badge.style.cssText='font-size:.62rem;color:var(--green);margin-top:2px;'; el.parentElement.appendChild(badge); }
+    badge.textContent = '⚡ preenchido automaticamente';
+    setTimeout(() => { if(badge) badge.textContent=''; }, 3000);
+  };
+
+  if (eq.tipo === 'dosim') {
+    set('nv-eq-dosim-modelo', eq.modelo);
+    set('nv-eq-dosim-cert',   eq.cert);
+    set('nv-eq-dosim-valid',  eq.validade);
+    showBadge('nv-eq-dosim-modelo');
+  } else if (eq.tipo === 'cal') {
+    set('nv-eq-cal-modelo',  eq.modelo);
+    showBadge('nv-eq-cal-modelo');
+  } else if (eq.tipo === 'bomba') {
+    set('nv-eq-bomba-cert',  eq.cert);
+    set('nv-eq-bomba-valid', eq.validade);
+    showBadge('nv-eq-bomba-cert');
+  }
+}
+// ═══════════════════════════════════════════════════════════════════
 
 function nvReset() {
   _nvStep = 1; _nvTipo = '';
