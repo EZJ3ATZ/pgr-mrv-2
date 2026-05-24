@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Package, FlaskConical, ClipboardList, Building2, TrendingUp, AlertTriangle, CheckCircle2, Clock, ArrowRight, Activity } from 'lucide-react'
+import { BadgeDelta } from '@tremor/react'
 
 const stagger = {
   animate: { transition: { staggerChildren: 0.07 } }
@@ -34,7 +35,12 @@ function KpiRow({ label, value, sub, icon: Icon, loading }) {
           <p className="text-[11px] text-muted-foreground">{sub}</p>
         </div>
       </div>
-      {loading ? <Skeleton className="h-4 w-8" /> : <span className="text-sm font-semibold tabular-nums">{value ?? '—'}</span>}
+      {loading ? <Skeleton className="h-4 w-8" /> : (
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold tabular-nums">{value ?? '—'}</span>
+          {value > 0 && <BadgeDelta deltaType="increase" size="xs" />}
+        </div>
+      )}
     </div>
   )
 }
