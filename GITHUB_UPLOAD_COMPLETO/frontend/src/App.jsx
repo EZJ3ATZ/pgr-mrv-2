@@ -10,6 +10,11 @@ import Amostradores from './pages/Amostradores'
 import Empresas from './pages/Empresas'
 import BI from './pages/BI'
 import Coleta from './pages/Coleta'
+import GeradorPGR from './pages/GeradorPGR'
+import LaudoCalor from './pages/LaudoCalor'
+import LaudoRuido from './pages/LaudoRuido'
+import AnaliseQuimica from './pages/AnaliseQuimica'
+import Agentes from './pages/Agentes'
 import './index.css'
 
 const PAGES = {
@@ -19,6 +24,11 @@ const PAGES = {
   empresas:     Empresas,
   bi:           BI,
   coleta:       Coleta,
+  pgr:          GeradorPGR,
+  calor:        LaudoCalor,
+  ruido:        LaudoRuido,
+  quimico:      AnaliseQuimica,
+  agentes:      Agentes,
 }
 
 const pageVariants = {
