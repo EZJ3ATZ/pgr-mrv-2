@@ -1,32 +1,29 @@
 import { Search, Bell } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function Header() {
   return (
-    <header className="h-12 bg-surface border-b border-border flex items-center px-6 gap-4 shrink-0">
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-surface2 border border-border rounded-btn px-3 py-1.5 flex-1 max-w-sm">
-        <Search size={13} className="text-text3" />
-        <input
+    <header className="h-12 border-b border-border bg-card flex items-center px-5 gap-4 shrink-0">
+      <div className="relative flex-1 max-w-xs">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="pl-8 h-7 text-xs bg-secondary border-0 focus-visible:ring-1 placeholder:text-muted-foreground/60"
           placeholder="Buscar empresa, OS, agente..."
-          className="bg-transparent text-text1 text-sm outline-none placeholder:text-text3 w-full"
         />
-        <kbd className="text-[10px] text-text3 bg-bg border border-border rounded px-1.5 py-0.5 font-mono">
-          Ctrl+K
+        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-background border border-border rounded px-1">
+          ⌘K
         </kbd>
       </div>
-
-      <div className="flex-1" />
-
-      {/* Status */}
-      <div className="flex items-center gap-1.5 text-xs text-green">
-        <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-        Online
+      <div className="flex items-center gap-3 ml-auto">
+        <Button variant="ghost" size="icon" className="h-7 w-7">
+          <Bell size={14} />
+        </Button>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Online
+        </div>
       </div>
-
-      {/* Notificações */}
-      <button className="w-8 h-8 rounded-btn hover:bg-surface2 border border-transparent hover:border-border transition-all flex items-center justify-center text-text2 hover:text-text1">
-        <Bell size={15} />
-      </button>
     </header>
   )
 }
