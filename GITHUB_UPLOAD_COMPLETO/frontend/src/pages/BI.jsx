@@ -256,10 +256,17 @@ export default function BI() {
               <YAxis type="category" dataKey="label" tick={{ fill: '#a1a1aa', fontSize: 11 }}
                 axisLine={false} tickLine={false} width={80} />
               <Tooltip content={<CT />} cursor={{ fill: '#ffffff08' }} />
-              <Bar dataKey="count" name="Qtd" radius={[0, 4, 4, 0]} maxBarSize={24}
+              <Bar dataKey="count" name="Qtd" maxBarSize={24}
                 label={{ position: 'right', fill: '#71717a', fontSize: 10 }}
-                onClick={(data) => open(`Amostradores — ${data.label}`, 'amostradores', data.items)}
-                cursor="pointer">
+                shape={(props) => {
+                  const { x, y, width, height, payload } = props
+                  return (
+                    <rect x={x} y={y} width={width} height={Math.max(height, 0)}
+                      rx={4} ry={4} fill={payload.color}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => open(`Amostradores — ${payload.label}`, 'amostradores', payload.items)} />
+                  )
+                }}>
                 {amostrData.map((e, i) => <Cell key={i} fill={e.color} />)}
               </Bar>
             </BarChart>
@@ -434,10 +441,17 @@ export default function BI() {
                   axisLine={false} tickLine={false} width={115}
                   tickFormatter={v => v.length > 20 ? v.slice(0, 20) + '…' : v} />
                 <Tooltip content={<CT />} cursor={{ fill: '#ffffff08' }} />
-                <Bar dataKey="total" name="Total OS" fill="#60a5fa" radius={[0, 4, 4, 0]} maxBarSize={20}
+                <Bar dataKey="total" name="Total OS" maxBarSize={20}
                   label={{ position: 'right', fill: '#71717a', fontSize: 9 }}
-                  onClick={(data) => open(`OS — ${data.empresa}`, 'demandas', data.items)}
-                  cursor="pointer" />
+                  shape={(props) => {
+                    const { x, y, width, height, payload } = props
+                    return (
+                      <rect x={x} y={y} width={width} height={Math.max(height, 0)}
+                        rx={4} ry={4} fill="#60a5fa"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => open(`OS — ${payload.empresa}`, 'demandas', payload.items)} />
+                    )
+                  }} />
               </BarChart>
             </ResponsiveContainer>
           )}
