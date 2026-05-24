@@ -1679,6 +1679,63 @@ def gerar_quimico():
 
 
 # ── API: Guia de Métodos lookup ──────────────────────────────────────
+@app.route('/api/cargos')
+def api_cargos():
+    return jsonify(CARGOS_SUGESTOES)
+
+@app.route('/api/agentes')
+def api_agentes():
+    result = []
+    for ghe, agentes in GHE_AGENTES.items():
+        for ag in agentes:
+            tipo = ag[0]
+            if tipo == 'ruido':
+                _, db, nivel, acao_nr15, insalub = ag
+                result.append({
+                    'ghe': ghe,
+                    'tipo': 'Ruído',
+                    'agente': f'Ruído — {db}',
+                    'nivel': nivel,
+                    'risco': nivel,
+                    'insalubridade': insalub,
+                    'acao_nr15': acao_nr15,
+                    'valor': db,
+                })
+            elif tipo == 'quant':
+                _, nome, subtipo, lt, na, conc, risco, insalub = ag
+                result.append({
+                    'ghe': ghe,
+                    'tipo': 'Químico',
+                    'agente': nome,
+                    'nivel': risco,
+                    'risco': risco,
+                    'insalubridade': insalub,
+                    'lt': lt,
+                    'na': na,
+                    'concentracao': conc,
+                })
+            elif tipo == 'ergon':
+                _, nome, risco = ag
+                result.append({
+                    'ghe': ghe,
+                    'tipo': 'Ergonômico',
+                    'agente': nome,
+                    'nivel': risco,
+                    'risco': risco,
+                    'insalubridade': False,
+                })
+            elif tipo == 'acid':
+                _, nome, risco = ag
+                result.append({
+                    'ghe': ghe,
+                    'tipo': 'Acidente',
+                    'agente': nome,
+                    'nivel': risco,
+                    'risco': risco,
+                    'insalubridade': False,
+                })
+    return jsonify(result)
+
 @app.route('/api/metodos')
 def api_metodos():
     try:
