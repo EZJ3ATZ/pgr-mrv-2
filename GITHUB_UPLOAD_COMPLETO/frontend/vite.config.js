@@ -13,11 +13,15 @@ export default defineConfig(({ mode }) => {
       alias: { '@': path.resolve(__dirname, './src') },
     },
     server: {
-      port: 5173,
+      host: '127.0.0.1',
+      port: 5174,
       proxy: {
         '/controle': { target: apiTarget, changeOrigin: true },
         '/gerar':    { target: apiTarget, changeOrigin: true },
       },
+    },
+    optimizeDeps: {
+      include: ['ag-grid-community', 'ag-grid-react'],
     },
     build: {
       outDir: '../static/react',
