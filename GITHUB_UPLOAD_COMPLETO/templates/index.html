@@ -1038,6 +1038,7 @@
       header { padding: 0 12px; gap: 10px; }
       .header-search { display: none; }
       .header-user-info { display: none; }
+      .logo-sub { display: none; }
       .sidebar {
         position: fixed; left: -260px; top: 0; bottom: 0; z-index: 200;
         width: 250px; transition: left .28s ease; overflow-y: auto;
@@ -1045,6 +1046,12 @@
       }
       .sidebar.mobile-open { left: 0; }
       .main-content { margin-left: 0 !important; }
+      /* Sub-tabs scrolláveis horizontalmente */
+      .ctrl-subtabs {
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        white-space: nowrap; scrollbar-width: none; flex-wrap: nowrap !important;
+      }
+      .ctrl-subtabs::-webkit-scrollbar { display: none; }
     }
 
     @media (max-width: 480px) {
@@ -1058,7 +1065,11 @@
       .home-wrap { padding: 0 14px 72px; }
       input, select, textarea { min-height: 44px; font-size: 16px !important; }
       button { min-height: 44px; }
-      .ctrl-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Tabelas com scroll horizontal */
+      .ctrl-table-wrap, .ag-table-wrap, table { overflow-x: auto; -webkit-overflow-scrolling: touch; display: block; max-width: 100%; }
+      /* Grids 4 colunas → 2×2 no mobile */
+      [style*="grid-template-columns:repeat(4"] { grid-template-columns: repeat(2,1fr) !important; }
+      [style*="grid-template-columns: repeat(4"] { grid-template-columns: repeat(2,1fr) !important; }
       footer { display: none; }
     }
   </style>
@@ -3210,8 +3221,8 @@
   </div>
 
   <!-- Tabela de agentes — baseada em métodos já cadastrados no sistema -->
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
-    <table style="width:100%;border-collapse:collapse;">
+  <div class="ag-table-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;min-width:520px;">
       <thead>
         <tr style="background:var(--surface2);border-bottom:1px solid var(--border);">
           <th style="text-align:left;padding:11px 16px;font-size:.68rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;">Agente</th>
