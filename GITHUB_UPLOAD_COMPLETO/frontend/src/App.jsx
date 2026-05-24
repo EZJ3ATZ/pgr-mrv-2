@@ -5,12 +5,14 @@ import Header from './components/layout/Header'
 import Dashboard from './pages/Dashboard'
 import Demandas from './pages/Demandas'
 import Amostradores from './pages/Amostradores'
+import Empresas from './pages/Empresas'
 import './index.css'
 
 const PAGES = {
   dashboard:    Dashboard,
   demandas:     Demandas,
   amostradores: Amostradores,
+  empresas:     Empresas,
 }
 
 export default function App() {
