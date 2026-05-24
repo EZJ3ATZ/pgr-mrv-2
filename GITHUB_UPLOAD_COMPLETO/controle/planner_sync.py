@@ -149,6 +149,32 @@ def _extrair_os_comentarios(group_id: str, thread_id: str) -> str | None:
     return None
 
 
+def _extrair_desc_comentarios(group_id: str, thread_id: str) -> str:
+    """
+    Extrai o texto dos comentários da conversa da tarefa do Planner.
+    Usado quando o campo 'Notas' (description) está vazio — o escopo
+    foi escrito na conversa ao invés do campo de notas.
+    Retorna texto limpo (sem HTML) ou string vazia.
+    """
+    import re as _re
+    _tag_re = _re.compile(r'<[^>]+>')
+    _ws_re  = _re.compile(r'\s{3,}')
+    try:
+        from .graph import get_group_thread_posts
+        posts = get_group_thread_posts(group_id, thread_id)
+        partes = []
+        for post in posts:
+            body = (post.get('body') or {}).get('content', '') or ''
+            text = _tag_re.sub(' ', body).strip()
+            text = _ws_re.sub(' ', text).strip()
+            if text and len(text) > 5:  # ignora posts vazios/triviais
+                partes.append(text)
+        return '\n---\n'.join(partes) if partes else ''
+    except Exception as e:
+        log.debug('[planner_sync] comentarios desc erro: %s', e)
+    return ''
+
+
 def _extrair_os_multi(titulo: str, desc: str, checklist: list) -> tuple[str | None, str]:
     """
     Extrai número de OS de múltiplas fontes.
@@ -531,6 +557,18 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         # ── Buscar detalhes SOMENTE para tasks que passaram no filtro ──
                         details = get_task_details(tid)
                         desc = details.get('description', '')
+
+                        # Se o campo "Notas" estiver vazio, tenta capturar da conversa.
+                        # Equipe costuma escrever o escopo nos comentários da tarefa.
+                        if not desc:
+                            thread_id_conv = tarefa.get('conversationThreadId')
+                            if thread_id_conv:
+                                desc_conv = _extrair_desc_comentarios(gid, thread_id_conv)
+                                if desc_conv:
+                                    desc = desc_conv
+                                    log.debug('[planner_sync] desc da conversa task %s: %d chars',
+                                              tid[:8], len(desc))
+
                         checklist_raw = details.get('checklist', {})
                         checklist = [
                             {
