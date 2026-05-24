@@ -1,113 +1,111 @@
-import { motion } from 'framer-motion'
-import {
-  LayoutDashboard, FileText, Thermometer, Volume2, FlaskConical,
-  ClipboardList, Building2, Users, Package, BarChart3, Activity,
-  ShieldCheck
-} from 'lucide-react'
+import { ShieldCheck, LayoutDashboard, FileText, Thermometer, Volume2,
+         FlaskConical, ClipboardList, Activity, Building2, Users,
+         Package, BarChart3, Settings, ChevronRight } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 
-const sections = [
+const NAV = [
   {
-    label: 'DOCUMENTOS',
+    section: 'Documentos',
     items: [
-      { id: 'pgr',     icon: FileText,      label: 'Gerador de PGR' },
-      { id: 'calor',   icon: Thermometer,   label: 'Laudo de Calor' },
-      { id: 'ruido',   icon: Volume2,       label: 'Laudo de Ruído' },
-      { id: 'quimico', icon: FlaskConical,  label: 'Análise Química' },
+      { id: 'pgr',      label: 'Gerador de PGR',  icon: FileText },
+      { id: 'calor',    label: 'Laudo de Calor',   icon: Thermometer },
+      { id: 'ruido',    label: 'Laudo de Ruído',   icon: Volume2 },
+      { id: 'quimico',  label: 'Análise Química',  icon: FlaskConical },
     ],
   },
   {
-    label: 'MEDIÇÕES',
+    section: 'Operacional',
     items: [
-      { id: 'medicoes',  icon: ClipboardList, label: 'Medições e Amostradores' },
-      { id: 'demandas',  icon: Activity,      label: 'Demandas / OS' },
+      { id: 'coleta',       label: 'Coleta de Campo',  icon: ClipboardList },
+      { id: 'demandas',     label: 'Demandas / OS',    icon: Activity },
+      { id: 'amostradores', label: 'Amostradores',     icon: Package },
     ],
   },
   {
-    label: 'CADASTROS',
+    section: 'Cadastros',
     items: [
-      { id: 'empresas',    icon: Building2, label: 'Empresas' },
-      { id: 'agentes',     icon: Users,     label: 'Agentes' },
-      { id: 'amostradores',icon: Package,   label: 'Amostradores' },
+      { id: 'empresas', label: 'Empresas', icon: Building2 },
+      { id: 'agentes',  label: 'Agentes',  icon: Users },
     ],
   },
   {
-    label: 'ANÁLISE',
+    section: 'Análise',
     items: [
-      { id: 'relatorios',  icon: BarChart3,     label: 'Relatórios' },
-      { id: 'indicadores', icon: LayoutDashboard, label: 'Indicadores' },
+      { id: 'bi', label: 'BI / Indicadores', icon: BarChart3 },
     ],
   },
 ]
 
 export default function Sidebar({ active, onNavigate }) {
   return (
-    <aside className="w-56 bg-surface border-r border-border flex flex-col shrink-0">
+    <aside className="w-56 flex flex-col h-screen bg-card border-r border-border shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border">
-        <div className="w-7 h-7 rounded-lg bg-green/20 border border-green/30 flex items-center justify-center">
-          <ShieldCheck size={15} className="text-green" />
+      <div className="flex items-center gap-2.5 px-4 h-12 border-b border-border">
+        <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center shrink-0">
+          <ShieldCheck size={13} className="text-white" />
         </div>
-        <div>
-          <div className="text-text1 font-semibold text-sm leading-none">Ocupacional</div>
-          <div className="text-text3 text-[10px] mt-0.5">Plataforma SST</div>
+        <div className="leading-tight">
+          <div className="text-foreground text-sm font-semibold tracking-tight">Ocupacional</div>
+          <div className="text-muted-foreground text-[10px]">Plataforma SST</div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-        {/* Dashboard link */}
-        <NavItem
-          id="dashboard"
-          icon={LayoutDashboard}
-          label="Início"
-          active={active === 'dashboard'}
+      {/* Dashboard */}
+      <div className="px-3 pt-3 pb-1">
+        <button
           onClick={() => onNavigate('dashboard')}
-        />
+          className={cn('nav-item w-full', active === 'dashboard' && 'active')}
+        >
+          <LayoutDashboard size={14} />
+          <span>Início</span>
+          {active === 'dashboard' && <ChevronRight size={12} className="ml-auto opacity-40" />}
+        </button>
+      </div>
 
-        {sections.map(section => (
-          <div key={section.label}>
-            <div className="px-3 mb-1 text-[10px] font-semibold text-text3 tracking-wider">
-              {section.label}
+      <Separator className="mx-3 w-auto" />
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-3 pt-2">
+        {NAV.map(({ section, items }) => (
+          <div key={section}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 px-2 mb-1">
+              {section}
+            </p>
+            <div className="space-y-0.5">
+              {items.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => onNavigate(id)}
+                  className={cn('nav-item w-full', active === id && 'active')}
+                >
+                  <Icon size={14} />
+                  <span>{label}</span>
+                  {active === id && <ChevronRight size={12} className="ml-auto opacity-40" />}
+                </button>
+              ))}
             </div>
-            {section.items.map(item => (
-              <NavItem
-                key={item.id}
-                {...item}
-                active={active === item.id}
-                onClick={() => onNavigate(item.id)}
-              />
-            ))}
           </div>
         ))}
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-green/20 border border-green/30 flex items-center justify-center text-green text-xs font-bold">
+      <div className="border-t border-border px-3 py-2">
+        <button onClick={() => onNavigate('configuracoes')} className="nav-item w-full mb-1">
+          <Settings size={14} />
+          <span>Configurações</span>
+        </button>
+        <div className="flex items-center gap-2 px-2 py-1">
+          <div className="w-6 h-6 rounded-full bg-blue-700 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
             MC
           </div>
-          <div>
-            <div className="text-text1 text-xs font-medium">Matheus Costa</div>
-            <div className="text-text3 text-[10px]">Técnico SST</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground text-xs font-medium truncate">Matheus Costa</p>
+            <p className="text-muted-foreground text-[10px]">Técnico SST</p>
           </div>
-          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-green" />
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
         </div>
       </div>
     </aside>
-  )
-}
-
-function NavItem({ id, icon: Icon, label, active, onClick }) {
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ x: 2 }}
-      whileTap={{ scale: 0.97 }}
-      className={`nav-item w-full ${active ? 'active' : ''}`}
-    >
-      <Icon size={15} className={active ? 'text-green' : ''} />
-      <span>{label}</span>
-    </motion.button>
   )
 }
