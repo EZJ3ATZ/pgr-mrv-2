@@ -1,38 +1,42 @@
 import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Search, RefreshCw, Filter, Package, FlaskConical,
-  CheckCircle2, Clock, AlertTriangle, Loader2, ChevronUp, ChevronDown
-} from 'lucide-react'
+import { Search, RefreshCw, Filter, Package, FlaskConical, CheckCircle2, Clock, AlertTriangle, Loader2, ChevronUp, ChevronDown } from 'lucide-react'
 
 const STATUS_MAP = {
-  'ESTOQUE':       { label: 'Estoque',      badge: 'badge-blue',   icon: Package },
-  'RESERVADO':     { label: 'Reservado',    badge: 'badge-yellow', icon: Clock },
-  'ENVIADO':       { label: 'Enviado Lab',  badge: 'badge-purple', icon: FlaskConical },
-  'LABORATORIO':   { label: 'Laboratório',  badge: 'badge-purple', icon: FlaskConical },
-  'EM_ANALISE':    { label: 'Em análise',   badge: 'badge-yellow', icon: FlaskConical },
-  'RESULTADO':     { label: 'Resultado',    badge: 'badge-green',  icon: CheckCircle2 },
-  'DEVOLVIDO':     { label: 'Devolvido',    badge: 'badge-gray',   icon: CheckCircle2 },
-  'UTILIZADO?':    { label: 'Verificar',    badge: 'badge-red',    icon: AlertTriangle },
+  'ESTOQUE':     { label: 'Estoque',     cls: 'bg-blue-900/30 text-blue-400 border-blue-800/40',       icon: Package },
+  'RESERVADO':   { label: 'Reservado',   cls: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/40', icon: Clock },
+  'ENVIADO':     { label: 'Enviado Lab', cls: 'bg-purple-900/30 text-purple-400 border-purple-800/40', icon: FlaskConical },
+  'LABORATORIO': { label: 'Laboratório', cls: 'bg-purple-900/30 text-purple-400 border-purple-800/40', icon: FlaskConical },
+  'EM_ANALISE':  { label: 'Em análise',  cls: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/40', icon: FlaskConical },
+  'RESULTADO':   { label: 'Resultado',   cls: 'bg-green-900/30 text-green-400 border-green-800/40',    icon: CheckCircle2 },
+  'DEVOLVIDO':   { label: 'Devolvido',   cls: 'bg-secondary text-muted-foreground border-border',      icon: CheckCircle2 },
+  'UTILIZADO?':  { label: 'Verificar',   cls: 'bg-red-900/30 text-red-400 border-red-800/40',          icon: AlertTriangle },
 }
 
 function statusConfig(status) {
-  if (!status) return { label: status || '—', badge: 'badge-gray', icon: Clock }
+  if (!status) return { label: '—', cls: 'bg-secondary text-muted-foreground border-border', icon: Clock }
   const upper = status.toUpperCase().trim()
-  // Tentar correspondência exata
   if (STATUS_MAP[upper]) return STATUS_MAP[upper]
-  // Correspondência parcial
   if (upper.includes('ESTOQUE')) return STATUS_MAP['ESTOQUE']
   if (upper.includes('LAB') || upper.includes('ANALI')) return STATUS_MAP['LABORATORIO']
   if (upper.includes('RESERV')) return STATUS_MAP['RESERVADO']
   if (upper.includes('DEVOL')) return STATUS_MAP['DEVOLVIDO']
   if (upper.includes('RESULT')) return STATUS_MAP['RESULTADO']
-  return { label: status, badge: 'badge-gray', icon: Clock }
+  return { label: status, cls: 'bg-secondary text-muted-foreground border-border', icon: Clock }
+}
+
+function StatusBadge({ status }) {
+  const sc = statusConfig(status)
+  const Icon = sc.icon
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border font-medium ${sc.cls}`}>
+      <Icon size={10} />{sc.label}
+    </span>
+  )
 }
 
 function DiasParado({ dias }) {
-  if (dias == null) return <span className="text-text3">—</span>
-  const color = dias > 90 ? 'text-red' : dias > 30 ? 'text-yellow' : 'text-text2'
+  if (dias == null) return <span className="text-muted-foreground/50">—</span>
+  const color = dias > 90 ? 'text-red-400' : dias > 30 ? 'text-yellow-400' : 'text-muted-foreground'
   return <span className={`font-medium text-xs ${color}`}>{dias}d parado</span>
 }
 
@@ -54,17 +58,12 @@ export default function Amostradores() {
   }
   useEffect(load, [])
 
-  // Contagens por status normalizado
   const counts = useMemo(() => {
     const c = {}
-    items.forEach(it => {
-      const sc = statusConfig(it.status)
-      c[sc.label] = (c[sc.label] || 0) + 1
-    })
+    items.forEach(it => { const sc = statusConfig(it.status); c[sc.label] = (c[sc.label] || 0) + 1 })
     return c
   }, [items])
 
-  // Status únicos para o filtro
   const statusOptions = useMemo(() => {
     const set = new Set(items.map(it => statusConfig(it.status).label))
     return ['todos', ...Array.from(set).sort()]
@@ -85,8 +84,7 @@ export default function Amostradores() {
       d = d.filter(x => statusConfig(x.status).label === filtroStatus)
     }
     d.sort((a, b) => {
-      let va = a[sort.col] ?? ''
-      let vb = b[sort.col] ?? ''
+      let va = a[sort.col] ?? '', vb = b[sort.col] ?? ''
       if (typeof va === 'string') va = va.toLowerCase()
       if (typeof vb === 'string') vb = vb.toLowerCase()
       return sort.dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1)
@@ -103,49 +101,46 @@ export default function Amostradores() {
   }
 
   function SortIcon({ col }) {
-    if (sort.col !== col) return <ChevronUp size={11} className="text-text3 opacity-30" />
-    return sort.dir === 'asc' ? <ChevronUp size={11} className="text-blue" /> : <ChevronDown size={11} className="text-blue" />
+    if (sort.col !== col) return <ChevronUp size={11} className="text-muted-foreground opacity-30" />
+    return sort.dir === 'asc' ? <ChevronUp size={11} className="text-blue-400" /> : <ChevronDown size={11} className="text-blue-400" />
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-text1 text-xl font-semibold">Amostradores</h1>
-          <p className="text-text2 text-sm mt-0.5">
+          <h1 className="text-foreground text-lg font-semibold">Amostradores</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
             {loading ? 'Carregando...' : `${items.length} amostradores cadastrados`}
           </p>
         </div>
-        <button onClick={load} className="btn-secondary gap-1.5">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Atualizar
+        <button onClick={load} className="btn-secondary">
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Atualizar
         </button>
       </div>
 
-      {/* KPIs rápidos */}
+      {/* KPIs */}
       {!loading && (
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Estoque',     key: 'Estoque',     icon: Package,    color: 'text-blue',   bg: 'bg-blue/10' },
-            { label: 'Laboratório', key: 'Laboratório', icon: FlaskConical, color: 'text-purple', bg: 'bg-purple/10' },
-            { label: 'Reservados',  key: 'Reservado',   icon: Clock,      color: 'text-yellow', bg: 'bg-yellow/10' },
-            { label: 'Devolvidos',  key: 'Devolvido',   icon: CheckCircle2, color: 'text-green', bg: 'bg-green/10' },
+            { label: 'Estoque',     key: 'Estoque',     icon: Package,     color: 'text-blue-400',   bg: 'bg-blue-500/10' },
+            { label: 'Laboratório', key: 'Laboratório', icon: FlaskConical, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+            { label: 'Reservados',  key: 'Reservado',   icon: Clock,       color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+            { label: 'Devolvidos',  key: 'Devolvido',   icon: CheckCircle2, color: 'text-green-400',  bg: 'bg-green-500/10' },
           ].map(({ label, key, icon: Icon, color, bg }) => (
-            <motion.button
+            <button
               key={key}
-              whileHover={{ scale: 1.02 }}
               onClick={() => { setFiltroStatus(key === filtroStatus ? 'todos' : key); setPage(0) }}
-              className={`card flex items-center gap-3 cursor-pointer transition-colors ${filtroStatus === key ? 'border-blue/40' : ''}`}
+              className={`card flex items-center gap-3 cursor-pointer transition-colors text-left ${filtroStatus === key ? 'border-blue-500/40' : ''}`}
             >
               <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
                 <Icon size={15} className={color} />
               </div>
-              <div className="text-left">
+              <div>
                 <div className={`text-lg font-bold ${color}`}>{counts[key] || 0}</div>
-                <div className="text-text2 text-xs">{label}</div>
+                <div className="text-muted-foreground text-xs">{label}</div>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
       )}
@@ -153,24 +148,15 @@ export default function Amostradores() {
       {/* Filtros */}
       <div className="flex gap-3 items-center">
         <div className="relative flex-1 max-w-sm">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text3" />
-          <input
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
-            placeholder="Buscar código, tipo, empresa..."
-            className="w-full bg-surface2 border border-border rounded-btn pl-8 pr-3 py-2 text-sm text-text1 placeholder:text-text3 focus:outline-none focus:border-blue/50 transition-colors"
-          />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(0) }}
+            placeholder="Buscar código, tipo, empresa..." className="form-input pl-8" />
         </div>
         <div className="flex items-center gap-2">
-          <Filter size={13} className="text-text3" />
-          <select
-            value={filtroStatus}
-            onChange={e => { setFiltroStatus(e.target.value); setPage(0) }}
-            className="bg-surface2 border border-border rounded-btn px-3 py-2 text-sm text-text1 focus:outline-none focus:border-blue/50"
-          >
-            {statusOptions.map(s => (
-              <option key={s} value={s}>{s === 'todos' ? 'Todos os status' : s}</option>
-            ))}
+          <Filter size={13} className="text-muted-foreground" />
+          <select value={filtroStatus} onChange={e => { setFiltroStatus(e.target.value); setPage(0) }}
+            className="form-input w-40">
+            {statusOptions.map(s => <option key={s} value={s}>{s === 'todos' ? 'Todos os status' : s}</option>)}
           </select>
         </div>
       </div>
@@ -178,106 +164,78 @@ export default function Amostradores() {
       {/* Tabela */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-40 gap-2 text-text3">
+          <div className="flex items-center justify-center h-40 gap-2 text-muted-foreground">
             <Loader2 size={16} className="animate-spin" /> Carregando amostradores...
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="table-base">
               <thead>
-                <tr className="bg-surface2/50">
-                  <th className="cursor-pointer hover:text-text1 w-28" onClick={() => toggleSort('codigo')}>
+                <tr>
+                  <th className="cursor-pointer hover:text-foreground w-28" onClick={() => toggleSort('codigo')}>
                     <div className="flex items-center gap-1">Código <SortIcon col="codigo" /></div>
                   </th>
-                  <th className="cursor-pointer hover:text-text1 w-20" onClick={() => toggleSort('tipo')}>
+                  <th className="cursor-pointer hover:text-foreground w-20" onClick={() => toggleSort('tipo')}>
                     <div className="flex items-center gap-1">Tipo <SortIcon col="tipo" /></div>
                   </th>
                   <th>Status</th>
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('empresa_nome')}>
+                  <th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort('empresa_nome')}>
                     <div className="flex items-center gap-1">Empresa <SortIcon col="empresa_nome" /></div>
                   </th>
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('avaliador')}>
+                  <th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort('avaliador')}>
                     <div className="flex items-center gap-1">Avaliador <SortIcon col="avaliador" /></div>
                   </th>
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('data_entrada')}>
+                  <th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort('data_entrada')}>
                     <div className="flex items-center gap-1">Entrada <SortIcon col="data_entrada" /></div>
                   </th>
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('data_medicao')}>
+                  <th className="cursor-pointer hover:text-foreground" onClick={() => toggleSort('data_medicao')}>
                     <div className="flex items-center gap-1">Medição <SortIcon col="data_medicao" /></div>
                   </th>
-                  <th className="cursor-pointer hover:text-text1 w-28" onClick={() => toggleSort('tempo_parado')}>
+                  <th className="cursor-pointer hover:text-foreground w-28" onClick={() => toggleSort('tempo_parado')}>
                     <div className="flex items-center gap-1">Inativo <SortIcon col="tempo_parado" /></div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center text-text3 py-10">
-                      Nenhum amostrador encontrado
+                  <tr><td colSpan={8} className="text-center text-muted-foreground py-10">Nenhum amostrador encontrado</td></tr>
+                ) : paginated.map(it => (
+                  <tr key={it.id} className="hover:bg-secondary/20 transition-colors">
+                    <td><span className="font-mono text-foreground font-medium text-sm">{it.codigo || '—'}</span></td>
+                    <td>
+                      <span className="text-xs px-1.5 py-0.5 rounded border bg-secondary text-muted-foreground border-border">
+                        {it.tipo || '—'}
+                      </span>
                     </td>
+                    <td><StatusBadge status={it.status} /></td>
+                    <td>
+                      <span className="text-foreground text-sm truncate block max-w-[180px]" title={it.empresa_nome}>
+                        {it.empresa_nome || <span className="text-muted-foreground/50">—</span>}
+                      </span>
+                    </td>
+                    <td><span className="text-muted-foreground text-sm">{it.avaliador || <span className="text-muted-foreground/50">—</span>}</span></td>
+                    <td><span className="text-muted-foreground text-xs tabular-nums">{it.data_entrada || '—'}</span></td>
+                    <td><span className="text-muted-foreground text-xs tabular-nums">{it.data_medicao || <span className="text-muted-foreground/50">—</span>}</span></td>
+                    <td><DiasParado dias={it.tempo_parado} /></td>
                   </tr>
-                ) : paginated.map((it, i) => {
-                  const sc = statusConfig(it.status)
-                  const Icon = sc.icon
-                  return (
-                    <motion.tr
-                      key={it.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.01 }}
-                      className="hover:bg-surface2/60 transition-colors"
-                    >
-                      <td>
-                        <span className="font-mono text-text1 font-medium text-sm">{it.codigo || '—'}</span>
-                      </td>
-                      <td>
-                        <span className="badge badge-gray">{it.tipo || '—'}</span>
-                      </td>
-                      <td>
-                        <span className={sc.badge}>
-                          <Icon size={10} />
-                          {sc.label}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="text-text1 text-sm truncate block max-w-[180px]" title={it.empresa_nome}>
-                          {it.empresa_nome || <span className="text-text3">—</span>}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="text-text2 text-sm">{it.avaliador || <span className="text-text3">—</span>}</span>
-                      </td>
-                      <td>
-                        <span className="text-text2 text-xs tabular-nums">{it.data_entrada || '—'}</span>
-                      </td>
-                      <td>
-                        <span className="text-text2 text-xs tabular-nums">{it.data_medicao || <span className="text-text3">—</span>}</span>
-                      </td>
-                      <td>
-                        <DiasParado dias={it.tempo_parado} />
-                      </td>
-                    </motion.tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Paginação */}
         {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface2/30">
-            <span className="text-xs text-text3">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-secondary/20">
+            <span className="text-xs text-muted-foreground">
               {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, filtered.length)} de {filtered.length}
             </span>
             <div className="flex gap-1">
               <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 text-xs rounded bg-surface2 border border-border text-text2 disabled:opacity-30 hover:border-blue/40 transition-colors">
+                className="px-3 py-1 text-xs rounded bg-secondary border border-border text-muted-foreground disabled:opacity-30 hover:text-foreground transition-colors">
                 Anterior
               </button>
               <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 text-xs rounded bg-surface2 border border-border text-text2 disabled:opacity-30 hover:border-blue/40 transition-colors">
+                className="px-3 py-1 text-xs rounded bg-secondary border border-border text-muted-foreground disabled:opacity-30 hover:text-foreground transition-colors">
                 Próxima
               </button>
             </div>
