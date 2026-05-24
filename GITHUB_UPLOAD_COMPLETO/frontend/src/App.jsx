@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Toaster } from 'sonner'
 import Sidebar from './components/layout/Sidebar'
 import Header from './components/layout/Header'
+import CommandPalette from './components/CommandPalette'
 import Dashboard from './pages/Dashboard'
 import Demandas from './pages/Demandas'
 import Amostradores from './pages/Amostradores'
 import Empresas from './pages/Empresas'
 import BI from './pages/BI'
+import Coleta from './pages/Coleta'
 import './index.css'
 
 const PAGES = {
@@ -16,6 +18,7 @@ const PAGES = {
   amostradores: Amostradores,
   empresas:     Empresas,
   bi:           BI,
+  coleta:       Coleta,
 }
 
 const pageVariants = {
@@ -26,13 +29,16 @@ const pageVariants = {
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
+  const [cmdOpen, setCmdOpen] = useState(false)
   const Page = PAGES[page] || Dashboard
+
+  const navigate = useCallback((p) => setPage(p), [])
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
-      <Sidebar active={page} onNavigate={setPage} />
+      <Sidebar active={page} onNavigate={navigate} />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header />
+        <Header onOpenCmd={() => setCmdOpen(true)} />
         <main className="flex-1 overflow-y-auto p-6">
           <AnimatePresence mode="wait">
             <motion.div key={page} variants={pageVariants} initial="initial" animate="animate" exit="exit" className="h-full">
@@ -41,6 +47,7 @@ export default function App() {
           </AnimatePresence>
         </main>
       </div>
+      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} onNavigate={navigate} />
       <Toaster theme="dark" position="bottom-right" richColors />
     </div>
   )
