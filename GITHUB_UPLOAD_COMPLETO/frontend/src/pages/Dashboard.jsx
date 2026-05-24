@@ -1,9 +1,18 @@
+import { motion } from 'framer-motion'
 import { useStats } from '../hooks/useStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Package, FlaskConical, ClipboardList, Building2, TrendingUp, AlertTriangle, CheckCircle2, Clock, ArrowRight, Activity } from 'lucide-react'
+
+const stagger = {
+  animate: { transition: { staggerChildren: 0.07 } }
+}
+const fadeUp = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: 'easeOut' } },
+}
 
 const prodData = [
   { mes: 'Jan', medicoes: 18, laudos: 5 },
@@ -50,8 +59,8 @@ export default function Dashboard() {
   ].filter(d => d.value > 0) : []
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <motion.div className="space-y-4" variants={stagger} initial="initial" animate="animate">
+      <motion.div variants={fadeUp} className="flex items-center justify-between">
         <div>
           <h1 className="text-foreground text-lg font-semibold">Painel Operacional</h1>
           <p className="text-muted-foreground text-xs mt-0.5">Visão geral em tempo real</p>
@@ -60,10 +69,10 @@ export default function Dashboard() {
           <TrendingUp size={12} className="text-green-500" />
           Atualizado agora
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Card>
+        <motion.div variants={fadeUp}><Card>
           <CardHeader className="pb-0 pt-4 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Activity size={11} /> Indicadores
@@ -77,9 +86,9 @@ export default function Dashboard() {
               </div>
             ))}
           </CardContent>
-        </Card>
+        </Card></motion.div>
 
-        <Card className="col-span-2">
+        <motion.div variants={fadeUp} className="col-span-2"><Card>
           <CardHeader className="pb-0 pt-4 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Evolução mensal</CardTitle>
           </CardHeader>
@@ -111,11 +120,11 @@ export default function Dashboard() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card></motion.div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Card>
+        <motion.div variants={fadeUp}><Card>
           <CardHeader className="pb-0 pt-4 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amostradores</CardTitle>
           </CardHeader>
@@ -142,9 +151,9 @@ export default function Dashboard() {
               </div>
             ) : <Skeleton className="h-20 w-20 rounded-full mx-auto mt-2" />}
           </CardContent>
-        </Card>
+        </Card></motion.div>
 
-        <Card className="col-span-2">
+        <motion.div variants={fadeUp} className="col-span-2"><Card>
           <CardHeader className="pb-0 pt-4 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Alertas</CardTitle>
           </CardHeader>
@@ -172,8 +181,8 @@ export default function Dashboard() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card></motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
