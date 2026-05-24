@@ -7711,6 +7711,32 @@ function biDrawerClose() {
   dr.style.transform = 'translateX(100%)'; bd.style.opacity = '0';
   setTimeout(() => { bd.style.display = 'none'; dr.style.display = 'none'; }, 270);
 }
+function biAtrasadaDrill(i) {
+  const d = (window._biAtrasadas||[])[i]; if (!d) return;
+  const html = `<div style="padding:12px;border-radius:8px;background:#18181b;border:1px solid #27272a;">
+    <div style="font-size:.68rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">⚠ ${d.dias_atraso}d em atraso</div>
+    ${_biDmndCardHtml(d)}
+    ${d.descricao?`<div style="margin-top:10px;padding:10px;background:#111113;border-radius:6px;font-size:.75rem;color:#a1a1aa;line-height:1.5;">${d.descricao}</div>`:''}
+  </div>`;
+  biDrawerOpen(`OS ${d.numero_os||'#'+d.id} — ${d.empresa_nome||'—'}`, html);
+}
+function biLabDrill(i) {
+  const a = (window._biLabItems||[])[i]; if (!a) return;
+  const rows = [
+    ['Código', a.codigo],['Tipo', a.tipo],['Empresa', a.empresa_nome],
+    ['Status', a.status],['Agente', a.agente],['Entrada', a.data_entrada],
+    ['Medição', a.data_medicao],['Envio Lab', a.data_envio_lab],
+    ['Resultado', a.data_resultado],
+    ['Tempo parado', a.tempo_parado!=null ? a.tempo_parado+'d' : null],
+  ].filter(([,v]) => v);
+  const html = `<div style="background:#18181b;border:1px solid #27272a;border-radius:8px;overflow:hidden;">
+    ${rows.map(([k,v]) => `<div style="display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #27272a;">
+      <span style="font-size:.72rem;color:#71717a;">${k}</span>
+      <span style="font-size:.72rem;color:#e4e4e7;font-weight:500;">${v}</span>
+    </div>`).join('')}
+  </div>`;
+  biDrawerOpen(`Amostrador ${a.codigo||'—'} — ${a.empresa_nome||'—'}`, html);
+}
 
 // Card builders
 function _biDmndCardHtml(d) {
@@ -7841,6 +7867,7 @@ async function biLoad() {
       ).push(d);
     });
     window._biDmndBuckets = _biDmndBuckets;
+    window._biAtrasadas   = [];
     const cardsEl = document.getElementById('bi-dmnd-cards');
     if (cardsEl) {
       cardsEl.innerHTML = Object.entries(_BI_DMND).map(([key, cfg]) => {
@@ -7863,6 +7890,7 @@ async function biLoad() {
       ...d,
       dias_atraso: Math.round((new Date(today)-new Date(d.prazo))/86400000)
     })).sort((a,b) => b.dias_atraso - a.dias_atraso);
+    window._biAtrasadas = atrasadas;
 
     const aSub = document.getElementById('bi-atrasadas-sub');
     const aWrap = document.getElementById('bi-atrasadas-wrap');
@@ -7885,9 +7913,9 @@ async function biLoad() {
               </tr>
             </thead>
             <tbody>
-              ${atrasadas.slice(0,20).map(d => {
+              ${atrasadas.slice(0,20).map((d, idx) => {
                 const cfg = _biDmndCfg(d.status);
-                return `<tr style="border-bottom:1px solid #1c1c1e;">
+                return `<tr onclick="biAtrasadaDrill(${idx})" style="border-bottom:1px solid #1c1c1e;cursor:pointer;" onmouseover="this.style.background='#1f1f23'" onmouseout="this.style.background=''">
                   <td style="padding:8px 10px;font-family:monospace;font-weight:600;color:#e4e4e7;">${d.numero_os||'#'+d.id}</td>
                   <td style="padding:8px 10px;color:#d4d4d8;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.empresa_nome||'—'}</td>
                   <td style="padding:8px 10px;color:#a1a1aa;font-variant-numeric:tabular-nums;">${d.prazo}</td>
@@ -7912,11 +7940,13 @@ async function biLoad() {
     });
     // Last 12 months
     const evolLabels = [], evolData = [];
+    window._biEvolMonths = [];
     for (let i = 11; i >= 0; i--) {
       const dt = new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()-i);
       const ym = dt.toISOString().slice(0,7);
       evolLabels.push(_biMes(ym));
       evolData.push(evolMap[ym] || 0);
+      window._biEvolMonths.push({ label: _biMes(ym), ym });
     }
     _biDestroy('evolucao');
     const evolWrap = document.getElementById('bi-evolucao-wrap');
@@ -7940,10 +7970,22 @@ async function biLoad() {
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.raw} OS concluídas` } }
+          },
           scales: {
             x: { grid: { color: gridClr }, ticks: { color: tickClr, maxRotation: 45 } },
             y: { grid: { color: gridClr }, ticks: { color: tickClr, precision: 0 }, beginAtZero: true }
+          },
+          onClick: (evt, elements) => {
+            if (!elements.length || !window._biEvolMonths) return;
+            const m = window._biEvolMonths[elements[0].index];
+            if (!m) return;
+            const items = (window._biDmndBuckets
+              ? [...(window._biDmndBuckets.concluida||[])]
+              : []
+            ).filter(d => d.prazo && d.prazo.slice(0,7) === m.ym);
+            biDrawerOpen(`${m.label} — ${items.length} OS concluídas`, window._biDmndListHtml(items));
           }
         }
       });
@@ -8003,9 +8045,10 @@ async function biLoad() {
     if (labSubEl) labSubEl.textContent = labItems.length
       ? `${labItems.length} amostrador${labItems.length!==1?'es':''} aguardando resultado`
       : 'Nenhum amostrador em laboratório';
+    window._biLabItems = labItems;
     if (labListEl) {
       labListEl.innerHTML = labItems.length
-        ? labItems.map(_biAmstCardHtml).join('')
+        ? labItems.map((a, i) => `<div onclick="biLabDrill(${i})" style="cursor:pointer;">${_biAmstCardHtml(a)}</div>`).join('')
         : '<div style="text-align:center;padding:24px;color:#71717a;font-size:.78rem;">Nenhum amostrador em laboratório no momento</div>';
     }
 
