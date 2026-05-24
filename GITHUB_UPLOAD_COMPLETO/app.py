@@ -1,6 +1,6 @@
 import os, re, shutil, zipfile, io, tempfile, base64
 from datetime import datetime
-from flask import Flask, request, jsonify, send_file, render_template
+from flask import Flask, request, jsonify, send_file, render_template, send_from_directory
 import xml.etree.ElementTree as ET
 
 try:
@@ -795,6 +795,15 @@ def extrair_pdf(file_bytes):
 @app.route('/')
 def index():
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
+
+# ── React SPA ──────────────────────────────────────────────────────
+REACT_DIR = os.path.join(BASE_DIR, 'static', 'react')
+
+@app.route('/plataforma')
+@app.route('/plataforma/')
+@app.route('/plataforma/<path:path>')
+def react_app(path=''):
+    return send_from_directory(REACT_DIR, 'index.html')
 
 @app.route('/extrair', methods=['POST'])
 def extrair():
