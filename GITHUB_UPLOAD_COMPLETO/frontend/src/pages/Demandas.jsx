@@ -1,304 +1,200 @@
-import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Search, Filter, RefreshCw, ChevronUp, ChevronDown,
-  Clock, AlertTriangle, CheckCircle2, Circle, Loader2,
-  Building2, Calendar, Activity
-} from 'lucide-react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { AgGridReact } from 'ag-grid-react'
+import { Search, RefreshCw, Download, Filter } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
 
-const STATUS_CONFIG = {
-  aberta:       { label: 'Aberta',       badge: 'badge-blue',   icon: Circle },
-  em_andamento: { label: 'Em andamento', badge: 'badge-yellow', icon: Activity },
-  concluida:    { label: 'Concluída',    badge: 'badge-green',  icon: CheckCircle2 },
-  pendente:     { label: 'Pendente',     badge: 'badge-gray',   icon: Clock },
-}
-
-const PRIO_CONFIG = {
-  urgente: { label: 'Urgente', badge: 'badge-red' },
-  alta:    { label: 'Alta',    badge: 'badge-yellow' },
-  média:   { label: 'Média',   badge: 'badge-gray' },
-  media:   { label: 'Média',   badge: 'badge-gray' },
-  baixa:   { label: 'Baixa',   badge: 'badge-gray' },
-}
-
-function DiasAberta({ dias }) {
-  if (dias == null) return <span className="text-text3">—</span>
-  const color = dias > 180 ? 'text-red' : dias > 60 ? 'text-yellow' : 'text-text2'
-  return <span className={`font-medium ${color}`}>{dias}d</span>
-}
-
-function Prazo({ prazo, diasPrazo }) {
-  if (!prazo) return <span className="text-text3">—</span>
-  const vencido = diasPrazo != null && diasPrazo < 0
-  const urgente = diasPrazo != null && diasPrazo >= 0 && diasPrazo <= 7
+// ── Cell Renderers simples (fora do componente) ────────────────────────
+function StatusCell(p) {
+  const v = p.value || 'pendente'
+  const map = {
+    aberta:       { label: 'Aberta',        color: '#60a5fa' },
+    em_andamento: { label: 'Em andamento',  color: '#fbbf24' },
+    concluida:    { label: 'Concluída',     color: '#4ade80' },
+    pendente:     { label: 'Pendente',      color: '#71717a' },
+  }
+  const s = map[v] || map.pendente
   return (
-    <div className="flex flex-col">
-      <span className={`text-xs font-medium ${vencido ? 'text-red' : urgente ? 'text-yellow' : 'text-text1'}`}>
-        {prazo}
-      </span>
-      {diasPrazo != null && (
-        <span className={`text-[11px] ${vencido ? 'text-red/70' : 'text-text3'}`}>
-          {vencido ? `${Math.abs(diasPrazo)}d atrasada` : `${diasPrazo}d restantes`}
-        </span>
-      )}
-    </div>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '1px 8px', borderRadius: 4,
+      fontSize: 11, fontWeight: 500,
+      color: s.color, border: `1px solid ${s.color}40`,
+      background: `${s.color}18`,
+    }}>
+      {s.label}
+    </span>
   )
 }
 
-function ProgressBar({ realizadas, total }) {
-  if (!total) return <span className="text-text3 text-xs">—</span>
-  const pct = Math.round((realizadas / total) * 100)
-  const color = pct === 100 ? 'bg-green' : pct > 50 ? 'bg-blue' : 'bg-yellow'
+function PrioCell(p) {
+  const map = { urgente: '#f87171', alta: '#fb923c', media: '#71717a', média: '#71717a', baixa: '#71717a' }
+  const label = { urgente: 'Urgente', alta: 'Alta', media: 'Média', média: 'Média', baixa: 'Baixa' }
+  const key = (p.value || '').toLowerCase()
+  const color = map[key] || '#71717a'
   return (
-    <div className="flex items-center gap-2 min-w-[80px]">
-      <div className="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-[11px] text-text2 tabular-nums">{realizadas}/{total}</span>
-    </div>
+    <span style={{
+      display: 'inline-flex', padding: '1px 8px', borderRadius: 4,
+      fontSize: 11, fontWeight: 500,
+      color, border: `1px solid ${color}40`, background: `${color}18`,
+    }}>
+      {label[key] || p.value || '—'}
+    </span>
   )
+}
+
+function DiasCell(p) {
+  if (p.value == null) return <span style={{ color: '#52525b', fontSize: 12 }}>—</span>
+  const color = p.value > 180 ? '#f87171' : p.value > 60 ? '#fbbf24' : '#71717a'
+  return <span style={{ color, fontSize: 12, fontFamily: 'monospace', fontWeight: 500 }}>{p.value}d</span>
 }
 
 export default function Demandas() {
+  const gridRef = useRef(null)
   const [demandas, setDemandas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('todos')
-  const [filtroPrio, setFiltroPrio] = useState('todos')
-  const [sort, setSort] = useState({ col: 'dias_aberta', dir: 'desc' })
-  const [page, setPage] = useState(0)
-  const PER_PAGE = 20
+  const [statusFilter, setStatusFilter] = useState('todos')
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true)
     fetch('/controle/demandas?limit=500')
       .then(r => r.json())
-      .then(d => {
-        setDemandas(Array.isArray(d) ? d : d.items || [])
-        setLoading(false)
-      })
+      .then(d => { setDemandas(Array.isArray(d) ? d : d.items || []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 
+  useEffect(() => { load() }, [load])
+
+  // Quick filter (busca global da AG Grid)
+  useEffect(() => {
+    gridRef.current?.api?.setGridOption('quickFilterText', search)
+  }, [search])
+
   const filtered = useMemo(() => {
-    let d = [...demandas]
-    if (search) {
-      const q = search.toLowerCase()
-      d = d.filter(x =>
-        (x.empresa_nome || '').toLowerCase().includes(q) ||
-        (x.numero_os || '').toString().includes(q) ||
-        (x.descricao || '').toLowerCase().includes(q)
-      )
-    }
-    if (filtroStatus !== 'todos') d = d.filter(x => x.status === filtroStatus)
-    if (filtroPrio !== 'todos') d = d.filter(x =>
-      (x.prioridade || '').toLowerCase().replace('é', 'e') === filtroPrio.replace('é', 'e')
-    )
-    d.sort((a, b) => {
-      let va = a[sort.col] ?? 0
-      let vb = b[sort.col] ?? 0
-      if (typeof va === 'string') va = va.toLowerCase()
-      if (typeof vb === 'string') vb = vb.toLowerCase()
-      return sort.dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1)
-    })
-    return d
-  }, [demandas, search, filtroStatus, filtroPrio, sort])
+    if (statusFilter === 'todos') return demandas
+    return demandas.filter(d => d.status === statusFilter)
+  }, [demandas, statusFilter])
 
-  const paginated = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
-  const totalPages = Math.ceil(filtered.length / PER_PAGE)
-
-  function toggleSort(col) {
-    setSort(s => s.col === col ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col, dir: 'desc' })
-    setPage(0)
-  }
-
-  function SortIcon({ col }) {
-    if (sort.col !== col) return <ChevronUp size={12} className="text-text3 opacity-30" />
-    return sort.dir === 'asc'
-      ? <ChevronUp size={12} className="text-blue" />
-      : <ChevronDown size={12} className="text-blue" />
-  }
-
-  // Contagens por status
   const counts = useMemo(() => {
-    const c = {}
-    demandas.forEach(d => { c[d.status] = (c[d.status] || 0) + 1 })
+    const c = { aberta: 0, em_andamento: 0, concluida: 0, pendente: 0 }
+    demandas.forEach(d => { if (d.status in c) c[d.status]++ })
     return c
   }, [demandas])
 
+  const columnDefs = useMemo(() => [
+    {
+      field: 'empresa_nome', headerName: 'Empresa', flex: 2, minWidth: 180,
+      filter: 'agTextColumnFilter', floatingFilter: true,
+    },
+    {
+      field: 'numero_os', headerName: 'OS', width: 90,
+      filter: 'agTextColumnFilter', floatingFilter: true,
+      cellStyle: { fontFamily: 'monospace', fontSize: 12, color: '#71717a' },
+    },
+    {
+      field: 'status', headerName: 'Status', width: 140,
+      cellRenderer: StatusCell,
+      filter: 'agSetColumnFilter', floatingFilter: true,
+    },
+    {
+      field: 'prioridade', headerName: 'Prioridade', width: 110,
+      cellRenderer: PrioCell,
+      filter: 'agSetColumnFilter', floatingFilter: true,
+    },
+    {
+      field: 'dias_aberta', headerName: 'Aberta há', width: 100,
+      cellRenderer: DiasCell,
+      filter: 'agNumberColumnFilter', floatingFilter: true,
+      sort: 'desc',
+    },
+    {
+      field: 'prazo', headerName: 'Prazo', width: 120,
+      filter: 'agDateColumnFilter', floatingFilter: true,
+      cellStyle: { fontSize: 12 },
+    },
+    {
+      field: 'descricao', headerName: 'Descrição', flex: 1, minWidth: 160,
+      filter: 'agTextColumnFilter', floatingFilter: true,
+      cellStyle: { fontSize: 12, color: '#71717a' },
+    },
+  ], [])
+
+  const defaultColDef = useMemo(() => ({
+    sortable: true, resizable: true,
+  }), [])
+
+  const onExport = useCallback(() => {
+    gridRef.current?.api?.exportDataAsCsv({
+      fileName: `demandas_${new Date().toISOString().split('T')[0]}.csv`,
+    })
+  }, [])
+
+  const statusPills = [
+    { key: 'todos',        label: `Todas (${demandas.length})` },
+    { key: 'aberta',       label: `Abertas (${counts.aberta})` },
+    { key: 'em_andamento', label: `Em andamento (${counts.em_andamento})` },
+    { key: 'concluida',    label: `Concluídas (${counts.concluida})` },
+    { key: 'pendente',     label: `Pendentes (${counts.pendente})` },
+  ]
+
   return (
-    <div className="space-y-4">
-      {/* Título */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-3 h-full">
+      <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-text1 text-xl font-semibold">Demandas / OS</h1>
-          <p className="text-text2 text-sm mt-0.5">
+          <h1 className="text-foreground text-lg font-semibold">Demandas / OS</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
             {loading ? 'Carregando...' : `${demandas.length} ordens de serviço`}
           </p>
         </div>
-        <button
-          onClick={() => { setLoading(true); fetch('/controle/demandas?limit=500').then(r => r.json()).then(d => { setDemandas(Array.isArray(d) ? d : d.items || []); setLoading(false) }).catch(() => setLoading(false)) }}
-          className="btn-secondary gap-1.5"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Atualizar
-        </button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onExport} className="h-8 text-xs gap-1.5">
+            <Download size={12} /> Exportar CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} className="h-8 text-xs gap-1.5">
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Atualizar
+          </Button>
+        </div>
       </div>
 
-      {/* Status pills */}
-      <div className="flex gap-2 flex-wrap">
-        {[
-          { key: 'todos', label: `Todas (${demandas.length})` },
-          { key: 'aberta', label: `Abertas (${counts.aberta || 0})` },
-          { key: 'em_andamento', label: `Em andamento (${counts.em_andamento || 0})` },
-          { key: 'concluida', label: `Concluídas (${counts.concluida || 0})` },
-          { key: 'pendente', label: `Pendentes (${counts.pendente || 0})` },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => { setFiltroStatus(key); setPage(0) }}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-              filtroStatus === key
-                ? 'bg-blue/15 border-blue/40 text-blue'
-                : 'bg-surface2 border-border text-text2 hover:border-blue/30'
-            }`}
-          >
-            {label}
-          </button>
+      <div className="flex gap-1 flex-wrap shrink-0">
+        {statusPills.map(({ key, label }) => (
+          <button key={key} onClick={() => setStatusFilter(key)}
+            className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+              statusFilter === key
+                ? 'bg-secondary text-foreground border-border'
+                : 'text-muted-foreground border-transparent hover:border-border hover:text-foreground'
+            }`}>{label}</button>
         ))}
       </div>
 
-      {/* Filtros */}
-      <div className="flex gap-3 items-center">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-text3" />
-          <input
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
-            placeholder="Buscar empresa, OS, descrição..."
-            className="w-full bg-surface2 border border-border rounded-btn pl-8 pr-3 py-2 text-sm text-text1 placeholder:text-text3 focus:outline-none focus:border-blue/50 transition-colors"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter size={13} className="text-text3" />
-          <select
-            value={filtroPrio}
-            onChange={e => { setFiltroPrio(e.target.value); setPage(0) }}
-            className="bg-surface2 border border-border rounded-btn px-3 py-2 text-sm text-text1 focus:outline-none focus:border-blue/50"
-          >
-            <option value="todos">Prioridade</option>
-            <option value="urgente">Urgente</option>
-            <option value="alta">Alta</option>
-            <option value="media">Média</option>
-          </select>
-        </div>
+      <div className="relative shrink-0">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Busca rápida em todas as colunas..."
+          className="pl-8 h-8 text-xs bg-card border-border max-w-xs" />
       </div>
 
-      {/* Tabela */}
-      <div className="card p-0 overflow-hidden">
+      <div className="flex-1 min-h-0 rounded-lg overflow-hidden border border-border">
         {loading ? (
-          <div className="flex items-center justify-center h-40 gap-2 text-text3">
-            <Loader2 size={16} className="animate-spin" /> Carregando demandas...
+          <div className="p-4 space-y-2 bg-card h-full">
+            {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table-base">
-              <thead>
-                <tr className="bg-surface2/50">
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('empresa_nome')}>
-                    <div className="flex items-center gap-1"><Building2 size={12} /> Empresa <SortIcon col="empresa_nome" /></div>
-                  </th>
-                  <th>OS</th>
-                  <th>Status</th>
-                  <th>Prioridade</th>
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('dias_aberta')}>
-                    <div className="flex items-center gap-1"><Clock size={12} /> Aberta há <SortIcon col="dias_aberta" /></div>
-                  </th>
-                  <th className="cursor-pointer hover:text-text1" onClick={() => toggleSort('prazo')}>
-                    <div className="flex items-center gap-1"><Calendar size={12} /> Prazo <SortIcon col="prazo" /></div>
-                  </th>
-                  <th>Medições</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center text-text3 py-10">
-                      Nenhuma demanda encontrada
-                    </td>
-                  </tr>
-                ) : paginated.map((d, i) => {
-                  const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.pendente
-                  const pc = PRIO_CONFIG[(d.prioridade || '').toLowerCase()] || PRIO_CONFIG.media
-                  return (
-                    <motion.tr
-                      key={d.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.02 }}
-                      className="cursor-pointer hover:bg-surface2/60 transition-colors"
-                    >
-                      <td>
-                        <div className="font-medium text-text1 text-sm truncate max-w-[220px]" title={d.empresa_nome}>
-                          {d.empresa_nome || '—'}
-                        </div>
-                        {d.descricao && (
-                          <div className="text-text3 text-[11px] truncate max-w-[220px]" title={d.descricao}>
-                            {d.descricao}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <span className="font-mono text-text2 text-xs">{d.numero_os || '—'}</span>
-                      </td>
-                      <td>
-                        <span className={sc.badge}>
-                          <sc.icon size={10} />
-                          {sc.label}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={pc.badge}>{pc.label}</span>
-                      </td>
-                      <td><DiasAberta dias={d.dias_aberta} /></td>
-                      <td><Prazo prazo={d.prazo} diasPrazo={d.dias_para_prazo} /></td>
-                      <td>
-                        <ProgressBar
-                          realizadas={d.realizadas ?? 0}
-                          total={d.total_medicoes ?? 0}
-                        />
-                      </td>
-                    </motion.tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Paginação */}
-        {!loading && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-surface2/30">
-            <span className="text-xs text-text3">
-              {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, filtered.length)} de {filtered.length}
-            </span>
-            <div className="flex gap-1">
-              <button
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1 text-xs rounded bg-surface2 border border-border text-text2 disabled:opacity-30 hover:border-blue/40 transition-colors"
-              >
-                Anterior
-              </button>
-              <button
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1 text-xs rounded bg-surface2 border border-border text-text2 disabled:opacity-30 hover:border-blue/40 transition-colors"
-              >
-                Próxima
-              </button>
-            </div>
-          </div>
+          <AgGridReact
+            ref={gridRef}
+            rowData={filtered}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            pagination={true}
+            paginationPageSize={25}
+            paginationPageSizeSelector={[25, 50, 100]}
+            animateRows={true}
+            getRowId={p => String(p.data.id)}
+            onGridReady={p => p.api.sizeColumnsToFit()}
+            style={{ height: '100%' }}
+          />
         )}
       </div>
     </div>
