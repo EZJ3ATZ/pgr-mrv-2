@@ -250,13 +250,6 @@ export default function BI() {
               layout="vertical"
               data={amostrData}
               margin={{ top: 2, right: 44, bottom: 2, left: 4 }}
-              onClick={({ activePayload }) => {
-                if (activePayload?.[0]) {
-                  const d = activePayload[0].payload
-                  open(`Amostradores — ${d.label}`, 'amostradores', d.items)
-                }
-              }}
-              style={{ cursor: 'pointer' }}
             >
               <CartesianGrid horizontal={false} stroke="#27272a" />
               <XAxis type="number" tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -264,7 +257,9 @@ export default function BI() {
                 axisLine={false} tickLine={false} width={80} />
               <Tooltip content={<CT />} cursor={{ fill: '#ffffff08' }} />
               <Bar dataKey="count" name="Qtd" radius={[0, 4, 4, 0]} maxBarSize={24}
-                label={{ position: 'right', fill: '#71717a', fontSize: 10 }}>
+                label={{ position: 'right', fill: '#71717a', fontSize: 10 }}
+                onClick={(data) => open(`Amostradores — ${data.label}`, 'amostradores', data.items)}
+                cursor="pointer">
                 {amostrData.map((e, i) => <Cell key={i} fill={e.color} />)}
               </Bar>
             </BarChart>
@@ -432,13 +427,6 @@ export default function BI() {
                 layout="vertical"
                 data={topEmpresas}
                 margin={{ top: 2, right: 40, bottom: 2, left: 4 }}
-                onClick={({ activePayload }) => {
-                  if (activePayload?.[0]) {
-                    const d = activePayload[0].payload
-                    open(`OS — ${d.empresa}`, 'demandas', d.items)
-                  }
-                }}
-                style={{ cursor: 'pointer' }}
               >
                 <CartesianGrid horizontal={false} stroke="#27272a" />
                 <XAxis type="number" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -447,7 +435,9 @@ export default function BI() {
                   tickFormatter={v => v.length > 20 ? v.slice(0, 20) + '…' : v} />
                 <Tooltip content={<CT />} cursor={{ fill: '#ffffff08' }} />
                 <Bar dataKey="total" name="Total OS" fill="#60a5fa" radius={[0, 4, 4, 0]} maxBarSize={20}
-                  label={{ position: 'right', fill: '#71717a', fontSize: 9 }} />
+                  label={{ position: 'right', fill: '#71717a', fontSize: 9 }}
+                  onClick={(data) => open(`OS — ${data.empresa}`, 'demandas', data.items)}
+                  cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           )}
