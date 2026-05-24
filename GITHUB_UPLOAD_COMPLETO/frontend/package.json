@@ -35,6 +35,7 @@
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.16.0",
     "mapbox-gl": "^3.24.0",
+    "maplibre-gl": "^5.24.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-is": "^19.2.6",
