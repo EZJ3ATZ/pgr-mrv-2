@@ -49,3 +49,51 @@
   ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { opacity: 0.8; }
 }
+
+@layer components {
+  /* Inputs e selects de formulário */
+  .form-input {
+    @apply w-full bg-secondary border border-border rounded-md px-3 py-1.5 text-sm text-foreground
+           placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-blue-500/50
+           focus:border-blue-500/50 transition-colors;
+  }
+
+  select.form-input {
+    @apply cursor-pointer;
+  }
+
+  /* Botão secundário padrão */
+  .btn-secondary {
+    @apply flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border rounded-md
+           text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors;
+  }
+
+  /* Nav sidebar */
+  .nav-item {
+    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-muted-foreground
+           hover:bg-secondary hover:text-foreground transition-colors;
+  }
+  .nav-item.active {
+    @apply bg-secondary text-foreground;
+  }
+
+  /* Card genérico */
+  .card {
+    @apply bg-card border border-border rounded-lg p-4;
+  }
+
+  /* Tabela base */
+  .table-base {
+    @apply w-full text-sm;
+  }
+  .table-base thead tr th {
+    @apply px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider
+           border-b border-border;
+  }
+  .table-base tbody tr td {
+    @apply px-3 py-2 border-b border-border/50 text-foreground;
+  }
+  .table-base tbody tr:last-child td {
+    @apply border-b-0;
+  }
+}
