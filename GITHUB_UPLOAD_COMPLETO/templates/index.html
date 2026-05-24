@@ -7970,8 +7970,9 @@ async function biLoad() {
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.raw} OS concluídas` } }
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.raw} OS concluídas` } }
           },
           scales: {
             x: { grid: { color: gridClr }, ticks: { color: tickClr, maxRotation: 45 } },
