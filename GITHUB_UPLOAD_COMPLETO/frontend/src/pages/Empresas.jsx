@@ -2,8 +2,33 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   Search, RefreshCw, Building2, Mail, Phone,
-  MapPin, Loader2, ChevronUp, ChevronDown, User
+  MapPin, Loader2, ChevronUp, ChevronDown, User, List, Map
 } from 'lucide-react'
+import MapGL, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre'
+import 'maplibre-gl/dist/maplibre-gl.css'
+
+// Coordenadas aproximadas de cidades de MG onde MRV opera
+const CITY_COORDS = {
+  'belo horizonte': [-43.9378, -19.9208],
+  'betim':          [-44.1986, -19.9680],
+  'contagem':       [-44.0531, -19.9311],
+  'uberlândia':     [-48.2772, -18.9186],
+  'juiz de fora':   [-43.3503, -21.7642],
+  'montes claros':  [-43.8617, -16.7287],
+  'ribeirão preto': [-47.8102, -21.1775],
+  'campinas':       [-47.0626, -22.9068],
+  'são paulo':      [-46.6333, -23.5505],
+  'curitiba':       [-49.2659, -25.4290],
+  'goiânia':        [-49.2539, -16.6799],
+  'brasília':       [-47.9297, -15.7797],
+  'nova lima':      [-43.8478, -19.9853],
+  'lagoa santa':    [-43.8945, -19.6321],
+  'vespasiano':     [-43.9228, -19.6948],
+}
+
+function jitter(coord) {
+  return [coord[0] + (Math.random() - 0.5) * 0.15, coord[1] + (Math.random() - 0.5) * 0.15]
+}
 
 export default function Empresas() {
   const [items, setItems] = useState([])
@@ -11,6 +36,8 @@ export default function Empresas() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState({ col: 'nome', dir: 'asc' })
   const [page, setPage] = useState(0)
+  const [view, setView] = useState('lista')
+  const [popup, setPopup] = useState(null)
   const PER_PAGE = 25
 
   const load = () => {
@@ -61,6 +88,17 @@ export default function Empresas() {
   const comContato = items.filter(x => x.contato || x.email || x.telefone).length
   const comCidade  = items.filter(x => x.cidade).length
 
+  // Markers para o mapa
+  const markers = useMemo(() => {
+    const placed = []
+    items.forEach(emp => {
+      const key = (emp.cidade || '').toLowerCase().trim()
+      const base = CITY_COORDS[key] || CITY_COORDS['belo horizonte']
+      placed.push({ ...emp, lng: jitter(base)[0], lat: jitter(base)[1] })
+    })
+    return placed
+  }, [items])
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -71,10 +109,20 @@ export default function Empresas() {
             {loading ? 'Carregando...' : `${items.length} empresas cadastradas`}
           </p>
         </div>
-        <button onClick={load} className="btn-secondary gap-1.5">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-md border border-border overflow-hidden text-xs">
+            {[['lista', List, 'Lista'], ['mapa', Map, 'Mapa']].map(([v, Icon, label]) => (
+              <button key={v} onClick={() => setView(v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${view === v ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+                <Icon size={12} />{label}
+              </button>
+            ))}
+          </div>
+          <button onClick={load} className="btn-secondary gap-1.5">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -109,8 +157,39 @@ export default function Empresas() {
         />
       </div>
 
+      {/* Mapa */}
+      {view === 'mapa' && !loading && (
+        <div className="rounded-lg overflow-hidden border border-border" style={{ height: 480 }}>
+          <MapGL
+            initialViewState={{ longitude: -44.5, latitude: -19.5, zoom: 6.5 }}
+            style={{ width: '100%', height: '100%' }}
+            mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+            onClick={() => setPopup(null)}
+          >
+            <NavigationControl position="top-right" />
+            {markers.map(emp => (
+              <Marker key={emp.id} longitude={emp.lng} latitude={emp.lat} anchor="center"
+                onClick={e => { e.originalEvent.stopPropagation(); setPopup(emp) }}>
+                <div className="w-3 h-3 rounded-full bg-blue-400 border-2 border-blue-200 cursor-pointer hover:scale-125 transition-transform shadow-lg" />
+              </Marker>
+            ))}
+            {popup && (
+              <Popup longitude={popup.lng} latitude={popup.lat} anchor="bottom"
+                onClose={() => setPopup(null)} closeButton={true}
+                style={{ background: '#18181b', color: '#e4e4e7', borderRadius: 8, border: '1px solid #27272a', fontSize: 11, maxWidth: 200 }}>
+                <div className="p-1">
+                  <p className="font-semibold text-xs text-foreground leading-tight">{popup.nome}</p>
+                  {popup.cidade && <p className="text-muted-foreground text-[10px] mt-0.5"><MapPin size={9} className="inline mr-1" />{popup.cidade}{popup.uf ? `, ${popup.uf}` : ''}</p>}
+                  {popup.contato && <p className="text-muted-foreground text-[10px]">{popup.contato}</p>}
+                </div>
+              </Popup>
+            )}
+          </MapGL>
+        </div>
+      )}
+
       {/* Tabela */}
-      <div className="card p-0 overflow-hidden">
+      {view === 'lista' && <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-40 gap-2 text-text3">
             <Loader2 size={16} className="animate-spin" /> Carregando empresas...
@@ -193,7 +272,7 @@ export default function Empresas() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
