@@ -3438,8 +3438,8 @@
 <div class="page" style="max-width:1200px;">
   <div class="page-head">
     <div>
-      <div class="page-title">Analytics BI</div>
-      <div class="page-sub">Painel anal&#237;tico empresarial — dados em tempo real</div>
+      <div class="page-title">Analytics Operacional</div>
+      <div class="page-sub" id="bi-sub-count">Painel anal&#237;tico — dados em tempo real</div>
     </div>
     <button onclick="biLoad()" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -3447,85 +3447,72 @@
     </button>
   </div>
 
-  <!-- KPI Cards -->
-  <div id="bi-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px;">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Taxa de Conclus&#227;o</div>
-      <div style="font-size:2rem;font-weight:800;color:var(--orange);" id="bi-taxa">—%</div>
-      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">demandas conclu&#237;das</div>
+  <div id="bi-loading" style="display:none;text-align:center;padding:60px;color:var(--text3);font-size:.85rem;">Carregando dados operacionais...</div>
+  <div id="bi-content" style="display:none;">
+
+  <!-- S1: Status dos Amostradores -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128230; Status dos Amostradores</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">Clique numa barra para ver a lista</div>
+    <div id="bi-amstr-chart-wrap" style="position:relative;"></div>
+  </div>
+
+  <!-- S2: Demandas por Status (kanban) -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128336; Demandas por Status</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">Clique num card para ver as OS</div>
+    <div id="bi-dmnd-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;"></div>
+  </div>
+
+  <!-- S3: Demandas Atrasadas -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#9888;&#65039; Demandas Atrasadas</div>
+    <div id="bi-atrasadas-sub" style="font-size:.7rem;color:var(--text3);margin-bottom:14px;"></div>
+    <div id="bi-atrasadas-wrap"></div>
+  </div>
+
+  <!-- S4: Evolucao Mensal -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128200; Evolu&#231;&#227;o Mensal — OS Conclu&#237;das</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">&#218;ltimos 12 meses</div>
+    <div id="bi-evolucao-wrap" style="position:relative;height:200px;"><canvas id="bi-chart-evolucao"></canvas></div>
+    <div id="bi-evolucao-empty" style="display:none;text-align:center;padding:32px;color:var(--text3);font-size:.78rem;">Dados insuficientes — aguardando hist&#243;rico de conclus&#245;es</div>
+  </div>
+
+  <!-- S5: Produtividade -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">&#9889; Produtividade Operacional</div>
+    <div style="text-align:center;padding:28px 0;color:var(--text3);font-size:.78rem;">&#9203; Aguardando volume operacional<br><span style="font-size:.7rem;opacity:.7;">Dispon&#237;vel ap&#243;s 3+ meses de dados hist&#243;ricos</span></div>
+  </div>
+
+  <!-- Row S6 + S7 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <!-- S6: Lab -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128300; Amostradores em Lab</div>
+      <div id="bi-lab-sub" style="font-size:.7rem;color:var(--text3);margin-bottom:12px;"></div>
+      <div id="bi-lab-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
     </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Atrasadas</div>
-      <div style="font-size:2rem;font-weight:800;color:var(--red);" id="bi-atrasadas">—</div>
-      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">prazo vencido</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Medi&#231;&#245;es Realizadas</div>
-      <div style="font-size:2rem;font-weight:800;color:var(--blue);" id="bi-med">—</div>
-      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">total no sistema</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Total Demandas</div>
-      <div style="font-size:2rem;font-weight:800;color:var(--text);" id="bi-total-dem">—</div>
-      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">registradas</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
-      <div style="font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;">Conclu&#237;das</div>
-      <div style="font-size:2rem;font-weight:800;color:var(--green);" id="bi-conc">—</div>
-      <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">demandas finalizadas</div>
+    <!-- S7: Top Empresas -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#127970; Top 10 Empresas por OS</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-bottom:12px;">Clique para ver as OS da empresa</div>
+      <div style="position:relative;height:280px;"><canvas id="bi-chart-empresas"></canvas></div>
     </div>
   </div>
 
-  <!-- Row 1: Evolucao + Status Demandas -->
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Evolu&#231;&#227;o Mensal de Medi&#231;&#245;es</div>
-      <div style="position:relative;height:200px;"><canvas id="bi-chart-evolucao"></canvas></div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Status das Demandas</div>
-      <div style="position:relative;height:200px;"><canvas id="bi-chart-status-dem"></canvas></div>
-    </div>
-  </div>
+  </div><!-- /bi-content -->
 
-  <!-- Row 2: Top empresas + Status amostradores -->
-  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:16px;">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Top 10 Empresas por Demandas</div>
-      <div style="position:relative;height:260px;"><canvas id="bi-chart-empresas"></canvas></div>
+  <!-- Drawer backdrop -->
+  <div id="bi-drawer-backdrop" onclick="biDrawerClose()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:400;opacity:0;transition:opacity .2s;"></div>
+  <!-- Drawer panel -->
+  <div id="bi-drawer" style="display:none;position:fixed;right:0;top:0;height:100%;width:520px;background:#0f1117;border-left:1px solid #27272a;z-index:401;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.32,.72,0,1);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #27272a;flex-shrink:0;">
+      <span id="bi-drawer-title" style="font-size:.85rem;font-weight:600;color:#e4e4e7;"></span>
+      <button onclick="biDrawerClose()" style="background:none;border:none;color:#71717a;cursor:pointer;padding:4px 8px;font-size:1.1rem;border-radius:6px;line-height:1;">&#x2715;</button>
     </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Status dos Amostradores</div>
-      <div style="position:relative;height:260px;"><canvas id="bi-chart-status-am"></canvas></div>
-    </div>
+    <div id="bi-drawer-body" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px;"></div>
   </div>
-
-  <!-- Row 3: Por tecnico + Top agentes -->
-  <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-bottom:16px;">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Medi&#231;&#245;es por T&#233;cnico</div>
-      <div style="position:relative;height:220px;"><canvas id="bi-chart-tecnico"></canvas></div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Top Avalia&#231;&#245;es Realizadas</div>
-      <div style="position:relative;height:220px;"><canvas id="bi-chart-agentes"></canvas></div>
-    </div>
-  </div>
-
-  <!-- Row 4: Tipo amostrador + Demandas abertas por mes -->
-  <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:16px;">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Distribui&#231;&#227;o por Tipo de Amostrador</div>
-      <div style="position:relative;height:220px;"><canvas id="bi-chart-tipo-am"></canvas></div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Demandas Abertas por M&#234;s</div>
-      <div style="position:relative;height:220px;"><canvas id="bi-chart-dem-mes"></canvas></div>
-    </div>
-  </div>
-
-  <div id="bi-loading" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:.85rem;">Carregando dados...</div>
-  <div id="bi-empty" style="display:none;text-align:center;padding:40px;color:var(--text3);font-size:.85rem;">Nenhum dado dispon&#237;vel ainda. Importe demandas e registre medi&#231;&#245;es para ver os gr&#225;ficos.</div>
 
 </div>
 </div>
@@ -7420,14 +7407,43 @@ async function indLoad() {
 // ANALYTICS BI
 // ═══════════════════════════════════════════════════════════════════════
 let _biCharts = {};
+let _biDmndBuckets = {};
+let _biAmstBuckets = {};
+let _biEmpresasData = [];
 
-function _biDefaults() {
-  if (!window.Chart) return;
-  Chart.defaults.color = '#828DA8';
-  Chart.defaults.font.family = 'Inter, sans-serif';
-  Chart.defaults.font.size = 11;
-  Chart.defaults.plugins.legend.labels.boxWidth = 12;
-  Chart.defaults.plugins.legend.labels.padding = 14;
+// Status normalization — whitelist only (empresa names → null)
+const _BI_AMST = {
+  'ESTOQUE':     { label: 'Estoque',    color: '#60a5fa' },
+  'RESERVADO':   { label: 'Reservado',  color: '#fbbf24' },
+  'ENVIADO':     { label: 'Em Lab',     color: '#a78bfa' },
+  'LABORATORIO': { label: 'Em Lab',     color: '#a78bfa' },
+  'EM_ANALISE':  { label: 'Em Análise', color: '#f97316' },
+  'RESULTADO':   { label: 'Resultado',  color: '#4ade80' },
+  'DEVOLVIDO':   { label: 'Devolvido',  color: '#71717a' },
+  'UTILIZADO?':  { label: 'Verificar',  color: '#f87171' },
+};
+function _biNormAmst(raw) {
+  if (!raw) return null;
+  const u = raw.toUpperCase().trim();
+  if (_BI_AMST[u]) return _BI_AMST[u];
+  if (u.includes('ESTOQUE')) return _BI_AMST['ESTOQUE'];
+  if (u.includes('RESERV'))  return _BI_AMST['RESERVADO'];
+  if (u.includes('DEVOL'))   return _BI_AMST['DEVOLVIDO'];
+  if (u.includes('RESULT'))  return _BI_AMST['RESULTADO'];
+  if (u.includes('LAB') || u.includes('ANALI') || u.includes('ENVIAD')) return _BI_AMST['LABORATORIO'];
+  return null;
+}
+
+const _BI_DMND = {
+  aberta:       { label: 'Aberta',       color: '#60a5fa' },
+  em_andamento: { label: 'Em andamento', color: '#fbbf24' },
+  concluida:    { label: 'Concluída',    color: '#4ade80' },
+  pendente:     { label: 'Pendente',     color: '#71717a' },
+};
+function _biDmndCfg(s) {
+  if (!s) return _BI_DMND.pendente;
+  const k = s.toLowerCase().replace(/\s+/g,'_');
+  return _BI_DMND[k] || _BI_DMND.pendente;
 }
 
 function _biDestroy(id) {
@@ -7441,225 +7457,339 @@ function _biMes(ym) {
   return (meses[parseInt(m,10)-1] || m) + '/' + y.slice(2);
 }
 
-function _biPreencheMeses(arr) {
-  if (!arr || !arr.length) return [];
-  const map = {};
-  arr.forEach(r => { map[r.mes] = r.qtd; });
-  const sorted = Object.keys(map).sort();
-  const result = [];
-  let cur = new Date(sorted[0] + '-01');
-  const end = new Date(sorted[sorted.length-1] + '-01');
-  while (cur <= end) {
-    const key = cur.toISOString().slice(0,7);
-    result.push({mes: key, qtd: map[key] || 0});
-    cur.setMonth(cur.getMonth()+1);
-  }
-  return result;
+// Drawer
+function biDrawerOpen(title, html) {
+  document.getElementById('bi-drawer-title').textContent = title;
+  document.getElementById('bi-drawer-body').innerHTML = html;
+  const bd = document.getElementById('bi-drawer-backdrop');
+  const dr = document.getElementById('bi-drawer');
+  bd.style.display = 'block'; dr.style.display = 'flex';
+  setTimeout(() => { dr.style.transform = 'translateX(0)'; bd.style.opacity = '1'; }, 10);
+}
+function biDrawerClose() {
+  const bd = document.getElementById('bi-drawer-backdrop');
+  const dr = document.getElementById('bi-drawer');
+  dr.style.transform = 'translateX(100%)'; bd.style.opacity = '0';
+  setTimeout(() => { bd.style.display = 'none'; dr.style.display = 'none'; }, 270);
+}
+
+// Card builders
+function _biDmndCardHtml(d) {
+  const cfg = _biDmndCfg(d.status);
+  const today = new Date().toISOString().slice(0,10);
+  const isAtrasada = d.prazo && today > d.prazo && (d.status||'').toLowerCase() !== 'concluida';
+  const diasAtraso = isAtrasada ? Math.round((new Date(today)-new Date(d.prazo))/(86400000)) : 0;
+  return `<div style="padding:12px;border-radius:8px;background:#18181b;border:1px solid #27272a;flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-family:monospace;font-size:.75rem;font-weight:600;color:#e4e4e7;">${d.numero_os||'#'+d.id}</span>
+      <span style="font-size:.65rem;padding:2px 6px;border-radius:4px;font-weight:600;color:${cfg.color};background:${cfg.color}20;border:1px solid ${cfg.color}40;">${cfg.label}</span>
+    </div>
+    <div style="font-size:.82rem;font-weight:500;color:#e4e4e7;margin-bottom:4px;">${d.empresa_nome||'—'}</div>
+    ${d.descricao?`<div style="font-size:.72rem;color:#71717a;margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${d.descricao}</div>`:''}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.65rem;color:#71717a;">
+      ${d.prazo?`<span>📅 ${d.prazo}</span>`:''}
+      ${d.responsavel?`<span>👤 ${d.responsavel}</span>`:''}
+      ${isAtrasada&&diasAtraso?`<span style="color:#f87171;font-weight:600;">⚠ ${diasAtraso}d atrasada</span>`:''}
+    </div>
+  </div>`;
+}
+
+function _biAmstCardHtml(a) {
+  const cfg = _biNormAmst(a.status) || { label: a.status||'—', color: '#71717a' };
+  return `<div style="padding:10px 12px;border-radius:8px;background:#18181b;border:1px solid #27272a;flex-shrink:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <span style="font-family:monospace;font-size:.75rem;font-weight:600;color:#e4e4e7;">${a.codigo||'—'}</span>
+      <span style="font-size:.65rem;padding:2px 6px;border-radius:4px;border:1px solid #27272a;color:#a1a1aa;background:#27272a;">${a.tipo||'—'}</span>
+    </div>
+    <div style="font-size:.8rem;font-weight:500;color:#e4e4e7;margin-bottom:4px;">${a.empresa_nome||'—'}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.65rem;color:#71717a;">
+      ${a.data_entrada?`<span>📥 ${a.data_entrada}</span>`:''}
+      ${a.data_medicao?`<span>📊 ${a.data_medicao}</span>`:''}
+      ${a.data_envio_lab?`<span>🔬 ${a.data_envio_lab}</span>`:''}
+      ${a.tempo_parado!=null?`<span style="${a.tempo_parado>30?'color:#fbbf24;':''}">⏸ ${a.tempo_parado}d parado</span>`:''}
+    </div>
+  </div>`;
 }
 
 async function biLoad() {
   if (!window.Chart) { console.warn('Chart.js nao carregado'); return; }
-  _biDefaults();
-  const loadEl  = document.getElementById('bi-loading');
-  const emptyEl = document.getElementById('bi-empty');
-  if (loadEl)  loadEl.style.display  = 'block';
-  if (emptyEl) emptyEl.style.display = 'none';
+  const loadEl   = document.getElementById('bi-loading');
+  const contentEl = document.getElementById('bi-content');
+  if (loadEl)    loadEl.style.display   = 'block';
+  if (contentEl) contentEl.style.display = 'none';
+
   try {
-    const d = await ctrlFetch('/controle/analytics');
-    if (loadEl) loadEl.style.display = 'none';
+    const [dmndRaw, amstRaw] = await Promise.all([
+      ctrlFetch('/controle/demandas?limit=1000'),
+      ctrlFetch('/controle/amostradores?limit=2000'),
+    ]);
+    const demandas   = Array.isArray(dmndRaw) ? dmndRaw : (dmndRaw.items || []);
+    const amostradores = Array.isArray(amstRaw) ? amstRaw : (amstRaw.items || []);
 
-    const k = d.kpis || {};
-    const s = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v ?? '—'; };
-    s('bi-taxa',      (k.taxa_conclusao ?? '—') + '%');
-    s('bi-atrasadas', k.demandas_atrasadas ?? '—');
-    s('bi-med',       k.total_medicoes ?? '—');
-    s('bi-total-dem', k.total_demandas ?? '—');
-    s('bi-conc',      k.concluidas ?? '—');
+    if (loadEl)    loadEl.style.display   = 'none';
+    if (contentEl) contentEl.style.display = 'block';
 
-    const verde   = '#22C55E';
-    const azul    = '#60A5FA';
-    const roxo    = '#A78BFA';
-    const amarelo = '#F59E0B';
-    const verde2  = '#10B981';
-    const vermelho= '#EF4444';
-    const palette = [verde,azul,roxo,amarelo,verde2,'#FB923C','#F472B6','#34D399','#818CF8','#FBBF24','#38BDF8','#A3E635'];
-    const gridClr = '#1C2236';
-    const tickClr = '#485068';
+    const today = new Date().toISOString().slice(0,10);
+    const gridClr = '#1f2937';
+    const tickClr = '#4b5563';
 
-    // 1. Evolucao mensal
+    // ── S1: Status dos Amostradores (horizontal bar) ──────────────
+    const amstMap = {};
+    const amstItems = {}; // { label: [amostradores] }
+    amostradores.forEach(a => {
+      const cfg = _biNormAmst(a.status);
+      if (!cfg) return; // empresa name → skip
+      const lbl = cfg.label;
+      amstMap[lbl] = (amstMap[lbl] || 0) + 1;
+      if (!amstItems[lbl]) amstItems[lbl] = [];
+      amstItems[lbl].push(a);
+    });
+    _biAmstBuckets = amstItems;
+
+    const amstLabels = Object.keys(amstMap);
+    const amstColors = amstLabels.map(l => {
+      for (const k of Object.keys(_BI_AMST)) { if (_BI_AMST[k].label === l) return _BI_AMST[k].color; }
+      return '#71717a';
+    });
+    const amstWrap = document.getElementById('bi-amstr-chart-wrap');
+    if (amstWrap) {
+      _biDestroy('amst');
+      amstWrap.innerHTML = '<canvas id="bi-chart-amst" style="max-height:180px;"></canvas>';
+      _biCharts['amst'] = new Chart(document.getElementById('bi-chart-amst'), {
+        type: 'bar',
+        data: {
+          labels: amstLabels,
+          datasets: [{
+            data: amstLabels.map(l => amstMap[l]),
+            backgroundColor: amstColors.map(c => c + 'cc'),
+            borderColor: amstColors,
+            borderWidth: 1,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.raw} amostradores` } }
+          },
+          scales: {
+            x: { grid: { color: gridClr }, ticks: { color: tickClr, precision: 0 }, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } }
+          },
+          onClick: (evt, elements) => {
+            if (!elements.length) return;
+            const lbl = amstLabels[elements[0].index];
+            const items = (_biAmstBuckets[lbl] || []);
+            const html = items.length
+              ? items.map(_biAmstCardHtml).join('')
+              : '<div style="text-align:center;padding:24px;color:#71717a;">Nenhum amostrador</div>';
+            biDrawerOpen(`${lbl} — ${items.length} amostrador${items.length!==1?'es':''}`, html);
+          }
+        }
+      });
+    }
+
+    // ── S2: Demandas por Status (kanban cards) ────────────────────
+    _biDmndBuckets = { aberta:[], em_andamento:[], concluida:[], pendente:[] };
+    demandas.forEach(d => {
+      const k = (d.status||'').toLowerCase().replace(/\s+/g,'_');
+      (k === 'aberta' || k === 'em_andamento' || k === 'concluida'
+        ? _biDmndBuckets[k]
+        : _biDmndBuckets.pendente
+      ).push(d);
+    });
+    window._biDmndBuckets = _biDmndBuckets;
+    const cardsEl = document.getElementById('bi-dmnd-cards');
+    if (cardsEl) {
+      cardsEl.innerHTML = Object.entries(_BI_DMND).map(([key, cfg]) => {
+        const items = _biDmndBuckets[key] || [];
+        return `<div onclick="biDrawerOpen('${cfg.label} — ${items.length} OS', window._biDmndListHtml(window._biDmndBuckets['${key}']))"
+          style="background:#18181b;border:1px solid #27272a;border-radius:10px;padding:16px 18px;cursor:pointer;transition:border-color .15s;"
+          onmouseover="this.style.borderColor='${cfg.color}60'" onmouseout="this.style.borderColor='#27272a'">
+          <div style="font-size:.65rem;font-weight:700;color:${cfg.color};text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">${cfg.label}</div>
+          <div style="font-size:2rem;font-weight:700;color:#e4e4e7;line-height:1;">${items.length}</div>
+          <div style="font-size:.68rem;color:#71717a;margin-top:4px;">OS</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── S3: Demandas Atrasadas ────────────────────────────────────
+    const atrasadas = demandas.filter(d =>
+      d.prazo && today > d.prazo &&
+      (d.status||'').toLowerCase() !== 'concluida'
+    ).map(d => ({
+      ...d,
+      dias_atraso: Math.round((new Date(today)-new Date(d.prazo))/86400000)
+    })).sort((a,b) => b.dias_atraso - a.dias_atraso);
+
+    const aSub = document.getElementById('bi-atrasadas-sub');
+    const aWrap = document.getElementById('bi-atrasadas-wrap');
+    if (aSub) aSub.textContent = atrasadas.length
+      ? `${atrasadas.length} OS com prazo vencido`
+      : 'Nenhuma OS atrasada ✓';
+    if (aWrap) {
+      if (!atrasadas.length) {
+        aWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#4ade80;font-size:.8rem;">✓ Todas as OS estão dentro do prazo</div>';
+      } else {
+        aWrap.innerHTML = `<div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:.78rem;">
+            <thead>
+              <tr style="border-bottom:1px solid #27272a;">
+                <th style="text-align:left;padding:8px 10px;color:#71717a;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;">OS</th>
+                <th style="text-align:left;padding:8px 10px;color:#71717a;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;">Empresa</th>
+                <th style="text-align:left;padding:8px 10px;color:#71717a;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;">Prazo</th>
+                <th style="text-align:left;padding:8px 10px;color:#71717a;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;">Atraso</th>
+                <th style="text-align:left;padding:8px 10px;color:#71717a;font-weight:600;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${atrasadas.slice(0,20).map(d => {
+                const cfg = _biDmndCfg(d.status);
+                return `<tr style="border-bottom:1px solid #1c1c1e;">
+                  <td style="padding:8px 10px;font-family:monospace;font-weight:600;color:#e4e4e7;">${d.numero_os||'#'+d.id}</td>
+                  <td style="padding:8px 10px;color:#d4d4d8;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.empresa_nome||'—'}</td>
+                  <td style="padding:8px 10px;color:#a1a1aa;font-variant-numeric:tabular-nums;">${d.prazo}</td>
+                  <td style="padding:8px 10px;color:#f87171;font-weight:600;">${d.dias_atraso}d</td>
+                  <td style="padding:8px 10px;"><span style="font-size:.65rem;padding:2px 6px;border-radius:4px;color:${cfg.color};background:${cfg.color}20;border:1px solid ${cfg.color}40;">${cfg.label}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          ${atrasadas.length>20?`<div style="text-align:center;padding:10px;color:#71717a;font-size:.72rem;">… e mais ${atrasadas.length-20} OS atrasadas</div>`:''}
+        </div>`;
+      }
+    }
+
+    // ── S4: Evolução Mensal (concluídas por mês) ──────────────────
+    const evolMap = {};
+    demandas.forEach(d => {
+      if ((d.status||'').toLowerCase() === 'concluida' && d.prazo) {
+        const ym = d.prazo.slice(0,7);
+        evolMap[ym] = (evolMap[ym] || 0) + 1;
+      }
+    });
+    // Last 12 months
+    const evolLabels = [], evolData = [];
+    for (let i = 11; i >= 0; i--) {
+      const dt = new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()-i);
+      const ym = dt.toISOString().slice(0,7);
+      evolLabels.push(_biMes(ym));
+      evolData.push(evolMap[ym] || 0);
+    }
     _biDestroy('evolucao');
-    const evArr = _biPreencheMeses(d.evolucao_mensal || []);
-    _biCharts['evolucao'] = new Chart(document.getElementById('bi-chart-evolucao'), {
-      type: 'line',
+    const evolWrap = document.getElementById('bi-evolucao-wrap');
+    const evolEmpty = document.getElementById('bi-evolucao-empty');
+    const hasEvolData = evolData.some(v => v > 0);
+    if (evolWrap) evolWrap.style.display = hasEvolData ? 'block' : 'none';
+    if (evolEmpty) evolEmpty.style.display = hasEvolData ? 'none' : 'block';
+    if (hasEvolData) {
+      _biCharts['evolucao'] = new Chart(document.getElementById('bi-chart-evolucao'), {
+        type: 'line',
+        data: {
+          labels: evolLabels,
+          datasets: [{
+            label: 'OS Concluídas',
+            data: evolData,
+            borderColor: '#4ade80',
+            backgroundColor: 'rgba(74,222,128,.12)',
+            fill: true, tension: 0.4,
+            pointBackgroundColor: '#4ade80', pointRadius: 4, pointHoverRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: gridClr }, ticks: { color: tickClr, maxRotation: 45 } },
+            y: { grid: { color: gridClr }, ticks: { color: tickClr, precision: 0 }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // ── S6: Amostradores em Lab ───────────────────────────────────
+    const labItems = amostradores.filter(a => {
+      const cfg = _biNormAmst(a.status);
+      return cfg && (cfg.label === 'Em Lab' || cfg.label === 'Em Análise');
+    });
+    const labListEl = document.getElementById('bi-lab-list');
+    const labSubEl  = document.getElementById('bi-lab-sub');
+    if (labSubEl) labSubEl.textContent = labItems.length
+      ? `${labItems.length} amostrador${labItems.length!==1?'es':''} aguardando resultado`
+      : 'Nenhum amostrador em laboratório';
+    if (labListEl) {
+      labListEl.innerHTML = labItems.length
+        ? labItems.map(_biAmstCardHtml).join('')
+        : '<div style="text-align:center;padding:24px;color:#71717a;font-size:.78rem;">Nenhum amostrador em laboratório no momento</div>';
+    }
+
+    // ── S7: Top 10 Empresas por OS (horizontal bar) ───────────────
+    const empMap = {};
+    demandas.forEach(d => {
+      const nome = d.empresa_nome || 'Sem empresa';
+      if (!empMap[nome]) empMap[nome] = { total: 0, items: [] };
+      empMap[nome].total++;
+      empMap[nome].items.push(d);
+    });
+    _biEmpresasData = Object.entries(empMap)
+      .map(([nome, v]) => ({ nome, total: v.total, items: v.items }))
+      .sort((a,b) => b.total - a.total)
+      .slice(0, 10);
+    _biEmpresasData.reverse(); // Chart.js y-axis shows bottom to top
+
+    _biDestroy('empresas');
+    _biCharts['empresas'] = new Chart(document.getElementById('bi-chart-empresas'), {
+      type: 'bar',
       data: {
-        labels: evArr.map(r => _biMes(r.mes)),
+        labels: _biEmpresasData.map(e => e.nome.length > 28 ? e.nome.slice(0,26)+'..' : e.nome),
         datasets: [{
-          label: 'Medicoes realizadas',
-          data: evArr.map(r => r.qtd),
-          borderColor: verde, backgroundColor: 'rgba(34,197,94,.12)',
-          fill: true, tension: 0.4,
-          pointBackgroundColor: verde, pointRadius: 4, pointHoverRadius: 6,
+          data: _biEmpresasData.map(e => e.total),
+          backgroundColor: '#60a5facc',
+          borderColor: '#60a5fa',
+          borderWidth: 1,
+          borderRadius: 4,
         }]
       },
-      options: { responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{color:gridClr},ticks:{color:tickClr,maxRotation:45}},
-          y:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true}
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.raw} OS` } }
+        },
+        scales: {
+          x: { grid: { color: gridClr }, ticks: { color: tickClr, precision: 0 }, beginAtZero: true },
+          y: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }
+        },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const emp = _biEmpresasData[elements[0].index];
+          if (!emp) return;
+          const html = emp.items.map(_biDmndCardHtml).join('');
+          biDrawerOpen(`${emp.nome} — ${emp.total} OS`, html);
         }
       }
     });
 
-    // 2. Status demandas (donut)
-    _biDestroy('status-dem');
-    const demSt  = d.dem_por_status || {};
-    const demLbl = Object.keys(demSt);
-    const demTr  = {pendente:'Pendente',concluida:'Concluida',em_andamento:'Em Andamento',cancelada:'Cancelada'};
-    _biCharts['status-dem'] = new Chart(document.getElementById('bi-chart-status-dem'), {
-      type: 'doughnut',
-      data: {
-        labels: demLbl.map(l => demTr[l] || l),
-        datasets:[{data:demLbl.map(l=>demSt[l]),
-          backgroundColor:[verde2,verde,azul,vermelho,roxo,amarelo],
-          borderColor:'#0E1118',borderWidth:2,hoverOffset:6}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom'},
-          tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}`}}},
-        cutout:'62%'}
-    });
-
-    // 3. Top empresas (bar horizontal stacked)
-    _biDestroy('empresas');
-    const emp = (d.top_empresas || []).slice(0,10).reverse();
-    _biCharts['empresas'] = new Chart(document.getElementById('bi-chart-empresas'), {
-      type:'bar',
-      data:{
-        labels:emp.map(e=>e.nome.length>28?e.nome.slice(0,26)+'..':e.nome),
-        datasets:[
-          {label:'Concluidas',data:emp.map(e=>e.concluidas||0),backgroundColor:verde2,borderRadius:3},
-          {label:'Pendentes', data:emp.map(e=>e.pendentes||0), backgroundColor:amarelo,borderRadius:3},
-        ]
-      },
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'top'}},
-        scales:{
-          x:{stacked:true,grid:{color:gridClr},ticks:{color:tickClr,precision:0}},
-          y:{stacked:true,grid:{display:false},ticks:{color:'#828DA8',font:{size:10}}}
-        }
-      }
-    });
-
-    // 4. Status amostradores (donut)
-    _biDestroy('status-am');
-    const amSt  = d.status_amostradores || {};
-    const amLbl = Object.keys(amSt);
-    const amClr = {Estoque:verde2,Laboratorio:azul,Reservado:amarelo,Devolvido:'#485068'};
-    _biCharts['status-am'] = new Chart(document.getElementById('bi-chart-status-am'), {
-      type:'doughnut',
-      data:{
-        labels:amLbl,
-        datasets:[{data:amLbl.map(l=>amSt[l]),
-          backgroundColor:amLbl.map(l=>amClr[l]||roxo),
-          borderColor:'#0E1118',borderWidth:2,hoverOffset:6}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom'},
-          tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}`}}},
-        cutout:'60%'}
-    });
-
-    // 5. Por tecnico (bar vertical)
-    _biDestroy('tecnico');
-    const tec = d.por_tecnico || [];
-    _biCharts['tecnico'] = new Chart(document.getElementById('bi-chart-tecnico'), {
-      type:'bar',
-      data:{
-        labels:tec.map(t=>t.avaliador||'N/I'),
-        datasets:[{label:'Medicoes',data:tec.map(t=>t.qtd),
-          backgroundColor:palette,borderRadius:5,borderSkipped:false}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{display:false},ticks:{color:'#828DA8'}},
-          y:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true}
-        }
-      }
-    });
-
-    // 6. Top agentes (bar horizontal)
-    _biDestroy('agentes-bi');
-    const ag = (d.por_agente || []).slice(0,10).reverse();
-    _biCharts['agentes-bi'] = new Chart(document.getElementById('bi-chart-agentes'), {
-      type:'bar',
-      data:{
-        labels:ag.map(a=>a.agente?(a.agente.length>30?a.agente.slice(0,28)+'..':a.agente):'?'),
-        datasets:[{label:'Medicoes',data:ag.map(a=>a.qtd),
-          backgroundColor:ag.map((_,i)=>palette[i%palette.length]),borderRadius:4}]
-      },
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{color:gridClr},ticks:{color:tickClr,precision:0}},
-          y:{grid:{display:false},ticks:{color:'#828DA8',font:{size:10}}}
-        }
-      }
-    });
-
-    // 7. Tipo amostrador (horizontal bar — mais legível que pizza)
-    _biDestroy('tipo-am');
-    const ta = (d.por_tipo_amostrador || []).slice(0,12).reverse();
-    _biCharts['tipo-am'] = new Chart(document.getElementById('bi-chart-tipo-am'), {
-      type:'bar',
-      data:{
-        labels:ta.map(t=>t.tipo_amostrador||'N/I'),
-        datasets:[{label:'Qtd',data:ta.map(t=>t.qtd),
-          backgroundColor:ta.map((_,i)=>palette[i%palette.length]),
-          borderRadius:4,borderSkipped:false}]
-      },
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},
-          datalabels:{display:false},
-          tooltip:{callbacks:{label:ctx=>' '+ctx.raw+' unid.'}}},
-        scales:{
-          x:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true},
-          y:{grid:{display:false},ticks:{color:'#828DA8',font:{size:10}}}
-        }
-      }
-    });
-
-    // 8. Demandas por mes (area line — melhor para série temporal)
-    _biDestroy('dem-mes');
-    const dmArr = _biPreencheMeses(d.demandas_por_mes || []);
-    const dmGrad = document.getElementById('bi-chart-dem-mes').getContext('2d');
-    const dmGradFill = dmGrad.createLinearGradient(0,0,0,220);
-    dmGradFill.addColorStop(0,'rgba(167,139,250,.35)');
-    dmGradFill.addColorStop(1,'rgba(167,139,250,.02)');
-    _biCharts['dem-mes'] = new Chart(document.getElementById('bi-chart-dem-mes'), {
-      type:'line',
-      data:{
-        labels:dmArr.map(r=>_biMes(r.mes)),
-        datasets:[{label:'Demandas abertas',data:dmArr.map(r=>r.qtd),
-          borderColor:roxo,backgroundColor:dmGradFill,
-          borderWidth:2,fill:true,tension:0.4,
-          pointRadius:4,pointBackgroundColor:roxo,pointBorderColor:'#0E1118',pointBorderWidth:2}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{display:false},ticks:{color:tickClr,maxRotation:45}},
-          y:{grid:{color:gridClr},ticks:{color:tickClr,precision:0},beginAtZero:true}
-        }
-      }
-    });
+    // Update subtitle
+    const subEl = document.getElementById('bi-sub-count');
+    if (subEl) subEl.textContent = `${demandas.length} OS · ${amostradores.length} amostradores · atualizado agora`;
 
   } catch(e) {
     if (loadEl) loadEl.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'block';
     console.error('biLoad:', e);
   }
 }
+
+// Expose for inline onclick
+window._biDmndBuckets = _biDmndBuckets;
+window._biDmndListHtml = function(items) {
+  if (!items || !items.length) return '<div style="text-align:center;padding:24px;color:#71717a;">Nenhuma OS</div>';
+  return items.map(_biDmndCardHtml).join('');
+};
 
 
 // ── COLETAS DE CAMPO ──────────────────────────────────────────────────
