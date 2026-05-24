@@ -796,14 +796,6 @@ def extrair_pdf(file_bytes):
 def index():
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
 
-# ── React SPA ──────────────────────────────────────────────────────
-REACT_DIR = os.path.join(BASE_DIR, 'static', 'react')
-
-@app.route('/plataforma')
-@app.route('/plataforma/')
-@app.route('/plataforma/<path:path>')
-def react_app(path=''):
-    return send_from_directory(REACT_DIR, 'index.html')
 
 @app.route('/extrair', methods=['POST'])
 def extrair():
