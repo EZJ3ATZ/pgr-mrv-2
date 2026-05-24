@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { color-scheme: dark; }
+
+  body {
+    background: #0f1117;
+    color: #e6edf3;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scrollbar customizada */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+}
+
+@layer components {
+  /* Card padrão */
+  .card {
+    @apply bg-surface border border-border rounded-card p-4;
+  }
+
+  /* KPI card */
+  .kpi-card {
+    @apply card flex flex-col gap-1 hover:border-blue/40 transition-colors duration-200;
+  }
+
+  /* Botão primário */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-green text-bg font-semibold rounded-btn
+           hover:brightness-110 active:scale-95 transition-all duration-150 text-sm;
+  }
+
+  /* Botão secundário */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-surface2 border border-border text-text1 font-medium rounded-btn
+           hover:border-blue/50 hover:text-blue transition-all duration-150 text-sm;
+  }
+
+  /* Badge de status */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green  { @apply badge bg-green/10  text-green  border border-green/20; }
+  .badge-yellow { @apply badge bg-yellow/10 text-yellow border border-yellow/20; }
+  .badge-red    { @apply badge bg-red/10    text-red    border border-red/20; }
+  .badge-blue   { @apply badge bg-blue/10   text-blue   border border-blue/20; }
+  .badge-gray   { @apply badge bg-surface2  text-text2  border border-border; }
+
+  /* Tabela */
+  .table-base { @apply w-full text-sm; }
+  .table-base th { @apply text-left text-text2 font-medium py-2 px-3 border-b border-border; }
+  .table-base td { @apply py-2.5 px-3 border-b border-border/50; }
+  .table-base tr:hover td { @apply bg-surface2/60; }
+
+  /* Sidebar item */
+  .nav-item {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-btn text-text2 text-sm font-medium
+           hover:bg-surface2 hover:text-text1 transition-all duration-150 cursor-pointer;
+  }
+  .nav-item.active { @apply bg-surface2 text-text1 border-l-2 border-green; }
+}
