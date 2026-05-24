@@ -1512,7 +1512,7 @@
   <!-- Fluxo Operacional -->
   <div class="home-section-label">Fluxo operacional</div>
   <div class="home-flow" id="home-flow">
-    <div class="hf-step" onclick="goToTab('controle');ctrlSwitchSub('demandas',null);mbnActive('controle')">
+    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('plan',null),300);mbnActive('controle')">
       <div class="hf-num">1</div>
       <div class="hf-icon">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
@@ -1521,7 +1521,7 @@
       <div class="hf-desc">Demandas do Planner</div>
     </div>
     <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlSwitchSub('nova',null);mbnActive('controle')">
+    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('nova',null),300);mbnActive('controle')">
       <div class="hf-num">2</div>
       <div class="hf-icon" style="background:rgba(251,146,60,.12);color:var(--orange)">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -1530,7 +1530,7 @@
       <div class="hf-desc">Registrar OS + equip.</div>
     </div>
     <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlSwitchSub('campo',null);mbnActive('controle')">
+    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('nova',null),300);mbnActive('controle')">
       <div class="hf-num">3</div>
       <div class="hf-icon" style="background:rgba(16,185,129,.12);color:var(--green)">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -1539,7 +1539,7 @@
       <div class="hf-desc">Coleta + amostradores</div>
     </div>
     <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlSwitchSub('lab',null);mbnActive('controle')">
+    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('amostr',null),300);mbnActive('controle')">
       <div class="hf-num">4</div>
       <div class="hf-icon" style="background:rgba(96,165,250,.12);color:var(--blue)">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/></svg>
@@ -1548,7 +1548,7 @@
       <div class="hf-desc">Envio + acompanhamento</div>
     </div>
     <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlSwitchSub('resultados',null);mbnActive('controle')">
+    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('import',null),300);mbnActive('controle')">
       <div class="hf-num">5</div>
       <div class="hf-icon" style="background:rgba(167,139,250,.12);color:var(--purple)">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -2540,9 +2540,14 @@
     .plan-btn-campo:hover{opacity:.85;}
   </style>
 
-  <div style="font-weight:800;font-size:1.1rem;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:10px;">
-    📋 Planejamento de Medição
-    <span style="font-size:.75rem;font-weight:400;color:var(--text3);">Pré-visita — antes de sair para campo</span>
+  <!-- Sprint 3 — banner fase -->
+  <div style="background:rgba(57,153,255,.1);border:1.5px solid rgba(57,153,255,.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
+    <div style="background:#39f;border-radius:8px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;">📋</div>
+    <div>
+      <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#39f;margin-bottom:2px;">FASE 1 — PRÉ-VISITA</div>
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Planejamento de Medição</div>
+      <div style="font-size:.78rem;color:var(--text3);margin-top:1px;">Complete isto <strong style="color:#39f;">antes de sair para campo</strong> — OS, empresa, agentes e equipamentos</div>
+    </div>
   </div>
 
   <!-- Lista de planejamentos existentes -->
@@ -2661,14 +2666,16 @@
     .nv-btn-nx:hover{filter:brightness(1.08);transform:translateY(-1px);}
   </style>
 
-  <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
-    <div>
-      <div style="font-size:1.05rem;font-weight:800;color:var(--text);letter-spacing:-.01em;">📍 Planilha de Campo</div>
-      <div style="font-size:.78rem;color:var(--text3);margin-top:2px;">Execução real — o que foi feito em campo</div>
+  <!-- Sprint 3 — banner fase + Header -->
+  <div style="background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
+    <div style="background:var(--green);border-radius:8px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;">📍</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin-bottom:2px;">FASE 2 — EM CAMPO</div>
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Planilha de Campo</div>
+      <div style="font-size:.78rem;color:var(--text3);margin-top:1px;">Preencha <strong style="color:var(--green);">durante ou logo após a coleta</strong> — trabalhadores, amostras e resultados</div>
       <div id="nv-planejamento-vinculado" style="display:none;margin-top:4px;padding:4px 9px;background:rgba(57,153,255,.1);border-radius:6px;font-size:.75rem;color:#39f;"></div>
     </div>
-    <button onclick="nvReset()" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;">↺ Reiniciar</button>
+    <button onclick="nvReset()" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;flex-shrink:0;">↺ Reiniciar</button>
   </div>
 
   <!-- Progress Bar -->
