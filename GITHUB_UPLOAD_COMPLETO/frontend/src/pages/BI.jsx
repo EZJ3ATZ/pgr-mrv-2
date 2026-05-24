@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 // ── Status normalization — amostradores ───────────────────────────────────
+// Whitelist approach: only known status values pass through
 const STATUS_DEF = {
   ESTOQUE:     { label: 'Estoque',    color: '#60a5fa' },
   RESERVADO:   { label: 'Reservado',  color: '#fbbf24' },
@@ -18,24 +19,22 @@ const STATUS_DEF = {
   EM_ANALISE:  { label: 'Em Análise', color: '#f97316' },
   RESULTADO:   { label: 'Resultado',  color: '#4ade80' },
   DEVOLVIDO:   { label: 'Devolvido',  color: '#71717a' },
+  'UTILIZADO?':{ label: 'Verificar',  color: '#f87171' },
 }
-
-// Status values that are actually empresa names (data quality issue)
-const EMPRESA_FRAGMENTS = ['COMBUSTOL', 'ECOMIN', 'MINERA', 'LTDA', 'S.A.', 'ENGENHARIA']
 
 function normalizeAmostrStatus(raw) {
   if (!raw) return null
   const u = raw.toUpperCase().trim()
-  // skip empresa names stored as status
-  if (EMPRESA_FRAGMENTS.some(f => u.includes(f))) return null
+  // exact match first
   if (STATUS_DEF[u]) return STATUS_DEF[u]
+  // pattern matching for known variants only
   if (u.includes('ESTOQUE')) return STATUS_DEF.ESTOQUE
-  if (u.includes('RESERV')) return STATUS_DEF.RESERVADO
+  if (u.includes('RESERV'))  return STATUS_DEF.RESERVADO
+  if (u.includes('DEVOL'))   return STATUS_DEF.DEVOLVIDO
+  if (u.includes('RESULT'))  return STATUS_DEF.RESULTADO
   if (u.includes('LAB') || u.includes('ANALI') || u.includes('ENVIAD')) return STATUS_DEF.LABORATORIO
-  if (u.includes('DEVOL')) return STATUS_DEF.DEVOLVIDO
-  if (u.includes('RESULT')) return STATUS_DEF.RESULTADO
-  // unknown but not empresa → show as-is
-  return { label: raw, color: '#52525b' }
+  // anything else (empresa names, garbage data) → filtered out
+  return null
 }
 
 // ── Demanda status ────────────────────────────────────────────────────────
