@@ -2049,11 +2049,8 @@ def api_parse_cadeia():
 # GERADOR DE LAUDO DE RUÍDO
 # ════════════════════════════════════════════════════════════════════
 
-RUIDO_TECNICOS = {
-    'kelly':   {'nome': 'KELLY ELISSAMA FIRMINO',          'mte': '0072372-MG'},
-    'helbert': {'nome': 'HELBERT GONÇALVES DE OLIVEIRA',   'mte': '45376/MG'},
-    'matheus': {'nome': 'MATHEUS COSTA',                   'mte': ''},
-}
+# Fallback legado — técnicos agora vêm do DB via /api/tecnicos
+_TECNICO_FALLBACK = {'nome': 'TÉCNICO RESPONSÁVEL', 'mte': ''}
 
 TPL_RUIDO = os.path.join(BASE_DIR, 'template_ruido.docx')
 
@@ -2297,7 +2294,7 @@ def gerar_ruido_bytes(d):
     if isinstance(tecnico, dict):
         tec = {'nome': tecnico.get('nome', '').upper(), 'mte': tecnico.get('mte', '')}
     else:
-        tec = RUIDO_TECNICOS.get(tecnico, RUIDO_TECNICOS['kelly'])
+        tec = _TECNICO_FALLBACK
 
     with open(TPL_RUIDO, 'rb') as f:
         tpl_bytes = f.read()
