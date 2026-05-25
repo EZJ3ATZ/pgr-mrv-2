@@ -1,7 +1,7 @@
 import os, re, shutil, zipfile, io, tempfile, base64
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template, send_from_directory
-from flask_login import login_required
+from flask_login import login_required, current_user
 import xml.etree.ElementTree as ET
 
 try:
@@ -31,6 +31,7 @@ MODEL_DIR  = os.path.join(BASE_DIR, 'modelo_unpacked')
 # ── Modulo Controle de Medicoes e Amostradores (isolado via Blueprint) ─
 try:
     from controle import controle_bp, auth_bp, login_manager, init_db as _controle_init_db
+    from controle.db import get_db, row_to_dict, registrar_evento
     login_manager.init_app(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(controle_bp)
@@ -863,6 +864,10 @@ def gerar():
         nome_safe = re.sub(r'[/\\:*?"<>|]','_',nome)
         filename = f"PGR - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
 
+        usuario = current_user.nome if current_user.is_authenticated else 'anônimo'
+        registrar_evento('pgr_gerado', f'PGR: {nome} ({len(cargos)} cargos)',
+                         usuario=usuario, ip=request.remote_addr)
+
         # Se há alertas, retornar JSON com aviso + base64 do arquivo
         if alertas:
             import base64
@@ -1441,6 +1446,9 @@ def gerar_calor():
         nome = data['empresa']['razaoSocial']
         nome_safe = re.sub(r'[/\\:*?"<>|]','_', nome)
         filename = f"Laudo de Calor - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
+        usuario = current_user.nome if current_user.is_authenticated else 'anônimo'
+        registrar_evento('laudo_calor_gerado', f'Laudo Calor: {nome}',
+                         usuario=usuario, ip=request.remote_addr)
         return send_file(io.BytesIO(docx_bytes), as_attachment=True,
                          download_name=filename,
                          mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
@@ -1666,12 +1674,42 @@ def gerar_quimico():
         nome = data['empresa']['razaoSocial']
         nome_safe = re.sub(r'[/\\:*?"<>|]', '_', nome)
         filename = f"Análise Química - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
+        usuario = current_user.nome if current_user.is_authenticated else 'anônimo'
+        registrar_evento('laudo_quimico_gerado', f'Laudo Químico: {nome}',
+                         usuario=usuario, ip=request.remote_addr)
         return send_file(io.BytesIO(docx_bytes), as_attachment=True,
                          download_name=filename,
                          mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': f'Erro interno: {str(e)}'}), 500
+
+
+# ── API: Usuários/Técnicos ────────────────────────────────────────────
+@app.route('/api/tecnicos')
+def api_tecnicos():
+    """Retorna todos os usuários ativos para uso como técnico elaborador."""
+    try:
+        with get_db() as conn:
+            rows = conn.execute(
+                'SELECT id, nome, registro_mte FROM usuarios WHERE ativo=1 ORDER BY nome'
+            ).fetchall()
+        return jsonify([row_to_dict(r) for r in rows])
+    except Exception:
+        return jsonify([])
+
+
+@app.route('/api/me')
+def api_me():
+    """Retorna dados do usuário logado (ou null)."""
+    if current_user.is_authenticated:
+        return jsonify({
+            'id':           current_user.id,
+            'nome':         current_user.nome,
+            'registro_mte': current_user.registro_mte,
+            'role':         current_user.role,
+        })
+    return jsonify(None)
 
 
 # ── API: Guia de Métodos lookup ──────────────────────────────────────
@@ -2255,7 +2293,11 @@ def gerar_ruido_bytes(d):
     tecnico   = d.get('tecnico', 'kelly')
     data_laud = d.get('dataLaudo', datetime.now().strftime('%d/%m/%Y'))
 
-    tec = RUIDO_TECNICOS.get(tecnico, RUIDO_TECNICOS['kelly'])
+    # Aceita {nome, mte} direto (usuário do sistema) ou chave antiga
+    if isinstance(tecnico, dict):
+        tec = {'nome': tecnico.get('nome', '').upper(), 'mte': tecnico.get('mte', '')}
+    else:
+        tec = RUIDO_TECNICOS.get(tecnico, RUIDO_TECNICOS['kelly'])
 
     with open(TPL_RUIDO, 'rb') as f:
         tpl_bytes = f.read()
@@ -2531,6 +2573,9 @@ def gerar_ruido():
         nome  = emp.get('nomeFantasia') or emp.get('razaoSocial') or 'Empresa'
         fname = re.sub(r'[^\w\s-]', '', nome)[:40].strip().replace(' ', '_')
         fname = f'Laudo_Ruido_{fname}.docx'
+        usuario = current_user.nome if current_user.is_authenticated else 'anônimo'
+        registrar_evento('laudo_ruido_gerado', f'Laudo Ruído: {nome}',
+                         usuario=usuario, ip=request.remote_addr)
         return send_file(
             io.BytesIO(docx_bytes),
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
