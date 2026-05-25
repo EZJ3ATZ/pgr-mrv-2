@@ -1196,6 +1196,16 @@ def export_amostradores():
 def analytics():
     """Dados consolidados para o painel de BI."""
     init_db()
+    # Helpers de SQL compatíveis SQLite/PostgreSQL
+    if USE_PG:
+        _mes_fmt   = lambda col: f"TO_CHAR({col}::date, 'YYYY-MM')"
+        _18m_ago   = "CURRENT_DATE - INTERVAL '18 months'"
+        _now_date  = 'CURRENT_DATE'
+    else:
+        _mes_fmt   = lambda col: f"strftime('%Y-%m', {col})"
+        _18m_ago   = "date('now','-18 months')"
+        _now_date  = "date('now')"
+
     with get_db() as conn:
 
         # Top agentes medidos (realizados)
@@ -1238,11 +1248,11 @@ def analytics():
         dem_por_status = {r['status']: r['qtd'] for r in dem_rows}
 
         # Evolucao mensal — OS concluídas por mês usando data real do Planner
-        evolucao = [row_to_dict(r) for r in conn.execute("""
-            SELECT strftime('%Y-%m', concluido_em_ms) AS mes, COUNT(*) AS qtd
+        evolucao = [row_to_dict(r) for r in conn.execute(f"""
+            SELECT {_mes_fmt('concluido_em_ms')} AS mes, COUNT(*) AS qtd
             FROM demandas
             WHERE concluido_em_ms IS NOT NULL
-              AND concluido_em_ms >= date('now','-18 months')
+              AND concluido_em_ms >= {_18m_ago}
               AND (LOWER(COALESCE(planner_bucket,'')) LIKE '%entregue%'
                    OR LOWER(COALESCE(planner_bucket,'')) LIKE '%conclu%'
                    OR status = 'concluida')
@@ -1251,11 +1261,11 @@ def analytics():
         """).fetchall()]
 
         # Demandas abertas por mês — data real de criação no Planner
-        demandas_por_mes = [row_to_dict(r) for r in conn.execute("""
-            SELECT strftime('%Y-%m', COALESCE(criado_em_ms, criado_em)) AS mes, COUNT(*) AS qtd
+        demandas_por_mes = [row_to_dict(r) for r in conn.execute(f"""
+            SELECT {_mes_fmt('COALESCE(criado_em_ms, criado_em)')} AS mes, COUNT(*) AS qtd
             FROM demandas
             WHERE COALESCE(criado_em_ms, criado_em) IS NOT NULL
-              AND COALESCE(criado_em_ms, criado_em) >= date('now','-18 months')
+              AND COALESCE(criado_em_ms, criado_em) >= {_18m_ago}
               AND origem = 'planner'
             GROUP BY mes ORDER BY mes
         """).fetchall()]
@@ -1271,9 +1281,10 @@ def analytics():
         concluidas = dem_por_status.get('concluida', 0)
         taxa_conclusao = round(concluidas / total_dem * 100, 1)
 
-        dem_atrasadas = conn.execute("""
+        dem_atrasadas = conn.execute(f"""
             SELECT COUNT(*) AS c FROM demandas
-            WHERE status != 'concluida' AND prazo < date('now')
+            WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
+              AND prazo < {_now_date}
         """).fetchone()['c']
 
         total_med = conn.execute(
