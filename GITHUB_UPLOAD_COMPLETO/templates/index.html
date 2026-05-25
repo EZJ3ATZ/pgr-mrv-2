@@ -2380,6 +2380,7 @@
         </select>
         <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
         <button class="ctrl-import-btn" id="btn-fix-data-entrada" onclick="ctrlFixDataEntrada()" style="background:#555;display:none;" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</button>
+        <button class="ctrl-import-btn" onclick="ctrlAbrirNovoAmostrador()" style="background:var(--brand);">+ Adicionar</button>
       </div>
       <div class="ctrl-table-wrap">
         <table class="ctrl-table">
@@ -3211,6 +3212,26 @@
     </div>
     <div id="ctrl-escopo-panel-agentes" style="display:none;min-height:80px;">
       <div id="ctrl-escopo-agentes" style="font-size:.82rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Novo Amostrador -->
+<div class="ctrl-overlay" id="ctrl-novo-amostr-overlay" style="display:none;" onclick="if(event.target===this) ctrlFecharNovoAmostrador()">
+  <div class="ctrl-modal">
+    <h3>Novo Amostrador</h3>
+    <label>Código <span style="color:var(--red)">*</span></label>
+    <input type="text" id="ctrl-na-codigo" placeholder="Ex: FV3131" style="text-transform:uppercase;">
+    <label>Tipo <span style="color:var(--red)">*</span></label>
+    <input type="text" id="ctrl-na-tipo" placeholder="Ex: FV, TCP, FL, QZ, IOL..." style="text-transform:uppercase;">
+    <label>Data de entrada</label>
+    <input type="date" id="ctrl-na-data">
+    <label>Observação</label>
+    <input type="text" id="ctrl-na-obs" placeholder="Opcional">
+    <div id="ctrl-na-erro" style="color:var(--red);font-size:.8rem;margin-top:8px;display:none;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="ctrlFecharNovoAmostrador()" style="flex:1;padding:10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-family:inherit;">Cancelar</button>
+      <button onclick="ctrlSalvarNovoAmostrador()" style="flex:2;padding:10px;background:var(--brand);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;">Salvar</button>
     </div>
   </div>
 </div>
@@ -5557,6 +5578,46 @@ function ctrlSwitchAmostrView(view) {
   if (tabVenc) { tabVenc.style.background = view==='venc'    ? 'var(--orange)' : 'var(--surface2)'; tabVenc.style.color = view==='venc'    ? '#fff' : 'var(--text3)'; }
   if (view === 'venc') ctrlLoadVencendo();
   if (view === 'estoque') ctrlLoadAmostr();
+}
+
+function ctrlAbrirNovoAmostrador() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('ctrl-na-codigo').value = '';
+  document.getElementById('ctrl-na-tipo').value = '';
+  document.getElementById('ctrl-na-data').value = today;
+  document.getElementById('ctrl-na-obs').value = '';
+  document.getElementById('ctrl-na-erro').style.display = 'none';
+  document.getElementById('ctrl-novo-amostr-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('ctrl-na-codigo').focus(), 50);
+}
+function ctrlFecharNovoAmostrador() {
+  document.getElementById('ctrl-novo-amostr-overlay').style.display = 'none';
+}
+async function ctrlSalvarNovoAmostrador() {
+  const codigo = document.getElementById('ctrl-na-codigo').value.trim().toUpperCase();
+  const tipo   = document.getElementById('ctrl-na-tipo').value.trim().toUpperCase();
+  const data_entrada = document.getElementById('ctrl-na-data').value;
+  const observacao   = document.getElementById('ctrl-na-obs').value.trim();
+  const erroEl = document.getElementById('ctrl-na-erro');
+  erroEl.style.display = 'none';
+  if (!codigo || !tipo) {
+    erroEl.textContent = 'Código e tipo são obrigatórios.';
+    erroEl.style.display = 'block';
+    return;
+  }
+  try {
+    const res = await ctrlFetch('/controle/amostradores', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({codigo, tipo, data_entrada, observacao})
+    });
+    if (res.erro) throw new Error(res.erro);
+    ctrlFecharNovoAmostrador();
+    ctrlLoadAmostr();
+  } catch(e) {
+    erroEl.textContent = e.message || 'Erro ao salvar.';
+    erroEl.style.display = 'block';
+  }
 }
 
 async function ctrlLoadVencendo() {
