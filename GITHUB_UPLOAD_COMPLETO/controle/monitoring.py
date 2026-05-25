@@ -301,19 +301,33 @@ def diagnostico_banco() -> dict:
         'release': RELEASE,
     }
 
+    def _scalar(row):
+        """Extrai o primeiro valor de fetchone() — funciona com SQLite (tuple) e PostgreSQL (dict)."""
+        if row is None:
+            return 0
+        if isinstance(row, dict):
+            return next(iter(row.values()), 0)
+        return row[0]
+
+    def _cnt(sql, params=None):
+        try:
+            return _scalar(conn.execute(sql, params).fetchone() if params else conn.execute(sql).fetchone())
+        except Exception:
+            return 0
+
     try:
         with get_db() as conn:
             # ── Empresas ──────────────────────────────────────────────
             resultado['empresas'] = {
-                'total': conn.execute('SELECT COUNT(*) FROM empresas').fetchone()[0],
-                'pendentes': conn.execute("SELECT COUNT(*) FROM empresas WHERE pendente=1").fetchone()[0],
-                'sem_cnpj': conn.execute("SELECT COUNT(*) FROM empresas WHERE cnpj IS NULL OR cnpj=''").fetchone()[0],
-                'duplicatas': conn.execute("""
+                'total': _cnt('SELECT COUNT(*) FROM empresas'),
+                'pendentes': _cnt("SELECT COUNT(*) FROM empresas WHERE pendente=1"),
+                'sem_cnpj': _cnt("SELECT COUNT(*) FROM empresas WHERE cnpj IS NULL OR cnpj=''"),
+                'duplicatas': _cnt("""
                     SELECT COUNT(*) FROM (
                         SELECT LOWER(TRIM(nome)) FROM empresas
                         GROUP BY LOWER(TRIM(nome)) HAVING COUNT(*)>1
-                    )
-                """).fetchone()[0],
+                    ) AS sub
+                """),
                 'top_duplicatas': [dict(r) for r in conn.execute("""
                     SELECT LOWER(TRIM(nome)) AS nome_key, COUNT(*) AS qtd
                     FROM empresas GROUP BY LOWER(TRIM(nome))
@@ -323,10 +337,10 @@ def diagnostico_banco() -> dict:
 
             # ── Demandas ──────────────────────────────────────────────
             resultado['demandas'] = {
-                'total': conn.execute('SELECT COUNT(*) FROM demandas').fetchone()[0],
-                'sem_empresa': conn.execute(
+                'total': _cnt('SELECT COUNT(*) FROM demandas'),
+                'sem_empresa': _cnt(
                     'SELECT COUNT(*) FROM demandas WHERE empresa_id=0 OR empresa_id IS NULL'
-                ).fetchone()[0],
+                ),
                 'por_tipo': {r['tipo_demanda'] or 'null': r['qtd'] for r in conn.execute("""
                     SELECT tipo_demanda, COUNT(*) AS qtd
                     FROM demandas GROUP BY tipo_demanda ORDER BY qtd DESC
@@ -343,9 +357,7 @@ def diagnostico_banco() -> dict:
 
             # ── OS ────────────────────────────────────────────────────
             total_dem = resultado['demandas']['total'] or 1
-            com_os = conn.execute(
-                "SELECT COUNT(*) FROM demandas WHERE numero_os IS NOT NULL AND numero_os != ''"
-            ).fetchone()[0]
+            com_os = _cnt("SELECT COUNT(*) FROM demandas WHERE numero_os IS NOT NULL AND numero_os != ''")
             resultado['os'] = {
                 'com_os': com_os,
                 'sem_os': total_dem - com_os,
@@ -361,12 +373,8 @@ def diagnostico_banco() -> dict:
             }
 
             # ── Planner ───────────────────────────────────────────────
-            planner_total = conn.execute(
-                "SELECT COUNT(*) FROM demandas WHERE origem='planner'"
-            ).fetchone()[0]
-            sem_match = conn.execute(
-                "SELECT COUNT(*) FROM demandas WHERE origem='planner' AND (empresa_id=0 OR empresa_id IS NULL)"
-            ).fetchone()[0]
+            planner_total = _cnt("SELECT COUNT(*) FROM demandas WHERE origem='planner'")
+            sem_match = _cnt("SELECT COUNT(*) FROM demandas WHERE origem='planner' AND (empresa_id=0 OR empresa_id IS NULL)")
             resultado['planner'] = {
                 'total_tarefas': planner_total,
                 'vinculadas': planner_total - sem_match,
@@ -399,60 +407,90 @@ def diagnostico_banco() -> dict:
             }
 
             # ── Amostradores ──────────────────────────────────────────
-            resultado['amostradores'] = {
-                'total': conn.execute('SELECT COUNT(*) FROM amostradores').fetchone()[0],
-                'no_lab': conn.execute(
-                    "SELECT COUNT(*) FROM amostradores WHERE status='laboratorio'"
-                ).fetchone()[0],
-                'disponiveis': conn.execute(
-                    "SELECT COUNT(*) FROM amostradores WHERE status='disponivel'"
-                ).fetchone()[0],
-                'parados_lab_30d': conn.execute("""
+            try:
+                from .db import USE_PG
+            except ImportError:
+                USE_PG = False
+            # Funções de data diferem entre SQLite e PostgreSQL
+            if USE_PG:
+                _parados_sql = """
+                    SELECT COUNT(*) FROM amostradores
+                    WHERE status='laboratorio'
+                      AND data_envio_lab IS NOT NULL
+                      AND data_envio_lab::date < CURRENT_DATE - 30
+                """
+                _vencendo_sql = """
+                    SELECT COUNT(*) FROM amostradores
+                    WHERE cert_validade IS NOT NULL AND cert_validade != ''
+                      AND cert_validade::date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
+                """
+                _vencidos_sql = """
+                    SELECT COUNT(*) FROM amostradores
+                    WHERE cert_validade IS NOT NULL AND cert_validade != ''
+                      AND cert_validade::date < CURRENT_DATE
+                """
+            else:
+                _parados_sql = """
                     SELECT COUNT(*) FROM amostradores
                     WHERE status='laboratorio'
                       AND data_envio_lab IS NOT NULL
                       AND julianday('now') - julianday(data_envio_lab) > 30
-                """).fetchone()[0],
-                'vencendo_7d': conn.execute("""
+                """
+                _vencendo_sql = """
                     SELECT COUNT(*) FROM amostradores
                     WHERE cert_validade IS NOT NULL AND cert_validade != ''
                       AND julianday(cert_validade) - julianday('now') BETWEEN 0 AND 7
-                """).fetchone()[0],
-                'vencidos': conn.execute("""
+                """
+                _vencidos_sql = """
                     SELECT COUNT(*) FROM amostradores
                     WHERE cert_validade IS NOT NULL AND cert_validade != ''
                       AND julianday(cert_validade) < julianday('now')
-                """).fetchone()[0],
+                """
+            resultado['amostradores'] = {
+                'total':          _cnt('SELECT COUNT(*) FROM amostradores'),
+                'no_lab':         _cnt("SELECT COUNT(*) FROM amostradores WHERE status='laboratorio'"),
+                'disponiveis':    _cnt("SELECT COUNT(*) FROM amostradores WHERE status='disponivel'"),
+                'parados_lab_30d': _cnt(_parados_sql),
+                'vencendo_7d':    _cnt(_vencendo_sql),
+                'vencidos':       _cnt(_vencidos_sql),
             }
 
             # ── KPIs operacionais (Item 15) ────────────────────────────
-            resultado['operacional'] = {
-                'os_prazo_7d': conn.execute("""
+            if USE_PG:
+                _op7d_sql = """
+                    SELECT COUNT(*) FROM demandas
+                    WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
+                      AND prazo::date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
+                """
+                _opat_sql = """
+                    SELECT COUNT(*) FROM demandas
+                    WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
+                      AND prazo::date < CURRENT_DATE
+                """
+            else:
+                _op7d_sql = """
                     SELECT COUNT(*) FROM demandas
                     WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
                       AND julianday(prazo) - julianday('now') BETWEEN 0 AND 7
-                """).fetchone()[0],
-                'os_atrasadas': conn.execute("""
+                """
+                _opat_sql = """
                     SELECT COUNT(*) FROM demandas
                     WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
                       AND julianday(prazo) < julianday('now')
-                """).fetchone()[0],
-                'os_sem_prazo': conn.execute("""
+                """
+            resultado['operacional'] = {
+                'os_prazo_7d':    _cnt(_op7d_sql),
+                'os_atrasadas':   _cnt(_opat_sql),
+                'os_sem_prazo':   _cnt("""
                     SELECT COUNT(*) FROM demandas
                     WHERE status != 'concluida'
                       AND (prazo IS NULL OR prazo = '')
                       AND origem = 'planner'
-                """).fetchone()[0],
-                'coletas_ruido': conn.execute(
-                    'SELECT COUNT(*) FROM coletas_ruido'
-                ).fetchone()[0] if _tabela_existe(conn, 'coletas_ruido') else 0,
-                'coletas_quimico': conn.execute(
-                    'SELECT COUNT(*) FROM coletas_quimico'
-                ).fetchone()[0] if _tabela_existe(conn, 'coletas_quimico') else 0,
-                'planejamentos': conn.execute(
-                    'SELECT COUNT(*) FROM planejamentos'
-                ).fetchone()[0] if _tabela_existe(conn, 'planejamentos') else 0,
-                'db_tipo': 'postgresql' if 'postgresql' in (ENV or '').lower() or 'postgres' in (ENV or '').lower() else 'sqlite',
+                """),
+                'coletas_ruido':  _cnt('SELECT COUNT(*) FROM coletas_ruido')  if _tabela_existe(conn, 'coletas_ruido')  else 0,
+                'coletas_quimico':_cnt('SELECT COUNT(*) FROM coletas_quimico') if _tabela_existe(conn, 'coletas_quimico') else 0,
+                'planejamentos':  _cnt('SELECT COUNT(*) FROM planejamentos')   if _tabela_existe(conn, 'planejamentos')   else 0,
+                'db_tipo': 'postgresql' if USE_PG else 'sqlite',
             }
 
     except Exception as e:
