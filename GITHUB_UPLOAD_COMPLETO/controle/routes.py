@@ -1875,6 +1875,32 @@ def graph_sync_manual():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/admin/limpar_demandas_invalidas', methods=['POST'])
+@login_required
+def limpar_demandas_invalidas():
+    """Remove demandas vinculadas a tasks do Planner que foram marcadas como 'ignored'
+    (sem label Medições). Usado para corrigir syncs com bug de filtro."""
+    init_db()
+    try:
+        with get_db() as conn:
+            # Conta antes
+            total_antes = conn.execute('SELECT COUNT(*) as n FROM demandas').fetchone()['n']
+            # Deleta demandas cujo planner_task_id está em tasks ignoradas
+            conn.execute("""
+                DELETE FROM demandas
+                WHERE planner_task_id IN (
+                    SELECT planner_task_id FROM planner_raw_tasks WHERE sync_status = 'ignored'
+                )
+            """)
+            total_depois = conn.execute('SELECT COUNT(*) as n FROM demandas').fetchone()['n']
+        deletadas = total_antes - total_depois
+        registrar_evento('limpeza_demandas', f'{deletadas} demandas inválidas removidas',
+                         usuario=current_user.nome, ip=request.remote_addr)
+        return jsonify({'ok': True, 'antes': total_antes, 'depois': total_depois, 'deletadas': deletadas})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/graph/debug_labels')
 def graph_debug_labels():
     """Debug: retorna os labels (categoryDescriptions) de todos os planos conhecidos.
