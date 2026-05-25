@@ -2622,6 +2622,37 @@ def get_pipeline_stats():
     return jsonify(stats_raw_pipeline())
 
 
+@controle_bp.route('/db/status')
+def db_status():
+    """Informa qual backend de banco está ativo e testa conectividade."""
+    import os
+    backend = 'postgresql' if USE_PG else 'sqlite'
+    db_url_hint = ''
+    if USE_PG:
+        url = os.environ.get('DATABASE_URL', '')
+        # Oculta senha
+        import re as _re
+        db_url_hint = _re.sub(r':([^@]+)@', ':***@', url)
+    else:
+        from .db import DB_PATH
+        db_url_hint = DB_PATH
+    try:
+        with get_db() as conn:
+            cnt = conn.execute('SELECT COUNT(*) AS c FROM empresas').fetchone()['c']
+        ok = True
+        empresas = cnt
+    except Exception as e:
+        ok = False
+        empresas = str(e)
+    return jsonify({
+        'backend': backend,
+        'persistent': USE_PG,
+        'connection': db_url_hint,
+        'ok': ok,
+        'empresas_count': empresas,
+    })
+
+
 @controle_bp.route('/graph/sync', methods=['POST'])
 def graph_sync_manual():
     """Dispara sync manual do Planner em background (evita timeout do gunicorn)."""
