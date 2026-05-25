@@ -1367,7 +1367,7 @@
       <span>Ajuda</span>
     </div>
 
-    <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" style="opacity:.6;" title="Observabilidade e saúde do sistema">
+    <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" title="Observabilidade e saúde do sistema">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
       </svg>
@@ -2846,7 +2846,10 @@
           <div><label>Função / Setor</label><input type="text" id="ctrl-nv-funcao" placeholder="Ex: Pintor / Acabamento"></div>
         </div>
         <div class="nv-f">
-          <label>Vazão Calibrada (L/min) <button type="button" onclick="ctrlNvUsarVazaoMedia()" style="margin-left:8px;background:var(--green);color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⚡ Média do método</button></label>
+          <label>Vazão Calibrada (L/min)
+            <button type="button" onclick="ctrlNvUsarVazaoMedia()" style="margin-left:8px;background:var(--green);color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⚡ Média</button>
+            <button type="button" onclick="ctrlNvUsarVazaoTeto()" style="margin-left:4px;background:#f59e0b;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⬆ Teto</button>
+          </label>
           <input type="number" step="0.001" id="ctrl-nv-vazao" placeholder="0.150" oninput="ctrlNvCalcTempoPreview()">
           <div id="ctrl-nv-tempo-preview" style="display:none;margin-top:6px;padding:7px;background:rgba(0,170,119,.08);border-radius:5px;font-size:.8rem;text-align:center;"></div>
           <div id="ctrl-nv-vazao-aviso"></div>
@@ -3379,7 +3382,8 @@
     </div>
     <div>
       <label>Vazão Calibrada (L/min)
-        <button type="button" onclick="ctrlSugerirVazao()" style="margin-left:8px; background:#0a7; color:#fff; border:none; padding:2px 8px; border-radius:4px; font-size:.7rem; cursor:pointer;">⚡ Usar média do método</button>
+        <button type="button" onclick="ctrlSugerirVazao()" style="margin-left:8px;background:#0a7;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⚡ Média</button>
+        <button type="button" onclick="ctrlSugerirVazaoTeto()" style="margin-left:4px;background:#f59e0b;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⬆ Teto</button>
       </label>
       <input type="number" step="0.001" id="ctrl-bx-vazao" placeholder="0.150" oninput="ctrlCalcTempo()">
     </div>
@@ -6833,7 +6837,15 @@ function ctrlNvUsarVazaoMedia() {
   const sugerida = (m.vazao_min + m.vazao_max) / 2;
   document.getElementById('ctrl-nv-vazao').value = sugerida.toFixed(3);
   ctrlNvCalcTempoPreview();
-  _showToast(`✓ Vazão: ${sugerida.toFixed(3)} L/min`, 'success');
+  _showToast(`✓ Vazão média: ${sugerida.toFixed(3)} L/min`, 'success');
+}
+
+function ctrlNvUsarVazaoTeto() {
+  const m = window._ctrlNvMetodoAtual;
+  if (!m || !m.vazao_max) { _showToast('⚠ Selecione um agente com método cadastrado', 'warn'); return; }
+  document.getElementById('ctrl-nv-vazao').value = m.vazao_max.toFixed(3);
+  ctrlNvCalcTempoPreview();
+  _showToast(`⬆ Vazão teto: ${m.vazao_max.toFixed(3)} L/min`, 'success');
 }
 
 function ctrlNvCalcTempoPreview() {
@@ -7649,11 +7661,21 @@ function ctrlSugerirVazao() {
     _showToast('⚠ Selecione primeiro o agente para puxar a vazão do método', 'warn');
     return;
   }
-  // Média entre min e max
   const sugerida = (m.vazao_min + m.vazao_max) / 2;
   document.getElementById('ctrl-bx-vazao').value = sugerida.toFixed(3);
   ctrlCalcTempo();
-  _showToast(`✓ Vazão recomendada: ${sugerida.toFixed(3)} L/min`, 'success');
+  _showToast(`✓ Vazão média: ${sugerida.toFixed(3)} L/min`, 'success');
+}
+
+function ctrlSugerirVazaoTeto() {
+  const m = window._ctrlMetodoSel || {};
+  if (!m.vazao_max) {
+    _showToast('⚠ Selecione primeiro o agente para puxar a vazão do método', 'warn');
+    return;
+  }
+  document.getElementById('ctrl-bx-vazao').value = m.vazao_max.toFixed(3);
+  ctrlCalcTempo();
+  _showToast(`⬆ Vazão teto: ${m.vazao_max.toFixed(3)} L/min`, 'success');
 }
 
 async function ctrlLoadMedicoesDoBaixa(demId) {
