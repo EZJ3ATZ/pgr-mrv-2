@@ -1828,7 +1828,8 @@ def graph_sync_manual():
                     # Salva erro no DB para debug
                     try:
                         with get_db() as c:
-                            c.execute("INSERT OR REPLACE INTO ms_sync_state (chave,valor,atualizado_em) VALUES ('last_sync_error',?,CURRENT_TIMESTAMP)",
+                            c.execute("""INSERT INTO ms_sync_state (chave,valor,atualizado_em) VALUES ('last_sync_error',?,CURRENT_TIMESTAMP)
+                                         ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, atualizado_em=EXCLUDED.atualizado_em""",
                                       (traceback.format_exc()[:2000],))
                     except Exception:
                         pass
