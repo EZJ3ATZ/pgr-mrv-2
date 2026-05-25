@@ -1213,41 +1213,7 @@
 
   <div class="sidebar-divider"></div>
 
-  <div class="sidebar-section">
-    <span class="sidebar-label">Documentos</span>
-
-    <div class="sidebar-item" data-name="pgr" onclick="goToTab('pgr')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
-      </svg>
-      <span>Gerador de PGR</span>
-      <span class="sidebar-badge" style="background:var(--orange);color:#fff;font-size:.57rem;padding:1px 5px;border-radius:4px;font-weight:700;">NR-1</span>
-    </div>
-
-    <div class="sidebar-item" data-name="calor" onclick="goToTab('calor')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
-      </svg>
-      <span>Laudo de Calor</span>
-    </div>
-
-    <div class="sidebar-item" data-name="ruido" onclick="goToTab('ruido')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
-      </svg>
-      <span>Laudo de Ru&#237;do</span>
-    </div>
-
-    <div class="sidebar-item" data-name="quimico" onclick="goToTab('quimico')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
-      </svg>
-      <span>An&#225;lise Qu&#237;mica</span>
-    </div>
-  </div>
-
-  <div class="sidebar-divider"></div>
-
+  <!-- MEDIÇÕES — foco principal do sistema -->
   <div class="sidebar-section">
     <span class="sidebar-label">Medi&#231;&#245;es</span>
 
@@ -1264,32 +1230,19 @@
       </svg>
       <span>Demandas / OS</span>
     </div>
-  </div>
 
-  <div class="sidebar-divider"></div>
-
-  <div class="sidebar-section">
-    <span class="sidebar-label">Cadastros</span>
-
-    <div class="sidebar-item" data-name="empresas" onclick="goToTab('empresas')">
+    <div class="sidebar-item" data-name="planejamento" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan', null),300);" title="Planejamento pré-visita">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M10 6h4m-4 4h4m-4 4h4"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h6m-6 4h4"/>
       </svg>
-      <span>Empresas</span>
+      <span>Planejamento</span>
     </div>
 
-    <div class="sidebar-item" data-name="agentes" onclick="goToTab('agentes')">
+    <div class="sidebar-item" data-name="campo" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', null),300);" title="Planilha de campo — execução real">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
       </svg>
-      <span>Agentes</span>
-    </div>
-
-    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', null); },500);">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
-      </svg>
-      <span>Amostradores</span>
+      <span>Planilha de Campo</span>
     </div>
   </div>
 
@@ -1318,26 +1271,68 @@
       </svg>
       <span>Analytics BI</span>
     </div>
+  </div>
 
-    <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" title="Observabilidade e saúde do sistema">
+  <div class="sidebar-divider"></div>
+
+  <!-- CADASTROS -->
+  <div class="sidebar-section">
+    <span class="sidebar-label">Cadastros</span>
+
+    <div class="sidebar-item" data-name="empresas" onclick="goToTab('empresas')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M10 6h4m-4 4h4m-4 4h4"/>
       </svg>
-      <span>Saúde do Sistema</span>
+      <span>Empresas</span>
     </div>
 
-    <div class="sidebar-item" data-name="planejamento" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan', null),300);" title="Planejamento pré-visita">
+    <div class="sidebar-item" data-name="agentes" onclick="goToTab('agentes')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h6m-6 4h4"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
       </svg>
-      <span>Planejamento</span>
+      <span>Agentes</span>
     </div>
 
-    <div class="sidebar-item" data-name="campo" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova', null),300);" title="Planilha de campo — execução real">
+    <div class="sidebar-item" data-name="amostradores-cadastro" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('amostr', null); },500);">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
       </svg>
-      <span>Planilha de Campo</span>
+      <span>Amostradores</span>
+    </div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <!-- DOCUMENTOS — uso secundário, será migrado para outro site -->
+  <div class="sidebar-section">
+    <span class="sidebar-label" style="color:var(--text3);">Documentos</span>
+
+    <div class="sidebar-item" data-name="pgr" onclick="goToTab('pgr')" style="opacity:.75;">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
+      </svg>
+      <span>Gerador de PGR</span>
+    </div>
+
+    <div class="sidebar-item" data-name="calor" onclick="goToTab('calor')" style="opacity:.75;">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+      </svg>
+      <span>Laudo de Calor</span>
+    </div>
+
+    <div class="sidebar-item" data-name="ruido" onclick="goToTab('ruido')" style="opacity:.75;">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
+      </svg>
+      <span>Laudo de Ru&#237;do</span>
+    </div>
+
+    <div class="sidebar-item" data-name="quimico" onclick="goToTab('quimico')" style="opacity:.75;">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
+      </svg>
+      <span>An&#225;lise Qu&#237;mica</span>
     </div>
   </div>
 
@@ -1356,6 +1351,13 @@
         <circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/>
       </svg>
       <span>Ajuda</span>
+    </div>
+
+    <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" style="opacity:.6;" title="Observabilidade e saúde do sistema">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+      </svg>
+      <span>Sa&#250;de do Sistema</span>
     </div>
   </div>
 
@@ -1386,25 +1388,25 @@
     <div class="home-hero-left">
       <div class="home-eyebrow">
         <div class="home-eyebrow-dot"></div>
-        Plataforma de Engenharia Ocupacional
+        Setor de Medi&#231;&#245;es · Ocupacional SST
       </div>
-      <h1 class="home-h1">Laudos SST<br><span>automatizados.</span></h1>
+      <h1 class="home-h1">Controle de<br><span>Medi&#231;&#245;es.</span></h1>
       <p class="home-p">
-        Gere PGRs, laudos de calor, ruído e análise química com poucos cliques.
-        Controle medições, amostradores e demandas — tudo integrado, sem planilha.
+        Gerencie demandas, amostradores, OS e prazos — tudo integrado com o Planner.
+        Do planejamento da visita ao resultado no laborat&#243;rio, sem planilha.
       </p>
       <div class="home-cta-row">
-        <button class="home-btn-primary" onclick="goToTab('pgr')">
+        <button class="home-btn-primary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),300);">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
-          Gerar PGR agora
+          Nova Medi&#231;&#227;o
         </button>
-        <button class="home-btn-secondary" onclick="goToTab('controle'); ctrlInit();">
+        <button class="home-btn-secondary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
           </svg>
-          Ver controle de medições
+          Ver Demandas
         </button>
       </div>
     </div>
@@ -1464,9 +1466,59 @@
     </div>
   </div>
 
-  <!-- Módulos -->
-  <div class="home-section-label">Módulos disponíveis</div>
+  <!-- Módulos operacionais -->
+  <div class="home-section-label">M&#243;dulos operacionais</div>
   <div class="home-modules">
+
+    <div class="home-mod" onclick="goToTab('controle'); ctrlInit();">
+      <div class="home-mod-icon green">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Controle de Medi&#231;&#245;es</div>
+      <div class="home-mod-desc">Gest&#227;o de amostradores, OS por empresa, previs&#227;o de estoque e controle de vencimento no laborat&#243;rio.</div>
+      <span class="home-mod-tag" style="background:rgba(16,185,129,.08);color:var(--green);">Principal</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
+      <div class="home-mod-icon" style="background:rgba(245,158,11,.12);color:var(--yellow);">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Demandas / OS</div>
+      <div class="home-mod-desc">Painel de demandas vindas do Microsoft Planner. Visualize por empresa, status e prazo.</div>
+      <span class="home-mod-tag" style="background:rgba(245,158,11,.08);color:var(--yellow);">Planner</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan', null),300);">
+      <div class="home-mod-icon" style="background:rgba(96,165,250,.12);color:var(--blue);">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 4h6m-6 4h4"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Planejamento de Visita</div>
+      <div class="home-mod-desc">Organize as visitas t&#233;cnicas antes de ir a campo. Defina equipe, equipamentos e checklists.</div>
+      <span class="home-mod-tag" style="background:rgba(96,165,250,.08);color:var(--blue);">Campo</span>
+    </div>
+
+    <div class="home-mod" onclick="goToTab('relatorios')">
+      <div class="home-mod-icon" style="background:rgba(167,139,250,.12);color:var(--purple);">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+      </div>
+      <div class="home-mod-name">Relat&#243;rios e Indicadores</div>
+      <div class="home-mod-desc">KPIs do setor, gr&#225;ficos de conformidade e hist&#243;rico por empresa e per&#237;odo.</div>
+      <span class="home-mod-tag" style="background:rgba(167,139,250,.08);color:var(--purple);">An&#225;lise</span>
+    </div>
+
+  </div>
+
+  <!-- Documentos — módulo secundário -->
+  <div class="home-section-label" style="margin-top:32px;">Gera&#231;&#227;o de documentos</div>
+  <div class="home-modules" style="opacity:.8;">
 
     <div class="home-mod" onclick="goToTab('pgr')">
       <div class="home-mod-icon orange">
@@ -1475,7 +1527,7 @@
         </svg>
       </div>
       <div class="home-mod-name">Gerador de PGR</div>
-      <div class="home-mod-desc">Programa de Gerenciamento de Riscos · NR-1. Gere o DOCX completo com GHEs, cargos e agentes de risco.</div>
+      <div class="home-mod-desc">Programa de Gerenciamento de Riscos · NR-1. DOCX completo com GHEs, cargos e agentes de risco.</div>
       <span class="home-mod-tag" style="background:var(--orange-dim);color:var(--orange);">NR-1</span>
     </div>
 
@@ -1486,7 +1538,7 @@
         </svg>
       </div>
       <div class="home-mod-name">Laudo de Calor</div>
-      <div class="home-mod-desc">Avaliação de Estresse Térmico · IBUTG. Laudos por setor com parâmetros da NR-15 Anexo 3.</div>
+      <div class="home-mod-desc">Avalia&#231;&#227;o de Estresse T&#233;rmico · IBUTG. Laudos por setor com par&#226;metros da NR-15 Anexo 3.</div>
       <span class="home-mod-tag" style="background:rgba(239,68,68,.08);color:var(--red);">NR-15 An.3</span>
     </div>
 
@@ -1496,8 +1548,8 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6a7 7 0 010 12M9 9l-4 3H2v2h3l4 3V9z"/>
         </svg>
       </div>
-      <div class="home-mod-name">Laudo de Ruído</div>
-      <div class="home-mod-desc">Dosimetria com CHROMPACK SmartdB. Importa o PDF do dosímetro e gera o laudo completo automaticamente.</div>
+      <div class="home-mod-name">Laudo de Ru&#237;do</div>
+      <div class="home-mod-desc">Dosimetria com CHROMPACK SmartdB. Importa o PDF do dos&#237;metro e gera o laudo completo.</div>
       <span class="home-mod-tag" style="background:rgba(96,165,250,.08);color:var(--blue);">NR-15 An.1</span>
     </div>
 
@@ -1507,20 +1559,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
         </svg>
       </div>
-      <div class="home-mod-name">Análise Química</div>
-      <div class="home-mod-desc">Agentes químicos com cadeia de custódia e resultado laboratorial. Importa Excel e PDF do laboratório.</div>
+      <div class="home-mod-name">An&#225;lise Qu&#237;mica</div>
+      <div class="home-mod-desc">Agentes qu&#237;micos com cadeia de cust&#243;dia e resultado laboratorial. Importa Excel e PDF.</div>
       <span class="home-mod-tag" style="background:rgba(167,139,250,.08);color:var(--purple);">NR-15 An.13</span>
-    </div>
-
-    <div class="home-mod" onclick="goToTab('controle'); ctrlInit();">
-      <div class="home-mod-icon green">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/>
-        </svg>
-      </div>
-      <div class="home-mod-name">Controle de Medições</div>
-      <div class="home-mod-desc">Gestão integrada de amostradores, demandas por empresa, previsão de estoque e controle de vencimento.</div>
-      <span class="home-mod-tag" style="background:rgba(16,185,129,.08);color:var(--green);">Gestão</span>
     </div>
 
   </div>
@@ -1618,30 +1659,8 @@
   </div>
 
   <!-- Diferenciais -->
-  <div class="home-section-label">Por que usar</div>
+  <div class="home-section-label">Diferenciais do sistema</div>
   <div class="home-features">
-    <div class="home-feature">
-      <div class="home-feature-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-        </svg>
-      </div>
-      <div>
-        <div class="home-feature-title">Geração instantânea</div>
-        <div class="home-feature-desc">DOCX gerado em segundos com todos os dados preenchidos. Sem copiar, sem colar, sem retrabalho.</div>
-      </div>
-    </div>
-    <div class="home-feature">
-      <div class="home-feature-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
-        </svg>
-      </div>
-      <div>
-        <div class="home-feature-title">GHEs pré-mapeados</div>
-        <div class="home-feature-desc">135 cargos e 25 GHEs da MRV já cadastrados. Agentes de risco preenchidos automaticamente por cargo.</div>
-      </div>
-    </div>
     <div class="home-feature">
       <div class="home-feature-icon">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -1649,19 +1668,19 @@
         </svg>
       </div>
       <div>
-        <div class="home-feature-title">Controle integrado</div>
-        <div class="home-feature-desc">Amostradores, OS, prazos e previsão de estoque em um único painel. Substitui todas as planilhas.</div>
+        <div class="home-feature-title">Substitui todas as planilhas</div>
+        <div class="home-feature-desc">Amostradores, OS, prazos e previs&#227;o de estoque em um painel &#250;nico. Chega de Excel fragmentado.</div>
       </div>
     </div>
     <div class="home-feature">
       <div class="home-feature-icon">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
         </svg>
       </div>
       <div>
-        <div class="home-feature-title">Extração automática de PDF</div>
-        <div class="home-feature-desc">Importe o PDF da empresa ou do dosímetro e o sistema extrai CNPJ, endereço e dados de medição.</div>
+        <div class="home-feature-title">Sincronizado com o Planner</div>
+        <div class="home-feature-desc">Demandas do Microsoft Planner chegam automaticamente a cada 15 min — sem digitar OS manualmente.</div>
       </div>
     </div>
     <div class="home-feature">
@@ -1672,7 +1691,29 @@
       </div>
       <div>
         <div class="home-feature-title">Controle de vencimento</div>
-        <div class="home-feature-desc">Alertas automáticos de amostradores próximos do vencimento no laboratório para evitar cobranças extras.</div>
+        <div class="home-feature-desc">Alertas autom&#225;ticos de amostradores pr&#243;ximos do vencimento no laborat&#243;rio para evitar cobran&#231;as extras.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Extra&#231;&#227;o autom&#225;tica de PDF</div>
+        <div class="home-feature-desc">Importe o PDF da empresa ou do dos&#237;metro — CNPJ, endere&#231;o e dados de medi&#231;&#227;o s&#227;o extra&#237;dos automaticamente.</div>
+      </div>
+    </div>
+    <div class="home-feature">
+      <div class="home-feature-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="home-feature-title">Multiusu&#225;rio com controle de acesso</div>
+        <div class="home-feature-desc">Login por e-mail @ocupacional.com.br com pap&#233;is (admin / t&#233;cnico) e hist&#243;rico de a&#231;&#245;es.</div>
       </div>
     </div>
     <div class="home-feature">
@@ -1682,8 +1723,8 @@
         </svg>
       </div>
       <div>
-        <div class="home-feature-title">Normas técnicas inclusas</div>
-        <div class="home-feature-desc">NR-1, NR-15 Anexos 1 e 3, guia de métodos de análise química — tudo pré-configurado.</div>
+        <div class="home-feature-title">Normas t&#233;cnicas pr&#233;-configuradas</div>
+        <div class="home-feature-desc">NR-1, NR-15 Anexos 1 e 3, m&#233;todos de an&#225;lise qu&#237;mica — par&#226;metros j&#225; configurados, sem digitar limites.</div>
       </div>
     </div>
   </div>
