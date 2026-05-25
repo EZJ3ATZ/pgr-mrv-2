@@ -797,7 +797,6 @@ def extrair_pdf(file_bytes):
 
 # ── Rotas ─────────────────────────────────────────────────────────
 @app.route('/')
-@login_required
 def index():
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
 
