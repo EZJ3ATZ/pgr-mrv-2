@@ -437,9 +437,10 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
     conn = None
     try:
-        from .db import _connect
+        from .db import _connect, USE_PG
         conn = _connect()
-        conn.execute('PRAGMA foreign_keys = OFF')
+        if not USE_PG:
+            conn.execute('PRAGMA foreign_keys = OFF')
         _task_count = 0  # contador para commits intermediários
         COMMIT_INTERVAL = 300  # commit a cada 300 tasks
 
