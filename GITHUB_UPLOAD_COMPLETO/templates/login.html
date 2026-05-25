@@ -50,10 +50,9 @@
     .hero-bg {
       position: absolute;
       inset: 0;
-      background:
-        url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1400&q=85&fit=crop') center 30% / cover no-repeat,
-        linear-gradient(155deg, #07090E 0%, #0D1A1A 50%, #0A1512 100%);
-      filter: brightness(.38) saturate(.85);
+      background-image: url('https://images.pexels.com/photos/2760243/pexels-photo-2760243.jpeg?auto=compress&cs=tinysrgb&w=1400');
+      background-size: cover;
+      background-position: center 25%;
       z-index: 0;
     }
 
@@ -61,17 +60,12 @@
       content: '';
       position: absolute;
       inset: 0;
-      background:
-        /* grade de pontos industriais */
-        radial-gradient(circle, rgba(29,184,154,.06) 1px, transparent 1px),
-        /* gradiente verde escuro */
-        linear-gradient(
-          155deg,
-          rgba(7,9,14,.92) 0%,
-          rgba(10,24,20,.85) 45%,
-          rgba(12,28,22,.80) 100%
-        );
-      background-size: 32px 32px, 100% 100%;
+      background: linear-gradient(
+        155deg,
+        rgba(7,9,14,.78) 0%,
+        rgba(7,9,14,.60) 40%,
+        rgba(10,24,20,.72) 100%
+      );
     }
 
     .hero > * { position: relative; z-index: 1; }
