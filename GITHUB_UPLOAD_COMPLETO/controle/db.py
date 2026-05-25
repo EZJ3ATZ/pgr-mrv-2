@@ -93,7 +93,10 @@ class _PGCursor:
         is_insert = sql.strip().upper().startswith('INSERT')
         if is_insert and 'RETURNING' not in sql.upper():
             sql = sql.rstrip(' \n;') + ' RETURNING id'
-        self._cur.execute(sql, params or ())
+        if params:
+            self._cur.execute(sql, params)
+        else:
+            self._cur.execute(sql)
         if is_insert:
             row = self._cur.fetchone()
             self._lastrowid = int(row['id']) if row and row.get('id') is not None else None
