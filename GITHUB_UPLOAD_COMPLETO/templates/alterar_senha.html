@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alterar Senha — Ocupacional SST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:    #1B6B6B;
+      --brand-d:  #145252;
+      --bg:       #07090E;
+      --surface:  #0E1118;
+      --surface2: #141925;
+      --border2:  #273050;
+      --text:     #E8EDF5;
+      --text2:    #8A97B0;
+      --red:      #E05252;
+      --green:    #4ecdc4;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .back { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); font-size: 13px; text-decoration: none; margin-bottom: 24px; }
+    .back:hover { color: var(--text); }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: var(--text2); margin-bottom: 28px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+    input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border .2s;
+    }
+    input:focus { border-color: var(--brand); }
+    .field { margin-bottom: 18px; }
+    .btn {
+      width: 100%;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      margin-top: 6px;
+    }
+    .btn:hover { background: var(--brand-d); }
+    .erro {
+      background: rgba(224,82,82,.12);
+      border: 1px solid rgba(224,82,82,.35);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--red);
+      margin-bottom: 20px;
+    }
+    .ok {
+      background: rgba(27,107,107,.15);
+      border: 1px solid rgba(27,107,107,.4);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--green);
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a class="back" href="/">← Voltar ao portal</a>
+    <h1>Alterar senha</h1>
+    <p class="subtitle">{{ current_user.email }}</p>
+
+    {% if erro %}
+    <div class="erro">{{ erro }}</div>
+    {% endif %}
+    {% if ok %}
+    <div class="ok">{{ ok }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="field">
+        <label>Senha atual</label>
+        <input type="password" name="senha_atual" placeholder="Sua senha atual" required autofocus>
+      </div>
+      <div class="field">
+        <label>Nova senha</label>
+        <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" required minlength="6">
+      </div>
+      <div class="field">
+        <label>Confirmar nova senha</label>
+        <input type="password" name="confirma" placeholder="Repita a nova senha" required minlength="6">
+      </div>
+      <button type="submit" class="btn">Salvar nova senha</button>
+    </form>
+  </div>
+</body>
+</html>
