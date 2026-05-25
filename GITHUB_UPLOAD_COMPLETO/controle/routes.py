@@ -2661,6 +2661,12 @@ def page_empresas_pendentes():
     return rt('empresas_pendentes.html')
 
 
+@controle_bp.route('/ajuda')
+def page_ajuda():
+    from flask import render_template as rt
+    return rt('ajuda.html')
+
+
 @controle_bp.route('/empresas/pendentes/<int:pend_id>/vincular', methods=['POST'])
 def api_vincular_empresa_pendente(pend_id):
     """
