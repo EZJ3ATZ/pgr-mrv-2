@@ -340,8 +340,14 @@ def _upsert_ms_user(conn, user_id: str) -> dict:
     try:
         u = get_user(user_id)
         conn.execute('''
-            INSERT OR REPLACE INTO ms_users (ms_id, display_name, email, job_title, department, atualizado_em)
+            INSERT INTO ms_users (ms_id, display_name, email, job_title, department, atualizado_em)
             VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)
+            ON CONFLICT (ms_id) DO UPDATE SET
+              display_name=EXCLUDED.display_name,
+              email=EXCLUDED.email,
+              job_title=EXCLUDED.job_title,
+              department=EXCLUDED.department,
+              atualizado_em=EXCLUDED.atualizado_em
         ''', (user_id, u.get('displayName',''), u.get('mail',''),
               u.get('jobTitle',''), u.get('department','')))
         return u
@@ -673,8 +679,11 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
         # Atualizar estado do último sync
         conn.execute('''
-            INSERT OR REPLACE INTO ms_sync_state (chave, valor, atualizado_em)
+            INSERT INTO ms_sync_state (chave, valor, atualizado_em)
             VALUES ('last_sync', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT (chave) DO UPDATE SET
+              valor=EXCLUDED.valor,
+              atualizado_em=EXCLUDED.atualizado_em
         ''', (datetime.now(timezone.utc).isoformat(),))
 
         # ── Matching empresa após sync ────────────────────────────────
@@ -712,8 +721,11 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
             stats['reclassificacao'] = {'erro': str(e)}
 
         conn.execute('''
-            INSERT OR REPLACE INTO ms_sync_state (chave, valor, atualizado_em)
+            INSERT INTO ms_sync_state (chave, valor, atualizado_em)
             VALUES ('last_sync_stats', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT (chave) DO UPDATE SET
+              valor=EXCLUDED.valor,
+              atualizado_em=EXCLUDED.atualizado_em
         ''', (json.dumps(stats),))
         conn.commit()
 
