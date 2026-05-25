@@ -21,6 +21,7 @@ from .db import (
     # Planejamento + Visitas
     criar_planejamento, get_planejamento, list_planejamentos, update_planejamento_status,
     criar_visita, get_visita, list_visitas, concluir_visita,
+    registrar_evento,
 )
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
@@ -100,6 +101,23 @@ def get_sync_log():
     return jsonify(list_sync_log(limit=int(request.args.get('limit', 20))))
 
 
+# ── Auditoria ──────────────────────────────────────────────────────────
+@controle_bp.route('/eventos')
+@login_required
+def get_eventos():
+    init_db()
+    limit = min(int(request.args.get('limit', 100)), 500)
+    tipo = request.args.get('tipo')
+    with get_db() as conn:
+        sql = 'SELECT * FROM eventos WHERE 1=1'
+        params = []
+        if tipo:
+            sql += ' AND tipo=?'; params.append(tipo)
+        sql += f' ORDER BY criado_em DESC LIMIT {limit}'
+        rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+    return jsonify(rows)
+
+
 # ── Amostradores ──────────────────────────────────────────────────────
 @controle_bp.route('/amostradores')
 def get_amostradores():
@@ -120,7 +138,12 @@ def cria_amostrador():
             (d['codigo'], d['tipo'], d.get('status', 'Estoque'),
              d.get('data_entrada', datetime.now().strftime('%Y-%m-%d')),
              d.get('observacao', '')))
-        return jsonify({'ok': True, 'id': cur.lastrowid})
+        novo_id = cur.lastrowid
+    registrar_evento('amostrador_criado', f'{d["codigo"]} ({d["tipo"]})',
+                     novo_id, 'amostrador',
+                     current_user.nome if current_user.is_authenticated else 'sistema',
+                     request.remote_addr)
+    return jsonify({'ok': True, 'id': novo_id})
 
 
 @controle_bp.route('/amostradores/<int:aid>', methods=['PUT'])
@@ -141,6 +164,11 @@ def update_amostrador(aid):
     params.append(aid)
     with get_db() as conn:
         conn.execute(f'UPDATE amostradores SET {",".join(fields)} WHERE id=?', params)
+    desc = '; '.join(f'{k}={d[k]}' for k in d if k in ('status','codigo','tipo','avaliador','data_medicao','empresa','observacao'))
+    registrar_evento('amostrador_atualizado', f'id={aid} {desc}',
+                     aid, 'amostrador',
+                     current_user.nome if current_user.is_authenticated else 'sistema',
+                     request.remote_addr)
     return jsonify({'ok': True})
 
 
