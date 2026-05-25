@@ -2005,9 +2005,7 @@
       <div>
         <label>Técnico(a)</label>
         <select id="r-tecnico">
-          <option value="kelly">Kelly Elissama Firmino — MTE 0072372-MG</option>
-          <option value="helbert">Helbert Gonçalves de Oliveira — MTE 45376/MG</option>
-          <option value="matheus">Matheus Costa</option>
+          <option value="">Carregando...</option>
         </select>
       </div>
       <div>
@@ -2595,10 +2593,7 @@
       <div class="plan-f">
         <label>Técnico Responsável</label>
         <select id="plan-tecnico">
-          <option>Matheus Costa</option>
-          <option>Kelly Elissama Firmino</option>
-          <option>Helbert</option>
-          <option>Wesley</option>
+          <option value="">Carregando...</option>
         </select>
       </div>
     </div>
@@ -2817,7 +2812,7 @@
         <div class="nv-g3 nv-f" style="margin-bottom:12px;">
           <div><label>Acompanhante da Inspeção</label><input type="text" id="nv-cr-acomp" placeholder="Nome"></div>
           <div><label>Cargo do Acompanhante</label><input type="text" id="nv-cr-cargo-acomp" placeholder="Cargo"></div>
-          <div><label>Técnico Ocupacional</label><input type="text" id="nv-cr-tecnico" value="Matheus Costa"></div>
+          <div><label>Técnico Ocupacional</label><input type="text" id="nv-cr-tecnico" value=""></div>
         </div>
         <div class="nv-g2 nv-f">
           <div><label>Hora de Início</label><input type="time" id="nv-cr-hora-ini"></div>
@@ -3797,9 +3792,7 @@
           <div><label>Acompanhante</label><input type="text" id="cr-acomp" oninput="coletaRuidoAutoSave()"></div>
           <div><label>Cargo do Acompanhante</label><input type="text" id="cr-cargo-acomp" oninput="coletaRuidoAutoSave()"></div>
           <div><label>T&#233;cnico</label><select id="cr-tecnico" oninput="coletaRuidoAutoSave()">
-            <option value="Matheus Costa">Matheus Costa</option>
-            <option value="Kelly Elissama Firmino">Kelly Elissama Firmino</option>
-            <option value="Helbert Goncalves">Helbert Gon&#231;alves</option>
+            <option value="">Carregando...</option>
           </select></div>
         </div>
         <div class="grid2 field">
@@ -5141,7 +5134,7 @@ async function gerarRuido() {
       telefone:      document.getElementById('r-tel').value,
       email:         document.getElementById('r-email').value,
     },
-    tecnico:    document.getElementById('r-tecnico').value,
+    tecnico:    (()=>{ try{ return JSON.parse(document.getElementById('r-tecnico').value); } catch(e){ return document.getElementById('r-tecnico').value; } })(),
     dataLaudo:  document.getElementById('r-data-laudo').value,
     avaliacoes: rAvals.map(av => ({...av})),
   };
@@ -5475,7 +5468,62 @@ if (typeof rRenderAvals === 'function') {
 }
 
 // ── Inicialização ─────────────────────────────────────────────────────
+// ── Carrega técnicos do sistema nos selects ──────────────────────────
+async function loadTecnicos() {
+  try {
+    const [tecRes, meRes] = await Promise.all([
+      fetch('/api/tecnicos').then(r => r.json()),
+      fetch('/api/me').then(r => r.json())
+    ]);
+    const tecnicos = Array.isArray(tecRes) ? tecRes : [];
+    const me = meRes;
+
+    // Preenche inputs de texto com nome do usuário logado
+    if (me) {
+      ['nv-cr-tecnico'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = me.nome;
+      });
+    }
+
+    // IDs dos selects que devem listar técnicos
+    const selectIds = ['r-tecnico', 'plan-tecnico', 'cr-tecnico'];
+
+    selectIds.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = '';
+
+      // Para #r-tecnico o value é JSON (nome+mte), para os outros é só o nome
+      const useJson = id === 'r-tecnico';
+
+      tecnicos.forEach(t => {
+        const opt = document.createElement('option');
+        const mte = t.registro_mte || '';
+        opt.value = useJson
+          ? JSON.stringify({ nome: t.nome, mte: mte })
+          : t.nome;
+        opt.textContent = mte ? `${t.nome} — MTE ${mte}` : t.nome;
+        // Auto-seleciona o usuário logado
+        if (me && String(t.id) === String(me.id)) opt.selected = true;
+        sel.appendChild(opt);
+      });
+
+      // Fallback se lista vazia
+      if (!tecnicos.length) {
+        const opt = document.createElement('option');
+        opt.value = useJson ? '{"nome":"","mte":""}' : '';
+        opt.textContent = 'Nenhum técnico cadastrado';
+        sel.appendChild(opt);
+      }
+    });
+  } catch(e) {
+    console.warn('loadTecnicos:', e);
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  loadTecnicos();
   setTimeout(() => {
     _hookCNPJs();
     _injetarCacheDropdowns();
