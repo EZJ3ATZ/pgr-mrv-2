@@ -1885,13 +1885,15 @@ def limpar_demandas_invalidas():
         with get_db() as conn:
             # Conta antes
             total_antes = conn.execute('SELECT COUNT(*) as n FROM demandas').fetchone()['n']
-            # Deleta demandas cujo planner_task_id está em tasks ignoradas
+            # Deleta demandas de grupos incorretos (sync com bug processou grupos fora do Ocupacional)
+            # O grupo correto é o Ocupacional: 4c80214b-6801-414a-9fc7-27feff0b3de6
+            GRUPO_CORRETO = '4c80214b-6801-414a-9fc7-27feff0b3de6'
             conn.execute("""
                 DELETE FROM demandas
-                WHERE planner_task_id IN (
-                    SELECT planner_task_id FROM planner_raw_tasks WHERE sync_status = 'ignored'
-                )
-            """)
+                WHERE planner_task_id IS NOT NULL
+                  AND origem = 'planner'
+                  AND (planner_group_id != ? OR planner_group_id IS NULL)
+            """, (GRUPO_CORRETO,))
             total_depois = conn.execute('SELECT COUNT(*) as n FROM demandas').fetchone()['n']
         deletadas = total_antes - total_depois
         registrar_evento('limpeza_demandas', f'{deletadas} demandas inválidas removidas',
