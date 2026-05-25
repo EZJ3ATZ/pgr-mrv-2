@@ -533,6 +533,17 @@ CREATE TABLE IF NOT EXISTS metricas_operacionais (
     calculado_em    TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (demanda_id) REFERENCES demandas(id)
 );
+
+CREATE TABLE IF NOT EXISTS usuarios (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome         TEXT NOT NULL,
+    email        TEXT UNIQUE NOT NULL,
+    senha_hash   TEXT NOT NULL,
+    registro_mte TEXT,
+    role         TEXT DEFAULT 'tecnico',
+    ativo        INTEGER DEFAULT 1,
+    criado_em    TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 SCHEMA_INDEXES = """
