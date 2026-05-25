@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #2DD4BF; --brand-d: #14B8A6;
+      --bg: #07090E; --surface: #0E1118; --surface2: #141925;
+      --border: #1C2236; --text: #E8EDF5; --text2: #7A8FA8;
+      --red: #E05252; --green: #22C55E;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; padding: 32px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; }
+    .back { display: inline-flex; align-items: center; gap: 6px; color: var(--brand); text-decoration: none; font-size: 13px; font-weight: 600; margin-bottom: 24px; }
+    .back:hover { text-decoration: underline; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 10px; overflow: hidden; }
+    th { background: var(--surface2); text-align: left; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; padding: 12px 16px; }
+    td { padding: 12px 16px; font-size: 13px; border-top: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-ativo   { background: rgba(34,197,94,.12); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+    .badge-inativo { background: rgba(224,82,82,.12); color: var(--red); border: 1px solid rgba(224,82,82,.25); }
+    .badge-pending { background: rgba(251,191,36,.12); color: #FBB824; border: 1px solid rgba(251,191,36,.25); }
+    .btn { display: inline-block; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: opacity .2s; }
+    .btn:hover { opacity: .8; }
+    .btn-green { background: rgba(34,197,94,.15); color: var(--green); }
+    .btn-red   { background: rgba(224,82,82,.15); color: var(--red); }
+    .btn-gray  { background: var(--surface2); color: var(--text2); }
+    select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: inherit; cursor: pointer; }
+    .msg { display: none; position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 13px; color: var(--brand); z-index: 9999; }
+    .msg.show { display: block; }
+  </style>
+</head>
+<body>
+  <a class="back" href="/">← Voltar</a>
+  <h1>Gerenciamento de Usuários</h1>
+  <p class="sub">Ative novos cadastros e gerencie roles dos técnicos</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>MTE</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Cadastro</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr id="row-{{ u.id }}">
+        <td>{{ u.nome }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.registro_mte or '—' }}</td>
+        <td>
+          <select onchange="setRole({{ u.id }}, this.value)">
+            <option value="tecnico"      {% if u.role == 'tecnico' %}selected{% endif %}>Técnico</option>
+            <option value="admin"        {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+            <option value="visualizador" {% if u.role == 'visualizador' %}selected{% endif %}>Visualizador</option>
+          </select>
+        </td>
+        <td id="badge-{{ u.id }}">
+          {% if u.ativo == 1 %}
+          <span class="badge badge-ativo">Ativo</span>
+          {% else %}
+          <span class="badge badge-pending">Pendente</span>
+          {% endif %}
+        </td>
+        <td>{{ (u.criado_em or '')[:10] }}</td>
+        <td>
+          {% if u.ativo == 0 %}
+          <button class="btn btn-green" onclick="ativar({{ u.id }})">Ativar</button>
+          {% else %}
+          <button class="btn btn-red" onclick="desativar({{ u.id }})">Desativar</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="msg" id="msg"></div>
+
+  <script>
+    function showMsg(txt) {
+      const m = document.getElementById('msg');
+      m.textContent = txt; m.classList.add('show');
+      setTimeout(() => m.classList.remove('show'), 2500);
+    }
+
+    async function ativar(uid) {
+      const r = await fetch(`/controle/admin/usuarios/${uid}/ativar`, { method: 'POST' });
+      if (r.ok) {
+        document.getElementById('badge-' + uid).innerHTML = '<span class="badge badge-ativo">Ativo</span>';
+        const row = document.getElementById('row-' + uid);
+        row.querySelector('.btn').outerHTML = `<button class="btn btn-red" onclick="desativar(${uid})">Desativar</button>`;
+        showMsg('Usuário ativado!');
+      }
+    }
+
+    async function desativar(uid) {
+      if (!confirm('Desativar este usuário?')) return;
+      const r = await fetch(`/controle/admin/usuarios/${uid}/desativar`, { method: 'POST' });
+      if (r.ok) {
+        document.getElementById('badge-' + uid).innerHTML = '<span class="badge badge-inativo">Inativo</span>';
+        const row = document.getElementById('row-' + uid);
+        row.querySelector('.btn').outerHTML = `<button class="btn btn-green" onclick="ativar(${uid})">Ativar</button>`;
+        showMsg('Usuário desativado.');
+      }
+    }
+
+    async function setRole(uid, role) {
+      const r = await fetch(`/controle/admin/usuarios/${uid}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+      });
+      if (r.ok) showMsg('Role atualizado!');
+    }
+  </script>
+</body>
+</html>
