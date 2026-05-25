@@ -4,7 +4,7 @@ from flask import Blueprint, request, redirect, url_for, render_template
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from .db import get_db, row_to_dict
+from .db import get_db, row_to_dict, registrar_evento
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 login_manager = LoginManager()
@@ -57,6 +57,8 @@ def login():
                     user = User(d['id'], d['nome'], d['email'],
                                 d.get('registro_mte', ''), d.get('role', 'tecnico'))
                     login_user(user, remember=True)
+                    registrar_evento('login', f'{user.nome} ({email})',
+                                     usuario=user.nome, ip=request.remote_addr)
                     return redirect(url_for('index'))
             erro = 'Email ou senha incorretos.'
         except Exception as e:
@@ -140,5 +142,6 @@ def alterar_senha():
 @auth_bp.route('/logout')
 @login_required
 def logout():
+    registrar_evento('logout', current_user.nome, usuario=current_user.nome, ip=request.remote_addr)
     logout_user()
     return redirect(url_for('auth.login'))
