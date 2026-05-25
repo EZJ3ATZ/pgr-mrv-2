@@ -86,10 +86,10 @@ def register():
                 senha_hash = generate_password_hash(senha)
                 with get_db() as conn:
                     conn.execute(
-                        'INSERT INTO usuarios (nome, email, senha_hash, registro_mte) VALUES (?,?,?,?)',
+                        'INSERT INTO usuarios (nome, email, senha_hash, registro_mte, ativo) VALUES (?,?,?,?,0)',
                         (nome, email, senha_hash, registro_mte)
                     )
-                return redirect(url_for('auth.login') + '?ok=1')
+                return redirect(url_for('auth.login') + '?pending=1')
             except Exception as e:
                 msg = str(e).lower()
                 if 'unique' in msg or 'duplicate' in msg:
