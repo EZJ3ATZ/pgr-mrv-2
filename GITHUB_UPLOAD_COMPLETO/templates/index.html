@@ -1169,15 +1169,31 @@
       </svg>
       <div class="header-notif-dot"></div>
     </div>
-    <div class="header-user">
-      <div class="header-user-avatar">MC</div>
+    <div class="header-user" style="position:relative;cursor:pointer;" onclick="document.getElementById('user-menu').classList.toggle('open')">
+      <div class="header-user-avatar">{{ current_user.nome[:2].upper() if current_user.is_authenticated else 'U' }}</div>
       <div class="header-user-info">
-        <div class="header-user-name">Matheus Costa</div>
+        <div class="header-user-name">{{ current_user.nome if current_user.is_authenticated else 'Usuário' }}</div>
         <div class="header-user-role">Técnico SST</div>
+      </div>
+      <div id="user-menu" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:#0E1118;border:1px solid #273050;border-radius:10px;min-width:180px;z-index:999;padding:6px 0;box-shadow:0 8px 24px rgba(0,0,0,.5);">
+        <a href="/auth/alterar-senha" style="display:block;padding:10px 16px;font-size:13px;color:#E8EDF5;text-decoration:none;" onmouseover="this.style.background='#141925'" onmouseout="this.style.background='transparent'">🔑 Alterar senha</a>
+        <div style="border-top:1px solid #1C2236;margin:4px 0;"></div>
+        <a href="/auth/logout" style="display:block;padding:10px 16px;font-size:13px;color:#E05252;text-decoration:none;" onmouseover="this.style.background='#141925'" onmouseout="this.style.background='transparent'">↩ Sair</a>
       </div>
     </div>
   </div>
 </header>
+<script>
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('user-menu');
+    if (menu && !e.target.closest('.header-user')) menu.classList.remove('open');
+  });
+  document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+  var _um = document.getElementById('user-menu');
+  document.querySelector('.header-user').addEventListener('click', function(){
+    _um.style.display = _um.style.display === 'none' ? 'block' : 'none';
+  });
+</script>
 
 <!-- ══ Layout Principal ══════════════════════════════════════════════════ -->
 <div class="layout">
