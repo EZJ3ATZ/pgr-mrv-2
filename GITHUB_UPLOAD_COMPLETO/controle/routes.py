@@ -2274,12 +2274,16 @@ def gerar_relatorio_quimico():
                          ('INNERGRID',(0,0),(-1,-1),0.3,BORDA),
                      ]))
 
+    def _norm(s):
+        return s.lower().replace('–','-').replace('—','-').replace(' ','').replace('ã','a')
+
     def _chk(options, selected_list):
-        """Linha de checkboxes. selected_list = list of values that are True."""
+        """Linha de checkboxes. selected_list = list of values que foram selecionados."""
         parts = []
+        sel_norm = [_norm(s) for s in selected_list]
         for opt in options:
-            mark = '☑' if opt in selected_list else '☐'
-            parts.append(f'{mark} {opt}')
+            mark = '[X]' if _norm(opt) in sel_norm else '[  ]'
+            parts.append(f'<b>{mark}</b> {opt}')
         return '   '.join(parts)
 
     story = []
@@ -2360,10 +2364,13 @@ def gerar_relatorio_quimico():
         story.append(_hdr_tbl('EQUIPAMENTOS UTILIZADOS PARA AMOSTRAGEM'))
 
         bomba_nome = ag.get('bomba','')
+        # Tenta match nos modelos padrão; se não encontrar, mostra como texto livre
         bombas_todos = ['BDX–II–GILLIAN','AIRLITE–SKC','FORMIS–TURAM','INLITE–VENTUSPRO']
-        bomba_sel = [b for b in bombas_todos if bomba_nome and b.replace('–',' ').lower() in bomba_nome.lower()]
+        bomba_sel = [b for b in bombas_todos if bomba_nome and _norm(b) in _norm(bomba_nome)]
+        bomba_outro = bomba_nome if (bomba_nome and not bomba_sel) else ''
         story.append(Table([[
-            Paragraph(f'<b>Bomba Utilizada:</b><br/>{_chk(bombas_todos, bomba_sel)}<br/><font size="7">Outro: {bomba_nome if not bomba_sel else ""}</font>', norm),
+            Paragraph(f'<b>Bomba Utilizada:</b><br/>{_chk(bombas_todos, bomba_sel)}'
+                      + (f'<br/><font size="7">Outro: {bomba_outro}</font>' if bomba_outro else ''), norm),
             Table([
                 [Paragraph(f'<b>ID Bomba:</b> {ag.get("id_bomba","") or "___________"}', norm)],
                 [Paragraph(f'<b>Data de calibração:</b> {ag.get("cal_bomba","") or "___/___/____"}', norm)],
@@ -2407,7 +2414,10 @@ def gerar_relatorio_quimico():
         fracoes = ['TOTAL','RESPIRÁVEL','TORÁCICA','INALÁVEL']
         frac_val = ag.get('fracao','')
         frac_sel = [f for f in fracoes if frac_val and f.lower() in frac_val.lower()]
-        story.append(_row2('Substância(s) amostrada(s):', ag.get('substancias',''), '', ''))
+        story.append(Table([[Paragraph(f'<b>Substância(s) amostrada(s):</b> {ag.get("substancias","") or "___________"}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
         story.append(Table([[Paragraph(
             f'<b>Fração amostrada:</b> {_chk(fracoes, frac_sel)}', norm)]],
             colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
