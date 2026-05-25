@@ -1278,6 +1278,13 @@ def api_save_coleta_ruido():
     init_db()
     d = request.json or {}
     cid = save_coleta_ruido(d)
+    is_new = not bool(d.get('id'))
+    if is_new:
+        registrar_evento('coleta_ruido_criada',
+                         f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
+                         cid, 'coleta_ruido',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
     return jsonify({'ok': True, 'id': cid})
 
 @controle_bp.route('/coletas/ruido/<int:cid>')
@@ -1304,6 +1311,13 @@ def api_save_coleta_quimico():
     init_db()
     d = request.json or {}
     cid = save_coleta_quimico(d)
+    is_new = not bool(d.get('id'))
+    if is_new:
+        registrar_evento('coleta_quimico_criada',
+                         f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
+                         cid, 'coleta_quimico',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
     return jsonify({'ok': True, 'id': cid})
 
 @controle_bp.route('/coletas/quimico/<int:cid>')
@@ -2965,15 +2979,25 @@ def graph_list_users():
 
 @controle_bp.route('/eventos')
 def api_eventos():
-    """Retorna log de eventos operacionais (últimos 200)."""
+    """Retorna log de eventos operacionais com filtros tipo/data."""
     init_db()
+    limit = int(request.args.get('limit', 200))
+    tipo  = request.args.get('tipo', '').strip()
+    data  = request.args.get('data', '').strip()
+    sql = """
+        SELECT e.*, u.display_name AS ms_user_nome, u.email AS ms_user_email
+        FROM eventos e
+        LEFT JOIN ms_users u ON u.ms_id = e.ms_user_id
+        WHERE 1=1
+    """
+    params = []
+    if tipo:
+        sql += ' AND e.tipo = ?'; params.append(tipo)
+    if data:
+        sql += ' AND DATE(e.criado_em) = ?'; params.append(data)
+    sql += f' ORDER BY e.criado_em DESC LIMIT {limit}'
     with get_db() as conn:
-        rows = conn.execute("""
-            SELECT e.*, u.display_name AS ms_user_nome, u.email AS ms_user_email
-            FROM eventos e
-            LEFT JOIN ms_users u ON u.ms_id = e.ms_user_id
-            ORDER BY e.criado_em DESC LIMIT 200
-        """).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     return jsonify([row_to_dict(r) for r in rows])
 
 
@@ -3173,6 +3197,11 @@ def api_criar_planejamento():
 
     try:
         pid = criar_planejamento(d)
+        registrar_evento('planejamento_criado',
+                         f'OS: {d.get("numero_os","—")} | Técnico: {d.get("tecnico","—")} | Status: {d.get("status","rascunho")}',
+                         pid, 'planejamento',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
         return jsonify({'ok': True, 'id': pid})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500

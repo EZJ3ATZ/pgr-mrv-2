@@ -3256,9 +3256,23 @@
 
   <!-- Sub: Auditoria -->
   <div id="ctrl-sub-audit" style="display:none;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <h4 style="margin:0;font-size:.95rem;color:var(--text);">🕵 Log de Auditoria</h4>
-      <button onclick="ctrlLoadAudit()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">↻ Atualizar</button>
+    <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:.8rem;color:var(--text3);">
+      📋 <b style="color:var(--text2);">Histórico Operacional Auditável</b> — todas as ações de campo registradas automaticamente. Coletas, planejamentos, amostradores e syncs.
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <select id="audit-filtro-tipo" onchange="ctrlLoadAudit()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:6px 10px;font-size:.8rem;font-family:inherit;">
+        <option value="">Todos os eventos</option>
+        <option value="coleta_ruido_criada">Coletas de Ruído</option>
+        <option value="coleta_quimico_criada">Coletas Químico</option>
+        <option value="planejamento_criado">Planejamentos</option>
+        <option value="amostrador_criado">Amostrador criado</option>
+        <option value="amostrador_atualizado">Amostrador atualizado</option>
+        <option value="sync_planner">Sync Planner</option>
+        <option value="login">Login</option>
+      </select>
+      <input type="date" id="audit-filtro-data" onchange="ctrlLoadAudit()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:6px 10px;font-size:.8rem;font-family:inherit;" title="Filtrar por data">
+      <button onclick="document.getElementById('audit-filtro-tipo').value='';document.getElementById('audit-filtro-data').value='';ctrlLoadAudit();" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text3);padding:6px 10px;border-radius:6px;font-size:.78rem;cursor:pointer;">✕ Limpar</button>
+      <button onclick="ctrlLoadAudit()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:6px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;margin-left:auto;">↻ Atualizar</button>
     </div>
     <div class="ctrl-table-wrap">
       <table class="ctrl-table">
@@ -6147,36 +6161,59 @@ async function ctrlLoadAudit() {
   if (!tb) return;
   tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr>';
   try {
-    const eventos = await ctrlFetch('/controle/eventos?limit=100');
-    if (!eventos.length) {
-      tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Nenhum evento registrado ainda.</td></tr>';
+    const tipo  = document.getElementById('audit-filtro-tipo')?.value || '';
+    const data  = document.getElementById('audit-filtro-data')?.value || '';
+    let url = '/controle/eventos?limit=200';
+    if (tipo) url += '&tipo=' + encodeURIComponent(tipo);
+    if (data) url += '&data=' + encodeURIComponent(data);
+    const eventos = await ctrlFetch(url);
+    if (!eventos || !eventos.length) {
+      tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Nenhum evento registrado.</td></tr>';
       return;
     }
     const tipoIcon = {
       login: '🔑', logout: '🚪',
       amostrador_criado: '➕', amostrador_atualizado: '✏️',
       sync_planner: '🔄', importacao: '📥',
+      coleta_ruido_criada: '🔊', coleta_quimico_criada: '🧪',
+      planejamento_criado: '📋', os_concluida: '✅',
+      laudo_gerado: '📄', medicao_salva: '📊',
+      limpeza_demandas: '🧹', erro_sync: '❌',
     };
     const tipoCor = {
-      login: '#0a7', logout: '#f80',
-      amostrador_criado: '#39f', amostrador_atualizado: '#a78bfa',
-      sync_planner: '#f59e0b', importacao: '#0a7',
+      login: '#22c55e', logout: '#f59e0b',
+      amostrador_criado: '#3b82f6', amostrador_atualizado: '#a78bfa',
+      sync_planner: '#f59e0b', importacao: '#22c55e',
+      coleta_ruido_criada: '#22c55e', coleta_quimico_criada: '#3b82f6',
+      planejamento_criado: '#39f', os_concluida: '#22c55e',
+      laudo_gerado: '#f59e0b', medicao_salva: '#8b5cf6',
+      limpeza_demandas: '#6b7280', erro_sync: '#ef4444',
+    };
+    const tipoLabel = {
+      login: 'Login', logout: 'Logout',
+      amostrador_criado: 'Amostrador criado', amostrador_atualizado: 'Amostrador atualizado',
+      sync_planner: 'Sync Planner', importacao: 'Importação',
+      coleta_ruido_criada: 'Coleta de Ruído', coleta_quimico_criada: 'Coleta Químico',
+      planejamento_criado: 'Planejamento', os_concluida: 'OS Concluída',
+      laudo_gerado: 'Laudo gerado', medicao_salva: 'Medição salva',
+      limpeza_demandas: 'Limpeza DB', erro_sync: 'Erro de sync',
     };
     tb.innerHTML = eventos.map(ev => {
-      const raw = (ev.criado_em||'').replace(' ','T').replace(/\+00(:00)?$/, 'Z').replace(/([+-]\d{2})$/, '$1:00');
-      const dt = new Date(raw.endsWith('Z') || raw.includes('+') || /[+-]\d{2}:\d{2}$/.test(raw) ? raw : raw + 'Z');
+      const raw = (ev.criado_em||'').replace(' ','T').replace(/\+00(:00)?$/, 'Z');
+      const dt = new Date(raw.includes('Z') || raw.includes('+') ? raw : raw + 'Z');
       const horas = Math.round((Date.now() - dt.getTime()) / 3600000);
-      const quando = horas < 1 ? 'agora' : (horas < 24 ? `${horas}h atrás` : `${Math.round(horas/24)}d atrás`);
+      const quando = isNaN(dt) ? '—' : (horas < 1 ? 'agora' : (horas < 24 ? `${horas}h atrás` : `${Math.round(horas/24)}d atrás`));
       const icon = tipoIcon[ev.tipo] || '📌';
-      const cor  = tipoCor[ev.tipo]  || '#8A97B0';
+      const cor  = tipoCor[ev.tipo]  || '#94a3b8';
+      const label = tipoLabel[ev.tipo] || ev.tipo;
       return `<tr>
         <td style="white-space:nowrap;">
-          <span style="color:var(--text);font-weight:500;font-size:.78rem;">${dt.toLocaleString('pt-BR')}</span>
+          <span style="color:var(--text);font-weight:500;font-size:.78rem;">${isNaN(dt)?'—':dt.toLocaleString('pt-BR')}</span>
           <div style="color:var(--text3);font-size:.68rem;">${quando}</div>
         </td>
-        <td><span style="color:${cor};font-weight:600;font-size:.78rem;">${icon} ${ev.tipo}</span></td>
-        <td style="color:var(--text2);font-size:.77rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(ev.descricao||'').replace(/"/g,'&quot;')}">${ev.descricao||'—'}</td>
-        <td style="color:var(--text2);font-size:.77rem;">${ev.usuario||'—'}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:5px;background:${cor}22;color:${cor};border:1px solid ${cor}44;border-radius:12px;padding:2px 9px;font-size:.73rem;font-weight:700;white-space:nowrap;">${icon} ${label}</span></td>
+        <td style="color:var(--text2);font-size:.77rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(ev.descricao||'').replace(/"/g,'&quot;')}">${ev.descricao||'—'}</td>
+        <td style="color:var(--text2);font-size:.77rem;white-space:nowrap;">${ev.usuario||'—'}</td>
         <td style="color:var(--text3);font-size:.72rem;">${ev.ip||'—'}</td>
       </tr>`;
     }).join('');
