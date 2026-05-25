@@ -8,6 +8,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify, send_file
 
 from .db import (
+    USE_PG,
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
     registrar_sync, list_sync_log,
@@ -1921,7 +1922,8 @@ def graph_sync_mini():
         }
 
         with get_db() as conn:
-            conn.execute('PRAGMA foreign_keys = OFF')
+            if not USE_PG:
+                conn.execute('PRAGMA foreign_keys = OFF')
             for tarefa in tarefas:
                 tid    = tarefa['id']
                 titulo = tarefa.get('title', '')
@@ -2703,7 +2705,8 @@ def api_match_empresas():
     try:
         from .empresa_match import match_todas_demandas
         with get_db() as conn:
-            conn.execute('PRAGMA foreign_keys = OFF')
+            if not USE_PG:
+                conn.execute('PRAGMA foreign_keys = OFF')
             stats = match_todas_demandas(conn)
         return jsonify({'ok': True, **stats})
     except Exception as e:
