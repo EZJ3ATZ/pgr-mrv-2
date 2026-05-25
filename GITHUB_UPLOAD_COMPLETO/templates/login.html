@@ -50,9 +50,9 @@
     .hero-bg {
       position: absolute;
       inset: 0;
-      background-image: url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1400&q=85&fit=crop');
-      background-size: cover;
-      background-position: center 30%;
+      background:
+        url('https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1400&q=85&fit=crop') center 30% / cover no-repeat,
+        linear-gradient(155deg, #07090E 0%, #0D1A1A 50%, #0A1512 100%);
       filter: brightness(.38) saturate(.85);
       z-index: 0;
     }
@@ -61,12 +61,17 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(
-        135deg,
-        rgba(7,9,14,.55) 0%,
-        rgba(13,17,23,.30) 40%,
-        rgba(29,184,154,.08) 100%
-      );
+      background:
+        /* grade de pontos industriais */
+        radial-gradient(circle, rgba(29,184,154,.06) 1px, transparent 1px),
+        /* gradiente verde escuro */
+        linear-gradient(
+          155deg,
+          rgba(7,9,14,.92) 0%,
+          rgba(10,24,20,.85) 45%,
+          rgba(12,28,22,.80) 100%
+        );
+      background-size: 32px 32px, 100% 100%;
     }
 
     .hero > * { position: relative; z-index: 1; }
