@@ -3032,3 +3032,64 @@ def api_concluir_visita(vid):
         return jsonify({'ok': True, 'resultado': resultado})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
+
+
+# ── Admin: gerenciamento de usuários ──────────────────────────────────
+def _require_admin():
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'erro': 'Acesso negado. Somente administradores.'}), 403
+
+
+@controle_bp.route('/admin/usuarios')
+@login_required
+def admin_usuarios():
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute(
+            'SELECT id, nome, email, registro_mte, role, ativo, criado_em FROM usuarios ORDER BY ativo ASC, criado_em DESC'
+        ).fetchall()
+    usuarios = [row_to_dict(r) for r in rows]
+    from flask import render_template
+    return render_template('admin_usuarios.html', usuarios=usuarios)
+
+
+@controle_bp.route('/admin/usuarios/<int:uid>/ativar', methods=['POST'])
+@login_required
+def admin_ativar_usuario(uid):
+    chk = _require_admin()
+    if chk: return chk
+    with get_db() as conn:
+        conn.execute('UPDATE usuarios SET ativo=1 WHERE id=?', (uid,))
+    registrar_evento('admin_ativar_usuario', f'uid={uid}',
+                     usuario=current_user.nome, ip=request.remote_addr)
+    return jsonify({'ok': True})
+
+
+@controle_bp.route('/admin/usuarios/<int:uid>/desativar', methods=['POST'])
+@login_required
+def admin_desativar_usuario(uid):
+    chk = _require_admin()
+    if chk: return chk
+    with get_db() as conn:
+        conn.execute('UPDATE usuarios SET ativo=0 WHERE id=?', (uid,))
+    registrar_evento('admin_desativar_usuario', f'uid={uid}',
+                     usuario=current_user.nome, ip=request.remote_addr)
+    return jsonify({'ok': True})
+
+
+@controle_bp.route('/admin/usuarios/<int:uid>/role', methods=['POST'])
+@login_required
+def admin_set_role(uid):
+    chk = _require_admin()
+    if chk: return chk
+    d = request.json or {}
+    role = d.get('role', 'tecnico')
+    if role not in ('admin', 'tecnico', 'visualizador'):
+        return jsonify({'erro': 'Role inválido'}), 400
+    with get_db() as conn:
+        conn.execute('UPDATE usuarios SET role=? WHERE id=?', (role, uid))
+    registrar_evento('admin_set_role', f'uid={uid} role={role}',
+                     usuario=current_user.nome, ip=request.remote_addr)
+    return jsonify({'ok': True})
