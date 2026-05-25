@@ -3591,55 +3591,42 @@
 
 <!-- ══ Painel AJUDA ════════════════════════════════════════════════════ -->
 <div id="tab-ajuda" class="tab-panel">
-<div class="page" style="max-width:800px;">
+<div class="page" style="max-width:600px;">
   <div class="page-head">
     <div class="page-title">Ajuda & Documentação</div>
-    <div class="page-sub">Guias rápidos e referências de uso</div>
+    <div class="page-sub">Guias completos de todos os módulos do sistema</div>
   </div>
 
-  <div style="display:flex;flex-direction:column;gap:12px;">
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <a href="/controle/ajuda" target="_blank" style="text-decoration:none;">
+      <div style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;gap:20px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(45,212,191,.5)'" onmouseout="this.style.borderColor='rgba(45,212,191,.25)'">
+        <div style="font-size:36px;">📚</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:#E8EDF5;margin-bottom:4px;">Abrir Central de Ajuda</div>
+          <div style="font-size:13px;color:#7A8FA8;">Guia completo com todos os módulos, passo a passo e FAQ</div>
+        </div>
+        <div style="margin-left:auto;font-size:18px;color:#2DD4BF;">→</div>
+      </div>
+    </a>
 
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
-      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:8px;">&#128196; Como gerar um PGR</div>
-      <ol style="color:var(--text2);font-size:.8rem;line-height:2;padding-left:18px;">
-        <li>Acesse <strong style="color:var(--text);">Gerador de PGR</strong> no menu lateral</li>
-        <li>Preencha os dados da empresa (CNPJ, endereço, CNAE)</li>
-        <li>Importe o PDF da empresa para preencher automaticamente</li>
-        <li>Selecione os GHEs e cargos correspondentes</li>
-        <li>Clique em <strong style="color:var(--orange);">Gerar PGR</strong> — o DOCX será baixado</li>
-      </ol>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
-      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:8px;">&#128203; Como registrar uma nova medição</div>
-      <ol style="color:var(--text2);font-size:.8rem;line-height:2;padding-left:18px;">
-        <li>Acesse <strong style="color:var(--text);">Medições e Amostradores</strong> → <strong style="color:var(--text);">Nova Medição</strong></li>
-        <li>Selecione a empresa e a OS (Ordem de Serviço)</li>
-        <li>Escolha o amostrador e informe a vazão calibrada</li>
-        <li>O sistema calcula automaticamente o tempo de coleta</li>
-        <li>Confirme a baixa — o amostrador vai para Laboratório</li>
-      </ol>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
-      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:8px;">&#128202; Importar demandas do Planner</div>
-      <ol style="color:var(--text2);font-size:.8rem;line-height:2;padding-left:18px;">
-        <li>Exporte as demandas do Microsoft Planner como Excel</li>
-        <li>Acesse <strong style="color:var(--text);">Demandas/OS</strong> → ícone de importação</li>
-        <li>Faça upload do arquivo Excel</li>
-        <li>As demandas serão importadas automaticamente</li>
-      </ol>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--orange-dim);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:20px 24px;">
-      <div style="font-size:.88rem;font-weight:700;color:var(--orange);margin-bottom:8px;">&#128222; Suporte</div>
-      <div style="font-size:.8rem;color:var(--text2);line-height:1.7;">
-        Para dúvidas e problemas técnicos, entre em contato:<br>
-        <strong style="color:var(--text);">E-mail:</strong> engenharia19@ocupacional.com.br<br>
-        <strong style="color:var(--text);">Plataforma:</strong> https://gerador-de-pgr-mrv-production.up.railway.app/
+      <div style="font-size:.82rem;font-weight:700;color:#7A8FA8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Links rápidos</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <a href="/controle/ajuda#pgr"     target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">📋 Como gerar um PGR</a>
+        <a href="/controle/ajuda#ruido"   target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">🔊 Laudo de Ruído</a>
+        <a href="/controle/ajuda#calor"   target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">🔥 Laudo de Calor</a>
+        <a href="/controle/ajuda#amostrador" target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">📦 Controle de Amostradores</a>
+        <a href="/controle/admin/usuarios" target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">👥 Gerenciar usuários (Admin)</a>
+        <a href="/controle/empresas/pendentes/page" target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">🏢 Empresas pendentes</a>
       </div>
     </div>
 
+    <div style="background:var(--surface);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:20px 24px;">
+      <div style="font-size:.88rem;font-weight:700;color:#22C55E;margin-bottom:8px;">📞 Suporte</div>
+      <div style="font-size:13px;color:#7A8FA8;line-height:1.7;">
+        <strong style="color:#E8EDF5;">E-mail:</strong> engenharia19@ocupacional.com.br
+      </div>
+    </div>
   </div>
 </div>
 </div>
