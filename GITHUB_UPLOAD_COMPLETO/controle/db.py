@@ -810,6 +810,7 @@ def _migrate(conn):
                 WHERE d.tipo_demanda NOT IN (\'interna\', \'administrativa\')
                   AND d.empresa_id > 0
                   AND d.origem = \'planner\'
+                  AND UPPER(d.titulo) NOT LIKE \'%PROCESSO ANTIGO%\'
             ''')
         else:
             conn.executescript('''
@@ -832,7 +833,8 @@ def _migrate(conn):
                 LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
                 WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
                   AND d.empresa_id > 0
-                  AND d.origem = 'planner';
+                  AND d.origem = 'planner'
+                  AND UPPER(d.titulo) NOT LIKE '%PROCESSO ANTIGO%';
             ''')
     except Exception as e:
         print(f'[migrate] view operational_demands: {e}')
@@ -867,6 +869,14 @@ def _migrate(conn):
                     ''')
         except Exception as e:
             print(f'[migrate] execucao_campo nullable: {e}')
+
+    # ── Garante que admin seed seja role=admin e ativo=1 ──
+    try:
+        conn.execute(
+            "UPDATE usuarios SET role='admin', ativo=1 WHERE email='engenharia19@ocupacional.com.br'"
+        )
+    except Exception:
+        pass
 
 
 def _auto_seed():
@@ -1329,6 +1339,7 @@ def list_operational_demands(filtros=None):
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
           AND d.origem = 'planner'
+          AND UPPER(d.titulo) NOT LIKE '%PROCESSO ANTIGO%'
     """
     params = []
     if f.get('status'):
@@ -1377,6 +1388,7 @@ def list_operational_por_empresa(filtros=None):
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
           AND d.origem = 'planner'
+          AND UPPER(d.titulo) NOT LIKE '%PROCESSO ANTIGO%'
     """
     params = []
     f = filtros or {}
