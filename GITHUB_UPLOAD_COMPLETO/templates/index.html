@@ -7933,8 +7933,8 @@ function empRenderPainel() {
   const body = document.getElementById('emp-painel-body');
   if (!body) return;
   const s = d.stats || {};
-  const abas = ['resumo','demandas','agentes','coletas','tecnicos'];
-  const abaLabel = {resumo:'Resumo',demandas:'Demandas',agentes:'Agentes',coletas:'Coletas',tecnicos:'Técnicos'};
+  const abas = ['resumo','demandas','agentes','coletas','tecnicos','historico'];
+  const abaLabel = {resumo:'Resumo',demandas:'Demandas',agentes:'Agentes',coletas:'Coletas',tecnicos:'Técnicos',historico:'Histórico'};
 
   let content = '';
   if (_empPainelAba === 'resumo') {
@@ -8041,6 +8041,64 @@ function empRenderPainel() {
             <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='Estoque'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='Estoque'?'var(--green)':'var(--blue)'};">${a.status}</span>
           </div>`).join('')}
         </div>` : '<div style="color:var(--text3);font-size:.8rem;text-align:center;padding:20px;">Nenhum amostrador registrado.</div>'}
+      </div>`;
+  } else if (_empPainelAba === 'historico') {
+    const dems = d.demandas_recentes || [];
+    const ams  = d.amostradores_usados || [];
+    // Frequência mensal de OS (usa prazo como referência)
+    const mesMap = {};
+    dems.forEach(dem => {
+      const ym = (dem.prazo || dem.criado_em || '').slice(0,7);
+      if (ym) mesMap[ym] = (mesMap[ym]||0) + 1;
+    });
+    const sortedMeses = Object.keys(mesMap).sort();
+    const hasChart = sortedMeses.length > 0;
+    // Schedule chart init after render
+    if (hasChart) {
+      setTimeout(() => {
+        const c = document.getElementById('emp-hist-chart');
+        if (!c || !window.Chart) return;
+        if (c._chart) c._chart.destroy();
+        c._chart = new window.Chart(c, {
+          type: 'bar',
+          data: {
+            labels: sortedMeses.map(ym => {
+              const pts = ym.split('-');
+              return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(pts[1])-1]+'/'+(pts[0]||'').slice(2);
+            }),
+            datasets: [{ data: sortedMeses.map(ym=>mesMap[ym]),
+              backgroundColor:'#fb923ccc', borderColor:'#fb923c', borderWidth:1, borderRadius:4 }]
+          },
+          options: {
+            responsive:true, maintainAspectRatio:false,
+            plugins: { legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.raw} OS`}} },
+            scales: {
+              x: { grid:{color:'#1f2937'}, ticks:{color:'#4b5563',font:{size:10}} },
+              y: { grid:{color:'#1f2937'}, ticks:{color:'#4b5563',precision:0}, beginAtZero:true }
+            }
+          }
+        });
+      }, 60);
+    }
+    content = `
+      <div style="margin-bottom:20px;">
+        <div style="font-size:.65rem;color:var(--text3);font-weight:600;margin-bottom:10px;">📅 FREQUÊNCIA DE OS POR MÊS</div>
+        ${hasChart
+          ? `<div style="position:relative;height:160px;"><canvas id="emp-hist-chart"></canvas></div>`
+          : `<div style="color:var(--text3);text-align:center;padding:20px;font-size:.8rem;">Sem dados mensais disponíveis.</div>`}
+      </div>
+      <div>
+        <div style="font-size:.65rem;color:var(--text3);font-weight:600;margin-bottom:8px;">🧪 AMOSTRADORES UTILIZADOS</div>
+        ${ams.length ? `<div style="display:flex;flex-direction:column;gap:5px;">
+          ${ams.map(a=>`
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+            <div style="flex:1;">
+              <div style="font-size:.8rem;font-weight:600;color:var(--text);">${a.codigo}</div>
+              <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${a.data_medicao||'—'}</div>
+            </div>
+            <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='Estoque'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='Estoque'?'var(--green)':'var(--blue)'};">${a.status}</span>
+          </div>`).join('')}
+        </div>` : '<div style="color:var(--text3);font-size:.8rem;text-align:center;padding:16px;">Nenhum amostrador registrado.</div>'}
       </div>`;
   } else if (_empPainelAba === 'tecnicos') {
     const tecs = d.tecnicos || [];
