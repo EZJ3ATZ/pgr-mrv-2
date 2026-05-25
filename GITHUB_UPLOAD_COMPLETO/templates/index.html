@@ -6464,23 +6464,67 @@ async function ctrlNvVincularPlanejamento(pid) {
   try {
     const p = await ctrlFetch('/controle/planejamentos/' + pid);
     if (!p) return;
-    // Preencher OS
+
+    // ── Preencher empresa diretamente (sem depender do lookup de OS) ──
+    const empEl    = document.getElementById('ctrl-nv-empresa');
+    const empListEl= document.getElementById('ctrl-nv-empresa-list');
+    if (empEl && p.empresa_nome) {
+      empEl.value = p.empresa_nome;
+      if (empListEl) empListEl.style.display = 'none';
+    }
+    if (p.empresa_id) {
+      window._ctrlNvEmpresa = { id: p.empresa_id, nome: p.empresa_nome || '' };
+      const statusEl = document.getElementById('ctrl-nv-empresa-status');
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);font-size:.78rem;">✓ Empresa vinculada do planejamento</span>`;
+    }
+
+    // ── Preencher OS ──
     const osEl = document.getElementById('ctrl-nv-os');
     if (osEl && p.numero_os) { osEl.value = p.numero_os; ctrlNvOsChange(p.numero_os); }
-    // Preencher técnico
+
+    // ── Preencher técnico ──
     const tecEl = document.getElementById('ctrl-nv-avaliador');
     if (tecEl && p.tecnico) {
       [...tecEl.options].forEach(o => { if (o.text.includes(p.tecnico.split(' ')[0])) tecEl.value = o.value; });
     }
-    // Guardar ID do planejamento e agentes previstos
+
+    // ── Preencher data prevista ──
+    if (p.data_prevista) {
+      const dataEl = document.getElementById('ctrl-nv-data');
+      if (dataEl && !dataEl.value) dataEl.value = p.data_prevista;
+    }
+
+    // ── Guardar ID do planejamento e agentes previstos ──
     window._nvPlanejamentoId = pid;
+    window._nvDemandaId = p.demanda_id || null;
     try {
       window._nvAgentesPlano = typeof p.agentes_previstos === 'string'
         ? JSON.parse(p.agentes_previstos || '[]')
         : (p.agentes_previstos || []);
     } catch(_) { window._nvAgentesPlano = []; }
     nvRenderAgentesPlano(window._nvAgentesPlano);
-    _showToast(`Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');
+
+    // ── Banner de planejamento vinculado ──
+    const s1 = document.getElementById('nv-s1');
+    if (s1 && !document.getElementById('nv-plan-banner')) {
+      const banner = document.createElement('div');
+      banner.id = 'nv-plan-banner';
+      banner.style.cssText = 'background:rgba(57,153,255,.1);border:1.5px solid rgba(57,153,255,.3);border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:.82rem;';
+      banner.innerHTML = `<span style="font-size:1.1rem;">📋</span><div><b style="color:#39f;">Planejamento vinculado</b> — ${p.empresa_nome||'OS '+p.numero_os} · OS ${p.numero_os||'—'}<br><span style="font-size:.74rem;color:var(--text3);">Agentes previstos carregados. Confira os dados e avance as etapas.</span></div>`;
+      s1.insertBefore(banner, s1.firstChild);
+    }
+
+    // ── Auto-selecionar tipo se agentes têm tipo único ──
+    const agentes = window._nvAgentesPlano;
+    if (agentes.length > 0) {
+      const tipos = [...new Set(agentes.map(a => a.tipo))];
+      if (tipos.length === 1) {
+        const tipoEl = document.getElementById('nv-tipo');
+        if (tipoEl && !tipoEl.value) { tipoEl.value = tipos[0]; tipoEl.dispatchEvent(new Event('change')); }
+      }
+    }
+
+    _showToast(`📋 Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');
   } catch(e) { /* silencioso */ }
 }
 

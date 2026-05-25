@@ -501,10 +501,23 @@ def diagnostico_banco() -> dict:
 
 
 def _tabela_existe(conn, nome: str) -> bool:
-    r = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (nome,)
-    ).fetchone()
-    return r is not None
+    try:
+        from .db import USE_PG
+    except ImportError:
+        USE_PG = False
+    try:
+        if USE_PG:
+            r = conn.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name=?",
+                (nome,)
+            ).fetchone()
+        else:
+            r = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (nome,)
+            ).fetchone()
+        return r is not None
+    except Exception:
+        return False
 
 
 def _parse_json_safe(s):
