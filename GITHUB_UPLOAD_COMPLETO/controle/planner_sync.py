@@ -648,6 +648,12 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         log.warning('[planner_sync] %s', msg)
                         stats['erros'].append(msg)
                         stats['parse_erros'] += 1
+                        # PostgreSQL: transação pode estar abortada após erro
+                        # Rollback para permitir continuar o loop
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
                         capturar_erro(e,
                             operacao='planner_sync',
                             planner_task_id=tid,
