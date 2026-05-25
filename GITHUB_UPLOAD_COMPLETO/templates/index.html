@@ -2340,6 +2340,7 @@
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('plan', this)" style="background:var(--blue);color:#fff;font-weight:700;">📋 Planejamento</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:var(--green);color:#fff;font-weight:700;">📍 Planilha de Campo</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('audit', this)">🕵 Auditoria</div>
     </div>
   </div>
 
@@ -3184,6 +3185,30 @@
           <tbody id="ctrl-sync-log"><tr><td colspan="6" class="ctrl-empty">Sem importações registradas ainda.</td></tr></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- Sub: Auditoria -->
+  <div id="ctrl-sub-audit" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h4 style="margin:0;font-size:.95rem;color:var(--text);">🕵 Log de Auditoria</h4>
+      <button onclick="ctrlLoadAudit()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:6px;font-size:.78rem;cursor:pointer;">↻ Atualizar</button>
+    </div>
+    <div class="ctrl-table-wrap">
+      <table class="ctrl-table">
+        <thead>
+          <tr>
+            <th>Quando</th>
+            <th>Evento</th>
+            <th>Descrição</th>
+            <th>Usuário</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody id="ctrl-audit-log">
+          <tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -5552,7 +5577,7 @@ function ctrlSwitchSub(name, el) {
   }
   _ctrlSubAtiva = name;
   _ctrlStatsCache = null;
-  ['amostr','empresa','demand','prev','nova','plan','import'].forEach(s => {
+  ['amostr','empresa','demand','prev','nova','plan','import','audit'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
@@ -5564,6 +5589,7 @@ function ctrlSwitchSub(name, el) {
   if (name === 'import') ctrlLoadSyncLog();
   if (name === 'prev') ctrlLoadPrevisao();
   if (name === 'plan') planInit();
+  if (name === 'audit') ctrlLoadAudit();
 }
 
 function ctrlSwitchAmostrView(view) {
@@ -5957,6 +5983,49 @@ async function ctrlLoadSyncLog() {
     }).join('');
   } catch(e) {
     tb.innerHTML = `<tr><td colspan="6" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+  }
+}
+
+async function ctrlLoadAudit() {
+  const tb = document.getElementById('ctrl-audit-log');
+  if (!tb) return;
+  tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Carregando...</td></tr>';
+  try {
+    const eventos = await ctrlFetch('/controle/eventos?limit=100');
+    if (!eventos.length) {
+      tb.innerHTML = '<tr><td colspan="5" class="ctrl-empty">Nenhum evento registrado ainda.</td></tr>';
+      return;
+    }
+    const tipoIcon = {
+      login: '🔑', logout: '🚪',
+      amostrador_criado: '➕', amostrador_atualizado: '✏️',
+      sync_planner: '🔄', importacao: '📥',
+    };
+    const tipoCor = {
+      login: '#0a7', logout: '#f80',
+      amostrador_criado: '#39f', amostrador_atualizado: '#a78bfa',
+      sync_planner: '#f59e0b', importacao: '#0a7',
+    };
+    tb.innerHTML = eventos.map(ev => {
+      const raw = (ev.criado_em||'').replace(' ','T');
+      const dt = new Date(raw.includes('+') || raw.endsWith('Z') ? raw : raw + 'Z');
+      const horas = Math.round((Date.now() - dt.getTime()) / 3600000);
+      const quando = horas < 1 ? 'agora' : (horas < 24 ? `${horas}h atrás` : `${Math.round(horas/24)}d atrás`);
+      const icon = tipoIcon[ev.tipo] || '📌';
+      const cor  = tipoCor[ev.tipo]  || '#8A97B0';
+      return `<tr>
+        <td style="white-space:nowrap;">
+          <span style="color:var(--text);font-weight:500;font-size:.78rem;">${dt.toLocaleString('pt-BR')}</span>
+          <div style="color:var(--text3);font-size:.68rem;">${quando}</div>
+        </td>
+        <td><span style="color:${cor};font-weight:600;font-size:.78rem;">${icon} ${ev.tipo}</span></td>
+        <td style="color:var(--text2);font-size:.77rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(ev.descricao||'').replace(/"/g,'&quot;')}">${ev.descricao||'—'}</td>
+        <td style="color:var(--text2);font-size:.77rem;">${ev.usuario||'—'}</td>
+        <td style="color:var(--text3);font-size:.72rem;">${ev.ip||'—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="5" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
   }
 }
 
