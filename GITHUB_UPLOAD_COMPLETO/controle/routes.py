@@ -1198,13 +1198,19 @@ def analytics():
     init_db()
     # Helpers de SQL compatíveis SQLite/PostgreSQL
     if USE_PG:
-        _mes_fmt   = lambda col: f"TO_CHAR({col}::date, 'YYYY-MM')"
-        _18m_ago   = "CURRENT_DATE - INTERVAL '18 months'"
+        def _mes_fmt(col):
+            return f"TO_CHAR(({col})::timestamp, 'YYYY-MM')"
+        def _recent_cond(col):
+            return f"({col})::timestamp >= NOW() - INTERVAL '18 months'"
         _now_date  = 'CURRENT_DATE'
+        _prazo_lt  = lambda d: f"prazo::date < {d}"
     else:
-        _mes_fmt   = lambda col: f"strftime('%Y-%m', {col})"
-        _18m_ago   = "date('now','-18 months')"
+        def _mes_fmt(col):
+            return f"strftime('%Y-%m', {col})"
+        def _recent_cond(col):
+            return f"{col} >= date('now','-18 months')"
         _now_date  = "date('now')"
+        _prazo_lt  = lambda d: f"prazo < {d}"
 
     with get_db() as conn:
 
@@ -1252,7 +1258,7 @@ def analytics():
             SELECT {_mes_fmt('concluido_em_ms')} AS mes, COUNT(*) AS qtd
             FROM demandas
             WHERE concluido_em_ms IS NOT NULL
-              AND concluido_em_ms >= {_18m_ago}
+              AND {_recent_cond('concluido_em_ms')}
               AND (LOWER(COALESCE(planner_bucket,'')) LIKE '%entregue%'
                    OR LOWER(COALESCE(planner_bucket,'')) LIKE '%conclu%'
                    OR status = 'concluida')
@@ -1265,7 +1271,7 @@ def analytics():
             SELECT {_mes_fmt('COALESCE(criado_em_ms, criado_em)')} AS mes, COUNT(*) AS qtd
             FROM demandas
             WHERE COALESCE(criado_em_ms, criado_em) IS NOT NULL
-              AND COALESCE(criado_em_ms, criado_em) >= {_18m_ago}
+              AND {_recent_cond('COALESCE(criado_em_ms, criado_em)')}
               AND origem = 'planner'
             GROUP BY mes ORDER BY mes
         """).fetchall()]
@@ -1284,7 +1290,7 @@ def analytics():
         dem_atrasadas = conn.execute(f"""
             SELECT COUNT(*) AS c FROM demandas
             WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
-              AND prazo < {_now_date}
+              AND {_prazo_lt(_now_date)}
         """).fetchone()['c']
 
         total_med = conn.execute(
