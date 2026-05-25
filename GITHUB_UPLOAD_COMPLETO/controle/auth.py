@@ -98,6 +98,45 @@ def register():
     return render_template('register.html', erro=erro)
 
 
+@auth_bp.route('/alterar-senha', methods=['GET', 'POST'])
+@login_required
+def alterar_senha():
+    erro = None
+    ok = None
+    if request.method == 'POST':
+        senha_atual  = request.form.get('senha_atual', '')
+        nova_senha   = request.form.get('nova_senha', '')
+        confirma     = request.form.get('confirma', '')
+
+        if not senha_atual or not nova_senha or not confirma:
+            erro = 'Preencha todos os campos.'
+        elif nova_senha != confirma:
+            erro = 'A nova senha e a confirmação não coincidem.'
+        elif len(nova_senha) < 6:
+            erro = 'A nova senha deve ter pelo menos 6 caracteres.'
+        else:
+            try:
+                with get_db() as conn:
+                    row = conn.execute(
+                        'SELECT * FROM usuarios WHERE id=?', (current_user.id,)
+                    ).fetchone()
+                d = row_to_dict(row)
+                if not check_password_hash(d['senha_hash'], senha_atual):
+                    erro = 'Senha atual incorreta.'
+                else:
+                    novo_hash = generate_password_hash(nova_senha)
+                    with get_db() as conn:
+                        conn.execute(
+                            'UPDATE usuarios SET senha_hash=? WHERE id=?',
+                            (novo_hash, current_user.id)
+                        )
+                    ok = 'Senha alterada com sucesso!'
+            except Exception as e:
+                erro = f'Erro: {e}'
+
+    return render_template('alterar_senha.html', erro=erro, ok=ok)
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
