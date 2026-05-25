@@ -107,7 +107,7 @@ class _PGCursor:
             self._cur.execute(sql, params)
         else:
             self._cur.execute(sql)
-        if is_insert:
+        if is_insert and not _is_upsert:  # upserts sem RETURNING não têm resultado
             row = self._cur.fetchone()
             self._lastrowid = int(row['id']) if row and row.get('id') is not None else None
         return self
