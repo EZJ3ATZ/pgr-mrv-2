@@ -92,32 +92,6 @@ _BUCKETS_IGNORADOS = {
 }
 
 
-def _bucket_normalizado(bucket: str) -> str:
-    """Remove acentos, minúsculas, strip."""
-    import unicodedata as _ud
-    return _ud.normalize('NFKD', bucket or '').encode('ascii', 'ignore').decode().lower().strip()
-
-
-def _is_operacional_bucket(bucket: str) -> tuple[bool, str]:
-    """
-    Retorna (deve_processar: bool, motivo: str).
-
-    Lógica:
-    1. Se bucket normalizado está em _BUCKETS_IGNORADOS → ignorar
-    2. Se bucket contém 'medic' → processar (Medições, Medicoes, etc.)
-    3. Se bucket normalizado está em _BUCKETS_OPERACIONAIS_PIPELINE → processar
-    4. Senão → ignorar (bucket desconhecido — não poluir operational)
-    """
-    b = _bucket_normalizado(bucket)
-    if not b:
-        return False, 'bucket vazio'
-    if b in _BUCKETS_IGNORADOS:
-        return False, f"bucket interno: '{bucket}'"
-    if 'medic' in b:
-        return True, 'medicoes'
-    if b in _BUCKETS_OPERACIONAIS_PIPELINE:
-        return True, 'operacional'
-    return False, f"bucket desconhecido: '{bucket}'"
 
 
 def _extrair_os_comentarios(group_id: str, thread_id: str) -> str | None:
