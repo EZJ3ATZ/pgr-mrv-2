@@ -5,7 +5,7 @@ import os
 import re
 import json
 from datetime import datetime
-from flask import Blueprint, request, jsonify, send_file, redirect, url_for
+from flask import Blueprint, request, jsonify, send_file, redirect, url_for, render_template_string
 from flask_login import login_required, current_user
 
 from .db import (
@@ -1319,6 +1319,322 @@ def api_del_coleta_quimico(cid):
         conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
         conn.execute('DELETE FROM coletas_quimico WHERE id=?', (cid,))
     return jsonify({'ok': True})
+
+
+# ── Fichas de Campo (HTML print) ─────────────────────────────────────
+_FICHA_CSS = """
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; background:#fff; }
+  .page { width:210mm; min-height:297mm; padding:12mm 14mm; margin:0 auto; }
+  .logo-bar { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:10px; }
+  .logo-bar .title { font-size:12pt; font-weight:bold; text-align:center; flex:1; }
+  .logo-bar .sub { font-size:8pt; color:#555; text-align:right; min-width:80px; }
+  .section { border:1px solid #555; margin-bottom:8px; }
+  .section-title { background:#2d5fa6; color:#fff; font-weight:bold; font-size:8pt; padding:3px 8px; letter-spacing:.5px; }
+  .row { display:flex; border-top:1px solid #aaa; }
+  .row:first-child { border-top:none; }
+  .cell { flex:1; padding:3px 6px; border-right:1px solid #ccc; }
+  .cell:last-child { border-right:none; }
+  .cell label { display:block; font-size:7pt; color:#555; font-weight:bold; margin-bottom:1px; }
+  .cell .val { font-size:9pt; min-height:14px; }
+  .cell .blank { border-bottom:1px solid #aaa; min-height:14px; }
+  .w1 { flex:.5; } .w2 { flex:1; } .w3 { flex:1.5; } .w4 { flex:2; } .w6 { flex:3; }
+  table.data { width:100%; border-collapse:collapse; font-size:8pt; }
+  table.data th { background:#2d5fa6; color:#fff; padding:4px 6px; text-align:left; font-size:7.5pt; }
+  table.data td { padding:3px 6px; border-bottom:1px solid #ccc; vertical-align:top; }
+  table.data tr:nth-child(even) td { background:#f5f5f5; }
+  table.data .blank-row td { height:22px; background:#fff; }
+  .sig-row { display:flex; gap:20px; margin-top:12px; }
+  .sig-box { flex:1; border-top:1px solid #333; padding-top:4px; font-size:8pt; text-align:center; }
+  .obs-box { border:1px solid #ccc; min-height:30px; padding:4px; margin-top:0; }
+  .metodologia { font-size:8pt; padding:6px 8px; line-height:1.4; }
+  @media print {
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .no-print { display:none !important; }
+    .page { padding:8mm 10mm; }
+  }
+</style>
+"""
+
+_FICHA_RUIDO_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Ficha de Campo — Ruído</title>
+{{ css }}
+</head>
+<body>
+<div class="no-print" style="background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;gap:16px;align-items:center;">
+  <span style="font-weight:bold;">Ficha de Campo — Ruído</span>
+  <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">🖨 Imprimir / Salvar PDF</button>
+  <button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;">✕ Fechar</button>
+</div>
+<div class="page">
+  <div class="logo-bar">
+    <div style="font-size:9pt;font-weight:bold;min-width:90px;">OCUPACIONAL SST</div>
+    <div class="title">AVALIAÇÃO QUANTITATIVA DE RUÍDO</div>
+    <div class="sub">NR-15 An.1 / NHO-01<br>Ficha ID: {{ c.id }}</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">IDENTIFICAÇÃO DA EMPRESA</div>
+    <div class="row">
+      <div class="cell w6"><label>Empresa</label><div class="val">{{ c.empresa_nome or '' }}</div></div>
+      <div class="cell w2"><label>Data da Coleta</label><div class="val">{{ c.data_coleta or '' }}</div></div>
+      <div class="cell w2"><label>OS / Demanda</label><div class="val">{{ c.os or '' }}</div></div>
+    </div>
+    <div class="row">
+      <div class="cell w4"><label>Acompanhante da Inspeção</label><div class="val">{{ c.acompanhante or '' }}</div></div>
+      <div class="cell w3"><label>Cargo do Acompanhante</label><div class="val">{{ c.cargo_acompanhante or '' }}</div></div>
+      <div class="cell w3"><label>Profissional Técnico</label><div class="val">{{ c.tecnico or '' }}</div></div>
+    </div>
+    <div class="row">
+      <div class="cell w2"><label>Hora de Início</label><div class="val">{{ c.hora_inicio or '___:___' }}</div></div>
+      <div class="cell w2"><label>Término</label><div class="val">{{ c.hora_termino or '___:___' }}</div></div>
+      <div class="cell w2"><label>Cidade</label><div class="val">{{ c.cidade or '' }}</div></div>
+      <div class="cell w4"><label>Unidade</label><div class="val">{{ c.unidade or '' }}</div></div>
+    </div>
+    <div class="row">
+      <div class="cell" style="height:28px;"><label>Assinatura do Visitado</label></div>
+      <div class="cell" style="height:28px;"><label>Assinatura do Responsável Técnico</label></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">METODOLOGIA DE AVALIAÇÃO</div>
+    <div class="metodologia">
+      Visita técnica realizada com intuito de monitorar a exposição ocupacional ao ruído de acordo com a NR-15 Anexo 1 e NHO-01 (FUNDACENTRO).
+      Os dosímetros são posicionados junto ao ouvido do trabalhador, permanecendo durante toda a jornada de trabalho.
+      Será utilizado o critério de ação de 80 dB(A) e limite de 85 dB(A) conforme NR-15 An.1.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">EQUIPAMENTO UTILIZADO</div>
+    <div class="row">
+      <div class="cell w3"><label>Calibrador</label><div class="val">{{ c.calibrador or '' }}</div></div>
+      <div class="cell w2"><label>Calibração Inicial (dB)</label><div class="val">{{ c.calibracao_inicial or '' }}</div></div>
+      <div class="cell w2"><label>Calibração Final (dB)</label><div class="val">{{ c.calibracao_final or '' }}</div></div>
+      <div class="cell w2"><label>Desvio (dB)</label><div class="val">{{ c.desvio_calibracao or '' }}</div></div>
+      <div class="cell w2"><label>Status Calibração</label><div class="val">{{ c.status_calibracao or '' }}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">TRABALHADORES AVALIADOS</div>
+    <table class="data">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Nome do Trabalhador</th>
+          <th>Função / Cargo</th>
+          <th>Setor</th>
+          <th>N° Série Dosímetro</th>
+          <th style="width:40px;">Almoço</th>
+          <th>Horário Coleta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in c.funcionarios %}
+        <tr>
+          <td style="text-align:center;">{{ loop.index }}</td>
+          <td>{{ f.nome or '' }}</td>
+          <td>{{ f.cargo or '' }}</td>
+          <td>{{ f.setor or '' }}</td>
+          <td>{{ f.serie_dosimetro or '' }}</td>
+          <td style="text-align:center;">{{ 'Sim' if f.almoco else 'Não' }}</td>
+          <td></td>
+        </tr>
+        {% endfor %}
+        {% for _ in range([5 - c.funcionarios|length, 0]|max) %}
+        <tr class="blank-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if c.observacao %}
+  <div class="section">
+    <div class="section-title">OBSERVAÇÕES</div>
+    <div class="obs-box">{{ c.observacao }}</div>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <div class="section-title">OBSERVAÇÕES DE CAMPO</div>
+    <div class="obs-box" style="min-height:40px;"></div>
+  </div>
+
+  <div class="sig-row">
+    <div class="sig-box">Assinatura do Acompanhante</div>
+    <div class="sig-box">Assinatura do Responsável Técnico Ocupacional</div>
+    <div class="sig-box">Responsável Técnico Ocupacional</div>
+  </div>
+</div>
+</body></html>"""
+
+_FICHA_QUIMICO_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Ficha de Campo — Químico</title>
+{{ css }}
+</head>
+<body>
+<div class="no-print" style="background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;gap:16px;align-items:center;">
+  <span style="font-weight:bold;">Ficha de Campo — Agentes Químicos</span>
+  <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">🖨 Imprimir / Salvar PDF</button>
+  <button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;">✕ Fechar</button>
+</div>
+<div class="page">
+  <div class="logo-bar">
+    <div style="font-size:9pt;font-weight:bold;min-width:90px;">OCUPACIONAL SST</div>
+    <div class="title">FICHA DE AMOSTRAGEM — AGENTES QUÍMICOS</div>
+    <div class="sub">NR-15 An.13 / NHO-03<br>Ficha ID: {{ c.id }}</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">IDENTIFICAÇÃO DA EMPRESA AMOSTRADA</div>
+    <div class="row">
+      <div class="cell w6"><label>Empresa Amostrada</label><div class="val">{{ c.empresa_nome or '' }}</div></div>
+      <div class="cell w3"><label>Responsável pela Coleta</label><div class="val">{{ c.responsavel_coleta or '' }}</div></div>
+    </div>
+    <div class="row">
+      <div class="cell w3"><label>Cidade</label><div class="val">{{ c.cidade or '' }}</div></div>
+      <div class="cell w3"><label>Unidade</label><div class="val">{{ c.unidade or '' }}</div></div>
+      <div class="cell w2"><label>Data da Coleta</label><div class="val">{{ c.data_coleta or '' }}</div></div>
+      <div class="cell w2"><label>Dia da Semana</label><div class="val">{{ c.dia_semana or '' }}</div></div>
+      <div class="cell w2"><label>Turno</label><div class="val">{{ c.turno or '' }}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">IDENTIFICAÇÃO DO LOCAL / FUNCIONÁRIO AMOSTRADO</div>
+    <div class="row">
+      <div class="cell w4"><label>Nome do Funcionário</label><div class="blank"></div></div>
+      <div class="cell w3"><label>ID do Funcionário</label><div class="blank"></div></div>
+      <div class="cell w3"><label>Jornada de Trabalho</label><div class="blank"></div></div>
+    </div>
+    <div class="row">
+      <div class="cell w3"><label>Função</label><div class="val">{{ c.funcao or '' }}<span style="color:#ccc;">{{ '' if c.funcao else '________________' }}</span></div></div>
+      <div class="cell w3"><label>Setor</label><div class="val">{{ c.setor or '' }}<span style="color:#ccc;">{{ '' if c.setor else '________________' }}</span></div></div>
+      <div class="cell w4"><label>Local Específico da Atividade</label><div class="val">{{ c.local_atividade or '' }}<span style="color:#ccc;">{{ '' if c.local_atividade else '________________' }}</span></div></div>
+    </div>
+    <div class="row">
+      <div class="cell"><label>Atividade de Trabalho</label><div class="val">{{ c.atividade or '' }}</div></div>
+    </div>
+    <div class="row">
+      <div class="cell w3"><label>Substância(s) Avaliada(s)</label><div class="val">{{ c.substancias or '' }}</div></div>
+      <div class="cell w2"><label>Fração</label><div class="val">{{ c.fracao or '' }}</div></div>
+      <div class="cell w2"><label>Tempo Exposto (h)</label><div class="val">{{ c.tempo_exposto or '' }}</div></div>
+      <div class="cell w3"><label>Ventilação</label><div class="val">{{ c.ventilacao or '' }}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">EQUIPAMENTO DE AMOSTRAGEM</div>
+    <div class="row">
+      <div class="cell w3"><label>Bomba</label><div class="val">{{ c.bomba or '' }}</div></div>
+      <div class="cell w2"><label>ID da Bomba</label><div class="val">{{ c.id_bomba or '' }}</div></div>
+      <div class="cell w2"><label>Data Calibração Bomba</label><div class="val">{{ c.data_cal_bomba or '' }}</div></div>
+      <div class="cell w2"><label>ID Calibrador</label><div class="val">{{ c.id_calibrador or '' }}</div></div>
+      <div class="cell w3"><label>Acessórios</label><div class="val">{{ c.acessorios or '' }}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">DADOS DA AMOSTRAGEM</div>
+    <table class="data">
+      <thead>
+        <tr>
+          <th style="width:24px;">#</th>
+          <th>ID Amostrador</th>
+          <th>Tipo</th>
+          <th>Substância</th>
+          <th>Bomba</th>
+          <th>Vazão Ini (L/min)</th>
+          <th>Vazão Fin (L/min)</th>
+          <th>Hora Início</th>
+          <th>Hora Final</th>
+          <th>Tempo (min)</th>
+          <th>Volume (L)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in c.amostradores %}
+        <tr>
+          <td style="text-align:center;">{{ loop.index }}</td>
+          <td>{{ a.id_amostrador or '' }}</td>
+          <td>{{ a.tipo_amostrador or '' }}</td>
+          <td>{{ a.substancia or '' }}</td>
+          <td>{{ a.bomba or '' }}</td>
+          <td style="text-align:center;">{{ a.vazao_inicial or '' }}</td>
+          <td style="text-align:center;">{{ a.vazao_final or '' }}</td>
+          <td style="text-align:center;">{{ a.hora_inicio or '' }}</td>
+          <td style="text-align:center;">{{ a.hora_final or '' }}</td>
+          <td style="text-align:center;">{{ a.tempo_min or '' }}</td>
+          <td style="text-align:center;">{{ a.volume_L or '' }}</td>
+        </tr>
+        {% endfor %}
+        {% for _ in range([4 - c.amostradores|length, 0]|max) %}
+        <tr class="blank-row"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="padding:4px 8px;font-size:7.5pt;color:#555;">
+      * Tempo = Horário final − inicial − intervalos &nbsp;|&nbsp;
+      ** Vm = (Vi + Vf) / 2 &nbsp;|&nbsp;
+      *** Vol = Vm × t &nbsp;|&nbsp;
+      **** ΔV = (Vi − Vf) / Vi × 100 ≤ ±5%
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">EPI / EPC</div>
+    <div class="row">
+      <div class="cell"><label>EPI Utilizado</label><div class="val">{{ c.epis or '' }}</div></div>
+      <div class="cell"><label>EPC</label><div class="val">{{ c.epc or '' }}</div></div>
+    </div>
+  </div>
+
+  {% if c.observacao %}
+  <div class="section">
+    <div class="section-title">OBSERVAÇÕES</div>
+    <div class="obs-box">{{ c.observacao }}</div>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <div class="section-title">OBSERVAÇÕES DE CAMPO</div>
+    <div class="obs-box" style="min-height:35px;"></div>
+  </div>
+
+  <div class="sig-row">
+    <div class="sig-box">Assinatura do Funcionário</div>
+    <div class="sig-box">Assinatura do Supervisor</div>
+    <div class="sig-box">Responsável Técnico Ocupacional</div>
+  </div>
+</div>
+</body></html>"""
+
+
+@controle_bp.route('/coletas/ruido/<int:cid>/ficha')
+def ficha_coleta_ruido(cid):
+    init_db()
+    c = get_coleta_ruido(cid)
+    if not c:
+        return 'Coleta não encontrada', 404
+    c.setdefault('funcionarios', [])
+    html = _FICHA_RUIDO_HTML.replace('{{ css }}', _FICHA_CSS)
+    return render_template_string(html, c=c)
+
+
+@controle_bp.route('/coletas/quimico/<int:cid>/ficha')
+def ficha_coleta_quimico(cid):
+    init_db()
+    c = get_coleta_quimico(cid)
+    if not c:
+        return 'Coleta não encontrada', 404
+    c.setdefault('amostradores', [])
+    html = _FICHA_QUIMICO_HTML.replace('{{ css }}', _FICHA_CSS)
+    return render_template_string(html, c=c)
 
 
 # ── Wizard: salvar medicao completa ──────────────────────────────────

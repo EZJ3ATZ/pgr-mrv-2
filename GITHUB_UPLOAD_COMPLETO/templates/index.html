@@ -3872,6 +3872,7 @@
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <button onclick="coletaRuidoSalvar()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;">&#128190; Salvar</button>
+        <button id="cr-btn-ficha" onclick="coletaRuidoImprimirFicha()" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 18px;cursor:pointer;font-family:inherit;font-size:.9rem;">&#128424; Imprimir Ficha</button>
         <button onclick="coletaRuidoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-size:.9rem;">Cancelar</button>
         <div id="cr-save-status" style="display:flex;align-items:center;font-size:.85rem;color:var(--text3);"></div>
       </div>
@@ -4041,6 +4042,7 @@
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <button onclick="coletaQuimicoSalvar()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;">&#128190; Salvar</button>
+        <button id="cq-btn-ficha" onclick="coletaQuimicoImprimirFicha()" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 18px;cursor:pointer;font-family:inherit;font-size:.9rem;">&#128424; Imprimir Ficha</button>
         <button onclick="coletaQuimicoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-size:.9rem;">Cancelar</button>
         <div id="cq-save-status" style="display:flex;align-items:center;font-size:.85rem;color:var(--text3);"></div>
       </div>
@@ -8604,6 +8606,7 @@ function coletaRuidoNova() {
   document.getElementById('cr-obs').value = '';
   document.getElementById('cr-status').value = 'rascunho';
   document.getElementById('cr-save-status').textContent = '';
+  document.getElementById('cr-btn-ficha').style.display = 'none';
   crRenderFuncs();
   document.getElementById('coleta-ruido-list').style.display = 'none';
   document.getElementById('coleta-ruido-form').style.display = '';
@@ -8628,6 +8631,7 @@ async function coletaRuidoEditar(id) {
     document.getElementById('cr-status').value = c.status || 'rascunho';
     crCalcDesvio();
     crRenderFuncs();
+    document.getElementById('cr-btn-ficha').style.display = '';
     document.getElementById('coleta-ruido-list').style.display = 'none';
     document.getElementById('coleta-ruido-form').style.display = '';
   } catch(e) { alert('Erro ao carregar: ' + e.message); }
@@ -8639,6 +8643,11 @@ async function coletaRuidoDeletar(id) {
     await ctrlFetch('/controle/coletas/ruido/' + id, { method: 'DELETE' });
     coletaRuidoLoadList();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function coletaRuidoImprimirFicha() {
+  if (!_crColetaId) { alert('Salve a coleta primeiro.'); return; }
+  window.open('/controle/coletas/ruido/' + _crColetaId + '/ficha', '_blank');
 }
 
 function coletaRuidoFecharForm() {
@@ -8740,6 +8749,7 @@ async function coletaRuidoSalvar() {
   try {
     const r = await ctrlFetch('/controle/coletas/ruido', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     if (r.id && !_crColetaId) _crColetaId = r.id;
+    if (_crColetaId) document.getElementById('cr-btn-ficha').style.display = '';
     if (st) { st.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); st.style.color = 'var(--green)'; }
     const as = document.getElementById('coleta-ruido-autosave');
     if (as) as.textContent = '✅ Autosalvo';
@@ -8788,6 +8798,7 @@ function coletaQuimicoNova() {
    'cq-epi-luvas','cq-epi-oculos','cq-epi-capacete','cq-epi-prot-auric','cq-epi-resp','cq-epi-avental','cq-epi-macacao'
   ].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
   cqRenderAmostr();
+  document.getElementById('cq-btn-ficha').style.display = 'none';
   document.getElementById('coleta-quimico-list').style.display = 'none';
   document.getElementById('coleta-quimico-form').style.display = '';
   document.getElementById('coleta-quimico-form-title').textContent = 'Nova Coleta Química';
@@ -8826,6 +8837,7 @@ async function coletaQuimicoEditar(id) {
       document.getElementById(ids[i]).checked = epis.some(e => e.includes(ep.split(' ')[0]));
     });
     cqRenderAmostr();
+    document.getElementById('cq-btn-ficha').style.display = '';
     document.getElementById('coleta-quimico-list').style.display = 'none';
     document.getElementById('coleta-quimico-form').style.display = '';
   } catch(e) { alert('Erro ao carregar: ' + e.message); }
@@ -8837,6 +8849,11 @@ async function coletaQuimicoDeletar(id) {
     await ctrlFetch('/controle/coletas/quimico/' + id, { method:'DELETE' });
     coletaQuimicoLoadList();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function coletaQuimicoImprimirFicha() {
+  if (!_cqColetaId) { alert('Salve a coleta primeiro.'); return; }
+  window.open('/controle/coletas/quimico/' + _cqColetaId + '/ficha', '_blank');
 }
 
 function coletaQuimicoFecharForm() {
@@ -8991,6 +9008,7 @@ async function coletaQuimicoSalvar() {
   try {
     const r = await ctrlFetch('/controle/coletas/quimico', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     if (r.id && !_cqColetaId) _cqColetaId = r.id;
+    if (_cqColetaId) document.getElementById('cq-btn-ficha').style.display = '';
     if (st) { st.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); st.style.color = 'var(--green)'; }
   } catch(e) {
     if (st) { st.textContent = '❌ Erro: ' + e.message; st.style.color = 'var(--red)'; }
