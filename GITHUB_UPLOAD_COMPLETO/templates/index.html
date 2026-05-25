@@ -3704,6 +3704,9 @@
   <div id="bi-loading" style="display:none;text-align:center;padding:60px;color:var(--text3);font-size:.85rem;">Carregando dados operacionais...</div>
   <div id="bi-content" style="display:none;">
 
+  <!-- S0: KPIs Gerais -->
+  <div id="bi-kpi-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;"></div>
+
   <!-- S1: Status dos Amostradores -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
     <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128230; Status dos Amostradores</div>
@@ -3762,6 +3765,22 @@
       <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#127970; Top 10 Empresas por OS</div>
       <div style="font-size:.7rem;color:var(--text3);margin-bottom:12px;">Clique para ver as OS da empresa</div>
       <div style="position:relative;height:280px;"><canvas id="bi-chart-empresas"></canvas></div>
+    </div>
+  </div>
+
+  <!-- S8+S9: Agentes + Amostrador Types -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <!-- S8: Agentes mais medidos -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">⚗️ Agentes Mais Medidos</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-bottom:12px;">Por número de coletas registradas</div>
+      <div style="position:relative;height:260px;"><canvas id="bi-chart-agentes"></canvas></div>
+    </div>
+    <!-- S9: Distribuição Amostrador -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+      <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">🧪 Tipos de Amostrador</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-bottom:12px;">Distribuição por tipo — amostradores ativos</div>
+      <div style="position:relative;height:260px;"><canvas id="bi-chart-tipos"></canvas></div>
     </div>
   </div>
 
@@ -8655,6 +8674,76 @@ async function biLoad() {
         }
       }
     });
+
+    // ── S0+S8+S9: dados do endpoint /controle/analytics ──────────────
+    try {
+      const an = await ctrlFetch('/controle/analytics');
+
+      // S0: KPI cards
+      const kpiEl = document.getElementById('bi-kpi-cards');
+      if (kpiEl && an.kpis) {
+        const k = an.kpis;
+        kpiEl.innerHTML = [
+          { label:'Total Medições',   val: k.total_medicoes,    color:'#60a5fa', sub:'coletas realizadas' },
+          { label:'OS Concluídas',    val: k.concluidas,        color:'#4ade80', sub:`${k.taxa_conclusao}% do total` },
+          { label:'OS em Aberto',     val: k.total_demandas - k.concluidas, color:'#fb923c', sub:'pendentes' },
+          { label:'Demandas Atrasadas',val: k.demandas_atrasadas, color:'#f87171', sub:'prazo vencido' },
+        ].map(c => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+          <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${c.label}</div>
+          <div style="font-size:1.6rem;font-weight:800;color:${c.color};">${c.val ?? '—'}</div>
+          <div style="font-size:.68rem;color:var(--text3);">${c.sub}</div>
+        </div>`).join('');
+      }
+
+      // S8: Agentes mais medidos
+      const agData = (an.por_agente || []).slice(0,12);
+      if (agData.length) {
+        _biDestroy('agentes');
+        const agColors = ['#60a5fa','#34d399','#fb923c','#a78bfa','#f472b6','#facc15',
+                          '#38bdf8','#4ade80','#f87171','#c084fc','#fb7185','#fbbf24'];
+        _biCharts['agentes'] = new Chart(document.getElementById('bi-chart-agentes'), {
+          type: 'bar',
+          data: {
+            labels: agData.map(a => a.agente.length > 30 ? a.agente.slice(0,28)+'..' : a.agente),
+            datasets: [{ data: agData.map(a => a.qtd),
+              backgroundColor: agColors.map(c=>c+'cc'), borderColor: agColors,
+              borderWidth:1, borderRadius:4 }]
+          },
+          options: {
+            indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+            plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>` ${ctx.raw} coletas` } } },
+            scales: {
+              x: { grid:{color:gridClr}, ticks:{color:tickClr,precision:0}, beginAtZero:true },
+              y: { grid:{display:false}, ticks:{color:'#9ca3af',font:{size:10}} }
+            }
+          }
+        });
+      }
+
+      // S9: Tipos de Amostrador (donut)
+      const tipoData = (an.por_tipo_amostrador || []).slice(0,10);
+      if (tipoData.length) {
+        _biDestroy('tipos');
+        const tColors = ['#60a5fa','#34d399','#fb923c','#a78bfa','#f472b6',
+                         '#facc15','#38bdf8','#f87171','#c084fc','#fbbf24'];
+        _biCharts['tipos'] = new Chart(document.getElementById('bi-chart-tipos'), {
+          type: 'doughnut',
+          data: {
+            labels: tipoData.map(t => t.tipo_amostrador),
+            datasets: [{ data: tipoData.map(t => t.qtd),
+              backgroundColor: tColors.map(c=>c+'cc'), borderColor: tColors,
+              borderWidth:1 }]
+          },
+          options: {
+            responsive:true, maintainAspectRatio:false,
+            plugins: {
+              legend: { position:'right', labels:{ color:'#9ca3af', font:{size:11}, padding:10, boxWidth:14 } },
+              tooltip: { callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
+            }
+          }
+        });
+      }
+    } catch(eAn) { console.warn('analytics endpoint:', eAn); }
 
     // Update subtitle
     const subEl = document.getElementById('bi-sub-count');
