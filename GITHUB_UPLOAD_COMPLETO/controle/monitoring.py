@@ -407,6 +407,52 @@ def diagnostico_banco() -> dict:
                 'disponiveis': conn.execute(
                     "SELECT COUNT(*) FROM amostradores WHERE status='disponivel'"
                 ).fetchone()[0],
+                'parados_lab_30d': conn.execute("""
+                    SELECT COUNT(*) FROM amostradores
+                    WHERE status='laboratorio'
+                      AND data_envio_lab IS NOT NULL
+                      AND julianday('now') - julianday(data_envio_lab) > 30
+                """).fetchone()[0],
+                'vencendo_7d': conn.execute("""
+                    SELECT COUNT(*) FROM amostradores
+                    WHERE cert_validade IS NOT NULL AND cert_validade != ''
+                      AND julianday(cert_validade) - julianday('now') BETWEEN 0 AND 7
+                """).fetchone()[0],
+                'vencidos': conn.execute("""
+                    SELECT COUNT(*) FROM amostradores
+                    WHERE cert_validade IS NOT NULL AND cert_validade != ''
+                      AND julianday(cert_validade) < julianday('now')
+                """).fetchone()[0],
+            }
+
+            # ── KPIs operacionais (Item 15) ────────────────────────────
+            resultado['operacional'] = {
+                'os_prazo_7d': conn.execute("""
+                    SELECT COUNT(*) FROM demandas
+                    WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
+                      AND julianday(prazo) - julianday('now') BETWEEN 0 AND 7
+                """).fetchone()[0],
+                'os_atrasadas': conn.execute("""
+                    SELECT COUNT(*) FROM demandas
+                    WHERE status != 'concluida' AND prazo IS NOT NULL AND prazo != ''
+                      AND julianday(prazo) < julianday('now')
+                """).fetchone()[0],
+                'os_sem_prazo': conn.execute("""
+                    SELECT COUNT(*) FROM demandas
+                    WHERE status != 'concluida'
+                      AND (prazo IS NULL OR prazo = '')
+                      AND origem = 'planner'
+                """).fetchone()[0],
+                'coletas_ruido': conn.execute(
+                    'SELECT COUNT(*) FROM coletas_ruido'
+                ).fetchone()[0] if _tabela_existe(conn, 'coletas_ruido') else 0,
+                'coletas_quimico': conn.execute(
+                    'SELECT COUNT(*) FROM coletas_quimico'
+                ).fetchone()[0] if _tabela_existe(conn, 'coletas_quimico') else 0,
+                'planejamentos': conn.execute(
+                    'SELECT COUNT(*) FROM planejamentos'
+                ).fetchone()[0] if _tabela_existe(conn, 'planejamentos') else 0,
+                'db_tipo': 'postgresql' if 'postgresql' in (ENV or '').lower() or 'postgres' in (ENV or '').lower() else 'sqlite',
             }
 
     except Exception as e:

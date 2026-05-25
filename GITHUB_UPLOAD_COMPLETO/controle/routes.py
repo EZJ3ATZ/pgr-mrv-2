@@ -2151,6 +2151,21 @@ def get_operacional_por_empresa():
     return jsonify(list_operational_por_empresa(request.args.to_dict()))
 
 
+@controle_bp.route('/operacional/buckets')
+def get_operacional_buckets():
+    """Retorna lista de planner_buckets distintos para filtro."""
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT DISTINCT planner_bucket FROM demandas
+            WHERE planner_bucket IS NOT NULL AND planner_bucket != ''
+              AND origem = 'planner'
+            ORDER BY planner_bucket
+        """).fetchall()
+    buckets = [r['planner_bucket'] if isinstance(r, dict) else r[0] for r in rows]
+    return jsonify(buckets)
+
+
 @controle_bp.route('/pipeline/raw_tasks')
 def get_raw_tasks():
     """Raw tasks do Planner (staging — todas, com status do pipeline)."""

@@ -1124,6 +1124,20 @@
       .nv-prog-label { font-size: .55rem; }
       .nv-trab-tbl { font-size: .72rem; }
       footer { display: none; }
+      /* BI cards 2×2 */
+      #bi-dmnd-cards { grid-template-columns: repeat(2,1fr) !important; }
+      #bi-sla-cards   { grid-template-columns: repeat(2,1fr) !important; }
+      /* Filtros demandas — full width no mobile */
+      .ctrl-filters { flex-direction: column; }
+      .ctrl-filters input, .ctrl-filters select { min-width: unset !important; width: 100%; }
+      /* Coleta — tabela com scroll */
+      #cq-amostr-tbody, #cr-func-tbody { display: block; overflow-x: auto; }
+      /* Abas subtabs scroll */
+      .coleta-tabs { overflow-x: auto; white-space: nowrap; }
+      /* Drawer full-width */
+      #bi-drawer { width: 100% !important; }
+      /* Page header ajuste */
+      .page-head { flex-direction: column; align-items: flex-start; gap: 12px; }
     }
   </style>
 </head>
@@ -2536,22 +2550,35 @@
 
   <!-- Sub: Demandas -->
   <div id="ctrl-sub-demand" style="display:none;">
+    <div style="background:rgba(96,165,250,.07);border-left:3px solid var(--blue);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--text2);">
+      <b>Demandas / OS</b> — Ordens de serviço sincronizadas do Microsoft Planner. Cada empresa pode ter múltiplas OS com prazos e status distintos. Use os filtros para localizar rapidamente.
+    </div>
     <div class="ctrl-filters">
       <input type="text" id="ctrl-fd-empresa" placeholder="Empresa..." oninput="ctrlLoadDemand()">
+      <input type="text" id="ctrl-fd-os" placeholder="N° OS..." oninput="ctrlLoadDemand()" style="min-width:100px;max-width:130px;">
       <select id="ctrl-fd-status" onchange="ctrlLoadDemand()">
         <option value="">— Status —</option>
         <option value="pendente">Pendente</option>
+        <option value="em_andamento">Em andamento</option>
+        <option value="aberta">Aberta</option>
         <option value="concluida">Concluída</option>
       </select>
-      <select id="ctrl-fd-urg" onchange="ctrlLoadDemand()">
-        <option value="">— Urgência —</option>
-        <option value="atrasada">⚠ Prazo vencido</option>
+      <select id="ctrl-fd-bucket" onchange="ctrlLoadDemand()" style="min-width:160px;">
+        <option value="">— Bucket Planner —</option>
+      </select>
+      <select id="ctrl-fd-tipo" onchange="ctrlLoadDemand()">
+        <option value="">— Tipo OS —</option>
+        <option value="operacional">Operacional</option>
+        <option value="pgr">PGR</option>
+        <option value="consultoria">Consultoria</option>
+        <option value="treinamento">Treinamento</option>
       </select>
       <select id="ctrl-fd-ordem" onchange="ctrlLoadDemand()">
         <option value="empresa">A→Z (empresa)</option>
-        <option value="data_criacao">Data entrada Planner</option>
-        <option value="prazo">Prazo</option>
+        <option value="prazo">Prazo mais próximo</option>
+        <option value="atrasadas">Mais atrasadas</option>
       </select>
+      <button onclick="ctrlDemandLimparFiltros()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 11px;color:var(--text3);font-size:.78rem;cursor:pointer;font-family:inherit;">✕ Limpar</button>
     </div>
     <div class="ctrl-table-wrap">
       <table class="ctrl-table">
@@ -3961,14 +3988,14 @@
       <div class="card" style="margin-bottom:16px;">
         <div style="font-size:.8rem;font-weight:700;color:var(--orange);letter-spacing:.8px;margin-bottom:14px;">ETAPA 4 &mdash; EQUIPAMENTOS</div>
         <div class="grid2 field">
-          <div><label>Bomba</label><select id="cq-bomba" oninput="coletaQuimicoAutoSave()">
+          <div><label>Bomba</label><select id="cq-bomba" onchange="cqUpdateBombaSN(); coletaQuimicoAutoSave()">
             <option value="">-- Selecionar --</option>
             <option value="BDX-II GILLIAN">BDX-II &ndash; GILLIAN</option>
             <option value="AIRLITE SKC">AIRLITE &ndash; SKC</option>
             <option value="FORMIS TURAM">FORMIS &ndash; TURAM</option>
             <option value="INLITE VENTUSPRO">INLITE &ndash; VENTUSPRO</option>
           </select></div>
-          <div><label>ID da Bomba</label><input type="text" id="cq-id-bomba" placeholder="Ex: BDX-001" oninput="coletaQuimicoAutoSave()"></div>
+          <div><label>N° S&#233;rie da Bomba</label><select id="cq-id-bomba" onchange="coletaQuimicoAutoSave()"><option value="">— Selecione a bomba primeiro —</option></select></div>
         </div>
         <div class="grid2 field">
           <div><label>Data Calibra&#231;&#227;o Bomba</label><input type="date" id="cq-cal-bomba" oninput="coletaQuimicoAutoSave()"></div>
@@ -4009,6 +4036,7 @@
                 <th style="padding:7px 6px;border:1px solid var(--border);">ID Amostrador</th>
                 <th style="padding:7px 6px;border:1px solid var(--border);">Tipo</th>
                 <th style="padding:7px 6px;border:1px solid var(--border);">Bomba</th>
+                <th style="padding:7px 6px;border:1px solid var(--border);">S/N</th>
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Vi<br><span style="font-weight:400;font-size:.74rem;">(L/min)</span></th>
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">Vf<br><span style="font-weight:400;font-size:.74rem;">(L/min)</span></th>
                 <th style="padding:7px 6px;border:1px solid var(--border);text-align:center;">In&#237;cio</th>
@@ -4672,6 +4700,24 @@ function qUpdateBombaSN() {
   fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
     sel.innerHTML = sns.map(sn=>`<option value="${sn}">${sn}</option>`).join('');
   }).catch(()=>{ sel.innerHTML = '<option value="">Erro ao carregar</option>'; });
+}
+
+// ── Coleta Químico: Bomba SN auto-fill (Item 6) ──────────────────────
+const _CQ_BOMBA_MAP = {
+  'BDX-II GILLIAN': 'bdx', 'AIRLITE SKC': 'airlite',
+  'FORMIS TURAM': 'turam', 'INLITE VENTUSPRO': 'inlite'
+};
+function cqUpdateBombaSN() {
+  const bomba = document.getElementById('cq-bomba').value;
+  const sel   = document.getElementById('cq-id-bomba');
+  if (!sel) return;
+  const model = _CQ_BOMBA_MAP[bomba];
+  if (!model) { sel.innerHTML = '<option value="">— Selecione a bomba primeiro —</option>'; return; }
+  const cur = sel.value;
+  fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
+    sel.innerHTML = '<option value="">— Selecione o S/N —</option>' + sns.map(sn=>`<option value="${sn}">${sn}</option>`).join('');
+    if (cur && sns.includes(cur)) sel.value = cur;
+  }).catch(()=>{ sel.innerHTML = '<option value="">—</option>'; });
 }
 
 // ── Cadeia de custódia import ──────────────────────────────────────
@@ -5688,7 +5734,7 @@ function ctrlSwitchSub(name, el) {
     if (div) div.style.display = (s===name?'block':'none');
   });
   ctrlLoadStats(name);
-  if (name === 'demand') ctrlLoadDemand();
+  if (name === 'demand') { ctrlLoadBuckets(); ctrlLoadDemand(); }
   if (name === 'empresa') ctrlLoadPorEmpresa();
   if (name === 'amostr') { ctrlSwitchAmostrView('estoque'); }
   if (name === 'nova') ctrlNvInit();
@@ -7036,15 +7082,34 @@ async function ctrlMudarStatusAmostr(id, novoStatus, selEl) {
   }
 }
 
+async function ctrlDemandLimparFiltros() {
+  ['ctrl-fd-empresa','ctrl-fd-os'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['ctrl-fd-status','ctrl-fd-bucket','ctrl-fd-tipo','ctrl-fd-ordem'].forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+  ctrlLoadDemand();
+}
+
+async function ctrlLoadBuckets() {
+  const sel = document.getElementById('ctrl-fd-bucket');
+  if (!sel || sel.options.length > 1) return; // já carregado
+  try {
+    const buckets = await ctrlFetch('/controle/operacional/buckets');
+    buckets.forEach(b => { const o=document.createElement('option'); o.value=b; o.textContent=b; sel.appendChild(o); });
+  } catch(e) {}
+}
+
 async function ctrlLoadDemand() {
   const q = new URLSearchParams();
-  const emp = document.getElementById('ctrl-fd-empresa').value;
-  const st  = document.getElementById('ctrl-fd-status').value;
-  const urg = document.getElementById('ctrl-fd-urg').value;
-  const ordem = document.getElementById('ctrl-fd-ordem')?.value || 'empresa';
+  const emp    = document.getElementById('ctrl-fd-empresa')?.value || '';
+  const os     = document.getElementById('ctrl-fd-os')?.value || '';
+  const st     = document.getElementById('ctrl-fd-status')?.value || '';
+  const bucket = document.getElementById('ctrl-fd-bucket')?.value || '';
+  const tipo   = document.getElementById('ctrl-fd-tipo')?.value || '';
+  const ordem  = document.getElementById('ctrl-fd-ordem')?.value || 'empresa';
   if (emp) q.set('empresa', emp);
+  if (os) q.set('os', os);
   if (st) q.set('status', st);
-  if (urg) q.set('urgencia', urg);
+  if (bucket) q.set('bucket', bucket);
+  if (tipo) q.set('tipo', tipo);
   q.set('ordem', ordem);
 
   const tb = document.getElementById('ctrl-tb-demand');
@@ -8865,7 +8930,15 @@ async function coletaQuimicoEditar(id) {
     setVal('cq-func-local', c.local_atividade); setVal('cq-func-atv', c.atividade);
     setVal('cq-ventil', c.ventilacao); setVal('cq-amb', c.ambiente); setVal('cq-meteo', c.condicoes_meteo);
     setVal('cq-temp', c.temperatura); setVal('cq-umid', c.umidade); setVal('cq-outras-cond', c.outras_condicoes);
-    setVal('cq-bomba', c.bomba); setVal('cq-id-bomba', c.id_bomba);
+    setVal('cq-bomba', c.bomba);
+    // Pré-carrega SNs e depois seta o valor salvo
+    if (c.bomba && _CQ_BOMBA_MAP[c.bomba]) {
+      const _snSel = document.getElementById('cq-id-bomba');
+      const _saved = c.id_bomba;
+      fetch(`/api/pump_sns?model=${_CQ_BOMBA_MAP[c.bomba]}`).then(r=>r.json()).then(sns=>{
+        if (_snSel) { _snSel.innerHTML = '<option value="">— Selecione o S/N —</option>' + sns.map(s=>`<option value="${s}">${s}</option>`).join(''); if (_saved) _snSel.value = _saved; }
+      });
+    } else { setVal('cq-id-bomba', c.id_bomba); }
     setVal('cq-cal-bomba', c.data_cal_bomba); setVal('cq-calibrador', c.id_calibrador);
     setVal('cq-substancias', c.substancias); setVal('cq-fracao', c.fracao);
     setVal('cq-tempo-exp', c.tempo_exposto); setVal('cq-epc', c.epc); setVal('cq-obs', c.observacao);
@@ -8911,11 +8984,22 @@ function coletaQuimicoFecharForm() {
 // ── Químico: amostradores ──
 
 function cqAddAmostrador() {
-  _cqAmostr.push({ id_amostrador:'', tipo_amostrador:'TCP', bomba:'', vazao_inicial:0, vazao_final:0, hora_inicio:'', hora_final:'', intervalos:'' });
+  _cqAmostr.push({ id_amostrador:'', tipo_amostrador:'TCP', bomba:'', sn_bomba:'', vazao_inicial:0, vazao_final:0, hora_inicio:'', hora_final:'', intervalos:'' });
   cqRenderAmostr();
 }
 
 function cqRemAmostr(i) { _cqAmostr.splice(i, 1); cqRenderAmostr(); }
+
+function cqLoadRowSNs(i) {
+  const bomba = _cqAmostr[i].bomba;
+  const model = _CQ_BOMBA_MAP[bomba];
+  const sel = document.getElementById('cq-sn-row-' + i);
+  if (!sel || !model) return;
+  const cur = _cqAmostr[i].sn_bomba || '';
+  fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
+    sel.innerHTML = '<option value="">— SN —</option>' + sns.map(s=>`<option value="${s}" ${s===cur?'selected':''}>${s}</option>`).join('');
+  });
+}
 
 function cqCalcRow(i) {
   const vi = parseFloat(_cqAmostr[i].vazao_inicial) || 0;
@@ -8952,10 +9036,11 @@ function cqCalcRow(i) {
 function cqRenderAmostr() {
   const tb = document.getElementById('cq-amostr-tbody');
   if (!_cqAmostr.length) {
-    tb.innerHTML = '<tr><td colspan="13" style="padding:20px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>';
+    tb.innerHTML = '<tr><td colspan="14" style="padding:20px;text-align:center;color:var(--text3);">Nenhum amostrador. Clique em "+ Amostrador".</td></tr>';
     return;
   }
   tb.innerHTML = _cqAmostr.map((am, i) => {
+    // Note: SN options are loaded after render via cqLoadRowSNs
     const { vm, t, vol, dv } = cqCalcRow(i);
     const dvStyle = dv > 5 ? 'color:#92400e;font-weight:700;background:#fef3cd;' : dv > 0 ? 'color:#065f46;' : '';
     return `<tr>
@@ -8964,9 +9049,12 @@ function cqRenderAmostr() {
       <td style="padding:4px;border:1px solid var(--border);"><select style="width:70px;" onchange="_cqAmostr[${i}].tipo_amostrador=this.value">
         ${['TCP','FMD','IOM','MCE','PVC','OVM'].map(t => '<option' + (am.tipo_amostrador===t?' selected':'') + '>' + t + '</option>').join('')}
       </select></td>
-      <td style="padding:4px;border:1px solid var(--border);"><select style="width:100px;font-size:.78rem;" onchange="_cqAmostr[${i}].bomba=this.value">
+      <td style="padding:4px;border:1px solid var(--border);"><select style="width:100px;font-size:.78rem;" onchange="_cqAmostr[${i}].bomba=this.value; cqLoadRowSNs(${i})">
         <option value="" ${!am.bomba?'selected':''}>—</option>
         ${['BDX-II GILLIAN','AIRLITE SKC','FORMIS TURAM','INLITE VENTUSPRO'].map(b=>`<option value="${b}" ${am.bomba===b?'selected':''}>${b.split(' ')[0]}</option>`).join('')}
+      </select></td>
+      <td style="padding:4px;border:1px solid var(--border);"><select id="cq-sn-row-${i}" style="width:90px;font-size:.78rem;" onchange="_cqAmostr[${i}].sn_bomba=this.value">
+        <option value="${am.sn_bomba||''}">${am.sn_bomba||'— SN —'}</option>
       </select></td>
       <td style="padding:4px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" style="width:65px;" placeholder="0.150" onchange="_cqAmostr[${i}].vazao_inicial=parseFloat(this.value)||0; cqRenderAmostr()"></td>
       <td style="padding:4px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" style="width:65px;" placeholder="0.150" onchange="_cqAmostr[${i}].vazao_final=parseFloat(this.value)||0; cqRenderAmostr()"></td>
@@ -8980,6 +9068,8 @@ function cqRenderAmostr() {
       <td style="padding:4px;border:1px solid var(--border);"><button onclick="cqRemAmostr(${i})" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:1rem;">✕</button></td>
     </tr>`;
   }).join('');
+  // Carregar SNs para cada linha com bomba definida
+  _cqAmostr.forEach((am, i) => { if (am.bomba && _CQ_BOMBA_MAP[am.bomba]) cqLoadRowSNs(i); });
 }
 
 function coletaQuimicoAutoSave() {
@@ -9708,6 +9798,7 @@ function saudeRenderizar(d) {
   const pl = d.planner     || {};
   const sy = d.sync        || {};
   const am = d.amostradores|| {};
+  const op = d.operacional || {};
 
   // Score geral de saúde
   const scoreItems = [
@@ -9861,6 +9952,31 @@ function saudeRenderizar(d) {
         <button onclick="saudePipelineStats()" style="background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:5px 12px;font-size:.72rem;font-weight:600;cursor:pointer;">Ver stats do pipeline</button>
       </div>
     `)}
+
+    <!-- Operacional em Campo -->
+    ${saudeSecao('📋 Operacional em Campo', `
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        ${saudeCard('OS Atrasadas', op.os_atrasadas||0, 'prazo vencido', (op.os_atrasadas||0)>0?'#ef4444':'#22c55e')}
+        ${saudeCard('Vence em 7d', op.os_prazo_7d||0, 'OS urgentes', (op.os_prazo_7d||0)>0?'#f59e0b':'#22c55e')}
+        ${saudeCard('Sem Prazo', op.os_sem_prazo||0, 'do Planner', '#6b7280')}
+        ${saudeCard('Coletas Ruído', op.coletas_ruido||0, 'registradas', '#3b82f6')}
+        ${saudeCard('Coletas Químico', op.coletas_quimico||0, 'registradas', '#8b5cf6')}
+        ${saudeCard('Planejamentos', op.planejamentos||0, 'criados', '#f59e0b')}
+      </div>
+      <div style="font-size:.72rem;color:var(--text3);">
+        Banco de dados: <span style="color:${op.db_tipo==='postgresql'?'#22c55e':'#f59e0b'};font-weight:700;">${op.db_tipo||'sqlite'}</span>
+        ${op.db_tipo==='sqlite'?'<span style="color:#f59e0b;margin-left:8px;">⚠ Dados zerados a cada redeploy — configure PostgreSQL no Railway</span>':'<span style="color:#22c55e;margin-left:8px;">✓ Dados persistentes</span>'}
+      </div>
+    `)}
+
+    <!-- Amostradores alertas -->
+    ${(am.vencidos||0)>0||(am.vencendo_7d||0)>0||(am.parados_lab_30d||0)>0 ? saudeSecao('⚠️ Alertas de Amostradores', `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${(am.vencidos||0)>0?`<span style="background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:6px;padding:5px 12px;font-size:.75rem;font-weight:700;">✗ ${am.vencidos} certificado(s) vencido(s)</span>`:''}
+        ${(am.vencendo_7d||0)>0?`<span style="background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:5px 12px;font-size:.75rem;font-weight:700;">⚠ ${am.vencendo_7d} vencendo em 7 dias</span>`:''}
+        ${(am.parados_lab_30d||0)>0?`<span style="background:rgba(139,92,246,.1);color:#a78bfa;border:1px solid rgba(139,92,246,.25);border-radius:6px;padding:5px 12px;font-size:.75rem;font-weight:700;">🔬 ${am.parados_lab_30d} parado(s) no lab há +30d</span>`:''}
+      </div>
+    `) : ''}
 
     <!-- Ações rápidas -->
     ${saudeSecao('Ações Rápidas', `

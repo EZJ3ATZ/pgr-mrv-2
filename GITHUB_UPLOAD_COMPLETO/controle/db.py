@@ -1526,9 +1526,25 @@ def list_operational_por_empresa(filtros=None):
         sql += " AND d.status != 'concluida'"
     elif f.get('status') == 'concluida':
         sql += " AND d.status = 'concluida'"
+    elif f.get('status') == 'em_andamento':
+        sql += " AND d.status = 'em_andamento'"
+    elif f.get('status') == 'aberta':
+        sql += " AND d.status = 'aberta'"
     if f.get('empresa'):
         sql += ' AND LOWER(e.nome) LIKE LOWER(?)'; params.append(f'%{f["empresa"]}%')
-    sql += ' GROUP BY e.id, e.nome ORDER BY empresa_nome ASC LIMIT 500'
+    if f.get('bucket'):
+        sql += ' AND LOWER(d.planner_bucket) LIKE LOWER(?)'; params.append(f'%{f["bucket"]}%')
+    if f.get('tipo'):
+        sql += ' AND d.tipo_demanda = ?'; params.append(f['tipo'])
+    if f.get('os'):
+        sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
+    ordem = f.get('ordem', 'empresa')
+    if ordem == 'prazo':
+        sql += ' GROUP BY e.id, e.nome ORDER BY prazo_mais_proximo ASC NULLS LAST LIMIT 500'
+    elif ordem == 'atrasadas':
+        sql += ' GROUP BY e.id, e.nome ORDER BY demandas_atrasadas DESC LIMIT 500'
+    else:
+        sql += ' GROUP BY e.id, e.nome ORDER BY empresa_nome ASC LIMIT 500'
     with get_db() as conn:
         rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
         for r in rows:
