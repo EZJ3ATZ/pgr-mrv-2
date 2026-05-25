@@ -510,9 +510,13 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
                         # ── PRÉ-FILTRO rápido: verificar label ANTES de gravar raw ─────
                         # Evita gravar 8000 tasks ignoradas no DB
+                        # Se label_filter ativo mas label não existe no plano → ignora TODAS as tasks do plano
                         tem_label = True
-                        if label_filter and category_ids:
-                            tem_label = _task_has_label(tarefa, category_ids)
+                        if label_filter:
+                            if category_ids:
+                                tem_label = _task_has_label(tarefa, category_ids)
+                            else:
+                                tem_label = False  # label não configurado neste plano = ignorar
 
                         # ── FASE 1: Gravar raw (apenas tasks operacionais + amostra audit) ─
                         # raw_json omitido para tasks ignoradas para economizar espaço/memória
