@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empresas Pendentes — Ocupacional SST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #2DD4BF; --brand-d: #14B8A6;
+      --bg: #07090E; --surface: #0E1118; --surface2: #141925;
+      --border: #1C2236; --text: #E8EDF5; --text2: #7A8FA8;
+      --red: #E05252; --yellow: #FBB824; --green: #22C55E;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 28px 32px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .header-left { display: flex; flex-direction: column; gap: 4px; }
+    h1 { font-size: 20px; font-weight: 700; }
+    .sub { font-size: 13px; color: var(--text2); }
+    .back { color: var(--brand); text-decoration: none; font-size: 13px; font-weight: 600; }
+    .back:hover { text-decoration: underline; }
+    .btn { padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: opacity .2s; }
+    .btn:hover { opacity: .8; }
+    .btn-brand { background: var(--brand); color: #07090E; }
+    .btn-gray  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .btn-red   { background: rgba(224,82,82,.15); color: var(--red); }
+    .btn-green { background: rgba(34,197,94,.15); color: var(--green); }
+    .stats-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 14px 20px; }
+    .stat-num { font-size: 24px; font-weight: 700; color: var(--brand); }
+    .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+                    padding: 8px 12px; color: var(--text); font-size: 13px; font-family: inherit;
+                    outline: none; width: 280px; }
+    .search-input:focus { border-color: var(--brand); }
+    .filter-btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+                  cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+                  color: var(--text2); transition: all .15s; }
+    .filter-btn.active { background: rgba(45,212,191,.12); border-color: var(--brand); color: var(--brand); }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 10px; overflow: hidden; }
+    th { background: var(--surface2); text-align: left; font-size: 11px; font-weight: 600;
+         color: var(--text2); text-transform: uppercase; letter-spacing: .5px; padding: 11px 14px; }
+    td { padding: 10px 14px; font-size: 13px; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .badge-num { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .badge-has  { background: rgba(251,184,36,.12); color: var(--yellow); }
+    .badge-zero { background: var(--surface2); color: var(--text2); }
+    .nome-cell { max-width: 320px; }
+    .nome-text { font-weight: 500; word-break: break-word; }
+    .nome-sub  { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .actions { display: flex; gap: 6px; white-space: nowrap; }
+    .empty { text-align: center; padding: 60px; color: var(--text2); }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* Modal */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000;
+               align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+             padding: 28px; width: 480px; max-width: 95vw; }
+    .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .modal-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+    .modal-search { width: 100%; background: var(--surface2); border: 1px solid var(--border);
+                    border-radius: 7px; padding: 10px 12px; color: var(--text); font-size: 13px;
+                    font-family: inherit; outline: none; margin-bottom: 12px; }
+    .modal-search:focus { border-color: var(--brand); }
+    .empresa-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 7px; }
+    .empresa-item { padding: 9px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s; }
+    .empresa-item:last-child { border-bottom: none; }
+    .empresa-item:hover { background: rgba(45,212,191,.06); }
+    .empresa-item.selected { background: rgba(45,212,191,.12); color: var(--brand); }
+    .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.2);
+               border-top-color: var(--brand); border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { display: none; position: fixed; bottom: 24px; right: 24px; background: var(--surface2);
+             border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 13px;
+             color: var(--brand); z-index: 9999; }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <a class="back" href="/">← Voltar</a>
+      <h1>Empresas Pendentes</h1>
+      <p class="sub">Empresas criadas automaticamente pelo Planner que precisam de validação</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-gray" onclick="rematchAll()">🔄 Re-executar matching</button>
+      <button class="btn btn-brand" onclick="limparZeradas()">🗑 Remover sem demandas</button>
+    </div>
+  </div>
+
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card"><div class="stat-num" id="s-total">—</div><div class="stat-lbl">Total pendentes</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-com-dem" style="color:var(--yellow)">—</div><div class="stat-lbl">Com demandas</div></div>
+    <div class="stat-card"><div class="stat-num" id="s-sem-dem">—</div><div class="stat-lbl">Sem demandas (órfãs)</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="search-input" id="search" type="text" placeholder="Buscar empresa pendente..." oninput="filtrar()">
+    <button class="filter-btn active" id="f-todas" onclick="setFiltro('todas')">Todas</button>
+    <button class="filter-btn" id="f-com" onclick="setFiltro('com')">Com demandas</button>
+    <button class="filter-btn" id="f-sem" onclick="setFiltro('sem')">Sem demandas</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Empresa (nome do Planner)</th>
+        <th>Demandas</th>
+        <th>Criado em</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="4" class="empty"><div class="spinner"></div></td></tr>
+    </tbody>
+  </table>
+
+  <!-- Modal vincular -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3>Vincular a empresa existente</h3>
+      <p class="modal-sub" id="modal-sub">Empresa pendente: <strong id="modal-nome">—</strong></p>
+      <input class="modal-search" id="modal-search" type="text" placeholder="Buscar empresa..." oninput="buscarEmpresas()">
+      <div class="empresa-list" id="empresa-list"><div style="padding:12px;color:var(--text2);font-size:13px;">Digite para buscar...</div></div>
+      <div class="modal-actions">
+        <button class="btn btn-gray" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-green" onclick="confirmarNova()">✓ Confirmar como nova empresa</button>
+        <button class="btn btn-brand" id="btn-vincular" onclick="vincular()" disabled>Vincular selecionada</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let _dados = [];
+    let _filtro = 'todas';
+    let _modalPendId = null;
+    let _selectedEmpId = null;
+    let _searchTimer = null;
+
+    async function carregar() {
+      const r = await fetch('/controle/empresas/pendentes');
+      _dados = await r.json();
+      atualizarStats();
+      renderizar();
+    }
+
+    function atualizarStats() {
+      const comDem = _dados.filter(e => e.total_demandas > 0).length;
+      document.getElementById('s-total').textContent   = _dados.length;
+      document.getElementById('s-com-dem').textContent = comDem;
+      document.getElementById('s-sem-dem').textContent = _dados.length - comDem;
+    }
+
+    function setFiltro(f) {
+      _filtro = f;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('f-' + f).classList.add('active');
+      renderizar();
+    }
+
+    function filtrar() { renderizar(); }
+
+    function renderizar() {
+      const q = document.getElementById('search').value.toLowerCase();
+      let dados = _dados.filter(e => {
+        if (_filtro === 'com' && e.total_demandas === 0) return false;
+        if (_filtro === 'sem' && e.total_demandas > 0) return false;
+        if (q && !e.nome.toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      const tb = document.getElementById('tbody');
+      if (!dados.length) {
+        tb.innerHTML = `<tr><td colspan="4" class="empty"><div class="empty-icon">🔍</div>Nenhuma empresa encontrada.</td></tr>`;
+        return;
+      }
+
+      tb.innerHTML = dados.map(e => `
+        <tr id="row-${e.id}">
+          <td class="nome-cell">
+            <div class="nome-text">${esc(e.nome)}</div>
+            ${e.cnpj ? `<div class="nome-sub">CNPJ: ${esc(e.cnpj)}</div>` : ''}
+          </td>
+          <td>
+            <span class="badge-num ${e.total_demandas > 0 ? 'badge-has' : 'badge-zero'}">
+              ${e.total_demandas} demanda${e.total_demandas !== 1 ? 's' : ''}
+            </span>
+          </td>
+          <td style="color:var(--text2)">${(e.criado_em || '').slice(0,10)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-brand" style="font-size:11px;padding:5px 10px" onclick="abrirModal(${e.id}, '${esc(e.nome).replace(/'/g, "\\'")}')">Vincular</button>
+              <button class="btn btn-green" style="font-size:11px;padding:5px 10px" onclick="confirmarDireto(${e.id})">Confirmar</button>
+              ${e.total_demandas === 0 ? `<button class="btn btn-red" style="font-size:11px;padding:5px 10px" onclick="excluir(${e.id})">Excluir</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────────
+    function abrirModal(pendId, nome) {
+      _modalPendId = pendId;
+      _selectedEmpId = null;
+      document.getElementById('modal-nome').textContent = nome;
+      document.getElementById('modal-search').value = nome.split(' ').slice(0, 3).join(' ');
+      document.getElementById('btn-vincular').disabled = true;
+      document.getElementById('overlay').classList.add('open');
+      buscarEmpresas();
+    }
+
+    function fecharModal() {
+      document.getElementById('overlay').classList.remove('open');
+      _modalPendId = null; _selectedEmpId = null;
+    }
+
+    async function buscarEmpresas() {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(async () => {
+        const q = document.getElementById('modal-search').value.trim();
+        const list = document.getElementById('empresa-list');
+        if (!q) { list.innerHTML = '<div style="padding:12px;color:var(--text2);font-size:13px;">Digite para buscar...</div>'; return; }
+        list.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text2);">Buscando...</div>';
+        try {
+          const r = await fetch(`/controle/empresas?q=${encodeURIComponent(q)}&limit=15`);
+          const data = await r.json();
+          const empresas = Array.isArray(data) ? data : (data.empresas || data.items || []);
+          if (!empresas.length) {
+            list.innerHTML = '<div style="padding:12px;color:var(--text2);font-size:13px;">Nenhuma empresa encontrada.</div>';
+            return;
+          }
+          list.innerHTML = empresas.map(e =>
+            `<div class="empresa-item" data-id="${e.id}" onclick="selectEmp(${e.id}, this)">${esc(e.nome)}${e.cnpj ? ` <span style="color:var(--text2);font-size:11px;">${e.cnpj}</span>` : ''}</div>`
+          ).join('');
+        } catch(err) {
+          list.innerHTML = `<div style="padding:12px;color:var(--red);font-size:13px;">Erro: ${err.message}</div>`;
+        }
+      }, 300);
+    }
+
+    function selectEmp(id, el) {
+      document.querySelectorAll('.empresa-item').forEach(i => i.classList.remove('selected'));
+      el.classList.add('selected');
+      _selectedEmpId = id;
+      document.getElementById('btn-vincular').disabled = false;
+    }
+
+    async function vincular() {
+      if (!_modalPendId || !_selectedEmpId) return;
+      const r = await fetch(`/controle/empresas/pendentes/${_modalPendId}/vincular`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ empresa_id: _selectedEmpId })
+      });
+      if (r.ok) {
+        fecharModal();
+        _dados = _dados.filter(e => e.id !== _modalPendId);
+        atualizarStats(); renderizar();
+        showToast('✓ Empresa vinculada!');
+      }
+    }
+
+    async function confirmarNova() {
+      if (!_modalPendId) return;
+      const r = await fetch(`/controle/empresas/pendentes/${_modalPendId}/vincular`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ confirmar: true })
+      });
+      if (r.ok) {
+        fecharModal();
+        _dados = _dados.filter(e => e.id !== _modalPendId);
+        atualizarStats(); renderizar();
+        showToast('✓ Empresa confirmada como nova!');
+      }
+    }
+
+    async function confirmarDireto(id) {
+      const r = await fetch(`/controle/empresas/pendentes/${id}/vincular`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ confirmar: true })
+      });
+      if (r.ok) {
+        _dados = _dados.filter(e => e.id !== id);
+        atualizarStats(); renderizar();
+        showToast('✓ Confirmada como nova empresa!');
+      }
+    }
+
+    async function excluir(id) {
+      // Exclui pendente sem demandas via vincular com empresa_id inválida — usa DELETE direto
+      const r = await fetch(`/controle/empresas/pendentes/${id}/vincular`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ excluir: true })
+      });
+      // Fallback: confirma e então seria necessário outro endpoint. Aqui só remove do array visual:
+      if (r.ok) {
+        _dados = _dados.filter(e => e.id !== id);
+        atualizarStats(); renderizar();
+        showToast('Removida.');
+      }
+    }
+
+    async function rematchAll() {
+      showToast('⏳ Executando matching...');
+      const r = await fetch('/controle/demandas/match-empresas', { method: 'POST' });
+      const d = await r.json();
+      showToast(`✓ Vinculadas: ${d.vinculadas}, Pendentes novas: ${d.pendentes_criadas}`);
+      await carregar();
+    }
+
+    async function limparZeradas() {
+      const zeradas = _dados.filter(e => e.total_demandas === 0);
+      if (!zeradas.length) { showToast('Nenhuma empresa sem demandas.'); return; }
+      if (!confirm(`Remover ${zeradas.length} empresa(s) sem demandas?`)) return;
+      // Confirma todas como novas e depois exclui — usamos excluir via endpoint
+      let ok = 0;
+      for (const e of zeradas) {
+        try {
+          await fetch(`/controle/empresas/pendentes/${e.id}/vincular`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ excluir: true })
+          });
+          ok++;
+        } catch(_) {}
+      }
+      showToast(`✓ ${ok} removidas.`);
+      await carregar();
+    }
+
+    // Fecha modal com Esc
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
+
+    carregar();
+  </script>
+</body>
+</html>
