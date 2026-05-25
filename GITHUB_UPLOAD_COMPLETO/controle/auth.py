@@ -81,15 +81,17 @@ def register():
 
         if not nome or not email or not senha:
             erro = 'Preencha todos os campos obrigatórios.'
+        elif not email.endswith('@ocupacional.com.br'):
+            erro = 'Somente e-mails @ocupacional.com.br podem criar conta.'
         else:
             try:
                 senha_hash = generate_password_hash(senha)
                 with get_db() as conn:
                     conn.execute(
-                        'INSERT INTO usuarios (nome, email, senha_hash, registro_mte, ativo) VALUES (?,?,?,?,0)',
+                        'INSERT INTO usuarios (nome, email, senha_hash, registro_mte) VALUES (?,?,?,?)',
                         (nome, email, senha_hash, registro_mte)
                     )
-                return redirect(url_for('auth.login') + '?pending=1')
+                return redirect(url_for('auth.login') + '?ok=1')
             except Exception as e:
                 msg = str(e).lower()
                 if 'unique' in msg or 'duplicate' in msg:
