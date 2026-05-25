@@ -1115,6 +1115,44 @@ def devolver_lote():
 
 
 # ── Utilitários de limpeza ────────────────────────────────────────────
+@controle_bp.route('/amostradores/normalizar_status', methods=['POST'])
+def normalizar_status_amostradores():
+    """
+    Normaliza status inconsistentes dos amostradores:
+    - ESTOQUE → Estoque
+    - RESERVADO → Reservado
+    - UTILIZADO? → Utilizado
+    - Nomes de empresa (não são status válidos) → Laboratorio
+    """
+    STATUSES_VALIDOS = {'Estoque', 'Laboratorio', 'Utilizado', 'Reservado', 'Descartado', 'EmUso'}
+    NORMALIZAR = {
+        'ESTOQUE': 'Estoque',
+        'estoque': 'Estoque',
+        'RESERVADO': 'Reservado',
+        'reservado': 'Reservado',
+        'UTILIZADO': 'Utilizado',
+        'utilizado': 'Utilizado',
+        'UTILIZADO?': 'Utilizado',
+        'LABORATORIO': 'Laboratorio',
+        'laboratorio': 'Laboratorio',
+    }
+    init_db()
+    total = 0
+    with get_db() as conn:
+        rows = conn.execute('SELECT id, status FROM amostradores').fetchall()
+        for row in rows:
+            sid = row['id']
+            st  = row['status'] or ''
+            novo = NORMALIZAR.get(st)
+            if not novo and st not in STATUSES_VALIDOS:
+                # Status que não é válido nem mapeado → era nome de empresa → Laboratorio
+                novo = 'Laboratorio'
+            if novo and novo != st:
+                conn.execute('UPDATE amostradores SET status=? WHERE id=?', (novo, sid))
+                total += 1
+    return jsonify({'ok': True, 'normalizados': total})
+
+
 @controle_bp.route('/empresas/mesclar_duplicatas', methods=['POST'])
 def mesclar_duplicatas():
     """Consolida empresas com mesmo nome em um único registro."""
