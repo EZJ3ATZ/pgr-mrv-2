@@ -98,7 +98,9 @@ class _PGCursor:
     def execute(self, sql, params=None):
         self._cur = self._pg_conn.cursor(
             cursor_factory=psycopg2.extras.RealDictCursor)
-        sql = sql.replace('?', '%s')
+        if params:
+            # Escape literal % (LIKE patterns etc.) before replacing ? with %s
+            sql = sql.replace('%', '%%').replace('?', '%s')
         is_insert = sql.strip().upper().startswith('INSERT')
         _is_upsert = 'ON CONFLICT' in sql.upper()
         if is_insert and not _is_upsert and 'RETURNING' not in sql.upper():
@@ -114,7 +116,7 @@ class _PGCursor:
 
     def executemany(self, sql, params_list):
         self._cur = self._pg_conn.cursor()
-        sql = sql.replace('?', '%s')
+        sql = sql.replace('%', '%%').replace('?', '%s')
         self._cur.executemany(sql, params_list)
         return self
 
