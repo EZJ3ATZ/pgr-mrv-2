@@ -1,6 +1,7 @@
 import os, re, shutil, zipfile, io, tempfile, base64
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template, send_from_directory
+from flask_login import login_required
 import xml.etree.ElementTree as ET
 
 try:
@@ -11,6 +12,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max (fotos)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-troque-em-producao')
 
 # ── Observabilidade: logging estruturado + Sentry ─────────────────────
 try:
@@ -28,7 +30,9 @@ MODEL_DIR  = os.path.join(BASE_DIR, 'modelo_unpacked')
 
 # ── Modulo Controle de Medicoes e Amostradores (isolado via Blueprint) ─
 try:
-    from controle import controle_bp, init_db as _controle_init_db
+    from controle import controle_bp, auth_bp, login_manager, init_db as _controle_init_db
+    login_manager.init_app(app)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(controle_bp)
     _controle_init_db()
 except Exception as _e:
@@ -793,6 +797,7 @@ def extrair_pdf(file_bytes):
 
 # ── Rotas ─────────────────────────────────────────────────────────
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
 
