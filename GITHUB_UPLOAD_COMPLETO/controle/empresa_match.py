@@ -34,6 +34,12 @@ _RE_OS_DASH  = re.compile(r'^(\d{4,8})\s*[-–]\s*(.+)', re.DOTALL)   # "6077430
 _RE_OS_COMMA = re.compile(r'^(\d{4,8})\s*,\s*(.+)', re.DOTALL)       # "54394, Empresa, ..."
 _RE_OS_SPACE = re.compile(r'^(\d{5,8})\s+([A-Za-zÀ-ÿ].+)', re.DOTALL)  # "6466572 Empresa" (min 5 dig)
 
+# OS após label tipo "MEDIÇÕES - 6076827 - Empresa" ou "LIP E MEDIÇÕES - 1234 - Empresa"
+_RE_OS_LABEL = re.compile(
+    r'^[A-ZÀ-Ú][A-ZÀ-Ú/\s]{0,40}\s*[-–]\s*(\d{4,8})\s*[-–]\s*(.+)',
+    re.DOTALL
+)  # prefixo maiúsculo + dash + OS + dash + nome
+
 # Sufixos de status a remover do nome da empresa
 _RE_SUFIXO_DIAS   = re.compile(r',?\s*\d+\s+DIAS?\b.*$', re.IGNORECASE | re.DOTALL)
 _RE_SUFIXO_ANTIGO = re.compile(r'[-–,]?\s*PROCESSO\s+ANTIGO.*$', re.IGNORECASE | re.DOTALL)
@@ -64,7 +70,8 @@ def _strip_prefixo_label(titulo: str) -> str:
         # Palavras significativas do prefixo (ignora conectores "e", "ou", "de")
         palavras = [p for p in re.split(r'[\s/]+', prefixo)
                     if len(p) > 1 and p.lower() not in ('e', 'ou', 'de')]
-        if len(palavras) >= 2 and all(p == p.upper() for p in palavras):
+        # 1 palavra toda maiúscula (ex: "MEDIÇÕES") OU 2+ palavras maiúsculas
+        if palavras and all(p == p.upper() for p in palavras):
             return resto
     return t
 
@@ -130,9 +137,9 @@ def extrair_campos(titulo: str) -> dict:
     if m:
         resultado['cnpj'] = re.sub(r'\D', '', m.group())
 
-    # Tenta detectar OS no início: dash → vírgula → espaço (nessa ordem de confiança)
+    # Tenta detectar OS no início: dash → vírgula → espaço → label+OS (nessa ordem de confiança)
     os_num = nome_raw = None
-    for pat in (_RE_OS_DASH, _RE_OS_COMMA, _RE_OS_SPACE):
+    for pat in (_RE_OS_DASH, _RE_OS_COMMA, _RE_OS_SPACE, _RE_OS_LABEL):
         m = pat.match(t)
         if m:
             os_num   = m.group(1)
