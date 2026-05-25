@@ -2206,6 +2206,8 @@ def gerar_relatorio_quimico():
     os_num         = d.get('os', '')
     data_coleta    = d.get('data_coleta', '')
     tecnico        = d.get('tecnico', '')
+    sig_avaliado   = d.get('sig_avaliado')   # base64 PNG ou None
+    sig_empresa    = d.get('sig_empresa')    # base64 PNG ou None
 
     # Formatar data
     if data_coleta and '-' in str(data_coleta):
@@ -2509,17 +2511,36 @@ def gerar_relatorio_quimico():
 
         story.append(Spacer(1,10))
 
-        # ── Assinaturas ───────────────────────────────────────────────
-        sig_style = TableStyle([('LINEABOVE',(0,0),(-1,0),0.5,PRETO),
-                                ('ALIGN',(0,0),(-1,-1),'CENTER'),
-                                ('FONTSIZE',(0,0),(-1,-1),7),
-                                ('TOPPADDING',(0,0),(-1,-1),2)])
-        story.append(Table([
-            ['', '', ''],
-            [Paragraph('Assinatura do Funcionário', small),
-             Paragraph('Assinatura do Supervisor', small),
-             Paragraph(f'Responsável Técnico<br/>{tecnico}', small)],
-        ], colWidths=[5.8*cm,5.8*cm,5.8*cm], style=sig_style))
+    # ─── Assinaturas (uma vez, ao final do documento) ─────────────────
+    import base64 as _b64
+    from io import BytesIO as _BIO
+    from reportlab.platypus import Image as _RLImg
+
+    def _sig_img(b64_str, w=8.3*cm, h=1.8*cm):
+        if not b64_str:
+            return None
+        try:
+            raw = _b64.b64decode(b64_str.split(',')[-1])
+            return _RLImg(_BIO(raw), width=w, height=h)
+        except Exception:
+            return None
+
+    img_av = _sig_img(sig_avaliado)
+    img_em = _sig_img(sig_empresa)
+
+    sig_style2 = TableStyle([
+        ('LINEABOVE', (0,0), (-1,0), 0.5, PRETO),
+        ('ALIGN',     (0,0), (-1,-1), 'CENTER'),
+        ('FONTSIZE',  (0,0), (-1,-1), 7),
+        ('TOPPADDING',(0,0), (-1,-1), 4),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 4),
+    ])
+    story.append(Spacer(1, 16))
+    story.append(Table([
+        [img_av or '', img_em or ''],
+        [Paragraph('Assinatura do Avaliado<br/><font size="6">(opcional)</font>', small),
+         Paragraph('Assinatura do Técnico da Empresa', small)],
+    ], colWidths=[8.5*cm, 8.5*cm], style=sig_style2))
 
     # ─── Gerar PDF ────────────────────────────────────────────────────
     doc.build(story)
