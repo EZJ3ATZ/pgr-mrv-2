@@ -1948,93 +1948,7 @@ def graph_debug_labels():
 
 @controle_bp.route('/graph/sync_mini')
 def graph_sync_mini():
-    """Sync SÍNCRONO mini: processa as primeiras N tasks de um plano específico.
-    Uso: /controle/graph/sync_mini?plan_id=<ID>&limit=20&label_filter=Medições
-    Retorna resultado direto (sem background), para diagnóstico."""
-    plan_id = request.args.get('plan_id', 'JOHzljvSKkmfSsQ7SekCnWUAA8cz').strip()
-    limit   = int(request.args.get('limit', 50))
-    label_filter = request.args.get('label_filter', 'Medições').strip()
-
-    try:
-        from .graph import graph_ok, get_plan_tasks, get_plan_buckets, get_plan_category_map, get_task_details
-        from .planner_sync import _task_has_label, _find_category_ids, _normalize, _parse_date
-        from .db import upsert_raw_task, mark_raw_task
-        import json
-
-        if not graph_ok():
-            return jsonify({'erro': 'Sem autenticação Graph API'}), 503
-
-        init_db()
-
-        cat_map = get_plan_category_map(plan_id)
-        category_ids = _find_category_ids(cat_map, label_filter)
-        buckets = get_plan_buckets(plan_id)
-        bucket_map = {b['id']: b.get('name', '') for b in buckets}
-
-        tarefas = get_plan_tasks(plan_id)[:limit]
-
-        resultado = {
-            'plan_id': plan_id,
-            'label_filter': label_filter,
-            'category_ids': list(category_ids),
-            'total_buscado': len(tarefas),
-            'com_label': 0,
-            'sem_label': 0,
-            'gravadas_raw': 0,
-            'demandas_criadas': 0,
-            'demandas_atualizadas': 0,
-            'sample_com_label': [],
-            'erros': [],
-        }
-
-        with get_db() as conn:
-            if not USE_PG:
-                conn.execute('PRAGMA foreign_keys = OFF')
-            for tarefa in tarefas:
-                tid    = tarefa['id']
-                titulo = tarefa.get('title', '')
-                bucket = bucket_map.get(tarefa.get('bucketId', ''), '')
-                tem    = _task_has_label(tarefa, category_ids) if category_ids else False
-
-                raw_data = {
-                    'planner_plan_id':   tarefa.get('planId', ''),
-                    'planner_plan_nome': 'Entregas Técnicas',
-                    'planner_bucket_id': tarefa.get('bucketId', ''),
-                    'planner_bucket':    bucket,
-                    'planner_group_id':  '4c80214b-6801-414a-9fc7-27feff0b3de6',
-                    'planner_group_nome':'Ocupacional',
-                    'titulo':            titulo,
-                    'descricao':         '',
-                    'checklist_json':    '[]',
-                    'raw_json':          json.dumps(tarefa) if tem else '',
-                    'percent_complete':  tarefa.get('percentComplete', 0),
-                    'prazo':             _parse_date(tarefa.get('dueDateTime')),
-                    'criado_em_ms':      _parse_date(tarefa.get('createdDateTime')),
-                    'concluido_em_ms':   _parse_date(tarefa.get('completedDateTime')),
-                    'ms_assignee_id':    (list(tarefa.get('assignments', {}).keys()) or [None])[0],
-                    'ms_assignees_json': json.dumps(list(tarefa.get('assignments', {}).keys())),
-                    'etiquetas_json':    json.dumps(tarefa.get('appliedCategories', {})),
-                }
-                try:
-                    upsert_raw_task(conn, tid, raw_data)
-                    resultado['gravadas_raw'] += 1
-                except Exception as e:
-                    resultado['erros'].append(f'upsert_raw: {e}')
-
-                if tem:
-                    resultado['com_label'] += 1
-                    resultado['sample_com_label'].append({
-                        'titulo': titulo[:80],
-                        'bucket': bucket,
-                        'applied': tarefa.get('appliedCategories', {}),
-                    })
-                else:
-                    resultado['sem_label'] += 1
-
-        return jsonify(resultado)
-    except Exception as e:
-        import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:2000]}), 500
+    return jsonify({'info': 'Endpoint de diagnóstico removido. Use POST /controle/graph/sync'}), 410
 
 
 @controle_bp.route('/graph/debug_email')
@@ -2043,6 +1957,7 @@ def graph_debug_email():
     Debug: testa acesso a e-mails via Graph API.
     Busca e-mails relacionados à Uniscientific / laboratório.
     """
+    return jsonify({'info': 'Endpoint de diagnóstico removido'}), 410
     from .graph import graph_get, graph_paginate, list_emails
     resultado = {
         'usuarios_testados': [],
@@ -2131,12 +2046,11 @@ def graph_debug_email_body():
     e cruza com o estoque local.
     Uso: /controle/graph/debug_email_body?caixa=email@dominio.com&max=10
     """
+    return jsonify({'info': 'Endpoint de diagnóstico removido'}), 410
     import re as _re
     import base64 as _b64
-    from .graph import graph_get, graph_paginate
-
-    caixa = request.args.get('caixa', 'bernardojunqueira@ocupacional.com.br')
-    max_emails = int(request.args.get('max', '15'))
+    caixa = request.args.get('caixa', '')
+    max_emails = 0
 
     # Padrão de amostrador: 4 dígitos + AV + 1-2 dígitos  ex: 1091AV3
     PAD_AMOSTRADOR = _re.compile(r'\b(\d{3,5}AV\d{1,2})\b', _re.I)
@@ -2316,10 +2230,10 @@ def graph_lab_flow():
     Cruza códigos de amostrador entre os dois.
     Uso: /controle/graph/lab_flow?max=20
     """
+    return jsonify({'info': 'Endpoint de diagnóstico removido'}), 410
     import re as _re
     import base64 as _b64
     import io as _io
-    from .graph import graph_get, graph_paginate
 
     max_emails = int(request.args.get('max', '20'))
 
