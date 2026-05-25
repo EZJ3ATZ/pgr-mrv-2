@@ -4099,6 +4099,7 @@
       <div style="display:flex;gap:12px;flex-wrap:wrap;">
         <button onclick="coletaQuimicoSalvar()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;">&#128190; Salvar</button>
         <button id="cq-btn-ficha" onclick="coletaQuimicoImprimirFicha()" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 18px;cursor:pointer;font-family:inherit;font-size:.9rem;">&#128424; Imprimir Ficha</button>
+        <button id="cq-btn-laudo" onclick="coletaQuimicoGerarLaudo()" style="display:none;background:#1E3A8A;color:#fff;border:none;border-radius:8px;padding:11px 18px;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:600;">&#128196; Gerar Laudo Químico</button>
         <button onclick="coletaQuimicoFecharForm()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:11px 24px;cursor:pointer;font-family:inherit;font-size:.9rem;">Cancelar</button>
         <div id="cq-save-status" style="display:flex;align-items:center;font-size:.85rem;color:var(--text3);"></div>
       </div>
@@ -9098,6 +9099,7 @@ async function coletaQuimicoEditar(id) {
     });
     cqRenderAmostr();
     document.getElementById('cq-btn-ficha').style.display = '';
+    const _cqbl2 = document.getElementById('cq-btn-laudo'); if(_cqbl2) _cqbl2.style.display='';
     document.getElementById('coleta-quimico-list').style.display = 'none';
     document.getElementById('coleta-quimico-form').style.display = '';
   } catch(e) { alert('Erro ao carregar: ' + e.message); }
@@ -9114,6 +9116,47 @@ async function coletaQuimicoDeletar(id) {
 function coletaQuimicoImprimirFicha() {
   if (!_cqColetaId) { alert('Salve a coleta primeiro.'); return; }
   window.open('/controle/coletas/quimico/' + _cqColetaId + '/ficha', '_blank');
+}
+
+async function coletaQuimicoGerarLaudo() {
+  if (!_cqColetaId) { _showToast('Salve a coleta antes de gerar o laudo.', 'warn'); return; }
+  try {
+    // Buscar dados completos da coleta do banco
+    const c = await ctrlFetch('/controle/coletas/quimico/' + _cqColetaId);
+    if (!c) { _showToast('Erro ao carregar coleta', 'err'); return; }
+
+    // Navegar para a seção de Análise Química
+    showSection('quimico');
+
+    // Pré-preencher campos da empresa
+    const razaoEl = document.getElementById('q-razao');
+    if (razaoEl && c.empresa_nome) razaoEl.value = c.empresa_nome;
+
+    // Pré-preencher avaliação com dados da coleta
+    const aval = qNewAval();
+    aval.trabalhador   = c.nome_funcionario || '';
+    aval.cargo         = c.funcao           || '';
+    aval.setor         = c.setor            || '';
+    aval.jornada       = c.jornada          || '08:00H';
+    aval.dataColeta    = c.data_coleta       || '';
+    aval.agente        = c.substancias       || '';
+    aval.acessorios    = c.acessorios        || 'Redutor de vazão';
+    // Vazão e volume dos amostradores
+    if (c.amostradores && c.amostradores.length > 0) {
+      const am = c.amostradores[0];
+      if (am.vazao_ini) aval.vazaoInicial = String(am.vazao_ini);
+      if (am.vazao_fin) aval.vazaoFinal   = String(am.vazao_fin);
+      if (am.tempo_coleta) aval.tempoColeta = String(am.tempo_coleta);
+    }
+
+    // Substituir a avaliação padrão (índice 0) com os dados da coleta
+    qAvals[0] = aval;
+    qRenderAvals();
+
+    _showToast('✅ Dados da coleta carregados na Análise Química. Preencha os resultados do laboratório e gere o laudo.', 'ok');
+  } catch(e) {
+    _showToast('Erro: ' + e.message, 'err');
+  }
 }
 
 function coletaQuimicoFecharForm() {
@@ -9285,7 +9328,7 @@ async function coletaQuimicoSalvar() {
   try {
     const r = await ctrlFetch('/controle/coletas/quimico', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     if (r.id && !_cqColetaId) _cqColetaId = r.id;
-    if (_cqColetaId) document.getElementById('cq-btn-ficha').style.display = '';
+    if (_cqColetaId) { document.getElementById('cq-btn-ficha').style.display = ''; const _cqbl=document.getElementById('cq-btn-laudo');if(_cqbl)_cqbl.style.display=''; }
     if (st) { st.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); st.style.color = 'var(--green)'; }
   } catch(e) {
     if (st) { st.textContent = '❌ Erro: ' + e.message; st.style.color = 'var(--red)'; }
