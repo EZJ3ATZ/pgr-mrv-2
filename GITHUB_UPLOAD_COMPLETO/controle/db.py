@@ -894,6 +894,19 @@ def _auto_seed():
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
+def registrar_evento(tipo, descricao=None, ref_id=None, ref_tipo=None, usuario=None, ip=None):
+    """Registra evento no log de auditoria. Silencioso em caso de erro."""
+    try:
+        with get_db() as conn:
+            conn.execute(
+                'INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, usuario, ip) '
+                'VALUES (?,?,?,?,?,?)',
+                (tipo, descricao, ref_id, ref_tipo, usuario, ip)
+            )
+    except Exception as e:
+        print(f'[eventos] {e}')
+
+
 def registrar_sync(tipo, arquivo_nome, novos=0, atualizados=0, usuario='Matheus'):
     with get_db() as conn:
         conn.execute(
