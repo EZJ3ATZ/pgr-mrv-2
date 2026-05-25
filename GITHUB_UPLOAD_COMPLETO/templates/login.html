@@ -578,6 +578,12 @@
       <div class="ok">✓ Cadastro realizado! Faça login abaixo.</div>
       {% endif %}
 
+      {% if request.args.get('pending') %}
+      <div class="ok" style="background:rgba(45,212,191,.08);border-color:rgba(45,212,191,.25);color:#2DD4BF;">
+        ✓ Cadastro enviado! Aguarde a aprovação de um administrador para acessar o sistema.
+      </div>
+      {% endif %}
+
       {% if erro %}
       <div class="erro">⚠ {{ erro }}</div>
       {% endif %}
