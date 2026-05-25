@@ -3021,7 +3021,7 @@
         <button onclick="ctrlNvGerarPDF()" style="background:#2563EB;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">📄 Ficha de Campo</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <button onclick="nvGerarLaudo()" style="background:var(--orange);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Gerar Laudo</button>
+        <button onclick="nvGerarRelatorioCampo()" style="background:var(--orange);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">📄 Relatório de Campo</button>
         <button onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Concluir OS</button>
       </div>
       <div id="nv-final-status" style="margin-top:12px;font-size:.82rem;min-height:18px;"></div>
@@ -9882,59 +9882,70 @@ async function nvSalvarMedicao() {
   }
 }
 
-async function nvGerarLaudo() {
-  if (_nvTipo === 'quimico') { showSection('quimico'); _showToast('Abra a Análise Química para gerar o laudo','info'); return; }
-  if (_nvTipo === 'calor')   { showSection('calor');   _showToast('Abra o Laudo de Calor para gerar','info'); return; }
-
-  // Ruído → gerar planilha de campo PDF
+async function nvGerarRelatorioCampo() {
   const st = document.getElementById('nv-final-status');
-  if (st) st.innerHTML = '<span style="color:var(--blue);">⏳ Gerando relatório...</span>';
+  if (st) st.innerHTML = '<span style="color:var(--blue);">⏳ Gerando Relatório de Campo...</span>';
 
-  // Montar payload completo do wizard
-  const cr = _nvTipo === 'ruido' ? {
-    acomp:        document.getElementById('nv-cr-acomp')?.value||'',
-    cargo_acomp:  document.getElementById('nv-cr-cargo-acomp')?.value||'',
-    tecnico:      document.getElementById('nv-cr-tecnico')?.value||document.getElementById('ctrl-nv-avaliador')?.value||'',
-    hora_ini:     document.getElementById('nv-cr-hora-ini')?.value||'',
-    hora_fim:     document.getElementById('nv-cr-hora-fim')?.value||'',
-    calibrador:   document.getElementById('nv-cr-calibrador')?.value||'',
-    cal_ini:      document.getElementById('nv-cr-cal-ini')?.value||'',
-    cal_fim:      document.getElementById('nv-cr-cal-fim')?.value||'',
-    trabalhadores:_nvCrTrabs,
-    termos:       _nvCrTermos,
-  } : {};
-
-  const payload = {
-    empresa_nome: document.getElementById('ctrl-nv-empresa')?.value||'',
-    unidade:      document.getElementById('nv-unidade')?.value||'',
-    cidade:       document.getElementById('nv-cidade')?.value||'',
-    resp_empresa: document.getElementById('nv-resp-empresa')?.value||'',
-    os:           document.getElementById('ctrl-nv-os')?.value||'',
-    data_coleta:  document.getElementById('ctrl-nv-data')?.value||'',
-    itens:        window._ctrlNvItens||[],
-    ...cr,
+  const empresa_nome = document.getElementById('ctrl-nv-empresa')?.value||'';
+  const base = {
+    empresa_nome,
+    unidade:     document.getElementById('nv-unidade')?.value||'',
+    cidade:      document.getElementById('nv-cidade')?.value||'',
+    resp_empresa:document.getElementById('nv-resp-empresa')?.value||'',
+    os:          document.getElementById('ctrl-nv-os')?.value||'',
+    data_coleta: document.getElementById('ctrl-nv-data')?.value||'',
+    tecnico:     document.getElementById('ctrl-nv-avaliador')?.value||'',
   };
 
+  let endpoint = '';
+  let payload  = {};
+  let fname    = '';
+
+  if (_nvTipo === 'quimico') {
+    endpoint = '/controle/relatorio/quimico';
+    payload  = { ...base, agentes: _nvCqAgentes };
+    fname    = `relatorio_campo_quimico_${(empresa_nome||'empresa').replace(/\s/g,'_')}.pdf`;
+  } else if (_nvTipo === 'ruido') {
+    endpoint = '/controle/relatorio/ruido';
+    payload  = {
+      ...base,
+      acomp:        document.getElementById('nv-cr-acomp')?.value||'',
+      cargo_acomp:  document.getElementById('nv-cr-cargo-acomp')?.value||'',
+      hora_ini:     document.getElementById('nv-cr-hora-ini')?.value||'',
+      hora_fim:     document.getElementById('nv-cr-hora-fim')?.value||'',
+      calibrador:   document.getElementById('nv-cr-calibrador')?.value||'',
+      cal_ini:      document.getElementById('nv-cr-cal-ini')?.value||'',
+      cal_fim:      document.getElementById('nv-cr-cal-fim')?.value||'',
+      trabalhadores:_nvCrTrabs,
+      termos:       _nvCrTermos,
+      itens:        window._ctrlNvItens||[],
+    };
+    fname = `relatorio_campo_ruido_${(empresa_nome||'empresa').replace(/\s/g,'_')}.pdf`;
+  } else {
+    if (st) st.innerHTML = '<span style="color:var(--text3);">Relatório de Campo disponível para Ruído e Químico.</span>';
+    return;
+  }
+
   try {
-    const r = await fetch('/controle/relatorio/ruido', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload),
+    const r = await fetch(endpoint, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
     });
-    if (!r.ok) { const e = await r.json(); throw new Error(e.erro||r.statusText); }
+    if (!r.ok) { const e = await r.json().catch(()=>({erro:r.statusText})); throw new Error(e.erro||r.statusText); }
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `planilha_ruido_${(payload.empresa_nome||'empresa').replace(/\s/g,'_')}.pdf`;
-    a.click();
+    a.href = url; a.download = fname; a.click();
     URL.revokeObjectURL(url);
     if (st) st.innerHTML = '<span style="color:var(--green);">✅ Relatório gerado!</span>';
   } catch(e) {
     if (st) st.innerHTML = `<span style="color:var(--red);">❌ ${e.message}</span>`;
-    _showToast('Erro ao gerar relatório: ' + e.message, 'err');
+    _showToast('Erro: ' + e.message, 'err');
   }
 }
+
+// Mantém compatibilidade com chamadas antigas
+async function nvGerarLaudo() { return nvGerarRelatorioCampo(); }
 
 async function nvConcluirOS() {
   await nvSalvarMedicao();

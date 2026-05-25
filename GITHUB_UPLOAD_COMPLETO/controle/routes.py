@@ -2181,6 +2181,343 @@ def gerar_relatorio_ruido():
         mimetype='application/pdf')
 
 
+# ── Relatório PDF de Campo — Agentes Químicos ─────────────────────────
+@controle_bp.route('/relatorio/quimico', methods=['POST'])
+def gerar_relatorio_quimico():
+    """Gera PDF do Relatório de Campo de Agentes Químicos (multi-agente)."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable,
+                                        PageBreak, KeepTogether)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    except ImportError:
+        return jsonify({'erro': 'reportlab nao instalado'}), 500
+
+    d = request.json or {}
+    agentes        = d.get('agentes', [])
+    empresa_nome   = d.get('empresa_nome', '—')
+    unidade        = d.get('unidade', '')
+    cidade         = d.get('cidade', '')
+    resp_empresa   = d.get('resp_empresa', '')
+    os_num         = d.get('os', '')
+    data_coleta    = d.get('data_coleta', '')
+    tecnico        = d.get('tecnico', '')
+
+    # Formatar data
+    if data_coleta and '-' in str(data_coleta):
+        try:
+            from datetime import datetime as _dt
+            _d = _dt.strptime(data_coleta, '%Y-%m-%d')
+            data_fmt     = _d.strftime('%d/%m/%Y')
+            dia_semana   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][_d.weekday()]
+        except:
+            data_fmt   = data_coleta
+            dia_semana = ''
+    else:
+        data_fmt   = data_coleta or '___/___/______'
+        dia_semana = ''
+
+    # ─── Cores ────────────────────────────────────────────────────────
+    AZUL    = colors.HexColor('#1E3A8A')
+    AZUL_C  = colors.HexColor('#DBEAFE')
+    CINZA   = colors.HexColor('#F3F4F6')
+    BORDA   = colors.HexColor('#CBD5E1')
+    BRANCO  = colors.white
+    PRETO   = colors.black
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+        leftMargin=1.8*cm, rightMargin=1.8*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+        title=f'Relatório de Campo Químico — {empresa_nome}')
+
+    styles = getSampleStyleSheet()
+    def _s(name, **kw):
+        s = styles[name].clone(name + str(id(kw)))
+        for k,v in kw.items(): setattr(s, k, v)
+        return s
+
+    hdr1  = _s('Heading1', fontSize=11, textColor=AZUL, spaceAfter=2, spaceBefore=4)
+    hdr2  = _s('Heading2', fontSize=9,  textColor=AZUL, spaceAfter=2, spaceBefore=6)
+    norm  = _s('Normal',   fontSize=8,  leading=11)
+    small = _s('Normal',   fontSize=7,  leading=10, textColor=colors.HexColor('#555555'))
+    bold  = _s('Normal',   fontSize=8,  leading=11, fontName='Helvetica-Bold')
+    ctr   = _s('Normal',   fontSize=8,  alignment=TA_CENTER)
+
+    def _hdr_tbl(label):
+        return Table([[Paragraph(label, _s('Normal', fontSize=9, fontName='Helvetica-Bold',
+                                           textColor=BRANCO))]], colWidths=['*'],
+                     style=TableStyle([
+                         ('BACKGROUND',(0,0),(-1,-1),AZUL),
+                         ('LEFTPADDING',(0,0),(-1,-1),6),
+                         ('TOPPADDING',(0,0),(-1,-1),4),
+                         ('BOTTOMPADDING',(0,0),(-1,-1),4),
+                     ]))
+
+    def _row2(l1, v1, l2='', v2='', w1=3.5*cm, w2=None):
+        """Linha de 2 campos label+valor."""
+        pw = 17.4*cm
+        w2 = w2 or (pw - w1*2)
+        def cell(lbl, val):
+            return Paragraph(f'<b>{lbl}</b> {val or "___________"}', norm)
+        return Table([[cell(l1,v1), cell(l2,v2)]],
+                     colWidths=[pw/2, pw/2],
+                     style=TableStyle([
+                         ('LEFTPADDING',(0,0),(-1,-1),4),
+                         ('TOPPADDING',(0,0),(-1,-1),2),
+                         ('BOTTOMPADDING',(0,0),(-1,-1),2),
+                         ('BOX',(0,0),(-1,-1),0.3,BORDA),
+                         ('INNERGRID',(0,0),(-1,-1),0.3,BORDA),
+                     ]))
+
+    def _chk(options, selected_list):
+        """Linha de checkboxes. selected_list = list of values that are True."""
+        parts = []
+        for opt in options:
+            mark = '☑' if opt in selected_list else '☐'
+            parts.append(f'{mark} {opt}')
+        return '   '.join(parts)
+
+    story = []
+
+    # ─── Capa / Cabeçalho geral ──────────────────────────────────────
+    story.append(Paragraph('RELATÓRIO DE CAMPO — AGENTES QUÍMICOS', _s('Heading1',
+        fontSize=13, textColor=AZUL, alignment=TA_CENTER, spaceAfter=4)))
+    story.append(Paragraph('NR-15 Anexo 13 · NHO-03 FUNDACENTRO', _s('Normal',
+        fontSize=8, alignment=TA_CENTER, textColor=colors.HexColor('#555'))))
+    story.append(Spacer(1, 8))
+
+    # Identificação da empresa (seção comum)
+    story.append(_hdr_tbl('IDENTIFICAÇÃO DA EMPRESA AMOSTRADA'))
+    story.append(_row2('Empresa amostrada:', empresa_nome, 'OS Nº:', os_num))
+    story.append(_row2('Responsável pela coleta:', tecnico, 'Cidade:', cidade))
+    story.append(_row2('Unidade / Obra:', unidade, 'Responsável na empresa:', resp_empresa))
+    story.append(Spacer(1, 10))
+
+    # ─── Seção por agente ─────────────────────────────────────────────
+    for idx, ag in enumerate(agentes):
+        if idx > 0:
+            story.append(PageBreak())
+
+        ag_titulo = ag.get('func_nome') or f'Agente {idx+1}'
+        ag_func   = ag.get('func_funcao','')
+        if ag_func:
+            ag_titulo += f' — {ag_func}'
+        story.append(Paragraph(f'AGENTE {idx+1}: {ag_titulo}', _s('Heading1',
+            fontSize=10, textColor=AZUL, spaceBefore=6, spaceAfter=4)))
+
+        # ── Identificação do Local / Funcionário ──────────────────────
+        story.append(_hdr_tbl('IDENTIFICAÇÃO DO LOCAL / FUNCIONÁRIO AMOSTRADO'))
+
+        # Dia da semana checkboxes
+        dias = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
+        dia_sel = [dia_semana] if dia_semana else []
+        story.append(Table([
+            [Paragraph(f'<b>Data da coleta:</b> {data_fmt}', norm),
+             Paragraph(_chk(dias, dia_sel), norm)]
+        ], colWidths=[5*cm, 12.4*cm],
+        style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),2),
+                          ('BOTTOMPADDING',(0,0),(-1,-1),2),('BOX',(0,0),(-1,-1),0.3,BORDA),
+                          ('INNERGRID',(0,0),(-1,-1),0.3,BORDA)])))
+
+        story.append(_row2('Turno:', ag.get('func_jornada',''), 'Nome do Funcionário:', ag.get('func_nome','')))
+        story.append(_row2('Função:', ag.get('func_funcao',''), 'Setor:', ag.get('func_setor','')))
+        story.append(_row2('Local específico:', ag.get('func_local',''), 'Jornada de Trabalho:', ag.get('func_jornada','')))
+        story.append(Table([[Paragraph(f'<b>Atividade de Trabalho:</b> {ag.get("func_atv","") or "___________"}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        # Condições ambientais
+        vent_ops  = {'Natural':'Natural','Motor':'Motor','Refrigerada':'Refrigerada'}
+        amb_ops   = {'Aberto':'Aberto','Fechado':'Fechado','Semi Aberto':'Semi Aberto'}
+        meteo_ops = {'Sol':'Sol','Chuva':'Chuva','Nublado':'Nublado'}
+        vent_sel  = [k for k,v in vent_ops.items() if ag.get('ventilacao','').lower() in v.lower()] or []
+        amb_sel   = [k for k,v in amb_ops.items()  if ag.get('ambiente','').lower()   in v.lower()] or []
+        met_sel   = [k for k,v in meteo_ops.items() if ag.get('meteo','').lower()    in v.lower()] or []
+
+        story.append(Table([
+            [Paragraph(f'<b>Ventilação:</b> {_chk(list(vent_ops),vent_sel)}', norm),
+             Paragraph(f'<b>Ambiente:</b> {_chk(list(amb_ops),amb_sel)}', norm),
+             Paragraph(f'<b>Meteorologia:</b> {_chk(list(meteo_ops),met_sel)}', norm)]
+        ], colWidths=[5.8*cm,5.8*cm,5.8*cm],
+        style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),2),
+                          ('BOTTOMPADDING',(0,0),(-1,-1),2),('BOX',(0,0),(-1,-1),0.3,BORDA),
+                          ('INNERGRID',(0,0),(-1,-1),0.3,BORDA)])))
+        story.append(_row2('Temperatura (°C):', ag.get('temperatura',''), 'Umidade Relativa (%):', ag.get('umidade','')))
+        story.append(Table([[Paragraph(f'<b>Outras condições ambientais:</b> {ag.get("outras_cond","") or "___________"}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        story.append(Spacer(1,5))
+
+        # ── Equipamentos ──────────────────────────────────────────────
+        story.append(_hdr_tbl('EQUIPAMENTOS UTILIZADOS PARA AMOSTRAGEM'))
+
+        bomba_nome = ag.get('bomba','')
+        bombas_todos = ['BDX–II–GILLIAN','AIRLITE–SKC','FORMIS–TURAM','INLITE–VENTUSPRO']
+        bomba_sel = [b for b in bombas_todos if bomba_nome and b.replace('–',' ').lower() in bomba_nome.lower()]
+        story.append(Table([[
+            Paragraph(f'<b>Bomba Utilizada:</b><br/>{_chk(bombas_todos, bomba_sel)}<br/><font size="7">Outro: {bomba_nome if not bomba_sel else ""}</font>', norm),
+            Table([
+                [Paragraph(f'<b>ID Bomba:</b> {ag.get("id_bomba","") or "___________"}', norm)],
+                [Paragraph(f'<b>Data de calibração:</b> {ag.get("cal_bomba","") or "___/___/____"}', norm)],
+            ], colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),2),
+                ('TOPPADDING',(0,0),(-1,-1),1),('BOTTOMPADDING',(0,0),(-1,-1),1)]))
+        ]], colWidths=[9*cm,8.4*cm],
+        style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),2),
+                          ('BOTTOMPADDING',(0,0),(-1,-1),2),('BOX',(0,0),(-1,-1),0.3,BORDA),
+                          ('INNERGRID',(0,0),(-1,-1),0.3,BORDA),
+                          ('VALIGN',(0,0),(-1,-1),'TOP')])))
+
+        cal_nome = ag.get('calibrador','')
+        cal_todos = ['Defender 510M S/N: 126958','TSI 4143F – 414332019013']
+        cal_sel   = [c for c in cal_todos if cal_nome and c[:8].lower() in cal_nome.lower()]
+        story.append(Table([[Paragraph(
+            f'<b>ID Calibrador:</b> {_chk(cal_todos, cal_sel)}'
+            + (f'  Outro: {cal_nome}' if cal_nome and not cal_sel else ''), norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        acs = ['CICLONE DE ALUMÍNIO','CICLONE DE NYLON','REDUTOR DE VAZÃO',
+               'SUPORTE IOM','TERMO-HIGRÔMETRO','SUPORTE PARA CASSETE']
+        ac_sel = []
+        if ag.get('ac_ciclone_al'): ac_sel.append('CICLONE DE ALUMÍNIO')
+        if ag.get('ac_ciclone_ny'): ac_sel.append('CICLONE DE NYLON')
+        if ag.get('ac_redutor'):    ac_sel.append('REDUTOR DE VAZÃO')
+        if ag.get('ac_iom'):        ac_sel.append('SUPORTE IOM')
+        if ag.get('ac_termo'):      ac_sel.append('TERMO-HIGRÔMETRO')
+        if ag.get('ac_supcass'):    ac_sel.append('SUPORTE PARA CASSETE')
+        story.append(Table([[Paragraph(f'<b>Acessórios:</b> {_chk(acs, ac_sel)}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        story.append(Spacer(1,5))
+
+        # ── Dados da Amostragem ───────────────────────────────────────
+        story.append(_hdr_tbl('DADOS DA AMOSTRAGEM'))
+
+        fracoes = ['TOTAL','RESPIRÁVEL','TORÁCICA','INALÁVEL']
+        frac_val = ag.get('fracao','')
+        frac_sel = [f for f in fracoes if frac_val and f.lower() in frac_val.lower()]
+        story.append(_row2('Substância(s) amostrada(s):', ag.get('substancias',''), '', ''))
+        story.append(Table([[Paragraph(
+            f'<b>Fração amostrada:</b> {_chk(fracoes, frac_sel)}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+        story.append(Table([[Paragraph(f'<b>Tempo exposto ao agente:</b> {ag.get("tempo_exp","") or "___________"}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        # Tabela de amostradores
+        amostr = ag.get('amostradores', [])
+        th_style = [('BACKGROUND',(0,0),(-1,0),AZUL_C),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+                    ('FONTSIZE',(0,0),(-1,-1),6.5),('ALIGN',(0,0),(-1,-1),'CENTER'),
+                    ('VALIGN',(0,0),(-1,-1),'MIDDLE'),('GRID',(0,0),(-1,-1),0.3,BORDA),
+                    ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA]),
+                    ('LEFTPADDING',(0,0),(-1,-1),2),('RIGHTPADDING',(0,0),(-1,-1),2),
+                    ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2)]
+        tbl_rows = [[
+            Paragraph('#', bold), Paragraph('ID Amostrador', bold),
+            Paragraph('Tipo', bold), Paragraph('Vi\n(L/min)', bold),
+            Paragraph('Vf\n(L/min)', bold), Paragraph('Início', bold),
+            Paragraph('Final', bold), Paragraph('Intervalos', bold),
+            Paragraph('t\n(min)', bold), Paragraph('Vm\n(L/min)', bold),
+            Paragraph('Vol\n(L)', bold), Paragraph('ΔV%', bold),
+        ]]
+        if amostr:
+            for ai, am in enumerate(amostr):
+                tbl_rows.append([
+                    Paragraph(str(ai+1), norm),
+                    Paragraph(str(am.get('id_amostr','') or ''), norm),
+                    Paragraph(str(am.get('tipo','') or ''), norm),
+                    Paragraph(str(am.get('vi','') or ''), norm),
+                    Paragraph(str(am.get('vf','') or ''), norm),
+                    Paragraph(str(am.get('inicio','') or ''), norm),
+                    Paragraph(str(am.get('fim','') or ''), norm),
+                    Paragraph(str(am.get('intervalos','') or ''), norm),
+                    Paragraph(str(am.get('t','') or ''), norm),
+                    Paragraph(str(am.get('vm','') or ''), norm),
+                    Paragraph(str(am.get('vol','') or ''), norm),
+                    Paragraph(str(am.get('dv','') or ''), norm),
+                ])
+        else:
+            tbl_rows.append([Paragraph('—', ctr)]*12)
+
+        pw = 17.4*cm
+        col_ws = [0.5*cm, 2.2*cm, 1.8*cm, 1.3*cm, 1.3*cm, 1.3*cm,
+                  1.3*cm, 1.8*cm, 1.3*cm, 1.3*cm, 1.3*cm, 1.3*cm]
+        story.append(Table(tbl_rows, colWidths=col_ws,
+            style=TableStyle(th_style)))
+
+        story.append(Spacer(1,3))
+        story.append(Paragraph(
+            '* t = hora final − hora inicial − intervalos (min) &nbsp;&nbsp;'
+            '** Vm = (Vi+Vf)/2 &nbsp;&nbsp;'
+            '*** Vol = Vm × t &nbsp;&nbsp;'
+            '**** ΔV = |Vi−Vf|/Vi × 100 (máx ±5%)', small))
+
+        story.append(Spacer(1,5))
+
+        # ── EPI / EPC ─────────────────────────────────────────────────
+        story.append(_hdr_tbl('EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL UTILIZADO'))
+        epis = ['LUVAS','ÓCULOS DE SEGURANÇA','CAPACETE','PROTETOR AURICULAR','RESPIRADOR','AVENTAL','MACACÃO IMPERMEÁVEL']
+        epi_sel = []
+        if ag.get('epi_luvas'):     epi_sel.append('LUVAS')
+        if ag.get('epi_oculos'):    epi_sel.append('ÓCULOS DE SEGURANÇA')
+        if ag.get('epi_capacete'):  epi_sel.append('CAPACETE')
+        if ag.get('epi_prot_auric'):epi_sel.append('PROTETOR AURICULAR')
+        if ag.get('epi_resp'):      epi_sel.append('RESPIRADOR')
+        if ag.get('epi_avental'):   epi_sel.append('AVENTAL')
+        if ag.get('epi_macacao'):   epi_sel.append('MACACÃO IMPERMEÁVEL')
+        story.append(Table([[Paragraph(_chk(epis, epi_sel), norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        story.append(Table([[Paragraph(f'<b>EQUIPAMENTO DE PROTEÇÃO COLETIVA:</b> {ag.get("epc","") or "___________"}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        story.append(Table([[Paragraph(f'<b>OBSERVAÇÕES:</b> {ag.get("obs","") or "___________"}', norm)]],
+            colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
+                ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),6),
+                ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
+
+        story.append(Spacer(1,10))
+
+        # ── Assinaturas ───────────────────────────────────────────────
+        sig_style = TableStyle([('LINEABOVE',(0,0),(-1,0),0.5,PRETO),
+                                ('ALIGN',(0,0),(-1,-1),'CENTER'),
+                                ('FONTSIZE',(0,0),(-1,-1),7),
+                                ('TOPPADDING',(0,0),(-1,-1),2)])
+        story.append(Table([
+            ['', '', ''],
+            [Paragraph('Assinatura do Funcionário', small),
+             Paragraph('Assinatura do Supervisor', small),
+             Paragraph(f'Responsável Técnico<br/>{tecnico}', small)],
+        ], colWidths=[5.8*cm,5.8*cm,5.8*cm], style=sig_style))
+
+    # ─── Gerar PDF ────────────────────────────────────────────────────
+    doc.build(story)
+    buf.seek(0)
+    nome_safe = empresa_nome.replace(' ','_').replace('/','_')[:30]
+    data_safe = data_fmt.replace('/','-')
+    return send_file(buf, as_attachment=True,
+        download_name=f'relatorio_campo_quimico_{nome_safe}_{data_safe}.pdf',
+        mimetype='application/pdf')
+
+
 # ══════════════════════════════════════════════════════════════════════
 # MICROSOFT GRAPH — Planner, Outlook, SharePoint
 # ══════════════════════════════════════════════════════════════════════
