@@ -553,6 +553,15 @@ CREATE TABLE IF NOT EXISTS usuarios (
     ativo        INTEGER DEFAULT 1,
     criado_em    TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL,
+    token      TEXT UNIQUE NOT NULL,
+    usado      INTEGER DEFAULT 0,
+    criado_em  TEXT DEFAULT CURRENT_TIMESTAMP,
+    expira_em  TEXT NOT NULL
+);
 """
 
 SCHEMA_INDEXES = """
