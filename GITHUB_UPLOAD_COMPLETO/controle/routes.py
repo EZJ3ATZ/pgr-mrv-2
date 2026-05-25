@@ -5,7 +5,8 @@ import os
 import re
 import json
 from datetime import datetime
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, redirect, url_for
+from flask_login import login_required, current_user
 
 from .db import (
     USE_PG,
@@ -24,6 +25,12 @@ from .db import (
 from .import_xlsx import importar_amostradores, importar_medicoes, importar_demandas_planner
 
 controle_bp = Blueprint('controle', __name__, url_prefix='/controle')
+
+
+@controle_bp.before_request
+def _require_login():
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────
