@@ -578,10 +578,8 @@
       <div class="ok">✓ Cadastro realizado! Faça login abaixo.</div>
       {% endif %}
 
-      {% if request.args.get('pending') %}
-      <div class="ok" style="background:rgba(45,212,191,.08);border-color:rgba(45,212,191,.25);color:#2DD4BF;">
-        ✓ Cadastro enviado! Aguarde a aprovação de um administrador para acessar o sistema.
-      </div>
+      {% if request.args.get('senha_ok') %}
+      <div class="ok">✓ Senha redefinida com sucesso! Faça login abaixo.</div>
       {% endif %}
 
       {% if erro %}
@@ -610,7 +608,7 @@
           <label class="remember" style="margin-bottom:0; text-transform:none; letter-spacing:0; font-size:13px;">
             <input type="checkbox" name="lembrar"> Lembrar de mim
           </label>
-          <a href="#" class="forgot">Esqueci minha senha</a>
+          <a href="{{ url_for('auth.esqueci_senha') }}" class="forgot">Esqueci minha senha</a>
         </div>
 
         <button type="submit" class="btn-primary">Entrar</button>
