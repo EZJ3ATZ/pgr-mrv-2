@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — Ocupacional SST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:    #1B6B6B;
+      --brand-d:  #145252;
+      --bg:       #07090E;
+      --surface:  #0E1118;
+      --surface2: #141925;
+      --border:   #1C2236;
+      --border2:  #273050;
+      --text:     #E8EDF5;
+      --text2:    #8A97B0;
+      --red:      #E05252;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: var(--brand);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: #fff;
+    }
+    .logo-text { font-size: 18px; font-weight: 700; color: var(--text); }
+    .logo-sub  { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: var(--text2); margin-bottom: 28px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+    input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border .2s;
+    }
+    input:focus { border-color: var(--brand); }
+    .field { margin-bottom: 18px; }
+    .btn {
+      width: 100%;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      margin-top: 6px;
+    }
+    .btn:hover { background: var(--brand-d); }
+    .erro {
+      background: rgba(224,82,82,.12);
+      border: 1px solid rgba(224,82,82,.35);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--red);
+      margin-bottom: 20px;
+    }
+    .ok {
+      background: rgba(27,107,107,.15);
+      border: 1px solid rgba(27,107,107,.4);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #4ecdc4;
+      margin-bottom: 20px;
+    }
+    .link-row {
+      text-align: center;
+      margin-top: 22px;
+      font-size: 13px;
+      color: var(--text2);
+    }
+    .link-row a { color: var(--brand); text-decoration: none; font-weight: 500; }
+    .link-row a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">O</div>
+      <div>
+        <div class="logo-text">Ocupacional SST</div>
+        <div class="logo-sub">Portal de Controle · Medições</div>
+      </div>
+    </div>
+
+    <h1>Entrar</h1>
+    <p class="subtitle">Acesse sua conta para continuar</p>
+
+    {% if request.args.get('ok') %}
+    <div class="ok">Cadastro realizado! Faça login abaixo.</div>
+    {% endif %}
+
+    {% if erro %}
+    <div class="erro">{{ erro }}</div>
+    {% endif %}
+
+    <form method="POST">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="seu@email.com" required autofocus>
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" name="senha" placeholder="Sua senha" required>
+      </div>
+      <button type="submit" class="btn">Entrar</button>
+    </form>
+
+    <div class="link-row">
+      Não tem conta? <a href="{{ url_for('auth.register') }}">Cadastre-se</a>
+    </div>
+  </div>
+</body>
+</html>
