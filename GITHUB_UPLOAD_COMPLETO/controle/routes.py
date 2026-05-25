@@ -30,8 +30,10 @@ controle_bp = Blueprint('controle', __name__, url_prefix='/controle')
 
 @controle_bp.before_request
 def _require_login():
-    if not current_user.is_authenticated:
-        return redirect(url_for('auth.login'))
+    # Só exige login para ações que alteram dados
+    if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
+        if not current_user.is_authenticated:
+            return jsonify({'erro': 'Login necessário', 'redirect': '/auth/login'}), 401
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────
