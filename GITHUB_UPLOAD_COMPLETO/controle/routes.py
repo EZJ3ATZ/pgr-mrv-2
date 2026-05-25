@@ -2337,12 +2337,15 @@ def gerar_relatorio_quimico():
                 ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
 
         # Condições ambientais
-        vent_ops  = {'Natural':'Natural','Motor':'Motor','Refrigerada':'Refrigerada'}
-        amb_ops   = {'Aberto':'Aberto','Fechado':'Fechado','Semi Aberto':'Semi Aberto'}
-        meteo_ops = {'Sol':'Sol','Chuva':'Chuva','Nublado':'Nublado'}
-        vent_sel  = [k for k,v in vent_ops.items() if ag.get('ventilacao','').lower() in v.lower()] or []
-        amb_sel   = [k for k,v in amb_ops.items()  if ag.get('ambiente','').lower()   in v.lower()] or []
-        met_sel   = [k for k,v in meteo_ops.items() if ag.get('meteo','').lower()    in v.lower()] or []
+        vent_ops  = ['Natural','Motor','Refrigerada']
+        amb_ops   = ['Aberto','Fechado','Semi Aberto']
+        meteo_ops = ['Sol','Chuva','Nublado']
+        vent_val  = _norm(ag.get('ventilacao',''))
+        amb_val   = _norm(ag.get('ambiente',''))
+        met_val   = _norm(ag.get('meteo',''))
+        vent_sel  = [k for k in vent_ops  if _norm(k) == vent_val]
+        amb_sel   = [k for k in amb_ops   if _norm(k) == amb_val]
+        met_sel   = [k for k in meteo_ops if _norm(k) == met_val]
 
         story.append(Table([
             [Paragraph(f'<b>Ventilação:</b> {_chk(list(vent_ops),vent_sel)}', norm),
