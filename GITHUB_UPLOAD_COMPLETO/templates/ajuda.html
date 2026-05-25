@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Central de Ajuda — Ocupacional SST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #2DD4BF; --brand-d: #14B8A6;
+      --bg: #07090E; --surface: #0E1118; --surface2: #141925;
+      --border: #1C2236; --text: #E8EDF5; --text2: #7A8FA8; --text3: #4E6070;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+    /* ── Header ── */
+    .topbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 14px 32px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 32px; height: 32px; background: var(--brand); border-radius: 8px;
+                 display: flex; align-items: center; justify-content: center;
+                 font-size: 14px; font-weight: 800; color: #07090E; }
+    .logo-text { font-size: 15px; font-weight: 700; }
+    .back-btn { color: var(--brand); text-decoration: none; font-size: 13px; font-weight: 600;
+                display: flex; align-items: center; gap: 6px; }
+    .back-btn:hover { text-decoration: underline; }
+
+    /* ── Hero ── */
+    .hero { text-align: center; padding: 56px 32px 40px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 7px;
+                  background: rgba(45,212,191,.1); border: 1px solid rgba(45,212,191,.2);
+                  border-radius: 20px; padding: 5px 14px; font-size: 12px; font-weight: 500;
+                  color: var(--brand); margin-bottom: 20px; }
+    .hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+    .hero h1 span { color: var(--brand); }
+    .hero p { font-size: 16px; color: var(--text2); max-width: 520px; margin: 0 auto 32px; line-height: 1.6; }
+
+    /* ── Search ── */
+    .search-wrap { display: flex; justify-content: center; margin-bottom: 48px; }
+    .search-box { display: flex; align-items: center; gap: 10px;
+                  background: var(--surface); border: 1px solid var(--border);
+                  border-radius: 10px; padding: 10px 16px; width: 100%; max-width: 440px; }
+    .search-box input { background: none; border: none; outline: none; color: var(--text);
+                        font-size: 14px; font-family: inherit; flex: 1; }
+    .search-box input::placeholder { color: var(--text3); }
+    .search-icon { color: var(--text3); font-size: 16px; }
+
+    /* ── Nav tabs ── */
+    .nav-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+                padding: 0 32px; margin-bottom: 40px; }
+    .tab { padding: 7px 18px; border-radius: 20px; font-size: 13px; font-weight: 500;
+           cursor: pointer; border: 1px solid var(--border); background: var(--surface2);
+           color: var(--text2); transition: all .15s; }
+    .tab:hover { border-color: var(--brand); color: var(--brand); }
+    .tab.active { background: rgba(45,212,191,.12); border-color: var(--brand); color: var(--brand); }
+
+    /* ── Sections ── */
+    .content { max-width: 1100px; margin: 0 auto; padding: 0 32px 64px; }
+    .section { margin-bottom: 56px; }
+    .section-title { font-size: 13px; font-weight: 700; color: var(--brand); text-transform: uppercase;
+                     letter-spacing: 1px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Cards ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; cursor: pointer; transition: border-color .15s, transform .1s; }
+    .card:hover { border-color: rgba(45,212,191,.35); transform: translateY(-1px); }
+    .card.open { border-color: rgba(45,212,191,.5); }
+    .card-header { display: flex; align-items: flex-start; gap: 14px; }
+    .card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex;
+                 align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .card-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+    .card-body { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .card.open .card-body { display: block; }
+    .card-body h4 { font-size: 12px; font-weight: 700; color: var(--brand); text-transform: uppercase;
+                    letter-spacing: .5px; margin: 14px 0 8px; }
+    .card-body h4:first-child { margin-top: 0; }
+    .card-body p { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 8px; }
+    .card-body ul { padding-left: 16px; }
+    .card-body li { font-size: 13px; color: var(--text2); line-height: 1.7; }
+    .card-body li strong { color: var(--text); }
+    .step { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .step-num { width: 22px; height: 22px; background: rgba(45,212,191,.15); border-radius: 50%;
+                display: flex; align-items: center; justify-content: center; font-size: 11px;
+                font-weight: 700; color: var(--brand); flex-shrink: 0; margin-top: 1px; }
+    .step-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+    .step-text strong { color: var(--text); }
+    .tip { background: rgba(45,212,191,.06); border: 1px solid rgba(45,212,191,.15);
+           border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text2);
+           margin-top: 12px; }
+    .tip strong { color: var(--brand); }
+    .url-tag { display: inline-block; background: var(--surface2); border: 1px solid var(--border);
+               border-radius: 5px; padding: 2px 8px; font-size: 11px; font-family: monospace; color: var(--brand); }
+    .hidden { display: none !important; }
+
+    /* ── FAQ ── */
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-q { display: flex; justify-content: space-between; align-items: center;
+             padding: 14px 0; cursor: pointer; font-size: 14px; font-weight: 500; gap: 16px; }
+    .faq-q:hover { color: var(--brand); }
+    .faq-arrow { font-size: 12px; color: var(--text3); transition: transform .2s; flex-shrink: 0; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-a { display: none; font-size: 13px; color: var(--text2); line-height: 1.6; padding-bottom: 14px; }
+    .faq-item.open .faq-a { display: block; }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 26px; }
+      .cards { grid-template-columns: 1fr; }
+      .content { padding: 0 16px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon">O</div>
+      <div class="logo-text">Ocupacional SST</div>
+    </div>
+    <a class="back-btn" href="/">← Voltar ao portal</a>
+  </div>
+
+  <div class="hero">
+    <div class="hero-badge">📚 Central de Ajuda</div>
+    <h1>Como usar a <span>plataforma</span></h1>
+    <p>Guia completo de todos os módulos do sistema — geração de laudos, controle de medições, amostradores e muito mais.</p>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search" placeholder="Buscar tópico (ex: ruído, amostrador, OS...)" oninput="buscar()">
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <div class="tab active" onclick="setTab('todos')">Todos</div>
+    <div class="tab" onclick="setTab('documentos')">Documentos</div>
+    <div class="tab" onclick="setTab('medicoes')">Medições</div>
+    <div class="tab" onclick="setTab('cadastros')">Cadastros</div>
+    <div class="tab" onclick="setTab('sistema')">Sistema</div>
+    <div class="tab" onclick="setTab('faq')">FAQ</div>
+  </div>
+
+  <div class="content">
+
+    <!-- DOCUMENTOS -->
+    <div class="section" data-cat="documentos">
+      <div class="section-title">Documentos</div>
+      <div class="cards">
+
+        <div class="card" onclick="toggleCard(this)" data-tags="pgr gerador documento risco">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(45,212,191,.1)">📋</div>
+            <div>
+              <div class="card-title">Gerador de PGR</div>
+              <div class="card-desc">Gera o documento de Programa de Gerenciamento de Riscos (NR-1) em DOCX.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Como usar</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">Clique em <strong>Gerador de PGR</strong> no menu lateral.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Preencha os dados da empresa: nome, CNPJ, endereço e responsável.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Selecione os GHEs (Grupos Homogêneos de Exposição) e cargos.</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">Ajuste as medições e datas conforme o levantamento realizado.</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">Clique em <strong>Gerar PGR</strong> — o arquivo DOCX é baixado automaticamente.</div></div>
+            <div class="tip"><strong>💡 Dica:</strong> O sistema lembra os últimos dados preenchidos. Salve como modelo para reutilizar em empresas similares.</div>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="calor ibutg laudo temperatura">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,.1)">🔥</div>
+            <div>
+              <div class="card-title">Laudo de Calor (NR-15 An.3)</div>
+              <div class="card-desc">Gera laudo de exposição ao calor com cálculo de IBUTG e regime de trabalho.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Como usar</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">Acesse <strong>Laudo de Calor</strong> no menu lateral.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Preencha os dados da empresa, OS e data da medição.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Insira as leituras de bulbo seco, bulbo úmido e globo para cada avaliação.</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">O IBUTG é calculado automaticamente. Informe o tipo de atividade (leve, moderada, pesada).</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">Selecione o técnico responsável e gere o laudo.</div></div>
+            <h4>Campos obrigatórios</h4>
+            <ul>
+              <li><strong>IBUTG:</strong> calculado das leituras de temperatura</li>
+              <li><strong>Tipo de atividade:</strong> define o limite de tolerância (NR-15 An.3)</li>
+              <li><strong>Regime de trabalho:</strong> horas trabalhadas × descanso</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="ruido som decibet nível pressão sonora laudo">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,.1)">🔊</div>
+            <div>
+              <div class="card-title">Laudo de Ruído (NR-15 An.1)</div>
+              <div class="card-desc">Gera laudo de exposição a ruído com dose, NEN e comparação com limite de tolerância.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Como usar</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">Acesse <strong>Laudo de Ruído</strong> no menu lateral.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Selecione o técnico responsável (carregado do sistema).</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Preencha os dados da empresa e cada avaliação: setor, cargo, dose ou nível equivalente.</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">O sistema calcula NEN e compara com 85 dB(A) automaticamente.</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">Gere o laudo em DOCX com um clique.</div></div>
+            <div class="tip"><strong>💡 Autosave:</strong> os dados são salvos automaticamente a cada alteração.</div>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="quimico agente químico analise laudo">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,.1)">⚗️</div>
+            <div>
+              <div class="card-title">Análise Química (NR-15 An.13)</div>
+              <div class="card-desc">Gera laudo de agentes químicos com identificação, método e resultado analítico.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Como usar</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">Acesse <strong>Análise Química</strong> no menu lateral.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Informe o agente químico — o sistema sugere automaticamente o método NIOSH/OSHA.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Preencha os dados de campo: vazão, tempo de amostragem, volume coletado.</div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-text">Insira o resultado do laboratório (concentração encontrada).</div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-text">O laudo compara com o VRT (valor de referência tecnológico) e gera o documento.</div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MEDIÇÕES -->
+    <div class="section" data-cat="medicoes">
+      <div class="section-title">Medições e Controle</div>
+      <div class="cards">
+
+        <div class="card" onclick="toggleCard(this)" data-tags="medicao amostrador controle estoque envio laboratorio">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(34,197,94,.1)">📦</div>
+            <div>
+              <div class="card-title">Medições e Amostradores</div>
+              <div class="card-desc">Controle de estoque de amostradores, envio ao laboratório e validade de certificados.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Cadastrar amostradores</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">Acesse <strong>Medições e Amostradores</strong> → aba <strong>Amostradores</strong>.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Use o botão <strong>Importar planilha</strong> para cadastrar em lote (Excel), ou adicione manualmente.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Informe: código, tipo (carbone, sílica, etc.), lote e data de validade.</div></div>
+            <h4>Enviar ao laboratório</h4>
+            <p>Selecione os amostradores coletados → clique em <strong>Enviar ao lab</strong> → insira data de envio e número da cadeia de custódia.</p>
+            <h4>Alertas de vencimento</h4>
+            <p>O sistema destaca em vermelho amostradores com validade próxima (≤30 dias). Configure no painel de alertas.</p>
+            <div class="tip"><strong>💡 Dica:</strong> Importe a planilha de certificados direto pelo botão <strong>Importar certificado</strong> para atualizar validades em lote.</div>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="demanda os ordem servico planner">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(251,184,36,.1)">📌</div>
+            <div>
+              <div class="card-title">Demandas / OS</div>
+              <div class="card-desc">Painel operacional sincronizado com o Microsoft Planner.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>O que são demandas?</h4>
+            <p>Cada demanda corresponde a uma tarefa do Planner com a etiqueta <strong>MEDIÇÕES</strong>. O sistema sincroniza automaticamente a cada 15 minutos.</p>
+            <h4>Como funciona o painel</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">As demandas chegam do Planner com empresa, OS e responsável.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">O sistema associa automaticamente à empresa cadastrada (matching por nome/CNPJ/OS).</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">Você pode filtrar por status, empresa ou número de OS.</div></div>
+            <h4>Status das demandas</h4>
+            <ul>
+              <li><strong>Aberta:</strong> aguardando agendamento</li>
+              <li><strong>Em andamento:</strong> visita agendada</li>
+              <li><strong>Concluída:</strong> laudo entregue</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="planejamento visita agendamento campo">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(45,212,191,.1)">📅</div>
+            <div>
+              <div class="card-title">Planejamento de Visitas</div>
+              <div class="card-desc">Agende visitas de campo vinculadas às demandas.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Criar planejamento</h4>
+            <div class="step"><div class="step-num">1</div><div class="step-text">Na demanda, clique em <strong>Agendar visita</strong>.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text">Defina data, técnico responsável e agentes a medir.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text">O sistema reserva os amostradores necessários do estoque.</div></div>
+            <h4>Concluir visita</h4>
+            <p>Após o campo, abra a visita e clique em <strong>Concluir</strong>. Informe o que foi medido, o que ficou pendente e a justificativa quando aplicável.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CADASTROS -->
+    <div class="section" data-cat="cadastros">
+      <div class="section-title">Cadastros</div>
+      <div class="cards">
+
+        <div class="card" onclick="toggleCard(this)" data-tags="empresa cadastro cnpj">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,.1)">🏢</div>
+            <div>
+              <div class="card-title">Empresas</div>
+              <div class="card-desc">Cadastro e gestão de empresas clientes.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Cadastrar empresa</h4>
+            <p>Acesse <strong>Cadastros → Empresas</strong> → botão <strong>Nova empresa</strong>. Preencha nome, CNPJ, endereço e contatos.</p>
+            <h4>Empresas pendentes</h4>
+            <p>Empresas criadas automaticamente pelo Planner (não reconhecidas) ficam marcadas como <em>pendentes</em>. Acesse <span class="url-tag">/controle/empresas/pendentes/page</span> para vinculá-las às empresas corretas.</p>
+            <div class="tip"><strong>💡 Dica:</strong> Manter o CNPJ cadastrado melhora muito a precisão do matching automático.</div>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="agente quimico fisico biologico">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(239,68,68,.1)">⚠️</div>
+            <div>
+              <div class="card-title">Agentes</div>
+              <div class="card-desc">Biblioteca de agentes de risco com métodos de análise e valores de referência.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>O sistema possui um guia interno com agentes químicos e seus métodos (NIOSH, OSHA, FUNDACENTRO). Ao digitar um agente no laudo, o sistema sugere automaticamente:</p>
+            <ul>
+              <li><strong>Método de análise</strong> (código do método)</li>
+              <li><strong>Tipo de amostrador</strong> compatível</li>
+              <li><strong>Vazão recomendada</strong></li>
+              <li><strong>VRT</strong> (valor de referência tecnológico)</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SISTEMA -->
+    <div class="section" data-cat="sistema">
+      <div class="section-title">Sistema e Conta</div>
+      <div class="cards">
+
+        <div class="card" onclick="toggleCard(this)" data-tags="login senha conta usuario">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(45,212,191,.1)">🔐</div>
+            <div>
+              <div class="card-title">Conta e Acesso</div>
+              <div class="card-desc">Criação de conta, login, alteração de senha e recuperação.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Criar conta</h4>
+            <p>Acesse <span class="url-tag">/auth/register</span>. O e-mail deve ser <strong>@ocupacional.com.br</strong>.</p>
+            <h4>Alterar senha</h4>
+            <p>Clique no seu nome no canto superior direito → <strong>Alterar senha</strong>. Ou acesse <span class="url-tag">/auth/alterar-senha</span>.</p>
+            <h4>Esqueceu a senha?</h4>
+            <p>Na tela de login, clique em <strong>Esqueci minha senha</strong>. Um link de redefinição será enviado para o seu e-mail.</p>
+            <h4>Roles de acesso</h4>
+            <ul>
+              <li><strong>Admin:</strong> gerencia usuários, empresas e todas as configurações</li>
+              <li><strong>Técnico:</strong> cria laudos, gerencia medições e amostradores</li>
+              <li><strong>Visualizador:</strong> acesso somente leitura</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="admin usuario gerenciar ativar role">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(251,184,36,.1)">👥</div>
+            <div>
+              <div class="card-title">Gerenciamento de Usuários</div>
+              <div class="card-desc">Painel administrativo para ativar, desativar e gerenciar roles.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>Acesse <span class="url-tag">/controle/admin/usuarios</span> (requer role <strong>Admin</strong>).</p>
+            <h4>Ações disponíveis</h4>
+            <ul>
+              <li><strong>Ativar/Desativar</strong> qualquer usuário</li>
+              <li><strong>Mudar role</strong> entre Admin, Técnico e Visualizador</li>
+            </ul>
+            <div class="tip"><strong>⚠️ Atenção:</strong> desativar um usuário impede o login mas não apaga seus dados.</div>
+          </div>
+        </div>
+
+        <div class="card" onclick="toggleCard(this)" data-tags="planner sync sincronizacao microsoft">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,.1)">🔄</div>
+            <div>
+              <div class="card-title">Sincronização com Planner</div>
+              <div class="card-desc">Como o sistema se mantém atualizado com o Microsoft Planner.</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h4>Sincronização automática</h4>
+            <p>O sistema sincroniza com o Planner a cada <strong>15 minutos</strong> automaticamente. Apenas tarefas com a etiqueta <strong>MEDIÇÕES</strong> são importadas.</p>
+            <h4>Sincronização manual</h4>
+            <p>Para forçar uma atualização imediata, use o endpoint:</p>
+            <p><span class="url-tag">POST /controle/graph/sync</span></p>
+            <h4>Status do último sync</h4>
+            <p>Verifique em: <span class="url-tag">GET /controle/graph/status</span></p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section" data-cat="faq">
+      <div class="section-title">Perguntas Frequentes</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px 20px;">
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-q">Por que uma demanda do Planner não aparece no painel? <span class="faq-arrow">▼</span></div>
+          <div class="faq-a">A tarefa precisa ter a etiqueta <strong>MEDIÇÕES</strong> no Planner. Verifique também se o sync já rodou (aguarde até 15min ou force o sync manual). Se a empresa ainda não foi vinculada, a demanda pode estar na lista de empresas pendentes.</div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-q">O amostrador está sendo mostrado como vencido mas foi renovado. O que fazer? <span class="faq-arrow">▼</span></div>
+          <div class="faq-a">Acesse <strong>Medições e Amostradores</strong>, localize o amostrador pelo código e atualize a data de validade do certificado. Se tiver a planilha do laboratório, importe pelo botão <strong>Importar certificado</strong>.</div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-q">Como cadastrar uma nova empresa que não está no sistema? <span class="faq-arrow">▼</span></div>
+          <div class="faq-a">Acesse <strong>Cadastros → Empresas</strong> → <strong>Nova empresa</strong>. Preencha nome e CNPJ. Se a empresa chegou pelo Planner como pendente, use a página de <strong>Empresas Pendentes</strong> para confirmá-la.</div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-q">O laudo está saindo com nome de técnico errado. Como corrigir? <span class="faq-arrow">▼</span></div>
+          <div class="faq-a">O técnico é carregado do seu login. Faça logout e login com a conta correta, ou selecione outro técnico no seletor da tela do laudo. Se o técnico não aparece na lista, peça ao admin para cadastrá-lo em <strong>Gerenciamento de Usuários</strong>.</div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-q">Como visualizar o histórico de ações no sistema? <span class="faq-arrow">▼</span></div>
+          <div class="faq-a">Cada ação (geração de laudo, envio ao lab, login, etc.) é registrada automaticamente com o usuário, data/hora e IP. O log de eventos fica disponível nos endpoints de diagnóstico para administradores.</div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+          <div class="faq-q">Os dados somem após o redeploy. Por quê? <span class="faq-arrow">▼</span></div>
+          <div class="faq-a">O sistema usa <strong>PostgreSQL com volume persistente</strong> no Railway — os dados são preservados. Se estiver em ambiente de desenvolvimento local com SQLite, os dados são locais e não persistem no servidor.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let _tab = 'todos';
+
+    function toggleCard(el) {
+      el.classList.toggle('open');
+    }
+
+    function toggleFaq(el) {
+      el.classList.toggle('open');
+    }
+
+    function setTab(tab) {
+      _tab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      aplicarFiltros();
+    }
+
+    function buscar() {
+      aplicarFiltros();
+    }
+
+    function aplicarFiltros() {
+      const q = document.getElementById('search').value.toLowerCase().trim();
+      const secoes = document.querySelectorAll('.section');
+
+      secoes.forEach(sec => {
+        const cat = sec.dataset.cat;
+        const mostrarSecao = _tab === 'todos' || _tab === 'faq'
+          ? (_tab === 'faq' ? cat === 'faq' : true)
+          : cat === _tab;
+
+        if (!mostrarSecao && _tab !== 'todos') {
+          sec.classList.add('hidden');
+          return;
+        }
+        sec.classList.remove('hidden');
+
+        if (!q) {
+          sec.querySelectorAll('.card, .faq-item').forEach(el => el.classList.remove('hidden'));
+          return;
+        }
+
+        sec.querySelectorAll('.card').forEach(card => {
+          const tags = (card.dataset.tags || '').toLowerCase();
+          const texto = card.textContent.toLowerCase();
+          card.classList.toggle('hidden', !tags.includes(q) && !texto.includes(q));
+        });
+
+        sec.querySelectorAll('.faq-item').forEach(item => {
+          const texto = item.textContent.toLowerCase();
+          item.classList.toggle('hidden', !texto.includes(q));
+        });
+      });
+
+      // Tab FAQ especial
+      if (_tab === 'faq') {
+        document.querySelectorAll('.section[data-cat!="faq"]').forEach(s => s.classList.add('hidden'));
+      }
+    }
+  </script>
+</body>
+</html>
