@@ -29,12 +29,21 @@ DB_PATH = os.path.join(DATA_DIR, 'controle.db')
 # ── Helpers de dialeto SQL ─────────────────────────────────────────────
 if USE_PG:
     def _ds(col):
-        """Dias desde uma data (days since)."""
-        return f"(CURRENT_DATE - ({col})::date)"
+        """Dias desde uma data (days since). Safe cast — retorna 0 se valor não for data ISO."""
+        return (
+            f"(CURRENT_DATE - "
+            f"CASE WHEN ({col})::text ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}' "
+            f"THEN LEFT(({col})::text, 10)::date "
+            f"ELSE CURRENT_DATE END)"
+        )
 
     def _du(col):
-        """Dias até uma data (days until)."""
-        return f"(({col})::date - CURRENT_DATE)"
+        """Dias até uma data (days until). Safe cast."""
+        return (
+            f"(CASE WHEN ({col})::text ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}' "
+            f"THEN LEFT(({col})::text, 10)::date "
+            f"ELSE CURRENT_DATE END - CURRENT_DATE)"
+        )
 
     def _gc(col, sep=','):
         """GROUP_CONCAT equivalente."""
