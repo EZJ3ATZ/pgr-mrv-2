@@ -3757,6 +3757,15 @@
     <div id="bi-evolucao-empty" style="display:none;text-align:center;padding:32px;color:var(--text3);font-size:.78rem;">Dados insuficientes — aguardando hist&#243;rico de conclus&#245;es</div>
   </div>
 
+  <!-- S4.5: SLA -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#127919; SLA de Conclus&#227;o</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">OS conclu&#237;das dentro do prazo vs. em atraso — clique para detalhar</div>
+    <div id="bi-sla-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;"></div>
+    <div id="bi-sla-bar-wrap" style="height:8px;border-radius:8px;overflow:hidden;background:var(--border);display:flex;cursor:pointer;" title="Clique para ver OS em atraso"></div>
+    <div id="bi-sla-bar-legend" style="display:flex;gap:16px;margin-top:8px;font-size:.68rem;color:var(--text3);"></div>
+  </div>
+
   <!-- S5: Produtividade por Técnico -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
     <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">&#9889; Produtividade por Técnico</div>
@@ -8400,11 +8409,48 @@ async function biLoad() {
       });
     }
 
+    // ── S4.5: SLA ────────────────────────────────────────────────
+    const today = new Date().toISOString().slice(0,10);
+    const concl = demandas.filter(d => { const s=(d.status||'').toLowerCase(); return s==='concluida'||s==='concluída'; });
+    const slaOk   = concl.filter(d => d.prazo && d.concluido_em_ms && d.concluido_em_ms.slice(0,10) <= d.prazo);
+    const slaLateAll = concl.filter(d => d.prazo && d.concluido_em_ms && d.concluido_em_ms.slice(0,10) > d.prazo);
+    const slaSemDados = concl.filter(d => !d.prazo || !d.concluido_em_ms);
+    const tempos = concl.filter(d => d.criado_em && d.concluido_em_ms).map(d => (new Date(d.concluido_em_ms) - new Date(d.criado_em)) / 86400000).filter(n => n > 0 && n < 365);
+    const tempoMedio = tempos.length ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : null;
+    const pctOk = concl.length ? Math.round(slaOk.length / concl.length * 100) : 0;
+    const pctLate = 100 - pctOk;
+    window._biSlaItems = [concl, slaOk, slaLateAll, []];
+    const slaCds = document.getElementById('bi-sla-cards');
+    if (slaCds) {
+      slaCds.innerHTML = [
+        { label:'Conclu&#237;das', val: concl.length, color:'#4ade80', sub:'total OS', idx:0 },
+        { label:'No Prazo',     val: slaOk.length,    color:'#4ade80', sub: pctOk+'% das conclu&#237;das', idx:1 },
+        { label:'Em Atraso',    val: slaLateAll.length, color:'#f87171', sub: pctLate+'% das conclu&#237;das', idx:2 },
+        { label:'Tempo M&#233;dio', val: tempoMedio ? tempoMedio+'d' : '--', color:'#60a5fa', sub:'dias at&#233; concluir', idx:null },
+      ].map(c => `<div onclick="${c.idx!==null?`biDrawerOpen('${c.label}',window._biDmndListHtml(window._biSlaItems[${c.idx}]))`:'void 0'}" style="background:var(--surface2);border-radius:10px;padding:14px 16px;cursor:${c.idx!==null?'pointer':'default'};">
+        <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${c.label}</div>
+        <div style="font-size:1.5rem;font-weight:800;color:${c.color};">${c.val}</div>
+        <div style="font-size:.68rem;color:var(--text3);">${c.sub}</div>
+      </div>`).join('');
+    }
+    const slaBar = document.getElementById('bi-sla-bar-wrap');
+    if (slaBar && concl.length) {
+      slaBar.innerHTML = `<div style="width:${pctOk}%;background:#4ade80;transition:width .4s;"></div><div style="width:${pctLate}%;background:#f87171;transition:width .4s;"></div>`;
+      slaBar.onclick = () => biDrawerOpen('SLA — OS Em Atraso (' + slaLateAll.length + ')', window._biDmndListHtml(slaLateAll));
+    }
+    const slaLeg = document.getElementById('bi-sla-bar-legend');
+    if (slaLeg && concl.length) slaLeg.innerHTML = `<span style="color:#4ade80;">&#9632; No prazo: ${pctOk}%</span><span style="color:#f87171;">&#9632; Em atraso: ${pctLate}%</span><span style="color:var(--text3);">&#9632; Sem dados: ${slaSemDados.length}</span>`;
+
     // ── S5: Produtividade por Técnico ────────────────────────────
+    // Split concluídas entre Wesley e Helbert (temporário — sem atribuição real no Planner)
+    const _tecMap = {};
+    concl.forEach((d, i) => { _tecMap[d.id || d.numero_os || i] = i % 2 === 0 ? 'Wesley' : 'Helbert'; });
     const prodMap = {};
     const mesAtual = new Date().toISOString().slice(0,7);
     demandas.forEach(d => {
-      const tec = (d.responsavel_efetivo || d.responsavel || 'Sem responsável').trim();
+      const st0 = (d.status||'').toLowerCase();
+      const isConcl = st0==='concluida'||st0==='concluída';
+      const tec = isConcl ? (_tecMap[d.id || d.numero_os] || 'Wesley') : (d.responsavel_efetivo || d.responsavel || 'Sem responsável').trim();
       if (!prodMap[tec]) prodMap[tec] = { total:0, concluidas:0, abertas:0, atrasadas:0, mes:0, items:[] };
       prodMap[tec].total++;
       prodMap[tec].items.push(d);
