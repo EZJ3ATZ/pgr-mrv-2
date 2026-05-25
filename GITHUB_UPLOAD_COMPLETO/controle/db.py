@@ -91,7 +91,8 @@ class _PGCursor:
             cursor_factory=psycopg2.extras.RealDictCursor)
         sql = sql.replace('?', '%s')
         is_insert = sql.strip().upper().startswith('INSERT')
-        if is_insert and 'RETURNING' not in sql.upper():
+        _is_upsert = 'ON CONFLICT' in sql.upper()
+        if is_insert and not _is_upsert and 'RETURNING' not in sql.upper():
             sql = sql.rstrip(' \n;') + ' RETURNING id'
         if params:
             self._cur.execute(sql, params)
