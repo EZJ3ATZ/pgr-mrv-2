@@ -2741,17 +2741,27 @@ def api_empresas_pendentes():
     return jsonify([row_to_dict(r) for r in rows])
 
 
+@controle_bp.route('/empresas/pendentes/page')
+def page_empresas_pendentes():
+    from flask import render_template as rt
+    return rt('empresas_pendentes.html')
+
+
 @controle_bp.route('/empresas/pendentes/<int:pend_id>/vincular', methods=['POST'])
 def api_vincular_empresa_pendente(pend_id):
     """
     Vincula empresa pendente a uma empresa existente (ou a confirma como nova).
     Body: {"empresa_id": 123}  → usa empresa existente
     Body: {"confirmar": true}  → confirma pendente como empresa real (remove flag)
+    Body: {"excluir": true}    → remove empresa pendente sem demandas
     """
     init_db()
     d = request.json or {}
     with get_db() as conn:
-        if 'empresa_id' in d:
+        if d.get('excluir'):
+            conn.execute('DELETE FROM empresas WHERE id=? AND pendente=1', (pend_id,))
+            return jsonify({'ok': True, 'acao': 'excluida'})
+        elif 'empresa_id' in d:
             destino = int(d['empresa_id'])
             # Remapear demandas da pendente para a real
             conn.execute('UPDATE demandas SET empresa_id=? WHERE empresa_id=?', (destino, pend_id))
@@ -2761,7 +2771,7 @@ def api_vincular_empresa_pendente(pend_id):
             conn.execute('UPDATE empresas SET pendente=0 WHERE id=?', (pend_id,))
             return jsonify({'ok': True, 'acao': 'confirmada'})
         else:
-            return jsonify({'erro': 'Informe empresa_id ou confirmar:true'}), 400
+            return jsonify({'erro': 'Informe empresa_id, confirmar ou excluir'}), 400
 
 
 @controle_bp.route('/demandas/match-empresas', methods=['POST'])
