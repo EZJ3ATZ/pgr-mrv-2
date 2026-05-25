@@ -9290,8 +9290,27 @@ function nvShowStep3() {
   document.getElementById('nv-s3-ruido').style.display    = t === 'ruido'   ? '' : 'none';
   document.getElementById('nv-s3-quimico').style.display  = t === 'quimico' ? '' : 'none';
   document.getElementById('nv-s3-generic').style.display  = (t !== 'ruido' && t !== 'quimico') ? '' : 'none';
-  if (t === 'quimico' && !_nvCqAgentes.length) { nvCqAddAgente(); }
-  else if (t === 'quimico') { nvCqRenderAgentes(); }
+  if (t === 'quimico' && !_nvCqAgentes.length) {
+    const itens = window._ctrlNvItens || [];
+    if (itens.length > 0) {
+      // Pré-preencher agentes a partir do planejamento (Step 2)
+      itens.forEach(item => {
+        const ag = nvCqNewAgente();
+        ag.substancias = item.agente || '';
+        ag.bomba       = item.bomba_modelo_id || '';
+        ag.id_bomba    = item.bomba_sn || '';
+        if (item.funcao) {
+          const parts = item.funcao.split('/');
+          ag.func_funcao = parts[0].trim();
+          ag.func_setor  = parts[1] ? parts[1].trim() : '';
+        }
+        _nvCqAgentes.push(ag);
+      });
+      nvCqRenderAgentes();
+    } else {
+      nvCqAddAgente();
+    }
+  } else if (t === 'quimico') { nvCqRenderAgentes(); }
 }
 
 function nvShowStep4() {
