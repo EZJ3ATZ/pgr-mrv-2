@@ -13,7 +13,7 @@ from .db import (
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
     registrar_sync, list_sync_log,
-    list_demandas_por_empresa, get_empresa_demandas,
+    list_demandas_por_empresa, get_empresa_demandas, get_empresa_painel,
     list_amostradores_vencendo, contar_vencendo,
     mesclar_empresas_duplicatas,
     list_raw_tasks, stats_raw_pipeline,
@@ -602,6 +602,16 @@ def get_empresas():
     sql += " ORDER BY nome LIMIT 100"
     with get_db() as conn:
         return jsonify([row_to_dict(r) for r in conn.execute(sql, params).fetchall()])
+
+
+@controle_bp.route('/empresas/<int:empresa_id>/painel')
+def get_empresa_painel_route(empresa_id):
+    """Painel completo de uma empresa: stats, demandas, agentes, técnicos, coletas, amostradores."""
+    init_db()
+    data = get_empresa_painel(empresa_id)
+    if not data:
+        return jsonify({'erro': 'Empresa não encontrada'}), 404
+    return jsonify(data)
 
 
 @controle_bp.route('/empresas', methods=['POST'])

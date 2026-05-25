@@ -1125,6 +1125,125 @@ def get_empresa_demandas(empresa_id):
         return emp
 
 
+def get_empresa_painel(empresa_id):
+    """Painel completo de uma empresa: stats, demandas, agentes, técnicos, coletas, amostradores."""
+    with get_db() as conn:
+        emp = conn.execute('SELECT * FROM empresas WHERE id=?', (empresa_id,)).fetchone()
+        if not emp:
+            return None
+        emp = row_to_dict(emp)
+
+        # ─ Todas as IDs da empresa (nome duplicado) ──────────────────────
+        nome_key = (emp.get('nome') or '').strip().lower()
+        ids_iguais = [r['id'] for r in conn.execute(
+            "SELECT id FROM empresas WHERE LOWER(TRIM(nome))=?", (nome_key,)).fetchall()]
+        if not ids_iguais:
+            ids_iguais = [empresa_id]
+        ph = ','.join(['?'] * len(ids_iguais))
+
+        # ─ Stats resumo ──────────────────────────────────────────────────
+        stats = row_to_dict(conn.execute(f"""
+            SELECT
+              COUNT(*) AS total_demandas,
+              COUNT(CASE WHEN status='concluida' THEN 1 END) AS concluidas,
+              COUNT(CASE WHEN status!='concluida' THEN 1 END) AS abertas,
+              COUNT(CASE WHEN status!='concluida' AND prazo IS NOT NULL AND prazo!=''
+                         AND {_lab_expire_cond("prazo","0")} THEN 1 END) AS atrasadas,
+              ROUND(AVG(CASE WHEN status='concluida' AND criado_em IS NOT NULL
+                             THEN {_ds("criado_em")} END), 1) AS tempo_medio_conclusao_dias
+            FROM demandas WHERE empresa_id IN ({ph})
+              AND UPPER(COALESCE(titulo,'')) NOT LIKE '%PROCESSO ANTIGO%'
+        """, ids_iguais).fetchone())
+        emp['stats'] = stats
+
+        # ─ Últimas 15 demandas ───────────────────────────────────────────
+        emp['demandas_recentes'] = [row_to_dict(r) for r in conn.execute(f"""
+            SELECT d.id, d.numero_os,
+                   COALESCE(d.titulo, d.nome_tarefa) AS titulo,
+                   d.status, d.prazo, d.bucket, d.planner_bucket,
+                   COALESCE(d.responsavel, u.display_name) AS responsavel,
+                   {_ds("d.criado_em")} AS dias_aberta,
+                   (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id) AS total_medicoes
+            FROM demandas d
+            LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
+            WHERE d.empresa_id IN ({ph})
+              AND UPPER(COALESCE(d.titulo,'')) NOT LIKE '%PROCESSO ANTIGO%'
+            ORDER BY d.criado_em DESC LIMIT 15
+        """, ids_iguais).fetchall()]
+
+        # ─ Agentes medidos (por demanda/medicao) ─────────────────────────
+        emp['agentes'] = [row_to_dict(r) for r in conn.execute(f"""
+            SELECT m.agente,
+                   COUNT(*) AS qtd,
+                   COUNT(CASE WHEN m.status='realizado' THEN 1 END) AS realizados
+            FROM medicoes m
+            JOIN demandas d ON d.id = m.demanda_id
+            WHERE d.empresa_id IN ({ph})
+            GROUP BY m.agente ORDER BY qtd DESC LIMIT 20
+        """, ids_iguais).fetchall()]
+
+        # ─ Técnicos que atenderam ─────────────────────────────────────────
+        tecnicos = {}
+        for r in conn.execute(f"""
+            SELECT cr.tecnico, COUNT(*) AS visitas
+            FROM coletas_ruido cr WHERE cr.empresa_id IN ({ph}) AND cr.tecnico IS NOT NULL
+            GROUP BY cr.tecnico
+        """, ids_iguais).fetchall():
+            t = r['tecnico'] if isinstance(r, dict) else r[0]
+            v = r['visitas'] if isinstance(r, dict) else r[1]
+            tecnicos[t] = tecnicos.get(t, 0) + v
+        for r in conn.execute(f"""
+            SELECT cq.responsavel_coleta, COUNT(*) AS visitas
+            FROM coletas_quimico cq WHERE cq.empresa_id IN ({ph}) AND cq.responsavel_coleta IS NOT NULL
+            GROUP BY cq.responsavel_coleta
+        """, ids_iguais).fetchall():
+            t = r['responsavel_coleta'] if isinstance(r, dict) else r[0]
+            v = r['visitas'] if isinstance(r, dict) else r[1]
+            if t:
+                tecnicos[t] = tecnicos.get(t, 0) + v
+        for r in conn.execute(f"""
+            SELECT vt.tecnico, COUNT(*) AS visitas
+            FROM visitas_tecnicas vt WHERE vt.empresa_id IN ({ph}) AND vt.tecnico IS NOT NULL
+            GROUP BY vt.tecnico
+        """, ids_iguais).fetchall():
+            t = r['tecnico'] if isinstance(r, dict) else r[0]
+            v = r['visitas'] if isinstance(r, dict) else r[1]
+            if t:
+                tecnicos[t] = tecnicos.get(t, 0) + v
+        emp['tecnicos'] = sorted(
+            [{'tecnico': k, 'visitas': v} for k, v in tecnicos.items()],
+            key=lambda x: -x['visitas'])[:10]
+
+        # ─ Coletas realizadas ────────────────────────────────────────────
+        emp['coletas_ruido'] = row_to_dict(conn.execute(f"""
+            SELECT COUNT(*) AS total,
+                   COUNT(CASE WHEN status='concluida' THEN 1 END) AS concluidas
+            FROM coletas_ruido WHERE empresa_id IN ({ph})
+        """, ids_iguais).fetchone())
+        emp['coletas_quimico'] = row_to_dict(conn.execute(f"""
+            SELECT COUNT(*) AS total,
+                   COUNT(CASE WHEN status='concluida' THEN 1 END) AS concluidas
+            FROM coletas_quimico WHERE empresa_id IN ({ph})
+        """, ids_iguais).fetchone())
+
+        # ─ Amostradores utilizados ────────────────────────────────────────
+        emp['amostradores_usados'] = [row_to_dict(r) for r in conn.execute(f"""
+            SELECT a.codigo, a.tipo, a.status, a.data_medicao, a.data_envio_lab
+            FROM amostradores a WHERE a.empresa_id IN ({ph})
+            ORDER BY a.data_medicao DESC LIMIT 20
+        """, ids_iguais).fetchall()]
+
+        # ─ Visitas (retrabalho) ───────────────────────────────────────────
+        emp['visitas_stats'] = row_to_dict(conn.execute(f"""
+            SELECT COUNT(*) AS total,
+                   COUNT(CASE WHEN retrabalho=1 THEN 1 END) AS retrabalho,
+                   COUNT(CASE WHEN resultado='concluida' THEN 1 END) AS concluidas
+            FROM visitas_tecnicas WHERE empresa_id IN ({ph})
+        """, ids_iguais).fetchone())
+
+        return emp
+
+
 def get_demanda_completa(demanda_id):
     with get_db() as conn:
         d = conn.execute("""
