@@ -754,14 +754,13 @@ def _migrate(conn):
         _add_col(conn, 'demandas', col, tipo)
 
     # Motor inteligente: score de confiança e fila de revisão humana
+    # IMPORTANT: usar _add_col() — usa ADD COLUMN IF NOT EXISTS no PG,
+    # evita aborto de transação quando coluna já existe.
     for col, dfn in [
         ('needs_review',  'INTEGER DEFAULT 0'),
         ('extracao_json', 'TEXT DEFAULT NULL'),
     ]:
-        try:
-            conn.execute(f'ALTER TABLE demandas ADD COLUMN {col} {dfn}')
-        except Exception:
-            pass
+        _add_col(conn, 'demandas', col, dfn)
 
     # Tabela de log de extração (rastreabilidade)
     # ATENÇÃO: AUTOINCREMENT é SQLite — PostgreSQL usa SERIAL
@@ -836,8 +835,9 @@ def _migrate(conn):
         _add_col(conn, 'execucao_campo', col, tipo)
 
     # ── Camada de Consistência Operacional ──
+    # Usar executescript() para proteger com SAVEPOINTs (idempotente no PG)
     _pk = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
-    conn.execute(f'''
+    conn.executescript(f'''
         CREATE TABLE IF NOT EXISTS divergencias (
             id              {_pk},
             tipo            TEXT NOT NULL,
@@ -849,9 +849,7 @@ def _migrate(conn):
             resolvido_em    TEXT,
             resolvido_por   TEXT,
             detectado_em    TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.execute(f'''
+        );
         CREATE TABLE IF NOT EXISTS justificativas_operacionais (
             id              {_pk},
             divergencia_id  INTEGER,
@@ -859,9 +857,7 @@ def _migrate(conn):
             descricao       TEXT,
             tecnico         TEXT,
             criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.execute(f'''
+        );
         CREATE TABLE IF NOT EXISTS alertas_operacionais (
             id              {_pk},
             tipo            TEXT,
@@ -874,21 +870,15 @@ def _migrate(conn):
             criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
             reconhecido_em  TEXT,
             resolvido_em    TEXT
-        )
+        );
+        CREATE INDEX IF NOT EXISTS idx_div_status    ON divergencias(status);
+        CREATE INDEX IF NOT EXISTS idx_div_tipo      ON divergencias(tipo);
+        CREATE INDEX IF NOT EXISTS idx_div_sev       ON divergencias(severidade);
+        CREATE INDEX IF NOT EXISTS idx_div_entidade  ON divergencias(entidade_tipo, entidade_id);
+        CREATE INDEX IF NOT EXISTS idx_just_div      ON justificativas_operacionais(divergencia_id);
+        CREATE INDEX IF NOT EXISTS idx_alerta_status ON alertas_operacionais(status);
+        CREATE INDEX IF NOT EXISTS idx_alerta_prio   ON alertas_operacionais(prioridade)
     ''')
-    for idx_sql in [
-        'CREATE INDEX IF NOT EXISTS idx_div_status    ON divergencias(status)',
-        'CREATE INDEX IF NOT EXISTS idx_div_tipo      ON divergencias(tipo)',
-        'CREATE INDEX IF NOT EXISTS idx_div_sev       ON divergencias(severidade)',
-        'CREATE INDEX IF NOT EXISTS idx_div_entidade  ON divergencias(entidade_tipo, entidade_id)',
-        'CREATE INDEX IF NOT EXISTS idx_just_div      ON justificativas_operacionais(divergencia_id)',
-        'CREATE INDEX IF NOT EXISTS idx_alerta_status ON alertas_operacionais(status)',
-        'CREATE INDEX IF NOT EXISTS idx_alerta_prio   ON alertas_operacionais(prioridade)',
-    ]:
-        try:
-            conn.execute(idx_sql)
-        except Exception:
-            pass
 
     # ── planner_raw_tasks: colunas extras ──
     raw_extra = {
