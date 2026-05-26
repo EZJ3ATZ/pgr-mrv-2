@@ -15,6 +15,7 @@ USE_PG = bool(_DATABASE_URL)
 if USE_PG:
     import psycopg2
     import psycopg2.extras
+    import psycopg2.pool
     # Railway fornece postgres:// mas psycopg2 exige postgresql://
     if _DATABASE_URL.startswith('postgres://'):
         _DATABASE_URL = _DATABASE_URL.replace('postgres://', 'postgresql://', 1)
@@ -625,10 +626,21 @@ def _connect_sqlite():
     return conn
 
 
+_pg_pool = None
+
+def _get_pool():
+    global _pg_pool
+    if _pg_pool is None:
+        _pg_pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=1, maxconn=5, dsn=_DATABASE_URL
+        )
+    return _pg_pool
+
+
 def _connect_pg():
-    conn = psycopg2.connect(_DATABASE_URL)
-    conn.autocommit = False
-    return _PGConn(conn)
+    raw = _get_pool().getconn()
+    raw.autocommit = False
+    return _PGConn(raw)
 
 
 def _connect():
@@ -637,15 +649,29 @@ def _connect():
 
 @contextmanager
 def get_db():
-    conn = _connect()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    if USE_PG:
+        pool = _get_pool()
+        raw = pool.getconn()
+        raw.autocommit = False
+        conn = _PGConn(raw)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            pool.putconn(raw)
+    else:
+        conn = _connect_sqlite()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
 
 # ── Helper: colunas de uma tabela ──────────────────────────────────────
@@ -679,16 +705,20 @@ def _add_col(conn, table, col, col_type):
 
 # ── init_db ────────────────────────────────────────────────────────────
 
+_db_ready = False
+
 def init_db():
-    """Cria tabelas se não existirem. Idempotente.
-    Se o banco estiver vazio, faz auto-seed a partir de controle/seed/.
-    """
+    """Cria tabelas se não existirem. Idempotente. Roda só 1x por processo."""
+    global _db_ready
+    if _db_ready:
+        return
     schema = SCHEMA_PG if USE_PG else SCHEMA_SQLITE
     with get_db() as conn:
         conn.executescript(schema)
         conn.executescript(SCHEMA_INDEXES)
         _migrate(conn)
         count = conn.execute('SELECT COUNT(*) AS c FROM amostradores').fetchone()['c']
+    _db_ready = True
     if count == 0:
         _auto_seed()
 
