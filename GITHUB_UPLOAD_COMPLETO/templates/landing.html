@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ocupacional SST — Sistema de Medições</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --brand:     #1B6B6B;
+  --brand-d:   #145252;
+  --brand-l:   #2A9D9D;
+  --brand-dim: #071414;
+  --bg:        #07090E;
+  --s1:        #0E1118;
+  --s2:        #141925;
+  --bd:        #1C2236;
+  --bd2:       #273050;
+  --txt:       #EDF0F7;
+  --txt2:      #828DA8;
+  --txt3:      #485068;
+  --green:     #10B981;
+  --yellow:    #F59E0B;
+  --red:       #EF4444;
+  --blue:      #60A5FA;
+  --purple:    #A78BFA;
+  --r:         10px;
+  --r2:        14px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ─── HEADER ─── */
+.hdr {
+  height: 54px;
+  background: rgba(7,9,14,.92);
+  border-bottom: 1px solid var(--bd);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+  position: sticky; top: 0; z-index: 200;
+  backdrop-filter: blur(20px);
+}
+.hdr-logo { display: flex; align-items: center; gap: 10px; }
+.hdr-logo-mark {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-d));
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 800; color: #fff;
+}
+.hdr-logo-name { font-size: .88rem; font-weight: 700; letter-spacing: -.01em; }
+.hdr-logo-sub  { font-size: .62rem; color: var(--txt3); margin-top: 1px; }
+.hdr-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-d));
+  color: #fff; font-weight: 700; font-size: .8rem;
+  padding: 8px 20px; border-radius: 8px;
+  text-decoration: none; transition: all .2s;
+  box-shadow: 0 4px 16px rgba(27,107,107,.35);
+}
+.hdr-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(27,107,107,.5); }
+
+/* ═══════════════════════════════════
+   INTRO — MANIFESTO
+═══════════════════════════════════ */
+.intro {
+  position: relative; min-height: 100vh;
+  display: flex; align-items: center; overflow: hidden;
+}
+.spotlight {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(600px circle at 30% 40%,
+    rgba(27,107,107,.1) 0%, rgba(27,107,107,.04) 35%, transparent 70%);
+  transition: background .08s ease;
+}
+.intro-inner {
+  position: relative; z-index: 2;
+  max-width: 1100px; margin: 0 auto; padding: 0 28px;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 48px; align-items: center; width: 100%;
+}
+.intro-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(27,107,107,.1); border: 1px solid rgba(27,107,107,.2);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: .65rem; font-weight: 700; color: var(--brand-l);
+  text-transform: uppercase; letter-spacing: .12em; margin-bottom: 20px;
+}
+.intro-title {
+  font-size: 2rem; font-weight: 900;
+  line-height: 1.15; letter-spacing: -.025em;
+  margin-bottom: 16px; color: var(--txt);
+}
+.intro-title em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--brand-l) 0%, #7ee8e8 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.intro-sub {
+  font-size: .9rem; color: var(--txt2); line-height: 1.6;
+  max-width: 460px; margin-bottom: 32px;
+}
+.dores { display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
+.dor {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 15px; border-radius: 10px;
+  background: rgba(14,17,24,.8); border: 1px solid var(--bd);
+  transition: border-color .2s;
+}
+.dor:hover { border-color: rgba(27,107,107,.3); }
+.dor-ic {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; flex-shrink: 0;
+}
+.dor-title { font-size: .8rem; font-weight: 700; color: var(--txt); margin-bottom: 1px; }
+.dor-desc  { font-size: .7rem; color: var(--txt3); line-height: 1.4; }
+.intro-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-d));
+  color: #fff; font-weight: 700; font-size: .88rem;
+  padding: 13px 28px; border-radius: 10px; text-decoration: none;
+  box-shadow: 0 4px 20px rgba(27,107,107,.4); transition: all .2s;
+}
+.intro-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(27,107,107,.55); }
+
+/* orb */
+.intro-right {
+  position: relative; height: 480px; border-radius: 20px; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 60%, rgba(27,107,107,.07) 0%, transparent 70%);
+  border: 1px solid var(--bd);
+}
+.intro-right-inner {
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+}
+.spline-orb {
+  width: 170px; height: 170px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%,
+    rgba(42,157,157,.5) 0%, rgba(27,107,107,.3) 40%, transparent 70%);
+  box-shadow: 0 0 60px rgba(27,107,107,.35), 0 0 120px rgba(27,107,107,.15),
+    inset 0 0 40px rgba(42,157,157,.2);
+  animation: orb-pulse 4s ease-in-out infinite; position: relative;
+}
+@keyframes orb-pulse {
+  0%,100% { transform: scale(1); box-shadow: 0 0 60px rgba(27,107,107,.35), 0 0 120px rgba(27,107,107,.15); }
+  50%      { transform: scale(1.06); box-shadow: 0 0 80px rgba(27,107,107,.5), 0 0 160px rgba(27,107,107,.25); }
+}
+.orb-ring {
+  position: absolute; border-radius: 50%; border: 1px solid rgba(27,107,107,.22);
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  animation: ring-spin 8s linear infinite;
+}
+@keyframes ring-spin { from{transform:translate(-50%,-50%) rotate(0)} to{transform:translate(-50%,-50%) rotate(360deg)} }
+.spline-lbl { font-size: .72rem; color: var(--txt3); font-style: italic; }
+.radar-node { position: absolute; transform: translate(-50%,-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.radar-node-ic {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--s2); border: 1px solid var(--bd2);
+  display: flex; align-items: center; justify-content: center; font-size: .9rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+.radar-node-lbl { font-size: .56rem; font-weight: 700; color: var(--txt3); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+
+.scroll-hint {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  font-size: .65rem; color: var(--txt3); letter-spacing: .1em; text-transform: uppercase;
+  animation: float 2.5s ease-in-out infinite; z-index: 2;
+}
+@keyframes float { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-6px)} }
+
+/* ═══════════════════════════════════
+   CONTAINER SCROLL
+═══════════════════════════════════ */
+.cscroll-wrap {
+  min-height: 180vh; position: relative;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 0 20px; background: var(--bg);
+}
+.cscroll-sticky {
+  position: sticky; top: 54px;
+  height: calc(100vh - 54px); width: 100%; max-width: 1100px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.cscroll-title { text-align: center; margin-bottom: 28px; will-change: transform; }
+.cscroll-title-eyebrow {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .14em; color: var(--brand-l); margin-bottom: 10px;
+}
+.cscroll-title h2 {
+  font-size: 2.2rem; font-weight: 900; letter-spacing: -.04em;
+  color: var(--txt); line-height: 1.1;
+}
+.cscroll-title p { font-size: .88rem; color: var(--txt2); margin-top: 8px; }
+.cscroll-card {
+  width: 100%; max-width: 900px;
+  border: 2px solid #3a3a3a; border-radius: 24px; background: #1a1a1a; padding: 6px;
+  box-shadow: 0 9px 20px #0000004a, 0 37px 37px #00000042, 0 84px 50px #00000026;
+  will-change: transform; transform-origin: top center;
+}
+.cscroll-card-inner {
+  width: 100%; height: 380px; border-radius: 18px; overflow: hidden; background: var(--bg); position: relative;
+}
+.mini-dash { width: 100%; height: 100%; display: grid; grid-template-columns: 200px 1fr; }
+.mini-dash-left {
+  border-right: 1px solid var(--bd); padding: 14px 10px;
+  display: flex; flex-direction: column; gap: 8px; background: var(--s1);
+}
+.mini-nav-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: 7px;
+  font-size: .73rem; font-weight: 600; color: var(--txt3);
+}
+.mini-nav-item.active {
+  background: rgba(27,107,107,.12); color: var(--brand-l);
+  border: 1px solid rgba(27,107,107,.2);
+}
+.mini-dash-right { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.mini-kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.mini-kpi-card {
+  background: var(--s1); border: 1px solid var(--bd); border-radius: 10px; padding: 10px 12px;
+}
+.mini-kpi-card-n { font-size: 1.5rem; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
+.mini-kpi-card-l { font-size: .58rem; color: var(--txt3); font-weight: 700; text-transform: uppercase; margin-top: 3px; }
+.mini-table-title { font-size: .8rem; font-weight: 700; color: var(--txt); margin-bottom: 8px; }
+.mini-trow {
+  display: grid; grid-template-columns: 1fr 90px 80px 70px;
+  align-items: center; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid rgba(28,34,54,.9); font-size: .72rem;
+}
+.mini-trow:last-child { border-bottom: none; }
+.mini-trow-co { font-weight: 600; color: var(--txt); }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .62rem; font-weight: 600; padding: 3px 8px;
+  border-radius: 10px; border: 1px solid transparent; white-space: nowrap;
+}
+.badge.campo  { background: rgba(96,165,250,.1);  color: var(--blue);   border-color: rgba(96,165,250,.2); }
+.badge.lab    { background: rgba(167,139,250,.1); color: var(--purple); border-color: rgba(167,139,250,.2); }
+.badge.over   { background: rgba(239,68,68,.1);   color: var(--red);    border-color: rgba(239,68,68,.2); }
+.badge.pend   { background: rgba(245,158,11,.1);  color: var(--yellow); border-color: rgba(245,158,11,.2); }
+
+/* ═══════════════════════════════════
+   FUNCOES — TOUR
+═══════════════════════════════════ */
+.funcoes-section {
+  background: var(--s1); border-top: 1px solid var(--bd); border-bottom: 1px solid var(--bd); padding: 70px 0;
+}
+.funcoes-inner { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+.funcoes-header { text-align: center; margin-bottom: 52px; }
+.funcoes-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(27,107,107,.1); border: 1px solid rgba(27,107,107,.2);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: .65rem; font-weight: 700; color: var(--brand-l);
+  text-transform: uppercase; letter-spacing: .12em; margin-bottom: 14px;
+}
+.funcoes-title { font-size: 2rem; font-weight: 900; letter-spacing: -.03em; color: var(--txt); margin-bottom: 10px; }
+.funcoes-sub { font-size: .88rem; color: var(--txt2); max-width: 480px; margin: 0 auto; }
+
+.funcao-item {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 56px; align-items: center;
+  margin-bottom: 68px; padding-bottom: 68px; border-bottom: 1px solid var(--bd);
+}
+.funcao-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.funcao-item.reverse { direction: rtl; }
+.funcao-item.reverse > * { direction: ltr; }
+.funcao-number { font-size: 4rem; font-weight: 900; line-height: 1; color: rgba(27,107,107,.14); letter-spacing: -.08em; margin-bottom: -8px; }
+.funcao-tag { display: inline-flex; align-items: center; gap: 7px; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--brand-l); margin-bottom: 10px; }
+.funcao-title { font-size: 1.45rem; font-weight: 900; letter-spacing: -.03em; color: var(--txt); margin-bottom: 12px; line-height: 1.2; }
+.funcao-desc { font-size: .86rem; color: var(--txt2); line-height: 1.65; margin-bottom: 18px; }
+.funcao-bullets { display: flex; flex-direction: column; gap: 7px; }
+.funcao-bullet { display: flex; align-items: flex-start; gap: 10px; font-size: .79rem; color: var(--txt2); }
+.funcao-bullet::before { content: '✓'; color: var(--brand-l); font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+
+.funcao-visual {
+  background: var(--bg); border: 1px solid var(--bd); border-radius: 16px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.fv-header {
+  padding: 12px 16px; border-bottom: 1px solid var(--bd);
+  display: flex; align-items: center; gap: 8px;
+}
+.fv-dot { width: 8px; height: 8px; border-radius: 50%; }
+.fv-title { font-size: .76rem; font-weight: 700; color: var(--txt); margin-left: 4px; }
+.fv-body { padding: 16px; }
+.mock-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid rgba(28,34,54,.8); font-size: .74rem;
+}
+.mock-row:last-child { border-bottom: none; }
+.mock-ic { font-size: .95rem; flex-shrink: 0; }
+.mock-label { color: var(--txt); font-weight: 600; flex: 1; }
+.mock-sub { font-size: .63rem; color: var(--txt3); }
+.mock-badge { font-size: .62rem; font-weight: 700; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.mock-badge.ok     { background: rgba(16,185,129,.1); color: var(--green); }
+.mock-badge.warn   { background: rgba(245,158,11,.1); color: var(--yellow); }
+.mock-badge.info   { background: rgba(96,165,250,.1); color: var(--blue); }
+.mock-badge.purple { background: rgba(167,139,250,.1); color: var(--purple); }
+.mini-kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.mini-kpi { background: var(--s1); border: 1px solid var(--bd); border-radius: 10px; padding: 11px 13px; }
+.mini-kpi-n { font-size: 1.55rem; font-weight: 900; letter-spacing: -.04em; }
+.mini-kpi-l { font-size: .6rem; color: var(--txt3); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+.pipeline-viz { display: flex; align-items: center; gap: 0; padding: 14px 6px; }
+.pipe-node { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; }
+.pipe-node::after { content: '→'; position: absolute; right: -8px; top: 10px; color: var(--brand-l); font-size: .85rem; font-weight: 700; }
+.pipe-node:last-child::after { display: none; }
+.pipe-ic { width: 34px; height: 34px; border-radius: 8px; background: rgba(27,107,107,.12); border: 1px solid rgba(27,107,107,.25); display: flex; align-items: center; justify-content: center; font-size: .85rem; }
+.pipe-lbl { font-size: .58rem; color: var(--txt3); font-weight: 700; text-align: center; }
+
+/* ─── CTA FINAL ─── */
+.landing-footer {
+  text-align: center; padding: 80px 28px;
+  background: var(--bg); border-top: 1px solid var(--bd);
+}
+.landing-footer h2 { font-size: 2rem; font-weight: 900; letter-spacing: -.03em; color: var(--txt); margin-bottom: 10px; }
+.landing-footer p { font-size: .9rem; color: var(--txt2); margin-bottom: 28px; }
+.cta-big {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-d));
+  color: #fff; font-weight: 800; font-size: 1rem;
+  padding: 16px 36px; border-radius: 12px; text-decoration: none;
+  box-shadow: 0 6px 28px rgba(27,107,107,.45); transition: all .22s;
+}
+.cta-big:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(27,107,107,.6); }
+.footer-credit { font-size: .7rem; color: var(--txt3); margin-top: 28px; }
+.footer-credit strong { color: var(--txt2); }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.a1 { animation: fade-up .4s ease both .05s; }
+.a2 { animation: fade-up .4s ease both .12s; }
+.a3 { animation: fade-up .4s ease both .20s; }
+.a4 { animation: fade-up .4s ease both .28s; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-logo">
+    <div class="hdr-logo-mark">O</div>
+    <div>
+      <div class="hdr-logo-name">Ocupacional SST</div>
+      <div class="hdr-logo-sub">Portal de Medições</div>
+    </div>
+  </div>
+  <a href="/login" class="hdr-cta">Entrar no sistema →</a>
+</header>
+
+<!-- ══ INTRO ══ -->
+<section class="intro" id="intro">
+  <div class="spotlight" id="spotlight"></div>
+  <div class="intro-inner">
+    <div class="a1">
+      <div class="intro-badge">⚡ Sistema Operacional SST · Ocupacional</div>
+      <h1 class="intro-title">
+        O setor de medições<br>ainda funciona na<br><em>base da planilha.</em>
+      </h1>
+      <p class="intro-sub">Dados dispersos, cálculos manuais, amostradores sem rastreabilidade, métricas que não existem. Essa plataforma foi criada por quem vive essa dor operacional todos os dias.</p>
+      <div class="dores">
+        <div class="dor">
+          <div class="dor-ic">📋</div>
+          <div>
+            <div class="dor-title">Planilhas separadas, sem integração</div>
+            <div class="dor-desc">Controle de empresas em um Excel, amostradores em outro, OS no Planner — nenhum conversa com o outro.</div>
+          </div>
+        </div>
+        <div class="dor">
+          <div class="dor-ic">🔢</div>
+          <div>
+            <div class="dor-title">Cálculo de tempo de coleta na mão</div>
+            <div class="dor-desc">Qual bomba, qual amostrador, qual vazão, quanto tempo — tudo resolvido na memória do técnico, sujeito a erro.</div>
+          </div>
+        </div>
+        <div class="dor">
+          <div class="dor-ic">🔍</div>
+          <div>
+            <div class="dor-title">Sem rastreabilidade real</div>
+            <div class="dor-desc">Amostrador saiu para campo — mas onde está? Quando retorna? A calibração venceu? Ninguém sabe ao certo.</div>
+          </div>
+        </div>
+        <div class="dor">
+          <div class="dor-ic">📊</div>
+          <div>
+            <div class="dor-title">Zero métricas do setor</div>
+            <div class="dor-desc">Quantas medições o técnico fez no mês? Quais amostradores precisam ser pedidos? O laboratório está atrasado? Impossível responder sem garimpar planilhas.</div>
+          </div>
+        </div>
+      </div>
+      <a href="/login" class="intro-cta">Acessar o sistema →</a>
+    </div>
+
+    <!-- ORB -->
+    <div class="intro-right a2">
+      <div class="intro-right-inner">
+        <div class="spline-orb" id="orb">
+          <div class="orb-ring" style="width:220px;height:220px"></div>
+          <div class="orb-ring" style="width:275px;height:275px;animation-direction:reverse;animation-duration:13s;border-color:rgba(27,107,107,.14)"></div>
+          <div class="orb-ring" style="width:330px;height:330px;animation-duration:20s;border-color:rgba(27,107,107,.07)"></div>
+          <div id="orb-nodes"></div>
+        </div>
+        <span class="spline-lbl">Planner → OS → Campo → Lab → Laudo</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>Conheça o sistema</span>
+    <span style="font-size:1.1rem">↓</span>
+  </div>
+</section>
+
+<!-- ══ CONTAINER SCROLL ══ -->
+<div class="cscroll-wrap" id="cscroll-wrap">
+  <div class="cscroll-sticky">
+    <div class="cscroll-title" id="cscroll-title">
+      <div class="cscroll-title-eyebrow">✦ O sistema em ação</div>
+      <h2>Tudo que você precisa,<br>num único painel.</h2>
+      <p>60 OS abertas, amostradores, laboratório e métricas — em tempo real.</p>
+    </div>
+    <div class="cscroll-card" id="cscroll-card">
+      <div class="cscroll-card-inner">
+        <div class="mini-dash">
+          <div class="mini-dash-left">
+            <div style="font-size:.58rem;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.1em;padding:0 8px 4px">Menu</div>
+            <div class="mini-nav-item active">📋 Demandas</div>
+            <div class="mini-nav-item">🏭 Empresas</div>
+            <div class="mini-nav-item">🧪 Laboratório</div>
+            <div class="mini-nav-item">📦 Estoque</div>
+            <div class="mini-nav-item">🔬 Amostradores</div>
+            <div class="mini-nav-item">📝 Visita</div>
+            <div style="flex:1"></div>
+            <div style="padding:9px;background:rgba(27,107,107,.08);border:1px solid rgba(27,107,107,.15);border-radius:7px">
+              <div style="font-size:.58rem;color:var(--brand-l);font-weight:700;margin-bottom:2px">● Sync ativo</div>
+              <div style="font-size:.56rem;color:var(--txt3)">Atualizado: 3 min atrás</div>
+            </div>
+          </div>
+          <div class="mini-dash-right">
+            <div class="mini-kpi-row">
+              <div class="mini-kpi-card"><div class="mini-kpi-card-n" style="color:var(--yellow)">60</div><div class="mini-kpi-card-l">OS Abertas</div></div>
+              <div class="mini-kpi-card"><div class="mini-kpi-card-n" style="color:var(--blue)">28</div><div class="mini-kpi-card-l">Empresas</div></div>
+              <div class="mini-kpi-card"><div class="mini-kpi-card-n" style="color:var(--purple)">14</div><div class="mini-kpi-card-l">No Lab</div></div>
+              <div class="mini-kpi-card"><div class="mini-kpi-card-n" style="color:var(--green)">7</div><div class="mini-kpi-card-l">Kits Disp.</div></div>
+            </div>
+            <div>
+              <div class="mini-table-title">Ordens de Serviço abertas</div>
+              <div class="mini-trow" style="font-size:.6rem;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">
+                <span>Empresa</span><span>Status</span><span>Agentes</span><span>Prazo</span>
+              </div>
+              <div class="mini-trow"><span class="mini-trow-co">MRV Engenharia</span><span class="badge campo">🏗️ Campo</span><span style="color:var(--txt2)">Ruído · Calor</span><span style="color:var(--yellow);font-weight:600">29/05</span></div>
+              <div class="mini-trow"><span class="mini-trow-co">Parque Canoas</span><span class="badge lab">🧪 Lab</span><span style="color:var(--txt2)">Poeira</span><span style="color:var(--txt3)">15/06</span></div>
+              <div class="mini-trow"><span class="mini-trow-co">Construtora Alpha</span><span class="badge over">⚠ Vencida</span><span style="color:var(--txt2)">Ruído</span><span style="color:var(--red);font-weight:700">01/05</span></div>
+              <div class="mini-trow"><span class="mini-trow-co">Industria Beta</span><span class="badge pend">⏳ Pend.</span><span style="color:var(--txt2)">Calor · Ilum.</span><span style="color:var(--yellow);font-weight:600">02/06</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FUNCOES ══ -->
+<section class="funcoes-section">
+  <div class="funcoes-inner">
+    <div class="funcoes-header">
+      <div class="funcoes-eyebrow">📖 Como funciona</div>
+      <h2 class="funcoes-title">Do Planner ao Laudo — sem gap</h2>
+      <p class="funcoes-sub">Cada módulo resolve uma etapa real da operação de medições. Integrados, em tempo real.</p>
+    </div>
+
+    <!-- 01 -->
+    <div class="funcao-item">
+      <div class="funcao-text">
+        <div class="funcao-number">01</div>
+        <div class="funcao-tag">📆 Integração</div>
+        <h3 class="funcao-title">Planner vira pipeline de OS automático</h3>
+        <p class="funcao-desc">As tarefas de medição criadas no Microsoft Planner são sincronizadas automaticamente a cada 15 minutos. Cada task com label "MEDIÇÕES" vira uma OS rastreável — sem redigitar nada.</p>
+        <div class="funcao-bullets">
+          <div class="funcao-bullet">143 tasks de Medições importadas automaticamente</div>
+          <div class="funcao-bullet">Filtro por label category10 = "MEDIÇÕES"</div>
+          <div class="funcao-bullet">OS aparece no painel assim que criada no Planner</div>
+        </div>
+      </div>
+      <div class="funcao-visual">
+        <div class="fv-header"><div class="fv-dot" style="background:var(--red)"></div><div class="fv-dot" style="background:var(--yellow);margin-left:4px"></div><div class="fv-dot" style="background:var(--green);margin-left:4px"></div><span class="fv-title">Pipeline Planner → OS</span></div>
+        <div class="fv-body">
+          <div class="pipeline-viz">
+            <div class="pipe-node"><div class="pipe-ic">📆</div><div class="pipe-lbl">Planner</div></div>
+            <div class="pipe-node"><div class="pipe-ic">🔄</div><div class="pipe-lbl">Sync 15min</div></div>
+            <div class="pipe-node"><div class="pipe-ic">📋</div><div class="pipe-lbl">OS Aberta</div></div>
+            <div class="pipe-node"><div class="pipe-ic">🏭</div><div class="pipe-lbl">Empresa</div></div>
+          </div>
+          <div class="mock-row"><span class="mock-ic">📋</span><div style="flex:1"><div class="mock-label">MRV Engenharia — Ruído</div><div class="mock-sub">Sincronizado há 3 min</div></div><span class="mock-badge info">Campo</span></div>
+          <div class="mock-row"><span class="mock-ic">📋</span><div style="flex:1"><div class="mock-label">Parque Canoas — Poeira</div><div class="mock-sub">Sincronizado há 3 min</div></div><span class="mock-badge purple">Lab</span></div>
+          <div class="mock-row"><span class="mock-ic">📋</span><div style="flex:1"><div class="mock-label">Construtora Alpha — Calor</div><div class="mock-sub">Sincronizado há 3 min</div></div><span class="mock-badge warn">Pendente</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 -->
+    <div class="funcao-item reverse">
+      <div class="funcao-text">
+        <div class="funcao-number">02</div>
+        <div class="funcao-tag">🔬 Campo</div>
+        <h3 class="funcao-title">Amostradores: do estoque ao laboratório</h3>
+        <p class="funcao-desc">Saiba exatamente qual amostrador está disponível, em campo ou no laboratório. Alerta automático de calibração vencida. Fim do "onde está o amostrador X".</p>
+        <div class="funcao-bullets">
+          <div class="funcao-bullet">Estoque em tempo real por tipo de amostrador</div>
+          <div class="funcao-bullet">Registro de saída com empresa, agente e técnico</div>
+          <div class="funcao-bullet">Alerta automático de calibração vencida ou próxima</div>
+          <div class="funcao-bullet">Baixa automática ao registrar medição realizada</div>
+        </div>
+      </div>
+      <div class="funcao-visual">
+        <div class="fv-header"><div class="fv-dot" style="background:var(--red)"></div><div class="fv-dot" style="background:var(--yellow);margin-left:4px"></div><div class="fv-dot" style="background:var(--green);margin-left:4px"></div><span class="fv-title">Controle de Amostradores</span></div>
+        <div class="fv-body">
+          <div class="mini-kpis">
+            <div class="mini-kpi"><div class="mini-kpi-n" style="color:var(--green)">7</div><div class="mini-kpi-l">Disponíveis</div></div>
+            <div class="mini-kpi"><div class="mini-kpi-n" style="color:var(--blue)">4</div><div class="mini-kpi-l">Em Campo</div></div>
+            <div class="mini-kpi"><div class="mini-kpi-n" style="color:var(--yellow)">2</div><div class="mini-kpi-l">Calibrar</div></div>
+          </div>
+          <div class="mock-row"><span class="mock-ic">🔬</span><div style="flex:1"><div class="mock-label">SKC-001 — Carvão Ativ.</div><div class="mock-sub">MRV · Matheus · saiu 22/05</div></div><span class="mock-badge info">Em Campo</span></div>
+          <div class="mock-row"><span class="mock-ic">🔬</span><div style="flex:1"><div class="mock-label">SKC-002 — Sílica</div><div class="mock-sub">Disponível · Cal. 30/08</div></div><span class="mock-badge ok">Disponível</span></div>
+          <div class="mock-row"><span class="mock-ic">🔬</span><div style="flex:1"><div class="mock-label">SKC-003 — Carvão Ativ.</div><div class="mock-sub">Cal. vence em 3 dias</div></div><span class="mock-badge warn">Calibrar</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 -->
+    <div class="funcao-item">
+      <div class="funcao-text">
+        <div class="funcao-number">03</div>
+        <div class="funcao-tag">⚡ Automação</div>
+        <h3 class="funcao-title">Tempo de coleta calculado automaticamente</h3>
+        <p class="funcao-desc">Informe a vazão calibrada da bomba. O sistema sabe o volume mínimo exigido pelo método e calcula o tempo de coleta — sem planilha, sem calculadora, sem erro.</p>
+        <div class="funcao-bullets">
+          <div class="funcao-bullet">Fórmula: Tempo = Volume mínimo ÷ Vazão calibrada</div>
+          <div class="funcao-bullet">Banco de dados com limites por agente (NIOSH, OSHA, Fundacentro)</div>
+          <div class="funcao-bullet">Registro automático no histórico da bomba</div>
+        </div>
+      </div>
+      <div class="funcao-visual">
+        <div class="fv-header"><div class="fv-dot" style="background:var(--red)"></div><div class="fv-dot" style="background:var(--yellow);margin-left:4px"></div><div class="fv-dot" style="background:var(--green);margin-left:4px"></div><span class="fv-title">Cálculo de Coleta</span></div>
+        <div class="fv-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+            <div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:11px"><div style="font-size:.58rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Agente</div><div style="font-size:.82rem;font-weight:700;color:var(--txt)">Tolueno</div></div>
+            <div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:11px"><div style="font-size:.58rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Vazão calibrada</div><div style="font-size:.82rem;font-weight:700;color:var(--txt)">1,5 L/min</div></div>
+          </div>
+          <div style="background:rgba(27,107,107,.08);border:1px solid rgba(27,107,107,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:.63rem;color:var(--brand-l);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:8px">Tempo de coleta calculado</div>
+            <div style="font-size:2.3rem;font-weight:900;color:var(--brand-l);letter-spacing:-.05em">30 min</div>
+            <div style="font-size:.68rem;color:var(--txt3);margin-top:5px">45L ÷ 1,5 L/min = 30 minutos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 -->
+    <div class="funcao-item reverse">
+      <div class="funcao-text">
+        <div class="funcao-number">04</div>
+        <div class="funcao-tag">📊 Analytics</div>
+        <h3 class="funcao-title">Métricas absolutas do setor</h3>
+        <p class="funcao-desc">Pela primeira vez, o setor tem números reais: produtividade por técnico, previsão de compra de amostradores, SLA do laboratório, empresas com demanda atrasada.</p>
+        <div class="funcao-bullets">
+          <div class="funcao-bullet">Medições realizadas por técnico por mês</div>
+          <div class="funcao-bullet">Previsão de amostradores necessários para próximas demandas</div>
+          <div class="funcao-bullet">Tempo médio de retorno do laboratório por amostra</div>
+          <div class="funcao-bullet">Taxa de conclusão de OS dentro do prazo contratado</div>
+        </div>
+      </div>
+      <div class="funcao-visual">
+        <div class="fv-header"><div class="fv-dot" style="background:var(--red)"></div><div class="fv-dot" style="background:var(--yellow);margin-left:4px"></div><div class="fv-dot" style="background:var(--green);margin-left:4px"></div><span class="fv-title">Analytics — Setor</span></div>
+        <div class="fv-body">
+          <div class="mini-kpis" style="margin-bottom:12px">
+            <div class="mini-kpi"><div class="mini-kpi-n" style="color:var(--brand-l)">23</div><div class="mini-kpi-l">OS/mês Matheus</div></div>
+            <div class="mini-kpi"><div class="mini-kpi-n" style="color:var(--purple)">18</div><div class="mini-kpi-l">OS/mês Kelly</div></div>
+            <div class="mini-kpi"><div class="mini-kpi-n" style="color:var(--yellow)">5d</div><div class="mini-kpi-l">Média Lab</div></div>
+          </div>
+          <div class="mock-row"><span class="mock-ic">📦</span><div style="flex:1"><div class="mock-label">Previsão de compra</div><div class="mock-sub">Próximas 4 semanas</div></div><span class="mock-badge warn">+6 SKC</span></div>
+          <div class="mock-row"><span class="mock-ic">✅</span><div style="flex:1"><div class="mock-label">Taxa de conclusão no prazo</div><div class="mock-sub">Últimos 30 dias</div></div><span class="mock-badge ok">78%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05 -->
+    <div class="funcao-item">
+      <div class="funcao-text">
+        <div class="funcao-number">05</div>
+        <div class="funcao-tag">📱 Mobile</div>
+        <h3 class="funcao-title">Campo sem papel, sem internet</h3>
+        <p class="funcao-desc">O app mobile (PWA) funciona offline. O técnico registra a visita e confirma a medição no celular — mesmo sem sinal. Tudo sincroniza ao reconectar.</p>
+        <div class="funcao-bullets">
+          <div class="funcao-bullet">PWA installable — funciona como app no Android/iOS</div>
+          <div class="funcao-bullet">Offline-first com IndexedDB — sem depender de 4G</div>
+          <div class="funcao-bullet">Dados da OS pré-carregados — técnico já sabe o que vai fazer</div>
+        </div>
+      </div>
+      <div class="funcao-visual" style="max-width:280px;margin:0 auto">
+        <div class="fv-header"><div class="fv-dot" style="background:var(--red)"></div><div class="fv-dot" style="background:var(--yellow);margin-left:4px"></div><div class="fv-dot" style="background:var(--green);margin-left:4px"></div><span class="fv-title">App Mobile · Campo</span></div>
+        <div class="fv-body">
+          <div style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15);border-radius:8px;padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><span>📶</span><span style="font-size:.7rem;color:var(--green);font-weight:600">Modo offline ativo · 3 registros pendentes</span></div>
+          <div class="mock-row"><span class="mock-ic">🏗️</span><div style="flex:1"><div class="mock-label">MRV — Bloco A</div><div class="mock-sub">Ruído · Matheus · hoje</div></div><span class="mock-badge warn">Offline</span></div>
+          <div class="mock-row"><span class="mock-ic">📝</span><div style="flex:1"><div class="mock-label">Visita registrada</div><div class="mock-sub">Aguardando sync</div></div><span class="mock-badge warn">Pendente</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ CTA FINAL ══ -->
+<footer class="landing-footer">
+  <h2>Pronto para sair da planilha?</h2>
+  <p>Acesse o sistema e comece a operar com dados reais.</p>
+  <a href="/login" class="cta-big">Entrar no sistema →</a>
+  <div class="footer-credit">Desenvolvido por <strong>Matheus Costa</strong> · Ocupacional Medicina e Segurança do Trabalho · 2026</div>
+</footer>
+
+<script>
+/* Sparkle particles subtle */
+(function(){
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.45';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  let W, H, pts = [];
+  function resize(){ W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+  function Pt(){ this.x=Math.random()*W; this.y=Math.random()*H; this.r=Math.random()*.9+.3; this.s=Math.random()*.18+.05; this.o=Math.random()*.5+.1; this.od=Math.random()>.5?1:-1; this.os=Math.random()*.008+.003; }
+  Pt.prototype.tick=function(){ this.y-=this.s; this.o+=this.od*this.os; if(this.o>0.65||this.o<0.05)this.od*=-1; if(this.y<-4){this.y=H+4;this.x=Math.random()*W;} };
+  function init(){ resize(); pts=[]; let n=Math.floor(W*H/5000); for(let i=0;i<n;i++)pts.push(new Pt()); }
+  function loop(){ ctx.clearRect(0,0,W,H); pts.forEach(p=>{ p.tick(); ctx.save(); ctx.globalAlpha=p.o; ctx.fillStyle='#fff'; ctx.shadowColor='rgba(42,200,200,.6)'; ctx.shadowBlur=3; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.restore(); }); requestAnimationFrame(loop); }
+  window.addEventListener('resize',init);
+  init(); loop();
+})();
+
+/* Orb nodes */
+(function(){
+  const container = document.getElementById('orb-nodes');
+  if(!container) return;
+  const items=[{e:'📆',l:'Planner'},{e:'📋',l:'OS'},{e:'🏗️',l:'Campo'},{e:'🧪',l:'Lab'},{e:'📄',l:'Laudo'}];
+  const R=138;
+  items.forEach((item,i)=>{
+    const a=(i/items.length)*2*Math.PI-Math.PI/2;
+    const x=Math.cos(a)*R, y=Math.sin(a)*R;
+    const n=document.createElement('div');
+    n.className='radar-node';
+    n.style.cssText=`position:absolute;left:calc(50% + ${x}px);top:calc(50% + ${y}px);transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;`;
+    n.innerHTML=`<div class="radar-node-ic">${item.e}</div><div class="radar-node-lbl">${item.l}</div>`;
+    container.appendChild(n);
+  });
+})();
+
+/* Spotlight */
+(function(){
+  const intro=document.getElementById('intro');
+  const spot=document.getElementById('spotlight');
+  if(!intro||!spot) return;
+  intro.addEventListener('mousemove',e=>{
+    const r=intro.getBoundingClientRect();
+    const x=((e.clientX-r.left)/r.width*100).toFixed(1)+'%';
+    const y=((e.clientY-r.top)/r.height*100).toFixed(1)+'%';
+    spot.style.background=`radial-gradient(600px circle at ${x} ${y},rgba(27,107,107,.13) 0%,rgba(27,107,107,.05) 30%,transparent 70%)`;
+  });
+})();
+
+/* Container Scroll */
+(function(){
+  const wrap=document.getElementById('cscroll-wrap');
+  const card=document.getElementById('cscroll-card');
+  const title=document.getElementById('cscroll-title');
+  if(!wrap||!card||!title) return;
+  function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+  function lerp(a,b,t){return a+(b-a)*t;}
+  function tick(){
+    const rect=wrap.getBoundingClientRect();
+    const total=wrap.offsetHeight-window.innerHeight;
+    const p=clamp(-rect.top/total,0,1);
+    card.style.transform=`perspective(1000px) rotateX(${lerp(20,0,p)}deg) scale(${lerp(1.05,1,p)})`;
+    title.style.transform=`translateY(${lerp(0,-70,p)}px)`;
+    title.style.opacity=lerp(1,.45,p);
+  }
+  window.addEventListener('scroll',tick,{passive:true});
+  tick();
+})();
+</script>
+</body>
+</html>
