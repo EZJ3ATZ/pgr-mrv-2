@@ -2126,7 +2126,7 @@
   <div class="page-head">
     <div>
       <h2 class="page-title">⚖️ Consistência Operacional</h2>
-      <div class="page-sub">Motor de validação de regras — cruzamento planejamento vs campo, métodos analíticos, alertas</div>
+      <div class="page-sub">Detecta automaticamente problemas nos dados: empresas duplicadas, OS paradas, amostradores vencendo, divergências de campo e mais. Rode a verificação para atualizar.</div>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-secondary" onclick="consistRefresh()">🔄 Atualizar</button>
@@ -2135,26 +2135,26 @@
   </div>
 
   <!-- Cards de severidade -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;" id="consist-cards">
-    <div class="stat-card" style="border-left:4px solid #ef4444">
-      <div class="stat-value" id="cc-critico">—</div>
-      <div class="stat-label">🔴 Crítico</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;" id="consist-cards">
+    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:1.8rem;font-weight:700;color:#ef4444;line-height:1;" id="cc-critico">—</div>
+      <div style="font-size:.75rem;color:#f87171;margin-top:4px;font-weight:500;">Crítico</div>
     </div>
-    <div class="stat-card" style="border-left:4px solid #f97316">
-      <div class="stat-value" id="cc-alto">—</div>
-      <div class="stat-label">🟠 Alto</div>
+    <div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:1.8rem;font-weight:700;color:#f97316;line-height:1;" id="cc-alto">—</div>
+      <div style="font-size:.75rem;color:#fb923c;margin-top:4px;font-weight:500;">Alto</div>
     </div>
-    <div class="stat-card" style="border-left:4px solid #eab308">
-      <div class="stat-value" id="cc-medio">—</div>
-      <div class="stat-label">🟡 Médio</div>
+    <div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.2);border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:1.8rem;font-weight:700;color:#eab308;line-height:1;" id="cc-medio">—</div>
+      <div style="font-size:.75rem;color:#fbbf24;margin-top:4px;font-weight:500;">Médio</div>
     </div>
-    <div class="stat-card" style="border-left:4px solid #22c55e">
-      <div class="stat-value" id="cc-baixo">—</div>
-      <div class="stat-label">🟢 Baixo</div>
+    <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:1.8rem;font-weight:700;color:#22c55e;line-height:1;" id="cc-baixo">—</div>
+      <div style="font-size:.75rem;color:#4ade80;margin-top:4px;font-weight:500;">Baixo</div>
     </div>
-    <div class="stat-card" style="border-left:4px solid var(--border)">
-      <div class="stat-value" id="cc-total">—</div>
-      <div class="stat-label">Total abertas</div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--text);line-height:1;" id="cc-total">—</div>
+      <div style="font-size:.75rem;color:var(--text3);margin-top:4px;font-weight:500;">Total abertas</div>
     </div>
   </div>
 
@@ -11534,27 +11534,84 @@ function _consistRenderTabela(rows) {
   const tbody = document.getElementById('consist-tbody');
   if (!tbody) return;
   if (!rows || !rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhuma divergência encontrada</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px;font-size:.9rem;">✅ Nenhuma divergência encontrada</td></tr>';
     return;
   }
-  const sevIcon = { critico:'🔴', alto:'🟠', medio:'🟡', baixo:'🟢' };
-  const statusLabel = { aberta:'Aberta', justificada:'Justificada', resolvida:'Resolvida' };
+
+  const SEV_CFG = {
+    critico: { cor:'#ef4444', bg:'rgba(239,68,68,.12)',  label:'Crítico' },
+    alto:    { cor:'#f97316', bg:'rgba(249,115,22,.12)', label:'Alto'    },
+    medio:   { cor:'#eab308', bg:'rgba(234,179,8,.12)',  label:'Médio'   },
+    baixo:   { cor:'#22c55e', bg:'rgba(34,197,94,.12)',  label:'Baixo'   },
+  };
+  const TIPO_CFG = {
+    empresa_duplicada:    { icon:'🏢', label:'Empresa duplicada',     cor:'#a78bfa' },
+    os_parada:            { icon:'⏸',  label:'OS parada',             cor:'#f87171' },
+    demanda_orfa:         { icon:'🔗', label:'Demanda sem empresa',    cor:'#fb923c' },
+    amostrador_vencendo:  { icon:'⏱',  label:'Amostrador vencendo',   cor:'#fbbf24' },
+    coleta_sem_resultado: { icon:'🧪', label:'Coleta sem resultado',   cor:'#60a5fa' },
+    visita_sem_coleta:    { icon:'🚗', label:'Visita sem coleta',      cor:'#34d399' },
+    divergencia_campo:    { icon:'⚠️', label:'Divergência de campo',   cor:'#f472b6' },
+    vazao_invalida:       { icon:'💧', label:'Vazão inválida',         cor:'#38bdf8' },
+  };
+  const STATUS_CFG = {
+    aberta:      { label:'Aberta',      bg:'rgba(239,68,68,.15)',  cor:'#f87171' },
+    justificada: { label:'Justificada', bg:'rgba(59,130,246,.15)', cor:'#60a5fa' },
+    resolvida:   { label:'Resolvida',   bg:'rgba(34,197,94,.15)',  cor:'#4ade80' },
+  };
+
   tbody.innerHTML = rows.map(d => {
-    const icon = sevIcon[d.severidade] || '⚪';
-    const sl   = statusLabel[d.status] || d.status;
+    const sev  = SEV_CFG[d.severidade]  || { cor:'#888', bg:'rgba(128,128,128,.1)', label: d.severidade||'—' };
+    const tipo = TIPO_CFG[d.tipo]       || { icon:'❓', label: d.tipo||'—', cor:'#888' };
+    const st   = STATUS_CFG[d.status]   || { label: d.status||'—', bg:'rgba(128,128,128,.1)', cor:'#888' };
     const det  = d.detectado_em ? d.detectado_em.substring(0,10) : '—';
-    const acoes = d.status === 'resolvida' ? '' : `
-      <button class="btn btn-xs" onclick="consistAbrirModal(${d.id})" title="Justificar">📝</button>
-      <button class="btn btn-xs" style="background:var(--green);color:#fff" onclick="consistResolver(${d.id})" title="Resolver">✓</button>
-    `;
-    return `<tr>
-      <td>${icon} ${d.severidade||''}</td>
-      <td style="font-size:.8rem;color:var(--text2)">${d.tipo||''}</td>
-      <td style="max-width:320px;white-space:normal;font-size:.85rem">${_esc(d.descricao||'')}</td>
-      <td style="font-size:.8rem;color:var(--text3)">${d.entidade_tipo||''} ${d.entidade_id ? '#'+d.entidade_id : ''}</td>
-      <td style="font-size:.8rem">${det}</td>
-      <td><span style="font-size:.75rem;padding:2px 8px;border-radius:12px;background:${d.status==='resolvida'?'#22c55e33':d.status==='justificada'?'#3b82f633':'#ef444433'}">${sl}</span></td>
-      <td style="white-space:nowrap">${acoes}</td>
+
+    // Destaca nomes de empresa entre aspas na descrição
+    const desc = _esc(d.descricao||'').replace(/"([^"]+)"/g,
+      '<strong style="color:var(--text);">"$1"</strong>');
+
+    const acoes = d.status === 'resolvida'
+      ? `<span style="color:#4ade80;font-size:.75rem;">✓ OK</span>`
+      : `<div style="display:flex;gap:5px;flex-wrap:nowrap;">
+          <button onclick="consistAbrirModal(${d.id})" title="Adicionar justificativa"
+            style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.25);
+                   border-radius:5px;padding:3px 9px;font-size:.72rem;cursor:pointer;white-space:nowrap;">
+            📝 Justificar
+          </button>
+          <button onclick="consistResolver(${d.id})" title="Marcar como resolvida"
+            style="background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.25);
+                   border-radius:5px;padding:3px 9px;font-size:.72rem;cursor:pointer;white-space:nowrap;">
+            ✓ Resolver
+          </button>
+        </div>`;
+
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);transition:background .1s;" onmouseover="this.style.background='rgba(255,255,255,.025)'" onmouseout="this.style.background=''">
+      <td style="padding:10px 10px;white-space:nowrap;">
+        <span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:600;
+                     background:${sev.bg};color:${sev.cor};border:1px solid ${sev.cor}33;">
+          ${sev.label}
+        </span>
+      </td>
+      <td style="padding:10px 8px;white-space:nowrap;">
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:${tipo.cor};">
+          <span>${tipo.icon}</span>
+          <span>${tipo.label}</span>
+        </span>
+      </td>
+      <td style="padding:10px 8px;max-width:340px;white-space:normal;font-size:.82rem;color:var(--text2);line-height:1.5;">
+        ${desc}
+      </td>
+      <td style="padding:10px 8px;font-size:.78rem;color:var(--text3);white-space:nowrap;">
+        ${d.entidade_tipo ? `<span style="background:rgba(255,255,255,.05);border-radius:4px;padding:2px 6px;">${d.entidade_tipo} ${d.entidade_id ? '#'+d.entidade_id : ''}</span>` : '—'}
+      </td>
+      <td style="padding:10px 8px;font-size:.78rem;color:var(--text3);white-space:nowrap;">${det}</td>
+      <td style="padding:10px 8px;">
+        <span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:.72rem;
+                     background:${st.bg};color:${st.cor};">
+          ${st.label}
+        </span>
+      </td>
+      <td style="padding:10px 8px;">${acoes}</td>
     </tr>`;
   }).join('');
 }
