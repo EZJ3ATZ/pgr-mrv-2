@@ -5,14 +5,19 @@ Motor de matching: vincula título de tarefa Planner → empresa existente.
 Hierarquia de tentativas:
   1. CNPJ exato (extraído do título)
   2. Número de OS → demanda anterior já vinculada
-  3. Nome fuzzy (SequenceMatcher, threshold configurável)
+  3. Nome fuzzy (token_sort_ratio, threshold configurável)
   4. Se não encontrar → cria empresa "pendente" para validação manual
 """
 
 import re
 import unicodedata
 import logging
-from difflib import SequenceMatcher
+try:
+    from rapidfuzz import fuzz as _fuzz
+    _USE_RAPIDFUZZ = True
+except ImportError:
+    from difflib import SequenceMatcher
+    _USE_RAPIDFUZZ = False
 
 log = logging.getLogger(__name__)
 
@@ -94,6 +99,10 @@ def similaridade(a: str, b: str) -> float:
     na, nb = normalizar_nome(a), normalizar_nome(b)
     if not na or not nb:
         return 0.0
+    if _USE_RAPIDFUZZ:
+        # token_sort_ratio ignora ordem das palavras: "ABC CONST" == "CONST ABC"
+        return _fuzz.token_sort_ratio(na, nb) / 100.0
+    from difflib import SequenceMatcher
     return SequenceMatcher(None, na, nb).ratio()
 
 

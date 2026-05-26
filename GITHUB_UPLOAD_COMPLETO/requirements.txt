@@ -10,3 +10,4 @@ reportlab>=4.0.0
 APScheduler>=3.10.0
 sentry-sdk[flask]>=2.0.0
 posthog>=3.0.0
+rapidfuzz>=3.0.0
