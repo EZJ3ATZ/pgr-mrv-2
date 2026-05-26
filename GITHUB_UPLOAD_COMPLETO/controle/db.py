@@ -604,6 +604,40 @@ CREATE INDEX IF NOT EXISTS idx_visita_planejamento ON visitas_tecnicas(planejame
 CREATE INDEX IF NOT EXISTS idx_exec_visita       ON execucao_campo(visita_id);
 CREATE INDEX IF NOT EXISTS idx_exec_planejamento ON execucao_campo(planejamento_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_metricas_demanda ON metricas_operacionais(demanda_id);
+
+CREATE TABLE IF NOT EXISTS divergencias (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo            TEXT NOT NULL,
+    severidade      TEXT DEFAULT 'medio',
+    entidade_tipo   TEXT,
+    entidade_id     INTEGER,
+    descricao       TEXT,
+    status          TEXT DEFAULT 'aberta',
+    resolvido_em    TEXT,
+    resolvido_por   TEXT,
+    detectado_em    TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS justificativas_operacionais (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    divergencia_id  INTEGER,
+    motivo          TEXT,
+    descricao       TEXT,
+    tecnico         TEXT,
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS alertas_operacionais (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo            TEXT,
+    prioridade      TEXT DEFAULT 'media',
+    titulo          TEXT,
+    descricao       TEXT,
+    entidade_tipo   TEXT,
+    entidade_id     INTEGER,
+    status          TEXT DEFAULT 'ativo',
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    reconhecido_em  TEXT,
+    reconhecido_por TEXT
+);
 """
 
 # Schema PostgreSQL — apenas diferenças de sintaxe
