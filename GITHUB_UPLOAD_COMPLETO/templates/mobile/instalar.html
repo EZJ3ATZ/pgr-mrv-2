@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>Instalar App — Medições Ocupacional</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="stylesheet" href="/static/mobile.css">
+<style>
+  .hero {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 40px 24px 32px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-icon { font-size: 3.5rem; margin-bottom: 12px; }
+  .hero-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
+  .hero-sub { font-size: .9rem; color: var(--muted); max-width: 340px; margin: 0 auto; line-height: 1.5; }
+
+  .plat-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .plat-tab {
+    flex: 1; padding: 12px 8px; text-align: center; cursor: pointer;
+    font-size: .8rem; font-weight: 600; color: var(--muted);
+    border-bottom: 2px solid transparent; transition: all .15s;
+  }
+  .plat-tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .plat-tab-icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
+
+  .plat-panel { display: none; padding: 20px 16px; }
+  .plat-panel.active { display: block; }
+
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    font-size: .8rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .step-body { flex: 1; }
+  .step-title { font-size: .9rem; font-weight: 600; margin-bottom: 3px; }
+  .step-desc { font-size: .82rem; color: var(--muted); line-height: 1.5; }
+  .step-img {
+    margin-top: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: .8rem;
+    color: var(--muted);
+    font-family: monospace;
+  }
+
+  .info-box {
+    background: rgba(59,130,246,.08);
+    border: 1px solid rgba(59,130,246,.25);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: .85rem;
+    line-height: 1.5;
+  }
+  .info-box strong { color: var(--accent2); }
+
+  .warn-box {
+    background: rgba(245,158,11,.08);
+    border: 1px solid rgba(245,158,11,.25);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: .85rem;
+    line-height: 1.5;
+    color: #fcd34d;
+  }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .feature-card-icon { font-size: 1.6rem; margin-bottom: 6px; }
+  .feature-card-title { font-size: .78rem; font-weight: 600; margin-bottom: 3px; }
+  .feature-card-desc { font-size: .72rem; color: var(--muted); line-height: 1.4; }
+
+  .offline-flow {
+    display: flex; flex-direction: column; gap: 0;
+    position: relative;
+  }
+  .offline-flow::before {
+    content: '';
+    position: absolute;
+    left: 19px; top: 28px; bottom: 28px;
+    width: 2px; background: var(--border);
+  }
+  .flow-step {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px 0; position: relative; z-index: 1;
+  }
+  .flow-dot {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--card); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+  }
+  .flow-dot.active { border-color: var(--accent); background: rgba(59,130,246,.15); }
+  .flow-dot.success { border-color: var(--success); background: rgba(34,197,94,.15); }
+  .flow-body { flex: 1; padding-top: 6px; }
+  .flow-title { font-size: .88rem; font-weight: 600; }
+  .flow-desc { font-size: .78rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+  .divider-title {
+    font-size: .65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin: 24px 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .divider-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .apk-card {
+    background: linear-gradient(135deg, rgba(59,130,246,.15) 0%, rgba(30,41,59,0) 100%);
+    border: 1px solid rgba(59,130,246,.3);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .apk-card-title { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+  .apk-card-desc { font-size: .8rem; color: var(--muted); margin-bottom: 14px; line-height: 1.5; }
+</style>
+</head>
+<body style="background:var(--bg)">
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-icon">📋</div>
+  <div class="hero-title">Medições em Campo</div>
+  <div class="hero-sub">App mobile para registro de medições de higiene ocupacional — funciona mesmo sem internet</div>
+</div>
+
+<!-- O que o app faz -->
+<div style="padding:20px 16px 0">
+  <div class="divider-title">O que é</div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-card-icon">📅</div>
+      <div class="feature-card-title">Visitas do dia</div>
+      <div class="feature-card-desc">Veja as medições agendadas para hoje</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-card-icon">✍️</div>
+      <div class="feature-card-title">Planilha de campo</div>
+      <div class="feature-card-desc">Preencha agentes, dosímetros e bombas</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-card-icon">📴</div>
+      <div class="feature-card-title">Funciona offline</div>
+      <div class="feature-card-desc">Registre sem internet e sincronize depois</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-card-icon">✒️</div>
+      <div class="feature-card-title">Assinatura digital</div>
+      <div class="feature-card-desc">Assine com o dedo na tela</div>
+    </div>
+  </div>
+
+  <!-- Como funciona offline -->
+  <div class="divider-title">Como funciona offline</div>
+  <div class="offline-flow">
+    <div class="flow-step">
+      <div class="flow-dot active">📶</div>
+      <div class="flow-body">
+        <div class="flow-title">Abra o app com internet</div>
+        <div class="flow-desc">Na primeira vez, o app baixa o necessário para funcionar sem internet.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-dot">📴</div>
+      <div class="flow-body">
+        <div class="flow-title">Vá para o campo (sem sinal)</div>
+        <div class="flow-desc">O app continua funcionando normalmente. Preencha a planilha de campo normalmente — horários, agentes avaliados, equipamentos.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-dot">💾</div>
+      <div class="flow-body">
+        <div class="flow-title">Salve a medição</div>
+        <div class="flow-desc">Ao salvar sem internet, os dados ficam guardados <strong>no próprio celular</strong>. O app mostra <em>"Salvo offline"</em>.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-dot active">📶</div>
+      <div class="flow-body">
+        <div class="flow-title">Volte para área com sinal</div>
+        <div class="flow-desc">O app detecta a reconexão automaticamente e mostra um aviso na tela inicial.</div>
+      </div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-dot success">☁️</div>
+      <div class="flow-body">
+        <div class="flow-title">Clique em "Sincronizar"</div>
+        <div class="flow-desc">Toque no botão <strong>Sincronizar</strong> na tela inicial. Os dados são enviados para o sistema automaticamente.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Plataformas -->
+<div style="padding:20px 16px 0">
+  <div class="divider-title">Como instalar</div>
+</div>
+
+<div class="plat-tabs">
+  <div class="plat-tab active" onclick="showTab('android-apk')">
+    <span class="plat-tab-icon">📦</span>Android<br><span style="font-size:.65rem;font-weight:400">APK direto</span>
+  </div>
+  <div class="plat-tab" onclick="showTab('android-online')">
+    <span class="plat-tab-icon">🌐</span>Android<br><span style="font-size:.65rem;font-weight:400">Pelo browser</span>
+  </div>
+  <div class="plat-tab" onclick="showTab('ios')">
+    <span class="plat-tab-icon"></span>iPhone<br><span style="font-size:.65rem;font-weight:400">iOS</span>
+  </div>
+</div>
+
+<!-- Android APK -->
+<div id="panel-android-apk" class="plat-panel active">
+  <div class="apk-card">
+    <div class="apk-card-title">📦 APK para Android</div>
+    <div class="apk-card-desc">
+      Instala como qualquer app, direto no celular. Não precisa de Play Store.
+      Você pode mandar o arquivo por WhatsApp ou e-mail para a equipe.
+    </div>
+    <a href="https://www.pwabuilder.com/reportcard?site=https://medicoes-ocupacional.up.railway.app/mobile/"
+       target="_blank" class="btn btn-primary btn-block" style="margin-bottom:10px">
+      🔨 Gerar APK (PWABuilder)
+    </a>
+    <div style="font-size:.75rem;color:var(--muted);text-align:center">
+      Abre no site PWABuilder → clique "Package for Stores" → Android → Download
+    </div>
+  </div>
+
+  <div class="divider-title">Passo a passo para gerar o APK</div>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Acesse o PWABuilder</div>
+      <div class="step-desc">Toque no botão acima. O site vai analisar o app automaticamente.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Clique em "Package for Stores"</div>
+      <div class="step-desc">Botão azul no centro da tela do PWABuilder.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Escolha Android → Download</div>
+      <div class="step-desc">Selecione a opção Android. Clique em "Generate" e depois "Download" para baixar o arquivo <code>.apk</code>.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">Instale no celular</div>
+      <div class="step-desc">Envie o <code>.apk</code> por WhatsApp ou e-mail. No celular, toque no arquivo → "Instalar". Pode ser necessário ativar <em>"Instalar apps desconhecidos"</em> nas configurações do Android.</div>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    ⚠️ O APK gerado funciona <strong>online</strong> (precisa de internet para carregar). Para uso <strong>offline</strong> completo, prefira a instalação pelo browser (aba ao lado).
+  </div>
+</div>
+
+<!-- Android Online -->
+<div id="panel-android-online" class="plat-panel">
+  <div class="info-box">
+    <strong>✅ Recomendado para Android</strong><br>
+    Instala direto pelo Chrome, sem baixar nada. Funciona offline após a instalação. Mais fácil que o APK.
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Abra o Chrome no Android</div>
+      <div class="step-desc">Use o Google Chrome (não outro browser). Acesse o endereço:</div>
+      <div class="step-img">medicoes-ocupacional.up.railway.app/mobile/</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Toque nos 3 pontinhos (⋮)</div>
+      <div class="step-desc">Menu no canto superior direito do Chrome.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Toque em "Adicionar à tela inicial" ou "Instalar aplicativo"</div>
+      <div class="step-desc">O Chrome pode mostrar um banner automático na parte de baixo — toque em <strong>"Instalar"</strong> se aparecer.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">Confirme a instalação</div>
+      <div class="step-desc">O ícone do app aparece na tela inicial. Toque nele para abrir — funciona sem barra do browser, igual a um app nativo.</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>📴 Offline automático:</strong> Depois de instalar, o app funciona sem internet. Ao salvar uma medição sem sinal, ela fica guardada no celular. Quando você voltar a ter internet, o app detecta e mostra o botão <strong>Sincronizar</strong>.
+  </div>
+</div>
+
+<!-- iOS -->
+<div id="panel-ios" class="plat-panel">
+  <div class="info-box">
+    <strong> iPhone / iPad</strong><br>
+    No iOS, não existe APK. A instalação é feita pelo Safari — também cria um ícone na tela inicial e funciona offline.
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Abra o Safari</div>
+      <div class="step-desc">Obrigatório usar o Safari (não Chrome nem outro browser no iPhone). Acesse:</div>
+      <div class="step-img">medicoes-ocupacional.up.railway.app/mobile/</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Toque no ícone de compartilhar (□↑)</div>
+      <div class="step-desc">Fica na barra inferior do Safari, no centro. É o quadradinho com seta pra cima.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Toque em "Adicionar à Tela de Início"</div>
+      <div class="step-desc">Role o menu para baixo e encontre esta opção. Confirme o nome e toque em <strong>Adicionar</strong>.</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">Abra pelo ícone na tela inicial</div>
+      <div class="step-desc">O app abre em tela cheia, sem a barra do Safari. Funciona offline normalmente.</div>
+    </div>
+  </div>
+
+  <div class="warn-box">
+    ⚠️ <strong>iOS e sincronização offline:</strong> No iPhone, a sincronização automática em segundo plano não está disponível (limitação da Apple). Para sincronizar, abra o app e toque em <strong>Sincronizar</strong> quando tiver internet.
+  </div>
+
+  <div class="warn-box">
+    ⚠️ <strong>Não use pelo Chrome no iPhone</strong> — o Chrome no iOS não suporta instalação de PWA. Use obrigatoriamente o Safari.
+  </div>
+</div>
+
+<div style="padding:24px 16px">
+  <a href="/mobile/login" class="btn btn-primary btn-block">Acessar o app →</a>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.plat-tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.plat-panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['android-apk','android-online','ios'];
+  document.querySelectorAll('.plat-tab')[tabs.indexOf(id)].classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+// Auto-detectar plataforma
+const ua = navigator.userAgent;
+if (/iPhone|iPad|iPod/.test(ua)) showTab('ios');
+else if (/Android/.test(ua)) showTab('android-online');
+</script>
+</body>
+</html>

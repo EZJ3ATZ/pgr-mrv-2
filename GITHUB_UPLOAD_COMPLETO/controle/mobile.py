@@ -29,7 +29,7 @@ def _usuario():
 
 @mobile_bp.before_request
 def _guard():
-    public = {'mobile.login_page', 'mobile.index', 'mobile.logout'}
+    public = {'mobile.login_page', 'mobile.index', 'mobile.logout', 'mobile.instalar'}
     endpoint = request.endpoint or ''
     if endpoint not in public and not current_user.is_authenticated:
         return redirect(url_for('mobile.login_page'))
@@ -79,6 +79,11 @@ def login_page():
 def logout():
     logout_user()
     return redirect(url_for('mobile.login_page'))
+
+
+@mobile_bp.route('/instalar')
+def instalar():
+    return render_template('mobile/instalar.html')
 
 
 # ── Home: visitas de hoje ─────────────────────────────────────────────
