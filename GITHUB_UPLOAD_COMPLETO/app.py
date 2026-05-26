@@ -831,6 +831,11 @@ def sw_js():
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
 
+@app.route('/login')
+def login_redirect():
+    from flask import redirect, url_for
+    return redirect(url_for('auth.login'))
+
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
