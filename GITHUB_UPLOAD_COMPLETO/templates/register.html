@@ -47,22 +47,18 @@
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       width: 100%; height: 100%;
-      background-image: url('/static/worker.jpg');
-      background-size: cover;
-      background-position: center 30%;
+      background: linear-gradient(145deg,
+        #07090E 0%, #0a1a1a 25%, #0c2424 50%, #0a1e1e 75%, #07090E 100%
+      );
       z-index: 0;
     }
     .hero-bg::after {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
-      width: 100%; height: 100%;
-      background: linear-gradient(
-        155deg,
-        rgba(7,9,14,.62) 0%,
-        rgba(7,9,14,.45) 45%,
-        rgba(10,24,20,.55) 100%
-      );
+      background:
+        radial-gradient(ellipse 60% 50% at 30% 40%, rgba(27,107,107,.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 70% 70%, rgba(16,185,129,.08) 0%, transparent 60%);
     }
     .hero > * { position: relative; z-index: 1; }
     .hero-logo {
@@ -259,47 +255,43 @@
       <div class="hero-bg"></div>
 
       <div class="hero-logo">
-        <div class="hero-logo-icon">O</div>
-        <div>
-          <div class="hero-logo-text">Ocupacional</div>
-          <div class="hero-logo-sub">PLATAFORMA DE ENGENHARIA OCUPACIONAL</div>
-        </div>
+        <img src="https://ocupacional.com.br/site/wp-content/uploads/2021/01/logoocp-8.png" alt="Ocupacional" style="height:28px;width:auto;filter:brightness(0) invert(1);">
       </div>
 
       <div class="hero-content">
-        <div class="hero-badge">Plataforma SST v2.4</div>
-        <h1>Gestão inteligente<br>de <em>medições ocupacionais</em></h1>
+        <div class="hero-badge">Plataforma Operacional · Higiene Ocupacional e SST</div>
+        <h1>Do Planner ao laudo.<br>Tudo <em>rastreável</em>.</h1>
         <p class="hero-sub">
-          Planeje, execute, acompanhe e valide medições ocupacionais
-          do planejamento ao laboratório — tudo em um só lugar.
+          Planeje, execute e valide medições ocupacionais —
+          do sync com o Planner até a geração do laudo, sem retrabalho.
         </p>
         <div class="hero-cards">
           <div class="hero-card">
-            <div class="hero-card-icon">📋</div>
+            <div class="hero-card-icon">📆</div>
             <div>
-              <div class="hero-card-title">Planejamento</div>
-              <div class="hero-card-desc">Organize demandas, equipes e cronogramas</div>
+              <div class="hero-card-title">Planner integrado</div>
+              <div class="hero-card-desc">OS criadas automaticamente a partir das tasks</div>
             </div>
           </div>
           <div class="hero-card">
-            <div class="hero-card-icon">📍</div>
+            <div class="hero-card-icon">🏗️</div>
             <div>
-              <div class="hero-card-title">Campo</div>
-              <div class="hero-card-desc">Coleta com planilha mobile, autosave</div>
+              <div class="hero-card-title">Campo offline</div>
+              <div class="hero-card-desc">PWA com dados pré-carregados e assinatura digital</div>
             </div>
           </div>
           <div class="hero-card">
-            <div class="hero-card-icon">🔬</div>
+            <div class="hero-card-icon">🧪</div>
             <div>
               <div class="hero-card-title">Laboratório</div>
-              <div class="hero-card-desc">Amostradores, SLA e resultados em tempo real</div>
+              <div class="hero-card-desc">Cadeia de custódia e status de amostradores</div>
             </div>
           </div>
           <div class="hero-card">
-            <div class="hero-card-icon">📄</div>
+            <div class="hero-card-icon">📊</div>
             <div>
-              <div class="hero-card-title">Relatórios</div>
-              <div class="hero-card-desc">Laudos, auditorias e exportação PDF/Excel</div>
+              <div class="hero-card-title">Analytics</div>
+              <div class="hero-card-desc">Métricas de produtividade e indicadores operacionais</div>
             </div>
           </div>
         </div>
@@ -315,12 +307,11 @@
     <!-- Panel -->
     <div class="panel">
       <div class="form-logo">
-        <div class="form-logo-icon">O</div>
-        <div class="form-logo-text">Ocupacional SST</div>
+        <img src="https://ocupacional.com.br/site/wp-content/uploads/2021/01/logoocp-8.png" alt="Ocupacional" style="height:22px;width:auto;filter:brightness(0) invert(1);">
       </div>
 
       <h2>Criar conta</h2>
-      <p class="panel-sub">Preencha seus dados para acessar o portal</p>
+      <p class="panel-sub">Apenas e-mails <strong style="color:var(--text)">@ocupacional.com.br</strong> são aceitos</p>
 
       {% if erro %}
       <div class="erro">{{ erro }}</div>
@@ -333,7 +324,8 @@
         </div>
         <div class="field">
           <label>E-mail <span style="color:#E05252">*</span></label>
-          <input type="email" name="email" placeholder="seu@email.com" required>
+          <input type="email" name="email" id="email-input" placeholder="seu.nome@ocupacional.com.br" required>
+          <div class="hint" id="email-hint">Use seu e-mail corporativo @ocupacional.com.br</div>
         </div>
         <div class="field">
           <label>Registro MTE</label>
@@ -349,9 +341,25 @@
 
       <div class="panel-footer">
         Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a>
+        &nbsp;·&nbsp; <a href="/">Início</a>
       </div>
     </div>
 
   </div>
+
+<script>
+  const emailInput = document.getElementById('email-input');
+  const hint = document.getElementById('email-hint');
+  emailInput.addEventListener('blur', function() {
+    const val = this.value.trim().toLowerCase();
+    if (val && !val.endsWith('@ocupacional.com.br')) {
+      hint.style.color = '#E05252';
+      hint.textContent = '⚠ Apenas e-mails @ocupacional.com.br são aceitos';
+    } else {
+      hint.style.color = '';
+      hint.textContent = 'Use seu e-mail corporativo @ocupacional.com.br';
+    }
+  });
+</script>
 </body>
 </html>
