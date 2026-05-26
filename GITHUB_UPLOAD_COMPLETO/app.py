@@ -30,16 +30,24 @@ MODEL_DIR  = os.path.join(BASE_DIR, 'modelo_unpacked')
 
 # ── Modulo Controle de Medicoes e Amostradores (isolado via Blueprint) ─
 try:
-    from controle import controle_bp, auth_bp, login_manager, init_db as _controle_init_db, mobile_bp
+    from controle import controle_bp, auth_bp, login_manager, init_db as _controle_init_db
     from controle.db import get_db, row_to_dict, registrar_evento
     login_manager.init_app(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(controle_bp)
-    app.register_blueprint(mobile_bp)
     _controle_init_db()
 except Exception as _e:
     import traceback
     print(f'[controle] erro ao carregar modulo: {_e}')
+    traceback.print_exc()
+
+try:
+    from controle.mobile import mobile_bp
+    app.register_blueprint(mobile_bp)
+    print('[mobile] blueprint registrado OK')
+except Exception as _me:
+    import traceback
+    print(f'[mobile] erro ao carregar blueprint: {_me}')
     traceback.print_exc()
 
 # ── Scheduler: sync automático Microsoft Planner ──────────────────────
