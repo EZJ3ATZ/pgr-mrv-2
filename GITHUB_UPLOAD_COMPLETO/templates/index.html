@@ -1170,6 +1170,160 @@
       /* Full width nos botões de ação primária */
       .page-head .btn-primary { width: 100%; justify-content: center; }
     }
+
+    /* ═══ SISTEMA DE AJUDA CONTEXTUAL ═══════════════════════════════ */
+    [data-tip] { position: relative; cursor: help; }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%);
+      background: #1A2030; border: 1px solid #273050; color: #E8EDF5;
+      font-size: .71rem; line-height: 1.5; padding: 8px 11px;
+      border-radius: 8px; white-space: pre-line; max-width: 240px; min-width: 120px;
+      text-align: left; pointer-events: none; opacity: 0; transition: opacity .18s;
+      z-index: 9999; font-weight: 400; letter-spacing: 0; text-transform: none; cursor: default;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    [data-tip]:hover::after { opacity: 1; }
+    [data-tip].tip-right::after { left: 100%; bottom: 50%; transform: translateY(50%); margin-left: 8px; }
+
+    .help-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 15px; height: 15px; background: rgba(27,107,107,.2);
+      border: 1px solid rgba(27,107,107,.35); border-radius: 50%;
+      font-size: .58rem; font-weight: 700; color: var(--orange);
+      cursor: pointer; flex-shrink: 0; transition: background .15s;
+      margin-left: 4px; vertical-align: middle; line-height: 1;
+    }
+    .help-badge:hover { background: rgba(27,107,107,.4); }
+
+    /* ═══ FLUXO OPERACIONAL ══════════════════════════════════════════ */
+    .fluxo-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 20px 22px; margin-bottom: 28px;
+    }
+    .fluxo-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .fluxo-head-label {
+      font-size: .69rem; font-weight: 700; color: var(--text3);
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+    .fluxo-head-link {
+      font-size: .72rem; color: var(--orange); cursor: pointer;
+      font-weight: 500; border: none; background: none; font-family: inherit;
+      padding: 0;
+    }
+    .fluxo-head-link:hover { text-decoration: underline; }
+    .fluxo-chain {
+      display: flex; align-items: center; gap: 0;
+      overflow-x: auto; padding-bottom: 6px;
+    }
+    .fluxo-chain::-webkit-scrollbar { height: 3px; }
+    .fluxo-chain::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    .fluxo-node {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      min-width: 72px; cursor: pointer;
+      position: relative;
+    }
+    .fluxo-node:hover .fluxo-ball { border-color: var(--orange); transform: scale(1.08); }
+    .fluxo-ball {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; border: 2px solid var(--border2);
+      background: var(--surface2); transition: all .18s; flex-shrink: 0;
+    }
+    .fluxo-node.done .fluxo-ball { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.5); }
+    .fluxo-node.active .fluxo-ball { background: rgba(27,107,107,.15); border-color: var(--orange); box-shadow: 0 0 0 3px rgba(27,107,107,.15); }
+    .fluxo-lbl {
+      font-size: .58rem; color: var(--text3); text-align: center; line-height: 1.3; max-width: 64px;
+    }
+    .fluxo-node.done .fluxo-lbl { color: rgba(16,185,129,.8); }
+    .fluxo-node.active .fluxo-lbl { color: var(--orange); font-weight: 600; }
+    .fluxo-arr { color: var(--border2); font-size: .7rem; margin: 0 1px; padding-bottom: 18px; flex-shrink: 0; }
+    .fluxo-footer {
+      display: flex; gap: 16px; margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .fluxo-leg { display: flex; align-items: center; gap: 5px; font-size: .63rem; color: var(--text3); }
+    .fluxo-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ═══ ONBOARDING MODAL ═══════════════════════════════════════════ */
+    .ob-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.82);
+      backdrop-filter: blur(8px); z-index: 9990;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    .ob-overlay.ob-hidden { display: none; }
+    .ob-modal {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 18px; width: 100%; max-width: 520px;
+      padding: 32px 36px 28px; position: relative;
+      box-shadow: 0 40px 100px rgba(0,0,0,.75); max-height: 92vh; overflow-y: auto;
+    }
+    .ob-skip {
+      position: absolute; top: 14px; right: 14px;
+      background: none; border: none; color: var(--text3);
+      font-size: .73rem; cursor: pointer; padding: 4px 9px;
+      border-radius: 6px; transition: color .15s, background .15s; font-family: inherit;
+    }
+    .ob-skip:hover { color: var(--text2); background: rgba(255,255,255,.05); }
+    .ob-prog { display: flex; gap: 4px; margin-bottom: 26px; }
+    .ob-prog-seg { height: 3px; border-radius: 3px; background: var(--border2); flex: 1; transition: background .3s; }
+    .ob-prog-seg.ob-active { background: var(--orange); }
+    .ob-prog-seg.ob-done { background: var(--green); }
+    .ob-step { display: none; }
+    .ob-step.ob-active { display: block; }
+    .ob-icon { font-size: 2rem; margin-bottom: 12px; }
+    .ob-h { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; color: var(--text); margin-bottom: 8px; line-height: 1.25; }
+    .ob-h span { color: var(--orange); }
+    .ob-p { font-size: .85rem; color: var(--text2); line-height: 1.65; margin-bottom: 20px; }
+    .ob-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+    .ob-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 9px; padding: 10px 13px;
+    }
+    .ob-row-n {
+      width: 20px; height: 20px; background: rgba(27,107,107,.2); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .61rem; font-weight: 700; color: var(--orange); flex-shrink: 0; margin-top: 1px;
+    }
+    .ob-row-e { font-size: .9rem; flex-shrink: 0; }
+    .ob-row-t { font-size: .79rem; color: var(--text); line-height: 1.4; }
+    .ob-row-t small { color: var(--text2); font-size: .71rem; display: block; margin-top: 2px; }
+    .ob-row.ob-hl { border-color: rgba(27,107,107,.3); background: rgba(27,107,107,.06); }
+    .ob-benefits { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 22px; }
+    .ob-benefit { background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; padding: 11px 12px; }
+    .ob-benefit-icon { font-size: 1rem; margin-bottom: 4px; }
+    .ob-benefit-t { font-size: .78rem; font-weight: 600; color: var(--text); }
+    .ob-benefit-d { font-size: .71rem; color: var(--text2); line-height: 1.4; margin-top: 2px; }
+    .ob-tip-box {
+      background: rgba(27,107,107,.07); border: 1px solid rgba(27,107,107,.2);
+      border-radius: 9px; padding: 10px 13px; font-size: .78rem; color: var(--text2);
+      line-height: 1.55; margin-bottom: 20px;
+    }
+    .ob-tip-box strong { color: var(--orange); }
+    .ob-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+    .ob-btn-p {
+      flex: 1; background: var(--orange); color: #fff; border: none;
+      border-radius: 9px; padding: 11px 20px; font-size: .86rem; font-weight: 700;
+      cursor: pointer; transition: background .18s; font-family: inherit;
+    }
+    .ob-btn-p:hover { background: var(--orange-d); }
+    .ob-btn-s {
+      background: transparent; border: 1px solid var(--border2); color: var(--text2);
+      border-radius: 9px; padding: 11px 15px; font-size: .83rem;
+      cursor: pointer; transition: background .15s; font-family: inherit;
+    }
+    .ob-btn-s:hover { background: var(--surface2); }
+    .ob-finish-icon { font-size: 3rem; text-align: center; margin: 12px 0 16px; }
+    @media (max-width: 480px) {
+      .ob-modal { padding: 24px 20px 20px; }
+      .ob-benefits { grid-template-columns: 1fr; }
+      .fluxo-node { min-width: 60px; }
+    }
   </style>
 </head>
 <body>
@@ -1421,6 +1575,12 @@
       </svg>
       <span>Ajuda</span>
     </div>
+    <div class="sidebar-item" onclick="obOpen()" style="color:var(--orange);opacity:.8;" title="Abrir guia de início rápido">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span>Guia Oper&#227;o</span>
+    </div>
 
     <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" title="Observabilidade e saúde do sistema">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -1532,6 +1692,52 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Fluxo Operacional Visual ── -->
+  <div class="fluxo-wrap" id="fluxo-widget">
+    <div class="fluxo-head">
+      <span class="fluxo-head-label">🔄 Fluxo operacional de medi&#231;&#245;es</span>
+      <button class="fluxo-head-link" onclick="obOpen()">? Ver guia completo</button>
+    </div>
+    <div class="fluxo-chain" id="fluxo-chain">
+      <div class="fluxo-node" data-tip="Tarefa criada no Planner com etiqueta MEDIÇÕES. Ponto de partida de toda demanda." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demand',null),400);">
+        <div class="fluxo-ball">📋</div><div class="fluxo-lbl">Planner</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Equipe define data, técnicos responsáveis e equipamentos necessários antes de ir a campo." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan',null),400);">
+        <div class="fluxo-ball">📅</div><div class="fluxo-lbl">Planejamento</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Visita técnica à empresa. Coleta de dados de campo com amostradores calibrados." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),400);">
+        <div class="fluxo-ball">🏗️</div><div class="fluxo-lbl">Campo</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Técnico responsável assina a folha de campo. Garante rastreabilidade legal." onclick="goToTab('controle'); ctrlInit();">
+        <div class="fluxo-ball">✍️</div><div class="fluxo-lbl">Assinatura</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Relatório resumindo o que foi medido, condições de campo e observações técnicas." onclick="goToTab('relatorios');">
+        <div class="fluxo-ball">📝</div><div class="fluxo-lbl">Relatório de Visita</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Amostradores enviados ao laboratório para análise química ou físico-química." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('stock',null),400);">
+        <div class="fluxo-ball">🧪</div><div class="fluxo-lbl">Laboratório</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Laboratório retorna os resultados analíticos (concentração, dose, IBUTG etc)." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('stock',null),400);">
+        <div class="fluxo-ball">📊</div><div class="fluxo-lbl">Resultado</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Laudo técnico gerado com os resultados. Comparação com limites da NR-15." onclick="goToTab('ruido');">
+        <div class="fluxo-ball">📄</div><div class="fluxo-lbl">Laudo</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Indicadores consolidados: empresas atendidas, conformidade, histórico de medições." onclick="goToTab('indicadores');">
+        <div class="fluxo-ball">📈</div><div class="fluxo-lbl">Analytics</div>
+      </div><div class="fluxo-arr">›</div>
+      <div class="fluxo-node" data-tip="Histórico completo de todas as medições da empresa. Base para o PGR e auditorias." onclick="goToTab('indicadores');">
+        <div class="fluxo-ball">🗂️</div><div class="fluxo-lbl">Histórico</div>
+      </div>
+    </div>
+    <div class="fluxo-footer">
+      <div class="fluxo-leg"><div class="fluxo-dot" style="background:var(--green)"></div>Conclu&#237;do</div>
+      <div class="fluxo-leg"><div class="fluxo-dot" style="background:var(--orange)"></div>Em andamento</div>
+      <div class="fluxo-leg"><div class="fluxo-dot" style="background:var(--border2)"></div>Aguardando</div>
+      <div style="margin-left:auto;font-size:.62rem;color:var(--text3);">Clique em qualquer etapa para ir ao m&#243;dulo</div>
     </div>
   </div>
 
@@ -3912,43 +4118,119 @@
 
 <!-- ══ Painel AJUDA ════════════════════════════════════════════════════ -->
 <div id="tab-ajuda" class="tab-panel">
-<div class="page" style="max-width:600px;">
+<div class="page" style="max-width:700px;">
   <div class="page-head">
-    <div class="page-title">Ajuda & Documentação</div>
-    <div class="page-sub">Guias completos de todos os módulos do sistema</div>
+    <div class="page-title">Central de Ajuda</div>
+    <div class="page-sub">Guias, fluxo operacional, passo a passo e FAQ</div>
   </div>
 
-  <div style="display:flex;flex-direction:column;gap:16px;">
+  <!-- Ações rápidas -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+    <button onclick="obOpen()" style="background:rgba(27,107,107,.1);border:1px solid rgba(27,107,107,.3);border-radius:11px;padding:18px;text-align:left;cursor:pointer;transition:all .15s;font-family:inherit;" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='rgba(27,107,107,.3)'">
+      <div style="font-size:1.4rem;margin-bottom:6px;">🗺️</div>
+      <div style="font-size:.84rem;font-weight:700;color:var(--text);margin-bottom:3px;">Guia de Operação</div>
+      <div style="font-size:.73rem;color:var(--text2);">Tour guiado em 5 telas — ideal para quem está começando</div>
+    </button>
     <a href="/controle/ajuda" target="_blank" style="text-decoration:none;">
-      <div style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.25);border-radius:12px;padding:24px 28px;display:flex;align-items:center;gap:20px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(45,212,191,.5)'" onmouseout="this.style.borderColor='rgba(45,212,191,.25)'">
-        <div style="font-size:36px;">📚</div>
-        <div>
-          <div style="font-size:16px;font-weight:700;color:#E8EDF5;margin-bottom:4px;">Abrir Central de Ajuda</div>
-          <div style="font-size:13px;color:#7A8FA8;">Guia completo com todos os módulos, passo a passo e FAQ</div>
-        </div>
-        <div style="margin-left:auto;font-size:18px;color:#2DD4BF;">→</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:1.4rem;margin-bottom:6px;">📚</div>
+        <div style="font-size:.84rem;font-weight:700;color:var(--text);margin-bottom:3px;">Central de Ajuda Completa</div>
+        <div style="font-size:.73rem;color:var(--text2);">Documentação detalhada de cada módulo + FAQ</div>
       </div>
     </a>
+  </div>
 
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;">
-      <div style="font-size:.82rem;font-weight:700;color:#7A8FA8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Links rápidos</div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <a href="/controle/ajuda#pgr"     target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">📋 Como gerar um PGR</a>
-        <a href="/controle/ajuda#ruido"   target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">🔊 Laudo de Ruído</a>
-        <a href="/controle/ajuda#calor"   target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">🔥 Laudo de Calor</a>
-        <a href="/controle/ajuda#amostrador" target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">📦 Controle de Amostradores</a>
-        <a href="/controle/admin/usuarios" target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">👥 Gerenciar usuários (Admin)</a>
-        <a href="/controle/empresas/pendentes/page" target="_blank" style="font-size:13px;color:#2DD4BF;text-decoration:none;">🏢 Empresas pendentes</a>
+  <!-- Hierarquia de ajuda -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:14px;">
+    <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Como encontrar ajuda no sistema</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:26px;height:26px;background:rgba(27,107,107,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--orange);flex-shrink:0;">A</div>
+        <div><div style="font-size:.81rem;font-weight:600;color:var(--text);">Tooltip rápido</div><div style="font-size:.73rem;color:var(--text2);line-height:1.5;margin-top:2px;">Passe o mouse sobre campos e ícones com <span style="border-bottom:1px dotted var(--text3);">sublinhado pontilhado</span> para ver uma explicação instantânea.</div></div>
       </div>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:20px 24px;">
-      <div style="font-size:.88rem;font-weight:700;color:#22C55E;margin-bottom:8px;">📞 Suporte</div>
-      <div style="font-size:13px;color:#7A8FA8;line-height:1.7;">
-        <strong style="color:#E8EDF5;">E-mail:</strong> engenharia19@ocupacional.com.br
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:26px;height:26px;background:rgba(96,165,250,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--blue);flex-shrink:0;">B</div>
+        <div><div style="font-size:.81rem;font-weight:600;color:var(--text);">Ajuda contextual da tela</div><div style="font-size:.73rem;color:var(--text2);line-height:1.5;margin-top:2px;">Cada seção tem explicação embutida do que aquela tela faz e por que existe operacionalmente.</div></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:26px;height:26px;background:rgba(167,139,250,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--purple);flex-shrink:0;">C</div>
+        <div><div style="font-size:.81rem;font-weight:600;color:var(--text);">Central de Ajuda</div><div style="font-size:.73rem;color:var(--text2);line-height:1.5;margin-top:2px;">Passos detalhados, campos obrigatórios, exemplos práticos e FAQ por módulo.</div></div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;">
+        <div style="width:26px;height:26px;background:rgba(16,185,129,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--green);flex-shrink:0;">D</div>
+        <div><div style="font-size:.81rem;font-weight:600;color:var(--text);">Fluxo operacional visual</div><div style="font-size:.73rem;color:var(--text2);line-height:1.5;margin-top:2px;">Na tela inicial — mostra a sequência completa Planner → Campo → Laboratório → Laudo. Clique em qualquer etapa.</div></div>
       </div>
     </div>
   </div>
+
+  <!-- Módulos explicados -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:14px;">
+    <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">O que cada módulo faz</div>
+    <div style="display:flex;flex-direction:column;">
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
+        <span style="width:20px;flex-shrink:0;">📌</span>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Demandas / OS</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Demandas do Planner com etiqueta MEDIÇÕES. Ponto de partida de toda medição.</div></div>
+        <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('plan',null),400);">
+        <span style="width:20px;flex-shrink:0;">📅</span>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Planejamento</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Data, equipe, agentes e amostradores — organizado antes de ir a campo.</div></div>
+        <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('stock',null),400);">
+        <span style="width:20px;flex-shrink:0;">📦</span>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Amostradores</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Estoque, validade, envio ao lab, resultado. Alerta de vencimento em ≤30 dias.</div></div>
+        <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('empresas');">
+        <span style="width:20px;flex-shrink:0;">🏢</span>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Empresas</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Cadastro de clientes. Reconhecimento automático por nome/CNPJ/OS.</div></div>
+        <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('consistencia');">
+        <span style="width:20px;flex-shrink:0;">⚠️</span>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Consistência Operacional</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Detecta OS paradas, amostradores vencendo, duplicatas. Roda diariamente às 06h.</div></div>
+        <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:9px 0;cursor:pointer;" onclick="goToTab('indicadores');">
+        <span style="width:20px;flex-shrink:0;">📊</span>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Indicadores</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">KPIs: total de medições, conformidade, empresas, histórico mensal.</div></div>
+        <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ inline -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:14px;">
+    <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">Perguntas frequentes</div>
+    <div style="display:flex;flex-direction:column;">
+      <div style="border-bottom:1px solid var(--border);">
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'" style="padding:11px 0;cursor:pointer;font-size:.82rem;font-weight:500;color:var(--text);display:flex;justify-content:space-between;align-items:center;">Por que uma demanda do Planner não aparece? <span style="color:var(--text3);font-size:.75rem;">▼</span></div>
+        <div style="display:none;padding:0 0 12px;font-size:.78rem;color:var(--text2);line-height:1.6;">A tarefa precisa ter a etiqueta <strong style="color:var(--text)">MEDIÇÕES</strong> no Planner. Aguarde até 15min ou force o sync manual. Se a empresa não foi vinculada, a demanda pode estar em Empresas Pendentes.</div>
+      </div>
+      <div style="border-bottom:1px solid var(--border);">
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'" style="padding:11px 0;cursor:pointer;font-size:.82rem;font-weight:500;color:var(--text);display:flex;justify-content:space-between;align-items:center;">Como cadastrar uma empresa nova? <span style="color:var(--text3);font-size:.75rem;">▼</span></div>
+        <div style="display:none;padding:0 0 12px;font-size:.78rem;color:var(--text2);line-height:1.6;">Acesse <strong style="color:var(--text)">Cadastros → Empresas → Nova empresa</strong>. Informe nome e CNPJ. Se chegou pelo Planner como pendente, use <strong style="color:var(--text)">Empresas Pendentes</strong> para confirmar.</div>
+      </div>
+      <div style="border-bottom:1px solid var(--border);">
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'" style="padding:11px 0;cursor:pointer;font-size:.82rem;font-weight:500;color:var(--text);display:flex;justify-content:space-between;align-items:center;">Amostrador aparece como vencido mas foi renovado. Como corrigir? <span style="color:var(--text3);font-size:.75rem;">▼</span></div>
+        <div style="display:none;padding:0 0 12px;font-size:.78rem;color:var(--text2);line-height:1.6;">Localize o amostrador pelo código em <strong style="color:var(--text)">Controle de Amostradores</strong> e atualize a data de validade do certificado.</div>
+      </div>
+      <div>
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'" style="padding:11px 0;cursor:pointer;font-size:.82rem;font-weight:500;color:var(--text);display:flex;justify-content:space-between;align-items:center;">Os dados somem após redeploy? <span style="color:var(--text3);font-size:.75rem;">▼</span></div>
+        <div style="display:none;padding:0 0 12px;font-size:.78rem;color:var(--text2);line-height:1.6;">Não. O sistema usa <strong style="color:var(--text)">PostgreSQL com volume persistente</strong> no Railway — todos os dados são preservados entre deploys.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suporte -->
+  <div style="background:var(--surface);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:16px 20px;">
+    <div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:5px;">📞 Suporte</div>
+    <div style="font-size:.78rem;color:var(--text2);line-height:1.7;">
+      <strong style="color:var(--text);">E-mail:</strong> engenharia19@ocupacional.com.br
+    </div>
+  </div>
+
 </div>
 </div>
 
@@ -11182,6 +11464,225 @@ function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   ONBOARDING — sistema de ensino do fluxo operacional
+   ════════════════════════════════════════════════════════════════════ */
+(function(){
+  const OB_KEY = 'ob_v2_done';
+  const TOTAL  = 5;
+  let   _cur   = 1;
+
+  function render(n) {
+    _cur = n;
+    document.querySelectorAll('.ob-step').forEach((s,i) => {
+      s.classList.toggle('ob-active', i+1 === n);
+    });
+    document.querySelectorAll('.ob-prog-seg').forEach((d,i) => {
+      d.classList.toggle('ob-done',   i+1 < n);
+      d.classList.toggle('ob-active', i+1 === n);
+    });
+    const prev = document.getElementById('ob-prev');
+    if (prev) prev.style.display = n <= 1 ? 'none' : '';
+  }
+
+  window.obOpen = function() {
+    document.getElementById('ob-overlay').classList.remove('ob-hidden');
+    render(1);
+  };
+  window.obClose = function() {
+    document.getElementById('ob-overlay').classList.add('ob-hidden');
+    localStorage.setItem(OB_KEY, '1');
+  };
+  window.obNext = function() {
+    if (_cur < TOTAL) render(_cur + 1);
+    else obClose();
+  };
+  window.obPrev = function() {
+    if (_cur > 1) render(_cur - 1);
+  };
+  window.obFinish = function(tabName) {
+    obClose();
+    if (tabName) { goToTab(tabName); if (tabName==='controle'){ ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),400); } }
+  };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!localStorage.getItem(OB_KEY)) {
+      setTimeout(() => { if (document.getElementById('ob-overlay')) obOpen(); }, 900);
+    }
+  });
+})();
 </script>
+
+<!-- ══ MODAL ONBOARDING ═════════════════════════════════════════════ -->
+<div id="ob-overlay" class="ob-overlay ob-hidden" onclick="if(event.target===this)obClose()">
+  <div class="ob-modal">
+    <button class="ob-skip" onclick="obClose()">Pular ✕</button>
+
+    <!-- barra de progresso -->
+    <div class="ob-prog">
+      <div class="ob-prog-seg ob-active"></div>
+      <div class="ob-prog-seg"></div>
+      <div class="ob-prog-seg"></div>
+      <div class="ob-prog-seg"></div>
+      <div class="ob-prog-seg"></div>
+    </div>
+
+    <!-- ── PASSO 1: Boas-vindas ── -->
+    <div class="ob-step ob-active">
+      <div class="ob-icon">👋</div>
+      <div class="ob-h">Bem-vindo à <span>Plataforma SST</span></div>
+      <div class="ob-p">
+        Este sistema foi feito para <strong style="color:var(--text)">eliminar planilhas manuais</strong> e centralizar todo o controle de medições ocupacionais — do planejamento da visita ao laudo final.
+      </div>
+      <div class="ob-tip-box">
+        <strong>O que você vai encontrar aqui:</strong><br>
+        Demandas do Planner · Planejamento de visitas · Controle de amostradores · Envio ao laboratório · Geração de laudos · Indicadores e histórico completo.
+      </div>
+      <div class="ob-p" style="margin-bottom:0;font-size:.8rem;">
+        Este guia vai te mostrar como o sistema funciona em 4 telas rápidas. Você pode pular a qualquer momento.
+      </div>
+      <div class="ob-actions" style="margin-top:20px;">
+        <button class="ob-btn-p" onclick="obNext()">Próximo: o fluxo completo →</button>
+      </div>
+    </div>
+
+    <!-- ── PASSO 2: Fluxo Operacional ── -->
+    <div class="ob-step">
+      <div class="ob-icon">🔄</div>
+      <div class="ob-h">O <span>fluxo completo</span> de uma medição</div>
+      <div class="ob-p">Cada medição passa por estas etapas — o sistema acompanha tudo automaticamente:</div>
+      <div class="ob-rows">
+        <div class="ob-row ob-hl">
+          <div class="ob-row-n">1</div><div class="ob-row-e">📋</div>
+          <div class="ob-row-t"><strong>Planner</strong>
+            <small>Demanda criada no Microsoft Planner com etiqueta MEDIÇÕES. Sincroniza automático a cada 15min.</small></div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-n">2</div><div class="ob-row-e">📅</div>
+          <div class="ob-row-t"><strong>Planejamento</strong>
+            <small>Equipe define data, técnicos e equipamentos. Amostradores são reservados do estoque.</small></div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-n">3</div><div class="ob-row-e">🏗️</div>
+          <div class="ob-row-t"><strong>Campo</strong>
+            <small>Visita técnica. Coleta com amostradores calibrados. Dados registrados no sistema.</small></div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-n">4</div><div class="ob-row-e">🧪</div>
+          <div class="ob-row-t"><strong>Laboratório</strong>
+            <small>Amostradores enviados para análise. Sistema controla prazo e número de cadeia de custódia.</small></div>
+        </div>
+        <div class="ob-row">
+          <div class="ob-row-n">5</div><div class="ob-row-e">📄</div>
+          <div class="ob-row-t"><strong>Laudo &amp; Histórico</strong>
+            <small>Resultado inserido, laudo gerado automaticamente. Histórico permanente para auditorias.</small></div>
+        </div>
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-s" id="ob-prev" onclick="obPrev()">← Voltar</button>
+        <button class="ob-btn-p" onclick="obNext()">Próximo: como começar →</button>
+      </div>
+    </div>
+
+    <!-- ── PASSO 3: Como começar (passo a passo) ── -->
+    <div class="ob-step">
+      <div class="ob-icon">🗺️</div>
+      <div class="ob-h">Como <span>registrar uma medição</span></div>
+      <div class="ob-p">8 passos do início ao fim — você não precisa saber tudo agora, o sistema guia em cada tela:</div>
+      <div class="ob-rows">
+        <div class="ob-row"><div class="ob-row-n">1</div><div class="ob-row-e">🔍</div><div class="ob-row-t"><strong>Abra "Demandas / OS"</strong><small>Veja as demandas vindas do Planner para sua empresa.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">2</div><div class="ob-row-e">🏢</div><div class="ob-row-t"><strong>Selecione a empresa</strong><small>O sistema já associou automaticamente pela OS ou nome.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">3</div><div class="ob-row-e">📅</div><div class="ob-row-t"><strong>Crie o planejamento</strong><small>Defina data, técnico e o que vai ser medido (ruído, químico, calor).</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">4</div><div class="ob-row-e">📦</div><div class="ob-row-t"><strong>Reserve os amostradores</strong><small>Sistema verifica estoque e reserva automaticamente.</small></div></div>
+        <div class="ob-row ob-hl"><div class="ob-row-n">5</div><div class="ob-row-e">▶️</div><div class="ob-row-t"><strong>Execute a coleta</strong><small>Registre os dados de campo. O sistema salva automaticamente.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">6</div><div class="ob-row-e">📬</div><div class="ob-row-t"><strong>Envie ao laboratório</strong><small>Informe a data de envio e a cadeia de custódia.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">7</div><div class="ob-row-e">📊</div><div class="ob-row-t"><strong>Insira o resultado</strong><small>Concentração, dose ou IBUTG retornado pelo laboratório.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">8</div><div class="ob-row-e">📄</div><div class="ob-row-t"><strong>Gere o laudo</strong><small>DOCX com resultado, comparação com NR-15 e assinatura do técnico.</small></div></div>
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-s" onclick="obPrev()">← Voltar</button>
+        <button class="ob-btn-p" onclick="obNext()">Próximo: seus benefícios →</button>
+      </div>
+    </div>
+
+    <!-- ── PASSO 4: Benefícios práticos ── -->
+    <div class="ob-step">
+      <div class="ob-icon">💡</div>
+      <div class="ob-h">Por que usar o <span>sistema</span>?</div>
+      <div class="ob-p">Esses são os ganhos reais no dia a dia do setor de medições:</div>
+      <div class="ob-benefits">
+        <div class="ob-benefit">
+          <div class="ob-benefit-icon">♻️</div>
+          <div class="ob-benefit-t">Reuso de dados</div>
+          <div class="ob-benefit-d">Empresa, amostradores, técnicos — cadastre uma vez e reutilize sempre.</div>
+        </div>
+        <div class="ob-benefit">
+          <div class="ob-benefit-icon">🚫</div>
+          <div class="ob-benefit-t">Sem duplicidade</div>
+          <div class="ob-benefit-d">O sistema evita lançar a mesma OS duas vezes ou usar amostrador já enviado.</div>
+        </div>
+        <div class="ob-benefit">
+          <div class="ob-benefit-icon">🔍</div>
+          <div class="ob-benefit-t">Rastreabilidade total</div>
+          <div class="ob-benefit-d">Cada ação é registrada: quem fez, quando, com qual equipamento.</div>
+        </div>
+        <div class="ob-benefit">
+          <div class="ob-benefit-icon">⚖️</div>
+          <div class="ob-benefit-t">Suporte a auditoria</div>
+          <div class="ob-benefit-d">Histórico permanente disponível para fiscalização MTE e auditoria interna.</div>
+        </div>
+        <div class="ob-benefit">
+          <div class="ob-benefit-icon">⏱️</div>
+          <div class="ob-benefit-t">Menos tempo manual</div>
+          <div class="ob-benefit-d">O que levava horas em planilha, aqui leva minutos com formulários guiados.</div>
+        </div>
+        <div class="ob-benefit">
+          <div class="ob-benefit-icon">📡</div>
+          <div class="ob-benefit-t">Integração Planner</div>
+          <div class="ob-benefit-d">Demandas chegam automaticamente do Planner — sem copiar manualmente.</div>
+        </div>
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-s" onclick="obPrev()">← Voltar</button>
+        <button class="ob-btn-p" onclick="obNext()">Próximo: pronto! →</button>
+      </div>
+    </div>
+
+    <!-- ── PASSO 5: Pronto! ── -->
+    <div class="ob-step">
+      <div class="ob-finish-icon">🎯</div>
+      <div class="ob-h" style="text-align:center;">Você está pronto para <span>começar</span></div>
+      <div class="ob-p" style="text-align:center;">
+        Por onde você prefere começar?
+      </div>
+      <div class="ob-rows">
+        <div class="ob-row ob-hl" style="cursor:pointer;" onclick="obFinish('controle')">
+          <div class="ob-row-e">➕</div>
+          <div class="ob-row-t"><strong>Nova Medição</strong>
+            <small>Registrar uma nova coleta de campo agora.</small></div>
+        </div>
+        <div class="ob-row" style="cursor:pointer;" onclick="obFinish('controle')">
+          <div class="ob-row-e">📌</div>
+          <div class="ob-row-t"><strong>Ver Demandas do Planner</strong>
+            <small>Conferir as OS abertas vindas do Planner.</small></div>
+        </div>
+        <div class="ob-row" style="cursor:pointer;" onclick="obClose()">
+          <div class="ob-row-e">🏠</div>
+          <div class="ob-row-t"><strong>Explorar o painel</strong>
+            <small>Ver tudo com calma antes de começar.</small></div>
+        </div>
+      </div>
+      <div class="ob-tip-box" style="margin-top:4px;">
+        <strong>💡 Dica:</strong> Você pode acessar este guia novamente a qualquer momento pelo item <strong>Guia de Operação</strong> no menu lateral.
+      </div>
+      <div class="ob-actions" style="margin-top:8px;">
+        <button class="ob-btn-s" onclick="obPrev()">← Voltar</button>
+        <button class="ob-btn-p" onclick="obClose()">Entrar no sistema ✓</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
