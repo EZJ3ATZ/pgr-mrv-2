@@ -24,7 +24,10 @@
   <div id="syncBar" class="sync-bar online">
     <div class="sync-dot"></div>
     <span id="syncMsg">Online</span>
-    <button id="btnSync" class="btn btn-sm btn-ghost" style="margin-left:auto" onclick="syncOffline()">Sincronizar</button>
+    <button id="btnSync" class="btn btn-sm btn-ghost" style="margin-left:auto;position:relative" onclick="syncOffline()">
+      Sincronizar
+      <span id="syncBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;line-height:18px;text-align:center;font-weight:700"></span>
+    </button>
   </div>
 
   <div class="content" id="content">
@@ -94,6 +97,24 @@ function setOffline() { bar.className = 'sync-bar offline'; msg.textContent = 'O
 window.addEventListener('online',  setOnline);
 window.addEventListener('offline', setOffline);
 if (!navigator.onLine) setOffline();
+
+  // ── Contar itens pendentes no IDB ao carregar ──────────────────────────
+  async function atualizarBadgePendentes() {
+    try {
+      const db = await openIDB();
+      const all = await getAllQueued(db);
+      const badge = document.getElementById('syncBadge');
+      if (all.length > 0) {
+        badge.textContent = all.length;
+        badge.style.display = 'block';
+        msg.textContent = `${all.length} registro${all.length > 1 ? 's' : ''} pendente${all.length > 1 ? 's' : ''}`;
+        bar.className = 'sync-bar offline';
+      } else {
+        badge.style.display = 'none';
+      }
+    } catch (_) {}
+  }
+  atualizarBadgePendentes();
 
 // ── Sync manual dos dados offline ──────────────────────────────────────
 async function syncOffline() {

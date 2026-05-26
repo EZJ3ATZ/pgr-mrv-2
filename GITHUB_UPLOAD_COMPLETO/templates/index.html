@@ -1311,7 +1311,7 @@
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/>
       </svg>
-      <span>Amostradores</span>
+      <span>Amostradores <span id="badge-vencendo" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:.7rem;margin-left:4px"></span></span>
     </div>
   </div>
 
@@ -1669,6 +1669,11 @@
       <div class="home-stat-label">Empresas ativas</div>
       <div class="home-stat-value" id="hs-emp" style="color:var(--green);">—</div>
       <div class="home-stat-sub">com OS registradas</div>
+    </div>
+    <div class="home-stat" onclick="trocarAba('empresas');" style="cursor:pointer" title="Empresas aguardando validação">
+      <div class="home-stat-label">Empresas pendentes</div>
+      <div class="home-stat-value" id="hs-emp-pendentes" style="color:#f59e0b">0</div>
+      <div class="home-stat-sub">aguardando validação</div>
     </div>
   </div>
 
@@ -4159,6 +4164,14 @@ async function homeLoadStats() {
     set('hp-dem',  d.demandas_pendentes);
     set('hp-lab',  d.laboratorio);
   } catch(e) { /* silencioso */ }
+  // Buscar count empresas pendentes
+  try {
+    const ep = await fetch('/controle/empresas/pendentes');
+    if (ep.ok) {
+      const data = await ep.json();
+      if (Array.isArray(data)) set('hs-emp-pendentes', data.length);
+    }
+  } catch(_) {}
 }
 homeLoadStats();
 
@@ -5774,6 +5787,11 @@ async function ctrlLoadVencendo() {
   tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr>';
   try {
     const data = await ctrlFetch('/controle/amostradores_vencendo');
+    const badge = document.getElementById('badge-vencendo');
+    if (badge && data && data.amostradores && data.amostradores.length > 0) {
+      badge.textContent = data.amostradores.length;
+      badge.style.display = 'inline';
+    }
     const s = data.stats || {};
     stEl.innerHTML = `
       <div class="ctrl-stat red"><div class="ctrl-stat-label">🔴 Vencidos</div><div class="ctrl-stat-value">${s.vencidos||0}</div></div>
