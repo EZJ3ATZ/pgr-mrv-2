@@ -833,6 +833,8 @@ def sw_js():
 
 @app.route('/')
 def index():
+    if not current_user.is_authenticated:
+        return render_template('landing.html')
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
 
 
