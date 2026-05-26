@@ -1326,7 +1326,7 @@
     }
   </style>
 </head>
-<body>
+<body data-user="{{ current_user.email if current_user.is_authenticated else 'anon' }}">
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="mobileSidebarClose()"></div>
 
 <!-- ══ Header ══════════════════════════════════════════════════════════ -->
@@ -1349,7 +1349,7 @@
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
     </div>
-    <input type="text" id="global-search-input" placeholder="Buscar empresa, OS, agente..." autocomplete="off"
+    <input type="text" id="global-search-input" placeholder="Buscar empresa, OS, módulo ou escrever pergunta..." autocomplete="off"
       oninput="gsSearch(this.value)" onkeydown="gsKeyNav(event)" onfocus="gsSearch(this.value)" onblur="setTimeout(()=>gsHide(),180)">
     <span class="header-search-kbd" id="gs-kbd">Ctrl+K</span>
     <div id="gs-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;
@@ -10888,6 +10888,30 @@ function gsKeyNav(e) {
   }
 }
 
+// ── Detecção de pergunta vs busca ──────────────────────────────────
+const _GS_QUESTION_PATS = /^(como|o que|oque|por que|porque|quando|onde|qual|quais|me diz|me mostra|preciso|quero|tem como|existe|é possivel|é poss[íi]vel|n[ãa]o entendo|nao entendo|explica|o que [eé]|significa)/i;
+const _GS_MODULE_MAP = [
+  { keys:['demanda','os','ordem','planner','tarefa'], tab:'controle', sub:'demand', icon:'📌', label:'Demandas / OS', sub2:'Painel de demandas do Planner' },
+  { keys:['planejamento','visita','agendar','campo','agendar'], tab:'controle', sub:'plan', icon:'📅', label:'Planejamento de Visita', sub2:'Organizar visita de campo' },
+  { keys:['amostrador','estoque','laboratorio','laboratório','lab','envio','cadeia','custodia','custódia'], tab:'controle', sub:'stock', icon:'📦', label:'Amostradores', sub2:'Estoque, envio ao lab, resultado' },
+  { keys:['empresa','cnpj','cliente','cadastro'], tab:'empresas', sub:null, icon:'🏢', label:'Empresas', sub2:'Cadastro de clientes' },
+  { keys:['ruido','ruído','decibel','dB','nr-15','nr15','histograma','dosimetro','dosímetro'], tab:'ruido', sub:null, icon:'🔊', label:'Laudo de Ruído', sub2:'NR-15 Anexo 1' },
+  { keys:['calor','ibutg','temperatura','nr-15 an.3','termico','térmico'], tab:'calor', sub:null, icon:'🔥', label:'Laudo de Calor', sub2:'NR-15 Anexo 3 — IBUTG' },
+  { keys:['quimico','químico','agente','sílica','silica','chumbo','benzeno','niosh','osha','concentracao','concentração'], tab:'quimico', sub:null, icon:'⚗️', label:'Análise Química', sub2:'NR-15 Anexo 13' },
+  { keys:['pgr','programa','gerenciamento','risco','nr-1','nr1','ghe'], tab:'pgr', sub:null, icon:'📋', label:'Gerador de PGR', sub2:'NR-1' },
+  { keys:['indicador','grafico','gráfico','kpi','analytic','bi','relatorio','relatório'], tab:'bi', sub:null, icon:'📈', label:'Analytics BI', sub2:'Indicadores e gráficos' },
+  { keys:['consistencia','consistência','divergencia','divergência','alerta','verificacao','verificação'], tab:'consistencia', sub:null, icon:'⚠️', label:'Consistência Operacional', sub2:'Alertas e divergências' },
+  { keys:['coleta','planilha','campo','medicao','medição','digital'], tab:'coleta', sub:null, icon:'📋', label:'Coletas de Campo', sub2:'Planilhas digitais' },
+  { keys:['ajuda','help','tutorial','guia','como usar','nao sei','não sei'], tab:'ajuda', sub:null, icon:'❓', label:'Central de Ajuda', sub2:'Guias e passo a passo' },
+];
+
+function _gsModuleMatch(ql) {
+  for (const m of _GS_MODULE_MAP) {
+    if (m.keys.some(k => ql.includes(k))) return m;
+  }
+  return null;
+}
+
 async function gsSearch(q) {
   const d = document.getElementById('gs-dropdown');
   const kbd = document.getElementById('gs-kbd');
@@ -10899,50 +10923,95 @@ async function gsSearch(q) {
 
   const results = [];
   const ql = q.toLowerCase();
+  const isQuestion = _GS_QUESTION_PATS.test(q);
 
-  // Empresas (já carregadas em _empData)
-  if (window._empData && _empData.length) {
+  // ── Se for pergunta: detecta módulo relacionado e oferece ajuda ──
+  if (isQuestion) {
+    const mod = _gsModuleMatch(ql);
+    if (mod) {
+      results.push({
+        icon: mod.icon,
+        label: mod.label,
+        sub: `Ir para o módulo — ${mod.sub2}`,
+        tag: '→ módulo',
+        action: () => {
+          goToTab(mod.tab);
+          if (mod.sub) { try { ctrlInit(); setTimeout(()=>ctrlSwitchSub(mod.sub, null), 400); } catch(e){} }
+        }
+      });
+    }
+    results.push({
+      icon: '🗺️',
+      label: 'Abrir guia de operação',
+      sub: 'Tour completo: fluxo, passos e benefícios',
+      tag: '? ajuda',
+      action: () => obOpen()
+    });
+    results.push({
+      icon: '📚',
+      label: 'Central de Ajuda',
+      sub: 'Documentação completa com passo a passo e FAQ',
+      tag: '? ajuda',
+      action: () => goToTab('ajuda')
+    });
+  }
+
+  // ── Empresas (já carregadas em _empData) ──
+  if (!isQuestion && window._empData && _empData.length) {
     _empData.filter(e => (e.empresa_nome||'').toLowerCase().includes(ql)).slice(0,5).forEach(e => {
-      results.push({ icon:'🏢', label: e.empresa_nome, sub: `${e.total_demandas||0} demandas`, action: () => { showSection('controle'); ctrlSwitchTab('empresas'); setTimeout(()=>{ const el=document.getElementById('emp-busca'); if(el){el.value=q; empFiltrar();} },300); } });
+      results.push({ icon:'🏢', label: e.empresa_nome, sub: `${e.total_demandas||0} demandas`, action: () => { goToTab('controle'); ctrlInit(); setTimeout(()=>{ const el=document.getElementById('emp-busca'); if(el){el.value=q; empFiltrar();} },300); } });
     });
   }
 
-  // Agentes/amostradores (carregados em _agData)
-  if (window._agData && _agData.length) {
+  // ── Agentes/amostradores ──
+  if (!isQuestion && window._agData && _agData.length) {
     _agData.filter(a => (a.nome||a.agente||'').toLowerCase().includes(ql) || (a.cas||'').toLowerCase().includes(ql) || (a.metodo||'').toLowerCase().includes(ql)).slice(0,4).forEach(a => {
-      results.push({ icon:'⚗️', label: a.nome || a.agente || '?', sub: `CAS ${a.cas||'—'} · ${a.metodo||''}`, action: () => { showSection('controle'); ctrlSwitchTab('agentes'); setTimeout(()=>{ const el=document.getElementById('ag-busca'); if(el){el.value=q; agFiltrar();} },300); } });
+      results.push({ icon:'⚗️', label: a.nome || a.agente || '?', sub: `CAS ${a.cas||'—'} · ${a.metodo||''}`, action: () => { goToTab('controle'); ctrlInit(); setTimeout(()=>{ const el=document.getElementById('ag-busca'); if(el){el.value=q; agFiltrar();} },300); } });
     });
   }
 
-  // Se nada carregado ainda, oferece navegação rápida por seção
-  if (!results.length) {
-    const sections = [
-      { key:'pgr', icon:'📄', label:'PGR', sub:'Gerar documento PGR' },
-      { key:'calor', icon:'🌡️', label:'Laudo de Calor', sub:'Gerar laudo IBUTG' },
-      { key:'quimico', icon:'⚗️', label:'Análise Química', sub:'Laudo de agentes químicos' },
-      { key:'controle', icon:'📊', label:'Controle', sub:'Medições e amostradores' },
-      { key:'bi', icon:'📈', label:'Analytics BI', sub:'Indicadores e gráficos' },
-      { key:'coleta', icon:'📋', label:'Coletas de Campo', sub:'Planilhas digitais' },
-    ];
-    sections.filter(s => s.label.toLowerCase().includes(ql) || s.sub.toLowerCase().includes(ql)).forEach(s => {
-      results.push({ icon:s.icon, label:s.label, sub:s.sub, action:()=>showSection(s.key) });
-    });
+  // ── Navegação por módulo (match direto) ──
+  if (!results.length || (!isQuestion && results.length < 2)) {
+    const mod = _gsModuleMatch(ql);
+    if (mod && !results.find(r => r.label === mod.label)) {
+      results.push({ icon: mod.icon, label: mod.label, sub: mod.sub2, action: () => {
+        goToTab(mod.tab);
+        if (mod.sub) { try { ctrlInit(); setTimeout(()=>ctrlSwitchSub(mod.sub, null), 400); } catch(e){} }
+      }});
+    }
+    // fallback: seções genéricas
+    if (!results.length) {
+      const sections = [
+        { key:'pgr', icon:'📄', label:'PGR', sub:'Gerar documento PGR' },
+        { key:'calor', icon:'🌡️', label:'Laudo de Calor', sub:'Gerar laudo IBUTG' },
+        { key:'quimico', icon:'⚗️', label:'Análise Química', sub:'Laudo de agentes químicos' },
+        { key:'controle', icon:'📊', label:'Controle', sub:'Medições e amostradores' },
+        { key:'bi', icon:'📈', label:'Analytics BI', sub:'Indicadores e gráficos' },
+        { key:'coleta', icon:'📋', label:'Coletas de Campo', sub:'Planilhas digitais' },
+      ];
+      sections.filter(s => s.label.toLowerCase().includes(ql) || s.sub.toLowerCase().includes(ql)).forEach(s => {
+        results.push({ icon:s.icon, label:s.label, sub:s.sub, action:()=>goToTab(s.key) });
+      });
+    }
   }
 
   if (!results.length) {
-    d.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text3);font-size:.83rem;">Nenhum resultado para "<b>${q}</b>"</div>`;
+    d.innerHTML = `<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;flex-direction:column;">
+      <div style="color:var(--text3);font-size:.83rem;text-align:center;">Nenhum resultado para "<b style="color:var(--text)">${_esc(q)}</b>"</div>
+      <button onclick="obOpen();gsHide();" style="background:rgba(27,107,107,.15);border:1px solid rgba(27,107,107,.3);border-radius:7px;padding:7px 14px;font-size:.78rem;color:var(--orange);cursor:pointer;font-family:inherit;">🗺️ Abrir guia de operação</button>
+    </div>`;
     d.style.display = 'block';
     return;
   }
 
   d.innerHTML = results.map((r,i) => `
-    <div class="gs-item" onclick="gsSelect(${i})" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:1px solid var(--border);">
-      <span style="font-size:1.1rem;flex-shrink:0;">${r.icon}</span>
+    <div class="gs-item" onclick="gsSelect(${i})" style="display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--border);">
+      <span style="font-size:1rem;flex-shrink:0;">${r.icon}</span>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:.85rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.label}</div>
-        <div style="font-size:.73rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.sub}</div>
+        <div style="font-size:.84rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.label)}</div>
+        <div style="font-size:.72rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.sub||'')}</div>
       </div>
-      <span style="font-size:.7rem;color:var(--text3);">↵</span>
+      ${r.tag ? `<span style="font-size:.62rem;color:var(--orange);background:rgba(27,107,107,.12);border:1px solid rgba(27,107,107,.25);border-radius:5px;padding:2px 7px;flex-shrink:0;">${r.tag}</span>` : '<span style="font-size:.7rem;color:var(--text3);">↵</span>'}
     </div>
   `).join('');
   d.style.display = 'block';
@@ -11468,7 +11537,8 @@ function _esc(s) {
    ONBOARDING — sistema de ensino do fluxo operacional
    ════════════════════════════════════════════════════════════════════ */
 (function(){
-  const OB_KEY = 'ob_v2_done';
+  const _u     = (document.body.dataset.user || 'anon').replace(/[^a-z0-9]/gi,'_');
+  const OB_KEY = 'ob_v2_' + _u;
   const TOTAL  = 5;
   let   _cur   = 1;
 
@@ -11569,13 +11639,13 @@ function _esc(s) {
         </div>
         <div class="ob-row">
           <div class="ob-row-n">4</div><div class="ob-row-e">🧪</div>
-          <div class="ob-row-t"><strong>Laboratório</strong>
-            <small>Amostradores enviados para análise. Sistema controla prazo e número de cadeia de custódia.</small></div>
+          <div class="ob-row-t"><strong>Laboratório (só químicos)</strong>
+            <small>Amostradores com agentes químicos são enviados ao lab e não retornam. Resultados chegam por e-mail. Ruído, vibração e calor: histogramas gerados aqui na Ocupacional.</small></div>
         </div>
         <div class="ob-row">
           <div class="ob-row-n">5</div><div class="ob-row-e">📄</div>
           <div class="ob-row-t"><strong>Laudo &amp; Histórico</strong>
-            <small>Resultado inserido, laudo gerado automaticamente. Histórico permanente para auditorias.</small></div>
+            <small>Resultado do e-mail inserido no sistema. Laudo gerado. Histórico permanente da empresa.</small></div>
         </div>
       </div>
       <div class="ob-actions">
@@ -11593,10 +11663,10 @@ function _esc(s) {
         <div class="ob-row"><div class="ob-row-n">1</div><div class="ob-row-e">🔍</div><div class="ob-row-t"><strong>Abra "Demandas / OS"</strong><small>Veja as demandas vindas do Planner para sua empresa.</small></div></div>
         <div class="ob-row"><div class="ob-row-n">2</div><div class="ob-row-e">🏢</div><div class="ob-row-t"><strong>Selecione a empresa</strong><small>O sistema já associou automaticamente pela OS ou nome.</small></div></div>
         <div class="ob-row"><div class="ob-row-n">3</div><div class="ob-row-e">📅</div><div class="ob-row-t"><strong>Crie o planejamento</strong><small>Defina data, técnico e o que vai ser medido (ruído, químico, calor).</small></div></div>
-        <div class="ob-row"><div class="ob-row-n">4</div><div class="ob-row-e">📦</div><div class="ob-row-t"><strong>Reserve os amostradores</strong><small>Sistema verifica estoque e reserva automaticamente.</small></div></div>
-        <div class="ob-row ob-hl"><div class="ob-row-n">5</div><div class="ob-row-e">▶️</div><div class="ob-row-t"><strong>Execute a coleta</strong><small>Registre os dados de campo. O sistema salva automaticamente.</small></div></div>
-        <div class="ob-row"><div class="ob-row-n">6</div><div class="ob-row-e">📬</div><div class="ob-row-t"><strong>Envie ao laboratório</strong><small>Informe a data de envio e a cadeia de custódia.</small></div></div>
-        <div class="ob-row"><div class="ob-row-n">7</div><div class="ob-row-e">📊</div><div class="ob-row-t"><strong>Insira o resultado</strong><small>Concentração, dose ou IBUTG retornado pelo laboratório.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">4</div><div class="ob-row-e">📦</div><div class="ob-row-t"><strong>Reserve os amostradores (agentes químicos)</strong><small>Selecione do estoque. Amostradores enviados ao lab não retornam — não é possível reutilizar.</small></div></div>
+        <div class="ob-row ob-hl"><div class="ob-row-n">5</div><div class="ob-row-e">▶️</div><div class="ob-row-t"><strong>Execute a coleta</strong><small>Para ruído/calor: gere o histograma aqui na Ocupacional. Para químico: registre campo + envie amostradores.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">6</div><div class="ob-row-e">📬</div><div class="ob-row-t"><strong>Envie ao laboratório (químico)</strong><small>Informe data de envio e cadeia de custódia. Aguarde resultado por e-mail — lab não retorna amostradores.</small></div></div>
+        <div class="ob-row"><div class="ob-row-n">7</div><div class="ob-row-e">📧</div><div class="ob-row-t"><strong>Insira o resultado (do e-mail do lab)</strong><small>Concentração recebida por e-mail é inserida no sistema para fechar o ciclo e gerar o laudo.</small></div></div>
         <div class="ob-row"><div class="ob-row-n">8</div><div class="ob-row-e">📄</div><div class="ob-row-t"><strong>Gere o laudo</strong><small>DOCX com resultado, comparação com NR-15 e assinatura do técnico.</small></div></div>
       </div>
       <div class="ob-actions">
@@ -11619,7 +11689,7 @@ function _esc(s) {
         <div class="ob-benefit">
           <div class="ob-benefit-icon">🚫</div>
           <div class="ob-benefit-t">Sem duplicidade</div>
-          <div class="ob-benefit-d">O sistema evita lançar a mesma OS duas vezes ou usar amostrador já enviado.</div>
+          <div class="ob-benefit-d">Evita lançar a mesma OS duas vezes. Amostrador já enviado ao lab fica bloqueado — não pode ser reutilizado.</div>
         </div>
         <div class="ob-benefit">
           <div class="ob-benefit-icon">🔍</div>
@@ -11627,9 +11697,9 @@ function _esc(s) {
           <div class="ob-benefit-d">Cada ação é registrada: quem fez, quando, com qual equipamento.</div>
         </div>
         <div class="ob-benefit">
-          <div class="ob-benefit-icon">⚖️</div>
-          <div class="ob-benefit-t">Suporte a auditoria</div>
-          <div class="ob-benefit-d">Histórico permanente disponível para fiscalização MTE e auditoria interna.</div>
+          <div class="ob-benefit-icon">📊</div>
+          <div class="ob-benefit-t">Metrificação da equipe</div>
+          <div class="ob-benefit-d">Todos os fluxos integrados permitem medir volume, prazos e produtividade por técnico.</div>
         </div>
         <div class="ob-benefit">
           <div class="ob-benefit-icon">⏱️</div>
