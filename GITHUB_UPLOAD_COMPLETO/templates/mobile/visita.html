@@ -17,11 +17,11 @@
   .trab-hdr span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;padding:0 2px;}
   .section-badge{display:inline-block;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 7px;border-radius:4px;margin-bottom:10px;}
   .badge-blue{background:rgba(96,165,250,.15);color:#93c5fd;}
-  .badge-orange{background:rgba(251,146,60,.15);color:#fb923c;}
   .tipo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
   .tipo-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all .15s;font-size:.78rem;color:var(--text2);}
   .tipo-btn.active{border-color:var(--accent);background:rgba(59,130,246,.12);color:var(--accent);font-weight:700;}
   .tipo-btn span{display:block;font-size:1.2rem;margin-bottom:3px;}
+  .pre-tag{display:inline-block;background:rgba(16,185,129,.12);color:#6ee7b7;font-size:.65rem;padding:1px 6px;border-radius:3px;margin-left:4px;font-weight:600;}
 </style>
 </head>
 <body>
@@ -38,7 +38,7 @@
 
   <div class="content">
 
-    <!-- Info resumo da demanda -->
+    <!-- Resumo da demanda -->
     <div class="card" style="background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);">
       <div style="font-weight:800;font-size:1rem;color:var(--text)">{{ planejamento.empresa_nome or 'Empresa' }}</div>
       {% if planejamento.demanda_titulo %}
@@ -64,31 +64,32 @@
     </div>
     {% endif %}
 
-    <!-- Formulário de campo -->
+    <!-- Formulário -->
     <form id="formCampo" onsubmit="salvarVisita(event)">
       <input type="hidden" name="planejamento_id" value="{{ planejamento.id }}">
-      <input type="hidden" name="empresa_id" value="{{ planejamento.empresa_id }}">
-      <input type="hidden" name="demanda_id" value="{{ planejamento.demanda_id }}">
+      <input type="hidden" name="empresa_id"      value="{{ planejamento.empresa_id }}">
+      <input type="hidden" name="demanda_id"      value="{{ planejamento.demanda_id }}">
       <input type="hidden" name="trabalhadores_json" id="trabalhadores_json_input">
+      <input type="hidden" name="tipo_visita"     id="tipo_visita" value="medicao">
 
-      <!-- ── TIPO DE MEDIÇÃO ── -->
+      <!-- TIPO DE MEDIÇÃO -->
       <div class="section-title">Tipo de medição</div>
       <div class="card">
         <div class="tipo-grid" id="tipoGrid">
-          <div class="tipo-btn" onclick="setTipo('ruido',this)"><span>🔊</span>Ruído</div>
-          <div class="tipo-btn" onclick="setTipo('quimico',this)"><span>⚗️</span>Químico</div>
-          <div class="tipo-btn" onclick="setTipo('calor',this)"><span>🌡️</span>Calor (IBUTG)</div>
-          <div class="tipo-btn" onclick="setTipo('vibracao',this)"><span>〰️</span>Vibração</div>
+          <div class="tipo-btn" data-tipo="ruido"    onclick="setTipo('ruido',this)"><span>🔊</span>Ruído</div>
+          <div class="tipo-btn" data-tipo="quimico"  onclick="setTipo('quimico',this)"><span>⚗️</span>Químico</div>
+          <div class="tipo-btn" data-tipo="calor"    onclick="setTipo('calor',this)"><span>🌡️</span>Calor (IBUTG)</div>
+          <div class="tipo-btn" data-tipo="vibracao" onclick="setTipo('vibracao',this)"><span>〰️</span>Vibração</div>
         </div>
-        <input type="hidden" name="tipo_visita" id="tipo_visita" value="medicao">
       </div>
 
-      <!-- ── DADOS DA VISITA ── -->
+      <!-- DADOS DA VISITA -->
       <div class="section-title">Dados da visita</div>
       <div class="card">
         <div class="form-group">
-          <label>Data da visita</label>
-          <input type="date" name="data_visita" value="{{ hoje }}" required>
+          <label>Data da visita <span class="pre-tag">pré-preenchido</span></label>
+          <input type="date" name="data_visita"
+                 value="{{ planejamento.data_prevista or hoje }}" required>
         </div>
         <div style="display:flex; gap:12px">
           <div class="form-group" style="flex:1">
@@ -101,64 +102,76 @@
           </div>
         </div>
         <div class="form-group">
-          <label>Técnico responsável</label>
-          <input type="text" name="tecnico" value="{{ planejamento.tecnico or usuario }}" required>
+          <label>Técnico responsável <span class="pre-tag">pré-preenchido</span></label>
+          <input type="text" name="tecnico"
+                 value="{{ planejamento.tecnico or usuario }}" required>
         </div>
       </div>
 
-      <!-- ── ACOMPANHANTE ── -->
+      <!-- ACOMPANHANTE -->
       <div class="section-title">Acompanhante da empresa</div>
       <div class="card">
         <div style="display:flex; gap:12px">
           <div class="form-group" style="flex:2">
             <label>Nome do acompanhante</label>
-            <input type="text" name="acompanhante" placeholder="Nome do responsável na obra">
+            <input type="text" name="acompanhante"
+                   placeholder="Nome do responsável na obra">
           </div>
           <div class="form-group" style="flex:1">
             <label>Cargo</label>
-            <input type="text" name="cargo_acompanhante" placeholder="Ex: Eng. Segurança">
+            <input type="text" name="cargo_acompanhante"
+                   placeholder="Ex: Eng. Segurança">
           </div>
         </div>
       </div>
 
-      <!-- ── AGENTES AVALIADOS ── -->
+      <!-- AGENTES AVALIADOS -->
       <div class="section-title">Agentes avaliados</div>
       <div class="card">
         <div class="form-group">
-          <label>Agentes executados</label>
+          <label>Agentes executados <span class="pre-tag">pré-preenchido</span></label>
           <input type="text" name="agentes_executados"
-                 placeholder="Ex: Ruído, Calor, Químico"
-                 value="{{ planejamento.agentes_previstos or '' }}">
+                 id="agentes_executados_input"
+                 placeholder="Ex: Ruído, Calor, Químico">
         </div>
         <div class="form-group">
           <label>Agentes não executados</label>
-          <input type="text" name="agentes_nao_executados" placeholder="Deixe em branco se todos executados">
+          <input type="text" name="agentes_nao_executados"
+                 placeholder="Deixe em branco se todos executados">
         </div>
         <div class="form-group">
           <label>Agentes adicionados no campo</label>
-          <input type="text" name="agentes_adicionados" placeholder="Agentes não previstos que foram medidos">
+          <input type="text" name="agentes_adicionados"
+                 placeholder="Agentes não previstos que foram medidos">
         </div>
       </div>
 
-      <!-- ── EQUIPAMENTOS ── -->
+      <!-- EQUIPAMENTOS -->
       <div class="section-title">Equipamentos utilizados</div>
       <div class="card">
         <div style="display:flex; gap:12px">
           <div class="form-group" style="flex:1">
             <label>Dosímetros usados</label>
-            <input type="text" name="dosimetros_usados" placeholder="Ex: DOS-01, DOS-02">
+            <input type="text" name="dosimetros_usados"
+                   id="input_dosim"
+                   placeholder="{{ 'Ex: DOS-01 a DOS-0' ~ planejamento.qtd_dosim_prevista if planejamento.qtd_dosim_prevista else 'Ex: DOS-01, DOS-02' }}">
           </div>
           <div class="form-group" style="flex:1">
             <label>Bombas usadas</label>
-            <input type="text" name="bombas_usadas" placeholder="Ex: B-01, B-02">
+            <input type="text" name="bombas_usadas"
+                   id="input_bombas"
+                   placeholder="{{ 'Ex: B-01 a B-0' ~ planejamento.qtd_bombas_previstas if planejamento.qtd_bombas_previstas else 'Ex: B-01, B-02' }}">
           </div>
         </div>
       </div>
 
-      <!-- ── TRABALHADORES MONITORADOS ── -->
+      <!-- TRABALHADORES MONITORADOS -->
       <div class="section-title">
-        Trabalhadores monitorados
-        <button type="button" onclick="adicionarTrabalhador()" style="float:right;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:.75rem;cursor:pointer;font-family:inherit;">+ Adicionar</button>
+        Trabalhadores monitorados <span class="pre-tag" id="trab-pre-label" style="display:none">pré-preenchido</span>
+        <button type="button" onclick="adicionarTrabalhador()"
+                style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:.75rem;cursor:pointer;font-family:inherit;">
+          + Adicionar
+        </button>
       </div>
       <div class="card">
         <div id="trab-empty" style="font-size:.8rem;color:var(--muted);text-align:center;padding:8px 0;">
@@ -173,7 +186,7 @@
         <div id="trab-list"></div>
       </div>
 
-      <!-- ── RESULTADO ── -->
+      <!-- RESULTADO -->
       <div class="section-title">Resultado</div>
       <div class="card">
         <div class="form-group">
@@ -198,11 +211,12 @@
         </div>
         <div class="form-group">
           <label>Observações gerais</label>
-          <textarea name="observacao" placeholder="Anotações adicionais do campo..."></textarea>
+          <textarea name="observacao"
+                    placeholder="Anotações adicionais do campo...">{{ planejamento.observacao or '' }}</textarea>
         </div>
       </div>
 
-      <!-- ── ASSINATURA ── -->
+      <!-- ASSINATURA -->
       <div class="section-title">Assinatura digital</div>
       <div class="card">
         <div style="font-size:.8rem; color:var(--muted); margin-bottom:8px">Assine com o dedo</div>
@@ -233,6 +247,48 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js').catch(console.warn);
 }
 
+// ── Dados do planejamento (injetados pelo servidor) ────────────────────
+const _plan = {
+  agentes:     (function(){ try{ return JSON.parse({{ planejamento.agentes_previstos | tojson | safe }}) || []; }catch(e){ return []; } })(),
+  qtdDosim:    {{ planejamento.qtd_dosim_prevista or 0 }},
+  qtdBombas:   {{ planejamento.qtd_bombas_previstas or 0 }},
+  agentesRaw:  {{ planejamento.agentes_previstos | tojson | safe }},
+};
+
+// ── PRÉ-PREENCHIMENTO automático ao carregar ───────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+
+  // 1. Tipo de medição — detecta pelo tipo dos agentes
+  const tipos = _plan.agentes.map(a => ((a.tipo || a.agente || '')).toLowerCase());
+  let tipoDetect = null;
+  if (tipos.some(t => t.includes('fisico') || t.includes('ruido') || t.includes('ruído') || t.includes('nho'))) tipoDetect = 'ruido';
+  else if (tipos.some(t => t.includes('quimico') || t.includes('químico') || t.includes('poeira') || t.includes('tolueno') || t.includes('btx'))) tipoDetect = 'quimico';
+  else if (tipos.some(t => t.includes('calor') || t.includes('ibutg') || t.includes('termico'))) tipoDetect = 'calor';
+  else if (tipos.some(t => t.includes('vibra'))) tipoDetect = 'vibracao';
+
+  if (tipoDetect) {
+    const btn = document.querySelector(`.tipo-btn[data-tipo="${tipoDetect}"]`);
+    if (btn) setTipo(tipoDetect, btn);
+  }
+
+  // 2. Agentes executados — texto legível dos agentes previstos
+  const agNomes = _plan.agentes.map(a => a.agente || a.canonical || a.tipo || '').filter(Boolean);
+  if (agNomes.length) {
+    document.getElementById('agentes_executados_input').value = agNomes.join(', ');
+  }
+
+  // 3. Trabalhadores — pré-cria N linhas = qtd dosímetros previstos
+  if (_plan.qtdDosim > 0) {
+    document.getElementById('trab-pre-label').style.display = 'inline-block';
+    for (let i = 0; i < Math.min(_plan.qtdDosim, 10); i++) {
+      adicionarTrabalhador();
+      const id = trabCount;
+      const equip = document.getElementById('te_' + id);
+      if (equip) equip.value = 'DOS-0' + (i + 1);
+    }
+  }
+});
+
 // ── Tipo de medição ────────────────────────────────────────────────────
 function setTipo(val, el) {
   document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('active'));
@@ -248,20 +304,20 @@ document.querySelector('[name=resultado]').addEventListener('change', function()
 
 // ── Trabalhadores monitorados ──────────────────────────────────────────
 let trabCount = 0;
-function adicionarTrabalhador() {
+function adicionarTrabalhador(nome, ghe, equip) {
   const list = document.getElementById('trab-list');
   const hdr  = document.getElementById('trab-hdr');
   const emp  = document.getElementById('trab-empty');
-  emp.style.display = 'none';
-  hdr.style.display = 'grid';
+  emp.style.display  = 'none';
+  hdr.style.display  = 'grid';
   const id = ++trabCount;
   const row = document.createElement('div');
   row.className = 'trab-row';
   row.id = 'trab-' + id;
   row.innerHTML = `
-    <input type="text" placeholder="Nome ou cargo" id="tn_${id}">
-    <input type="text" placeholder="GHE / setor" id="tg_${id}">
-    <input type="text" placeholder="DOS-01 / B-01" id="te_${id}">
+    <input type="text" placeholder="Nome ou cargo" id="tn_${id}" value="${nome||''}">
+    <input type="text" placeholder="GHE / setor"   id="tg_${id}" value="${ghe||''}">
+    <input type="text" placeholder="DOS-01 / B-01"  id="te_${id}" value="${equip||''}">
     <button type="button" class="trab-del" onclick="removerTrabalhador(${id})">✕</button>
   `;
   list.appendChild(row);
@@ -271,7 +327,7 @@ function removerTrabalhador(id) {
   if (row) row.remove();
   if (!document.getElementById('trab-list').children.length) {
     document.getElementById('trab-empty').style.display = 'block';
-    document.getElementById('trab-hdr').style.display = 'none';
+    document.getElementById('trab-hdr').style.display   = 'none';
   }
 }
 function coletarTrabalhadores() {
@@ -279,9 +335,9 @@ function coletarTrabalhadores() {
   const arr  = [];
   rows.forEach(row => {
     const id = row.id.replace('trab-', '');
-    const nome = (document.getElementById('tn_'+id)||{}).value || '';
-    const ghe  = (document.getElementById('tg_'+id)||{}).value || '';
-    const equip= (document.getElementById('te_'+id)||{}).value || '';
+    const nome  = (document.getElementById('tn_'+id)||{}).value || '';
+    const ghe   = (document.getElementById('tg_'+id)||{}).value || '';
+    const equip = (document.getElementById('te_'+id)||{}).value || '';
     if (nome || ghe || equip) arr.push({ nome, ghe, equipamento: equip });
   });
   document.getElementById('trabalhadores_json_input').value = JSON.stringify(arr);
@@ -302,9 +358,9 @@ function resizeCanvas() {
   canvas.style.height = '160px';
   ctx.scale(dpr, dpr);
   ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth = 2.5;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
 }
 resizeCanvas();
 
@@ -316,8 +372,8 @@ function getPos(e) {
 
 canvas.addEventListener('pointerdown', e => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
 canvas.addEventListener('pointermove', e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasSig = true; document.getElementById('sigStatus').textContent = 'Assinado ✓'; e.preventDefault(); });
-canvas.addEventListener('pointerup',   e => { drawing = false; });
-canvas.addEventListener('pointerleave',e => { drawing = false; });
+canvas.addEventListener('pointerup',   () => { drawing = false; });
+canvas.addEventListener('pointerleave',() => { drawing = false; });
 
 function limparAssinatura() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -330,19 +386,13 @@ function limparAssinatura() {
 async function salvarVisita(e) {
   e.preventDefault();
   const btn = document.getElementById('btnSalvar');
-  btn.disabled = true;
+  btn.disabled    = true;
   btn.textContent = '⏳ Salvando...';
 
-  // Captura assinatura
-  if (hasSig) {
-    document.getElementById('assinaturaInput').value = canvas.toDataURL('image/png');
-  }
-
-  // Coleta trabalhadores
+  if (hasSig) document.getElementById('assinaturaInput').value = canvas.toDataURL('image/png');
   coletarTrabalhadores();
 
-  // Monta payload
-  const fd = new FormData(document.getElementById('formCampo'));
+  const fd   = new FormData(document.getElementById('formCampo'));
   const body = {};
   fd.forEach((v, k) => { if (v !== '' && v !== null) body[k] = v; });
 
@@ -350,38 +400,29 @@ async function salvarVisita(e) {
 
   if (navigator.onLine) {
     try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const r    = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
       const data = await r.json();
-      if (r.ok && data.ok) {
-        showToast('✅ Visita salva!');
-        setTimeout(() => location.href = '/mobile/', 1500);
-        return;
-      }
+      if (r.ok && data.ok) { showToast('✅ Visita salva!'); setTimeout(() => location.href='/mobile/', 1500); return; }
       throw new Error(data.erro || 'Erro desconhecido');
-    } catch (err) {
+    } catch(err) {
       showToast('⚠ Erro online — salvo offline: ' + err.message);
     }
   }
 
-  // Offline: salva na fila IndexedDB
   await enqueueOffline(url, 'POST', body);
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
     const sw = await navigator.serviceWorker.ready;
     await sw.sync.register('sync-visitas').catch(() => {});
   }
   showToast('📴 Salvo offline — será enviado ao reconectar');
-  setTimeout(() => location.href = '/mobile/', 1800);
+  setTimeout(() => location.href='/mobile/', 1800);
 }
 
-// ── IndexedDB fila offline ─────────────────────────────────────────────
+// ── IndexedDB offline ──────────────────────────────────────────────────
 function openIDB() {
   return new Promise((res, rej) => {
     const r = indexedDB.open('medicoes-offline', 1);
-    r.onupgradeneeded = e => e.target.result.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+    r.onupgradeneeded = e => e.target.result.createObjectStore('queue', { keyPath:'id', autoIncrement:true });
     r.onsuccess = e => res(e.target.result);
     r.onerror   = e => rej(e);
   });
@@ -398,16 +439,10 @@ async function enqueueOffline(url, method, body) {
 
 // ── Checklist de agentes previstos ─────────────────────────────────────
 (function() {
-  let agentes = [];
-  try {
-    agentes = JSON.parse('{{ planejamento.agentes_previstos | tojson | safe }}') || [];
-    if (typeof agentes === 'string') agentes = JSON.parse(agentes);
-  } catch(_) {}
-  if (!Array.isArray(agentes) || agentes.length === 0) return;
-
+  const agentes = _plan.agentes;
+  if (!Array.isArray(agentes) || !agentes.length) return;
   const container = document.getElementById('listaAgentes');
   if (!container) return;
-
   agentes.forEach((ag, i) => {
     const div = document.createElement('div');
     div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)';
@@ -415,27 +450,22 @@ async function enqueueOffline(url, method, body) {
       <input type="checkbox" id="ag_${i}" style="width:18px;height:18px;cursor:pointer">
       <label for="ag_${i}" style="flex:1;cursor:pointer">
         <span style="font-size:.85rem;font-weight:600;color:var(--text1)">${ag.agente || ag.tipo || 'Agente'}</span>
-        <span style="font-size:.75rem;color:var(--muted);margin-left:6px">${ag.tipo || ''} · qtd: ${ag.qtd || 1}</span>
+        <span style="font-size:.75rem;color:var(--muted);margin-left:6px">${ag.tipo||''} · qtd: ${ag.qtd||1}</span>
       </label>
       <span class="badge badge-yellow" id="ag_status_${i}">pendente</span>
     `;
     container.appendChild(div);
     const chk = div.querySelector(`#ag_${i}`);
-    const statusBadge = div.querySelector(`#ag_status_${i}`);
+    const badge = div.querySelector(`#ag_status_${i}`);
     chk.addEventListener('change', function() {
-      if (this.checked) {
-        statusBadge.className = 'badge badge-green';
-        statusBadge.textContent = '✓ feito';
-      } else {
-        statusBadge.className = 'badge badge-yellow';
-        statusBadge.textContent = 'pendente';
-      }
+      badge.className   = this.checked ? 'badge badge-green' : 'badge badge-yellow';
+      badge.textContent = this.checked ? '✓ feito' : 'pendente';
     });
   });
 })();
 
 // ── Toast ──────────────────────────────────────────────────────────────
-function showToast(msg, ms = 2800) {
+function showToast(msg, ms=2800) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');

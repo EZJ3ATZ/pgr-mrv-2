@@ -1865,7 +1865,13 @@ def criar_planejamento(data: dict) -> int:
 
 def get_planejamento(pid: int):
     with get_db() as conn:
-        r = conn.execute('SELECT * FROM planejamentos WHERE id=?', (pid,)).fetchone()
+        r = conn.execute('''
+            SELECT p.*, e.nome AS empresa_nome, d.titulo AS demanda_titulo
+            FROM planejamentos p
+            LEFT JOIN empresas e ON e.id = p.empresa_id
+            LEFT JOIN demandas d ON d.id = p.demanda_id
+            WHERE p.id=?
+        ''', (pid,)).fetchone()
         return row_to_dict(r)
 
 
