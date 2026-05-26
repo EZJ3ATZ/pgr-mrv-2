@@ -394,17 +394,92 @@ def get_demanda(did):
     return (jsonify(d), 200) if d else (jsonify({'erro': 'nao encontrada'}), 404)
 
 
+def _canonical_to_tipo_legado(canonical: str) -> str:
+    """Converte nome canônico do motor inteligente para tipo legado {ruido, calor, ...}."""
+    n = canonical.lower()
+    if 'ruído' in n or 'ruido' in n or 'dosimetria' in n:
+        return 'ruido'
+    if 'corpo inteiro' in n or ' vci' in n:
+        return 'vibracao_vci'
+    if 'mão' in n or 'braço' in n or ' vmb' in n or 'mao' in n or 'braco' in n:
+        return 'vibracao_vbma'
+    if 'vibr' in n:
+        return 'vibracao'
+    if 'calor' in n or 'ibutg' in n or 'estresse term' in n:
+        return 'calor'
+    if 'sílica' in n or 'silica' in n or 'poeira' in n or 'particulado' in n or 'material part' in n:
+        return 'particulado'
+    return 'quimico'
+
+
+def _ags_de_extracao_json(extracao_json_str: str) -> list:
+    """Lê agentes do extracao_json (motor inteligente) no formato legado {tipo, qtd, texto}."""
+    if not extracao_json_str:
+        return []
+    try:
+        import json as _j
+        raw_ags = _j.loads(extracao_json_str).get('agentes', [])
+        return [
+            {'tipo': _canonical_to_tipo_legado(a.get('canonical', '')),
+             'qtd':  a.get('quantidade', 1),
+             'texto': a.get('canonical', '')}
+            for a in raw_ags if a.get('canonical')
+        ]
+    except Exception:
+        return []
+
+
+def _ags_multifonte(titulo: str, descricao: str, checklist_raw: str, bucket: str) -> list:
+    """Motor inteligente multi-fonte: título + desc + checklist + bucket."""
+    try:
+        from .inteligencia_demandas import extrair_agentes_multifonte
+        import json as _j
+        checklist = []
+        try:
+            if checklist_raw:
+                checklist = _j.loads(checklist_raw)
+        except Exception:
+            pass
+        ags = extrair_agentes_multifonte(
+            titulo=titulo or '', descricao=descricao or '',
+            checklist=checklist, bucket=bucket or '',
+        )
+        return [{'tipo': _canonical_to_tipo_legado(a.canonical),
+                 'qtd': a.quantidade, 'texto': a.canonical} for a in ags]
+    except Exception:
+        return []
+
+
 @controle_bp.route('/demandas/<int:did>/agentes')
 def get_demanda_agentes(did):
-    """Retorna agentes de medição extraídos da descrição da OS."""
+    """Retorna agentes de medição extraídos da OS (motor inteligente multi-fonte)."""
     try:
-        from .parser_agentes import extrair_agentes, resumo_agentes
+        from .parser_agentes import resumo_agentes
         init_db()
         with get_db() as conn:
-            row = conn.execute('SELECT descricao FROM demandas WHERE id=?', (did,)).fetchone()
+            row = conn.execute(
+                'SELECT titulo, descricao, checklist, planner_bucket, extracao_json FROM demandas WHERE id=?',
+                (did,)
+            ).fetchone()
         if not row:
             return jsonify({'erro': 'nao encontrada'}), 404
-        agentes = extrair_agentes(row['descricao'] or '')
+        d = row_to_dict(row)
+
+        # 1. extracao_json — já computado pelo motor no sync
+        agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
+
+        # 2. motor multifonte (título + desc + checklist + bucket)
+        if not agentes:
+            agentes = _ags_multifonte(
+                d.get('titulo', ''), d.get('descricao', ''),
+                d.get('checklist', ''), d.get('planner_bucket', '')
+            )
+
+        # 3. fallback: parser antigo (só descrição)
+        if not agentes:
+            from .parser_agentes import extrair_agentes
+            agentes = extrair_agentes(d.get('descricao') or '')
+
         return jsonify({'agentes': agentes, 'resumo': resumo_agentes(agentes)})
     except Exception as e:
         import traceback
@@ -415,38 +490,49 @@ def get_demanda_agentes(did):
 def get_demanda_por_os(os_num):
     """Busca demanda pelo número de OS e retorna id, título e agentes extraídos."""
     try:
-        from .parser_agentes import extrair_agentes, resumo_agentes
+        from .parser_agentes import resumo_agentes
         init_db()
         os_clean = os_num.strip()
         with get_db() as conn:
             row = conn.execute(
-                "SELECT id, titulo, descricao FROM demandas WHERE numero_os=? LIMIT 1",
+                "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json FROM demandas WHERE numero_os=? LIMIT 1",
                 (os_clean,)
             ).fetchone()
             if not row:
-                # tenta busca parcial no título
                 row = conn.execute(
-                    "SELECT id, titulo, descricao FROM demandas WHERE titulo LIKE ? LIMIT 1",
+                    "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json FROM demandas WHERE titulo LIKE ? LIMIT 1",
                     (f'%{os_clean}%',)
                 ).fetchone()
         if not row:
             return jsonify({'encontrado': False}), 200
-        agentes = extrair_agentes(row['descricao'] or '')
+        d = row_to_dict(row)
+
+        # Extrair agentes multi-fonte
+        agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
+        if not agentes:
+            agentes = _ags_multifonte(
+                d.get('titulo', ''), d.get('descricao', ''),
+                d.get('checklist', ''), d.get('planner_bucket', '')
+            )
+        if not agentes:
+            from .parser_agentes import extrair_agentes
+            agentes = extrair_agentes(d.get('descricao') or '')
+
         # Buscar empresa vinculada
         with get_db() as conn:
             dem_full = conn.execute(
                 '''SELECT d.empresa_id, e.nome AS empresa_nome
                    FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id
-                   WHERE d.id=?''', (row['id'],)
+                   WHERE d.id=?''', (d['id'],)
             ).fetchone()
         return jsonify({
-            'encontrado':  True,
-            'id':          row['id'],
-            'titulo':      row['titulo'],
-            'empresa_id':  dem_full['empresa_id'] if dem_full else None,
-            'empresa_nome':dem_full['empresa_nome'] if dem_full else '',
-            'agentes':     agentes,
-            'resumo':      resumo_agentes(agentes),
+            'encontrado':   True,
+            'id':           d['id'],
+            'titulo':       d['titulo'],
+            'empresa_id':   dem_full['empresa_id'] if dem_full else None,
+            'empresa_nome': dem_full['empresa_nome'] if dem_full else '',
+            'agentes':      agentes,
+            'resumo':       resumo_agentes(agentes),
         })
     except Exception as e:
         import traceback
