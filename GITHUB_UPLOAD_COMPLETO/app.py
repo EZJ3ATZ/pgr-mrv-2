@@ -1462,6 +1462,39 @@ def gerar_calor():
         nome_safe = re.sub(r'[/\\:*?"<>|]','_', nome)
         filename = f"Laudo de Calor - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
         usuario = current_user.nome if current_user.is_authenticated else 'anônimo'
+        # ── Salvar no banco ────────────────────────────────────────────
+        try:
+            from controle.db import save_coleta_outros, upsert_empresa
+            emp = data.get('empresa', {})
+            cnpj = emp.get('cnpj', '') or ''
+            empresa_nome = emp.get('razaoSocial', '') or nome
+            empresa_id = None
+            if empresa_nome:
+                try:
+                    eid = upsert_empresa(cnpj, empresa_nome)
+                    empresa_id = eid
+                except Exception:
+                    pass
+            import json as _j
+            save_coleta_outros({
+                'tipo': 'calor',
+                'empresa_id': empresa_id,
+                'empresa_nome': empresa_nome,
+                'avaliador': usuario,
+                'data_coleta': data.get('data') or '',
+                'cidade': emp.get('cidade', '') or '',
+                'unidade': emp.get('unidade', '') or '',
+                'observacao': data.get('observacao', '') or '',
+                'status': 'concluida',
+                'dados_json': _j.dumps({
+                    'setores': data.get('setores', []),
+                    'config': data.get('config', {}),
+                }),
+            })
+        except Exception as _db_err:
+            import traceback; traceback.print_exc()
+            # Não impede geração do DOCX
+        # ──────────────────────────────────────────────────────────────
         registrar_evento('laudo_calor_gerado', f'Laudo Calor: {nome}',
                          usuario=usuario, ip=request.remote_addr)
         return send_file(io.BytesIO(docx_bytes), as_attachment=True,

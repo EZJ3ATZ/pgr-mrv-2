@@ -1277,6 +1277,18 @@ def get_empresa_painel(empresa_id):
             FROM visitas_tecnicas WHERE empresa_id IN ({ph})
         """, ids_iguais).fetchone())
 
+        # ─ Histórico de visitas recentes ─────────────────────────────────
+        emp['visitas'] = [row_to_dict(r) for r in conn.execute(f"""
+            SELECT vt.id, vt.tecnico, vt.data_visita, vt.tipo_visita,
+                   vt.resultado, vt.retrabalho, vt.hora_inicio, vt.hora_termino,
+                   vt.observacao_geral,
+                   d.numero_os, COALESCE(d.titulo, d.nome_tarefa) AS titulo_demanda
+            FROM visitas_tecnicas vt
+            LEFT JOIN demandas d ON d.id = vt.demanda_id
+            WHERE vt.empresa_id IN ({ph})
+            ORDER BY vt.data_visita DESC, vt.criado_em DESC LIMIT 20
+        """, ids_iguais).fetchall()]
+
         return emp
 
 
@@ -1676,6 +1688,107 @@ def save_coleta_outros(data):
                                 list(vals.values()))
             cid  = cur.lastrowid
     return cid
+
+
+def list_coletas_outros(filtros=None):
+    filtros = filtros or {}
+    with get_db() as conn:
+        conds, params = ['1=1'], []
+        if filtros.get('empresa_id'):
+            conds.append('empresa_id=?'); params.append(filtros['empresa_id'])
+        if filtros.get('tipo'):
+            conds.append('tipo=?'); params.append(filtros['tipo'])
+        if filtros.get('demanda_id'):
+            conds.append('demanda_id=?'); params.append(filtros['demanda_id'])
+        rows = conn.execute(
+            f"SELECT * FROM coletas_outros WHERE {' AND '.join(conds)} ORDER BY criado_em DESC LIMIT 200",
+            params
+        ).fetchall()
+        return [row_to_dict(r) for r in rows]
+
+
+def get_coleta_outros(cid):
+    with get_db() as conn:
+        row = conn.execute('SELECT * FROM coletas_outros WHERE id=?', (cid,)).fetchone()
+        return row_to_dict(row) if row else None
+
+
+def calcular_metricas_demanda(demanda_id):
+    """Calcula e persiste lead_time, delay, retrabalho para uma demanda."""
+    with get_db() as conn:
+        d = conn.execute('SELECT * FROM demandas WHERE id=?', (demanda_id,)).fetchone()
+        if not d:
+            return None
+        d = row_to_dict(d)
+
+        # Lead time: dias entre criado_em e conclusão (ou hoje)
+        try:
+            from datetime import date, datetime
+            criado = d.get('criado_em') or ''
+            if criado:
+                criado_d = datetime.fromisoformat(criado[:10]).date()
+                if d.get('status') == 'concluida' and d.get('data_conclusao'):
+                    fim_d = datetime.fromisoformat(d['data_conclusao'][:10]).date()
+                else:
+                    fim_d = date.today()
+                lead_time = (fim_d - criado_d).days
+            else:
+                lead_time = None
+        except Exception:
+            lead_time = None
+
+        # Delay: dias em atraso (prazo - hoje, negativo = atrasado)
+        try:
+            delay = None
+            if d.get('prazo'):
+                prazo_d = datetime.fromisoformat(d['prazo'][:10]).date()
+                delay = (date.today() - prazo_d).days  # positivo = atrasado
+        except Exception:
+            delay = None
+
+        # Retrabalho e total de visitas
+        stats = conn.execute(
+            'SELECT COUNT(*) AS total, SUM(retrabalho) AS ret FROM visitas_tecnicas WHERE demanda_id=?',
+            (demanda_id,)
+        ).fetchone()
+        stats = row_to_dict(stats) if stats else {}
+        visitas_total = stats.get('total') or 0
+        retrabalho = int(stats.get('ret') or 0)
+
+        # Upsert na tabela
+        conn.execute('''
+            INSERT INTO metricas_operacionais (demanda_id, lead_time_dias, delay_dias, retrabalho, visitas_total, calculado_em)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(demanda_id) DO UPDATE SET
+              lead_time_dias=excluded.lead_time_dias,
+              delay_dias=excluded.delay_dias,
+              retrabalho=excluded.retrabalho,
+              visitas_total=excluded.visitas_total,
+              calculado_em=CURRENT_TIMESTAMP
+        ''', (demanda_id, lead_time, delay, retrabalho, visitas_total))
+
+        return {
+            'demanda_id': demanda_id,
+            'lead_time_dias': lead_time,
+            'delay_dias': delay,
+            'retrabalho': retrabalho,
+            'visitas_total': visitas_total,
+        }
+
+
+def calcular_metricas_lote():
+    """Recalcula métricas para todas as demandas."""
+    with get_db() as conn:
+        ids = [r['id'] for r in conn.execute('SELECT id FROM demandas').fetchall()]
+    resultados = []
+    for did in ids:
+        try:
+            m = calcular_metricas_demanda(did)
+            if m:
+                resultados.append(m)
+        except Exception:
+            pass
+    return {'total': len(resultados)}
 
 
 # ── Planejamentos ──────────────────────────────────────────────────────

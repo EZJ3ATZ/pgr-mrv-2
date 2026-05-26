@@ -481,6 +481,22 @@ def cria_demanda():
         return jsonify({'ok': True, 'id': did})
 
 
+@controle_bp.route('/demandas/sem-empresa')
+def api_demandas_sem_empresa():
+    """Demandas com empresa_id=0 ou NULL (orphans do matching)."""
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, numero_os, COALESCE(titulo, nome_tarefa) AS titulo,
+                   status, prazo, bucket, planner_bucket, criado_em
+            FROM demandas
+            WHERE (empresa_id IS NULL OR empresa_id = 0)
+              AND origem = 'planner'
+            ORDER BY criado_em DESC LIMIT 200
+        """).fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
 # ── Baixa de amostrador ───────────────────────────────────────────────
 @controle_bp.route('/baixa', methods=['POST'])
 def dar_baixa():
@@ -1387,6 +1403,33 @@ def api_del_coleta_quimico(cid):
     with get_db() as conn:
         conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
         conn.execute('DELETE FROM coletas_quimico WHERE id=?', (cid,))
+    return jsonify({'ok': True})
+
+
+# ── Coletas Outros (calor, vibração, iluminamento) ────────────────────
+
+@controle_bp.route('/coletas/outros')
+def api_list_coletas_outros():
+    init_db()
+    from .db import list_coletas_outros
+    return jsonify(list_coletas_outros(request.args.to_dict()))
+
+
+@controle_bp.route('/coletas/outros/<int:cid>')
+def api_get_coleta_outros(cid):
+    init_db()
+    from .db import get_coleta_outros
+    c = get_coleta_outros(cid)
+    if not c:
+        return jsonify({'erro': 'Não encontrado'}), 404
+    return jsonify(c)
+
+
+@controle_bp.route('/coletas/outros/<int:cid>', methods=['DELETE'])
+def api_delete_coleta_outros(cid):
+    init_db()
+    with get_db() as conn:
+        conn.execute('DELETE FROM coletas_outros WHERE id=?', (cid,))
     return jsonify({'ok': True})
 
 
@@ -2622,6 +2665,115 @@ def get_pipeline_stats():
     return jsonify(stats_raw_pipeline())
 
 
+@controle_bp.route('/relatorio/mensal')
+def api_relatorio_mensal():
+    """Resumo executivo do mês: visitas, agentes medidos, empresas atendidas."""
+    init_db()
+    import calendar
+    mes = request.args.get('mes', '')  # formato YYYY-MM
+    if not mes:
+        from datetime import date
+        hoje = date.today()
+        mes = f'{hoje.year}-{hoje.month:02d}'
+    try:
+        ano, num_mes = mes.split('-')
+        ano, num_mes = int(ano), int(num_mes)
+    except Exception:
+        return jsonify({'erro': 'mes deve ser YYYY-MM'}), 400
+
+    with get_db() as conn:
+        # Visitas no mês
+        visitas = [row_to_dict(r) for r in conn.execute("""
+            SELECT vt.id, vt.tecnico, vt.data_visita, vt.resultado, vt.retrabalho,
+                   e.nome AS empresa_nome, d.numero_os
+            FROM visitas_tecnicas vt
+            LEFT JOIN empresas e ON e.id = vt.empresa_id
+            LEFT JOIN demandas d ON d.id = vt.demanda_id
+            WHERE vt.data_visita LIKE ?
+            ORDER BY vt.data_visita
+        """, (f'{ano}-{num_mes:02d}%',)).fetchall()]
+
+        # Coletas ruído no mês
+        coletas_ruido = conn.execute(
+            "SELECT COUNT(*) AS c FROM coletas_ruido WHERE data_coleta LIKE ?",
+            (f'{ano}-{num_mes:02d}%',)
+        ).fetchone()['c']
+
+        # Coletas químico no mês
+        coletas_quimico = conn.execute(
+            "SELECT COUNT(*) AS c FROM coletas_quimico WHERE data_coleta LIKE ?",
+            (f'{ano}-{num_mes:02d}%',)
+        ).fetchone()['c']
+
+        # Amostradores enviados ao lab no mês
+        enviados_lab = conn.execute(
+            "SELECT COUNT(*) AS c FROM amostradores WHERE data_envio_lab LIKE ?",
+            (f'{ano}-{num_mes:02d}%',)
+        ).fetchone()['c']
+
+        # Demandas concluídas no mês
+        concluidas = conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE status='concluida' AND data_conclusao LIKE ?",
+            (f'{ano}-{num_mes:02d}%',)
+        ).fetchone()['c']
+
+        # Empresas únicas atendidas
+        empresas_set = set(v['empresa_nome'] for v in visitas if v.get('empresa_nome'))
+
+    return jsonify({
+        'mes': mes,
+        'visitas': visitas,
+        'resumo': {
+            'total_visitas': len(visitas),
+            'visitas_concluidas': sum(1 for v in visitas if v.get('resultado') == 'concluido'),
+            'retrabalhos': sum(1 for v in visitas if v.get('retrabalho')),
+            'empresas_atendidas': len(empresas_set),
+            'coletas_ruido': coletas_ruido,
+            'coletas_quimico': coletas_quimico,
+            'amostradores_enviados_lab': enviados_lab,
+            'demandas_concluidas': concluidas,
+        },
+    })
+
+
+@controle_bp.route('/metricas/calcular', methods=['POST'])
+def api_calcular_metricas():
+    """Recalcula metricas_operacionais para todas as demandas."""
+    init_db()
+    from .db import calcular_metricas_lote
+    resultado = calcular_metricas_lote()
+    return jsonify({'ok': True, **resultado})
+
+
+@controle_bp.route('/metricas')
+def api_metricas():
+    """KPIs calculados: lead time médio, delay médio, top retrabalho."""
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT m.demanda_id, m.lead_time_dias, m.delay_dias, m.retrabalho,
+                   m.visitas_total, m.calculado_em,
+                   COALESCE(d.titulo, d.nome_tarefa) AS titulo,
+                   e.nome AS empresa_nome
+            FROM metricas_operacionais m
+            LEFT JOIN demandas d ON d.id = m.demanda_id
+            LEFT JOIN empresas e ON e.id = d.empresa_id
+            ORDER BY m.retrabalho DESC, m.delay_dias DESC LIMIT 100
+        """).fetchall()
+        stats = conn.execute("""
+            SELECT ROUND(AVG(lead_time_dias),1) AS lead_medio,
+                   ROUND(AVG(CASE WHEN delay_dias > 0 THEN delay_dias END),1) AS delay_medio,
+                   SUM(retrabalho) AS total_retrabalho,
+                   COUNT(*) AS total
+            FROM metricas_operacionais
+        """).fetchone()
+    return jsonify({
+        'stats': row_to_dict(stats) if stats else {},
+        'demandas': [row_to_dict(r) for r in rows],
+    })
+
+
+
 @controle_bp.route('/db/status')
 def db_status():
     """Informa qual backend de banco está ativo e testa conectividade."""
@@ -3154,6 +3306,107 @@ def api_get_planejamento(pid):
     return jsonify(p)
 
 
+@controle_bp.route('/planejamentos/<int:pid>/pdf')
+def api_planejamento_pdf(pid):
+    """Gera PDF do planejamento para impressão de campo."""
+    init_db()
+    from .db import get_planejamento
+    import io as _io
+    p = get_planejamento(pid)
+    if not p:
+        return jsonify({'erro': 'Planejamento não encontrado'}), 404
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        from reportlab.lib.units import cm
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        buf = _io.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=A4,
+                                rightMargin=2*cm, leftMargin=2*cm,
+                                topMargin=2*cm, bottomMargin=2*cm)
+        styles = getSampleStyleSheet()
+        story = []
+        # Título
+        story.append(Paragraph(f'<b>Planejamento de Medição #{p["id"]}</b>', styles['Title']))
+        story.append(Spacer(1, 0.3*cm))
+        # Dados principais
+        info = [
+            ['Empresa:', p.get('empresa_nome') or '—'],
+            ['OS:', p.get('numero_os') or '—'],
+            ['Técnico:', p.get('tecnico') or '—'],
+            ['Data prevista:', p.get('data_prevista') or '—'],
+            ['Status:', p.get('status') or '—'],
+            ['Dosímetros:', str(p.get('qtd_dosim_prevista') or 0)],
+            ['Bombas:', str(p.get('qtd_bombas_previstas') or 0)],
+        ]
+        t = Table(info, colWidths=[4*cm, 12*cm])
+        t.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,-1), 10),
+            ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.white, colors.HexColor('#f5f5f5')]),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('PADDING', (0,0), (-1,-1), 6),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.5*cm))
+        # Agentes previstos
+        import json as _j
+        agentes = p.get('agentes_previstos') or []
+        if isinstance(agentes, str):
+            try: agentes = _j.loads(agentes)
+            except: agentes = []
+        if agentes:
+            story.append(Paragraph('<b>Agentes Previstos</b>', styles['Heading2']))
+            ag_data = [['Tipo', 'Agente', 'Qtd']]
+            for a in agentes:
+                ag_data.append([a.get('tipo',''), a.get('agente',''), str(a.get('qtd',1))])
+            ta = Table(ag_data, colWidths=[4*cm, 10*cm, 2*cm])
+            ta.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1B6B6B')),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,-1), 9),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('PADDING', (0,0), (-1,-1), 5),
+            ]))
+            story.append(ta)
+            story.append(Spacer(1, 0.5*cm))
+        # Equipamentos
+        equips = p.get('equipamentos_json') or []
+        if isinstance(equips, str):
+            try: equips = _j.loads(equips)
+            except: equips = []
+        if equips:
+            story.append(Paragraph('<b>Equipamentos</b>', styles['Heading2']))
+            eq_data = [['Tipo', 'Qtd', 'Obs']]
+            for e in equips:
+                eq_data.append([e.get('tipo',''), str(e.get('qtd',1)), e.get('obs','')])
+            te = Table(eq_data, colWidths=[5*cm, 2*cm, 9*cm])
+            te.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1B6B6B')),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,-1), 9),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('PADDING', (0,0), (-1,-1), 5),
+            ]))
+            story.append(te)
+        # Observações
+        if p.get('observacao'):
+            story.append(Spacer(1, 0.3*cm))
+            story.append(Paragraph(f'<b>Observações:</b> {p["observacao"]}', styles['Normal']))
+        doc.build(story)
+        buf.seek(0)
+        from flask import send_file as _sf
+        return _sf(buf, as_attachment=True,
+                   download_name=f'Planejamento_{pid}_{p.get("empresa_nome","")}.pdf',
+                   mimetype='application/pdf')
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/planejamentos/<int:pid>/status', methods=['POST'])
 def api_update_planejamento_status(pid):
     """Atualiza status do planejamento: rascunho | confirmado | em_execucao | concluido | cancelado."""
@@ -3164,6 +3417,53 @@ def api_update_planejamento_status(pid):
     if status not in VALIDOS:
         return jsonify({'erro': f'status inválido. Válidos: {VALIDOS}'}), 400
     update_planejamento_status(pid, status)
+    # Auto-criar fichas de coleta se status = em_execucao
+    if status == 'em_execucao':
+        try:
+            from .db import get_planejamento, save_coleta_ruido, save_coleta_quimico, save_coleta_outros
+            import json as _j
+            p = get_planejamento(pid)
+            if p:
+                agentes = p.get('agentes_previstos') or []
+                if isinstance(agentes, str):
+                    try: agentes = _j.loads(agentes)
+                    except: agentes = []
+                for ag in agentes:
+                    tipo = ag.get('tipo', '')
+                    if tipo == 'ruido':
+                        save_coleta_ruido({
+                            'empresa_id': p.get('empresa_id'),
+                            'empresa_nome': p.get('empresa_nome'),
+                            'demanda_id': p.get('demanda_id'),
+                            'tecnico': p.get('tecnico'),
+                            'data_coleta': p.get('data_prevista') or '',
+                            'status': 'planejada',
+                            'planejamento_id': pid,
+                        })
+                    elif tipo == 'quimico':
+                        save_coleta_quimico({
+                            'empresa_id': p.get('empresa_id'),
+                            'empresa_nome': p.get('empresa_nome'),
+                            'demanda_id': p.get('demanda_id'),
+                            'responsavel_coleta': p.get('tecnico'),
+                            'data_coleta': p.get('data_prevista') or '',
+                            'status': 'planejada',
+                            'planejamento_id': pid,
+                        })
+                    elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
+                        save_coleta_outros({
+                            'tipo': tipo,
+                            'empresa_id': p.get('empresa_id'),
+                            'empresa_nome': p.get('empresa_nome'),
+                            'demanda_id': p.get('demanda_id'),
+                            'avaliador': p.get('tecnico'),
+                            'data_coleta': p.get('data_prevista') or '',
+                            'status': 'planejada',
+                            'planejamento_id': pid,
+                        })
+        except Exception as _ce:
+            import traceback; traceback.print_exc()
+            # Não impede atualização de status
     return jsonify({'ok': True})
 
 
