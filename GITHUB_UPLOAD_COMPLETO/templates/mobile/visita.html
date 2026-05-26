@@ -9,6 +9,20 @@
 <title>Visita — {{ planejamento.empresa_nome or 'Visita' }}</title>
 <link rel="manifest" href="/static/manifest.json">
 <link rel="stylesheet" href="/static/mobile.css">
+<style>
+  .trab-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center;margin-bottom:6px;}
+  .trab-row input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-size:.8rem;width:100%;font-family:inherit;}
+  .trab-del{background:rgba(239,68,68,.15);border:none;color:#f87171;border-radius:6px;padding:7px 10px;cursor:pointer;font-size:.85rem;flex-shrink:0;}
+  .trab-hdr{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;margin-bottom:4px;}
+  .trab-hdr span{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;padding:0 2px;}
+  .section-badge{display:inline-block;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:2px 7px;border-radius:4px;margin-bottom:10px;}
+  .badge-blue{background:rgba(96,165,250,.15);color:#93c5fd;}
+  .badge-orange{background:rgba(251,146,60,.15);color:#fb923c;}
+  .tipo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;}
+  .tipo-btn{background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;transition:all .15s;font-size:.78rem;color:var(--text2);}
+  .tipo-btn.active{border-color:var(--accent);background:rgba(59,130,246,.12);color:var(--accent);font-weight:700;}
+  .tipo-btn span{display:block;font-size:1.2rem;margin-bottom:3px;}
+</style>
 </head>
 <body>
 <div class="app">
@@ -24,46 +38,53 @@
 
   <div class="content">
 
-    <!-- Info da demanda -->
-    <div class="card">
-      <div class="card-title">{{ planejamento.empresa_nome or 'Empresa' }}</div>
+    <!-- Info resumo da demanda -->
+    <div class="card" style="background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);">
+      <div style="font-weight:800;font-size:1rem;color:var(--text)">{{ planejamento.empresa_nome or 'Empresa' }}</div>
       {% if planejamento.demanda_titulo %}
-      <div class="card-sub" style="margin-top:4px">{{ planejamento.demanda_titulo }}</div>
+      <div style="font-size:.8rem;color:var(--text2);margin-top:3px">{{ planejamento.demanda_titulo }}</div>
       {% endif %}
-      <hr>
-      <div class="info-row">
-        <span class="info-key">Data prevista</span>
-        <span class="info-val">{{ planejamento.data_prevista or '—' }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-key">Técnico</span>
-        <span class="info-val">{{ planejamento.tecnico or '—' }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-key">Dosímetros previstos</span>
-        <span class="info-val">{{ planejamento.qtd_dosim_prevista or '—' }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-key">Bombas previstas</span>
-        <span class="info-val">{{ planejamento.qtd_bombas_previstas or '—' }}</span>
+      <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
+        <span style="font-size:.75rem;color:var(--muted)">📅 {{ planejamento.data_prevista or '—' }}</span>
+        <span style="font-size:.75rem;color:var(--muted)">👤 {{ planejamento.tecnico or '—' }}</span>
+        {% if planejamento.qtd_dosim_prevista %}
+        <span style="font-size:.75rem;color:var(--muted)">📡 {{ planejamento.qtd_dosim_prevista }} dosím.</span>
+        {% endif %}
+        {% if planejamento.qtd_bombas_previstas %}
+        <span style="font-size:.75rem;color:var(--muted)">💨 {{ planejamento.qtd_bombas_previstas }} bombas</span>
+        {% endif %}
       </div>
     </div>
 
-  {% if planejamento and planejamento.agentes_previstos %}
-  <div class="card" id="cardAgentes">
-    <div class="section-title" style="margin:0 0 12px">Agentes Previstos</div>
-    <div id="listaAgentes"></div>
-  </div>
-  {% endif %}
+    <!-- Checklist agentes previstos -->
+    {% if planejamento and planejamento.agentes_previstos %}
+    <div class="card" id="cardAgentes">
+      <div class="section-badge badge-blue">Agentes Previstos</div>
+      <div id="listaAgentes"></div>
+    </div>
+    {% endif %}
 
     <!-- Formulário de campo -->
     <form id="formCampo" onsubmit="salvarVisita(event)">
       <input type="hidden" name="planejamento_id" value="{{ planejamento.id }}">
       <input type="hidden" name="empresa_id" value="{{ planejamento.empresa_id }}">
       <input type="hidden" name="demanda_id" value="{{ planejamento.demanda_id }}">
+      <input type="hidden" name="trabalhadores_json" id="trabalhadores_json_input">
 
+      <!-- ── TIPO DE MEDIÇÃO ── -->
+      <div class="section-title">Tipo de medição</div>
+      <div class="card">
+        <div class="tipo-grid" id="tipoGrid">
+          <div class="tipo-btn" onclick="setTipo('ruido',this)"><span>🔊</span>Ruído</div>
+          <div class="tipo-btn" onclick="setTipo('quimico',this)"><span>⚗️</span>Químico</div>
+          <div class="tipo-btn" onclick="setTipo('calor',this)"><span>🌡️</span>Calor (IBUTG)</div>
+          <div class="tipo-btn" onclick="setTipo('vibracao',this)"><span>〰️</span>Vibração</div>
+        </div>
+        <input type="hidden" name="tipo_visita" id="tipo_visita" value="medicao">
+      </div>
+
+      <!-- ── DADOS DA VISITA ── -->
       <div class="section-title">Dados da visita</div>
-
       <div class="card">
         <div class="form-group">
           <label>Data da visita</label>
@@ -85,6 +106,22 @@
         </div>
       </div>
 
+      <!-- ── ACOMPANHANTE ── -->
+      <div class="section-title">Acompanhante da empresa</div>
+      <div class="card">
+        <div style="display:flex; gap:12px">
+          <div class="form-group" style="flex:2">
+            <label>Nome do acompanhante</label>
+            <input type="text" name="acompanhante" placeholder="Nome do responsável na obra">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Cargo</label>
+            <input type="text" name="cargo_acompanhante" placeholder="Ex: Eng. Segurança">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AGENTES AVALIADOS ── -->
       <div class="section-title">Agentes avaliados</div>
       <div class="card">
         <div class="form-group">
@@ -94,7 +131,7 @@
                  value="{{ planejamento.agentes_previstos or '' }}">
         </div>
         <div class="form-group">
-          <label>Agentes não executados (se houver)</label>
+          <label>Agentes não executados</label>
           <input type="text" name="agentes_nao_executados" placeholder="Deixe em branco se todos executados">
         </div>
         <div class="form-group">
@@ -103,6 +140,7 @@
         </div>
       </div>
 
+      <!-- ── EQUIPAMENTOS ── -->
       <div class="section-title">Equipamentos utilizados</div>
       <div class="card">
         <div style="display:flex; gap:12px">
@@ -112,11 +150,30 @@
           </div>
           <div class="form-group" style="flex:1">
             <label>Bombas usadas</label>
-            <input type="text" name="bombas_usadas" placeholder="Ex: B-01">
+            <input type="text" name="bombas_usadas" placeholder="Ex: B-01, B-02">
           </div>
         </div>
       </div>
 
+      <!-- ── TRABALHADORES MONITORADOS ── -->
+      <div class="section-title">
+        Trabalhadores monitorados
+        <button type="button" onclick="adicionarTrabalhador()" style="float:right;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:.75rem;cursor:pointer;font-family:inherit;">+ Adicionar</button>
+      </div>
+      <div class="card">
+        <div id="trab-empty" style="font-size:.8rem;color:var(--muted);text-align:center;padding:8px 0;">
+          Clique em "+ Adicionar" para registrar trabalhadores monitorados
+        </div>
+        <div id="trab-hdr" class="trab-hdr" style="display:none;">
+          <span>Nome / Função</span>
+          <span>GHE</span>
+          <span>Equipamento</span>
+          <span></span>
+        </div>
+        <div id="trab-list"></div>
+      </div>
+
+      <!-- ── RESULTADO ── -->
       <div class="section-title">Resultado</div>
       <div class="card">
         <div class="form-group">
@@ -145,6 +202,7 @@
         </div>
       </div>
 
+      <!-- ── ASSINATURA ── -->
       <div class="section-title">Assinatura digital</div>
       <div class="card">
         <div style="font-size:.8rem; color:var(--muted); margin-bottom:8px">Assine com o dedo</div>
@@ -175,11 +233,60 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/static/sw.js').catch(console.warn);
 }
 
+// ── Tipo de medição ────────────────────────────────────────────────────
+function setTipo(val, el) {
+  document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tipo_visita').value = val;
+}
+
 // ── Mostrar/ocultar justificativa ──────────────────────────────────────
 document.querySelector('[name=resultado]').addEventListener('change', function() {
   document.getElementById('grpJustificativa').style.display =
     ['parcial','reagendar','cancelado'].includes(this.value) ? 'block' : 'none';
 });
+
+// ── Trabalhadores monitorados ──────────────────────────────────────────
+let trabCount = 0;
+function adicionarTrabalhador() {
+  const list = document.getElementById('trab-list');
+  const hdr  = document.getElementById('trab-hdr');
+  const emp  = document.getElementById('trab-empty');
+  emp.style.display = 'none';
+  hdr.style.display = 'grid';
+  const id = ++trabCount;
+  const row = document.createElement('div');
+  row.className = 'trab-row';
+  row.id = 'trab-' + id;
+  row.innerHTML = `
+    <input type="text" placeholder="Nome ou cargo" id="tn_${id}">
+    <input type="text" placeholder="GHE / setor" id="tg_${id}">
+    <input type="text" placeholder="DOS-01 / B-01" id="te_${id}">
+    <button type="button" class="trab-del" onclick="removerTrabalhador(${id})">✕</button>
+  `;
+  list.appendChild(row);
+}
+function removerTrabalhador(id) {
+  const row = document.getElementById('trab-' + id);
+  if (row) row.remove();
+  if (!document.getElementById('trab-list').children.length) {
+    document.getElementById('trab-empty').style.display = 'block';
+    document.getElementById('trab-hdr').style.display = 'none';
+  }
+}
+function coletarTrabalhadores() {
+  const rows = document.querySelectorAll('#trab-list .trab-row');
+  const arr  = [];
+  rows.forEach(row => {
+    const id = row.id.replace('trab-', '');
+    const nome = (document.getElementById('tn_'+id)||{}).value || '';
+    const ghe  = (document.getElementById('tg_'+id)||{}).value || '';
+    const equip= (document.getElementById('te_'+id)||{}).value || '';
+    if (nome || ghe || equip) arr.push({ nome, ghe, equipamento: equip });
+  });
+  document.getElementById('trabalhadores_json_input').value = JSON.stringify(arr);
+  return arr;
+}
 
 // ── Assinatura ─────────────────────────────────────────────────────────
 const canvas = document.getElementById('sigCanvas');
@@ -231,10 +338,13 @@ async function salvarVisita(e) {
     document.getElementById('assinaturaInput').value = canvas.toDataURL('image/png');
   }
 
+  // Coleta trabalhadores
+  coletarTrabalhadores();
+
   // Monta payload
   const fd = new FormData(document.getElementById('formCampo'));
   const body = {};
-  fd.forEach((v, k) => { if (v) body[k] = v; });
+  fd.forEach((v, k) => { if (v !== '' && v !== null) body[k] = v; });
 
   const url = '/mobile/api/visita';
 
@@ -259,7 +369,6 @@ async function salvarVisita(e) {
 
   // Offline: salva na fila IndexedDB
   await enqueueOffline(url, 'POST', body);
-  // Tenta registrar Background Sync (Android Chrome)
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
     const sw = await navigator.serviceWorker.ready;
     await sw.sync.register('sync-visitas').catch(() => {});
@@ -287,7 +396,7 @@ async function enqueueOffline(url, method, body) {
   });
 }
 
-// ── Checklist de agentes previstos ──────────────────────────────────────────────────────────────
+// ── Checklist de agentes previstos ─────────────────────────────────────
 (function() {
   let agentes = [];
   try {

@@ -822,8 +822,18 @@ def _migrate(conn):
     for col, tipo in [('planejamento_id', 'INTEGER'),
                       ("resultado", "TEXT DEFAULT 'pendente'"),
                       ('observacao_geral', 'TEXT'),
-                      ('atualizado_em', 'TEXT DEFAULT CURRENT_TIMESTAMP')]:
+                      ('atualizado_em', 'TEXT DEFAULT CURRENT_TIMESTAMP'),
+                      ('acompanhante', 'TEXT'),
+                      ('cargo_acompanhante', 'TEXT')]:
         _add_col(conn, 'visitas_tecnicas', col, tipo)
+
+    # ── execucao_campo: campos mobile ──
+    for col, tipo in [('acompanhante', 'TEXT'),
+                      ('cargo_acompanhante', 'TEXT'),
+                      ('dosimetros_usados', 'TEXT'),
+                      ('bombas_usadas', 'TEXT'),
+                      ('trabalhadores_json', 'TEXT')]:
+        _add_col(conn, 'execucao_campo', col, tipo)
 
     # ── planner_raw_tasks: colunas extras ──
     raw_extra = {
@@ -1895,7 +1905,8 @@ def update_planejamento_status(pid: int, status: str) -> bool:
 def criar_visita(data: dict) -> int:
     campos = ['planejamento_id', 'demanda_id', 'empresa_id', 'tecnico',
               'data_visita', 'hora_inicio', 'hora_termino',
-              'tipo_visita', 'resultado', 'retrabalho', 'justificativa', 'observacao_geral']
+              'tipo_visita', 'resultado', 'retrabalho', 'justificativa', 'observacao_geral',
+              'acompanhante', 'cargo_acompanhante']
     vals = {c: data.get(c) for c in campos if data.get(c) is not None}
     vals.setdefault('tipo_visita', 'medicao')
     vals.setdefault('resultado', 'pendente')
@@ -1951,9 +1962,11 @@ def concluir_visita(vid: int, data: dict) -> bool:
         conn.execute('''
             UPDATE visitas_tecnicas
             SET resultado=?, justificativa=?, hora_termino=COALESCE(hora_termino,?),
+                acompanhante=?, cargo_acompanhante=?,
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?
-        ''', (resultado, data.get('justificativa'), data.get('hora_termino'), vid))
+        ''', (resultado, data.get('justificativa'), data.get('hora_termino'),
+              data.get('acompanhante'), data.get('cargo_acompanhante'), vid))
 
         row = conn.execute('SELECT planejamento_id FROM visitas_tecnicas WHERE id=?', (vid,)).fetchone()
         plan_id = row['planejamento_id'] if row else None
@@ -1964,15 +1977,21 @@ def concluir_visita(vid: int, data: dict) -> bool:
         conn.execute('''
             INSERT INTO execucao_campo
                 (visita_id, planejamento_id, agentes_executados, agentes_nao_executados,
-                 agentes_adicionados, justificativa_causa, cobravel, observacao)
-            VALUES (?,?,?,?,?,?,?,?)
+                 agentes_adicionados, justificativa_causa, cobravel, observacao,
+                 acompanhante, cargo_acompanhante, dosimetros_usados, bombas_usadas, trabalhadores_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (vid, plan_id,
               _j(data.get('agentes_executados')),
               _j(data.get('agentes_nao_executados')),
               _j(data.get('agentes_adicionados')),
               data.get('justificativa_causa'),
               int(data.get('cobravel', 0)),
-              data.get('observacao')))
+              data.get('observacao'),
+              data.get('acompanhante'),
+              data.get('cargo_acompanhante'),
+              data.get('dosimetros_usados'),
+              data.get('bombas_usadas'),
+              _j(data.get('trabalhadores_json'))))
 
         if plan_id and resultado == 'concluido':
             conn.execute(

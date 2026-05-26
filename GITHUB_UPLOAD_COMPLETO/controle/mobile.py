@@ -172,16 +172,18 @@ def api_salvar_visita():
         data = request.get_json(force=True) or {}
 
         vid = criar_visita({
-            'planejamento_id': _int(data.get('planejamento_id')),
-            'demanda_id':      _int(data.get('demanda_id')),
-            'empresa_id':      _int(data.get('empresa_id')),
-            'tecnico':         data.get('tecnico') or _usuario(),
-            'data_visita':     data.get('data_visita') or _hoje(),
-            'hora_inicio':     data.get('hora_inicio'),
-            'hora_termino':    data.get('hora_termino'),
-            'tipo_visita':     data.get('tipo_visita', 'medicao'),
-            'resultado':       data.get('resultado', 'concluido'),
-            'observacao_geral': data.get('observacao') or data.get('observacao_geral'),
+            'planejamento_id':    _int(data.get('planejamento_id')),
+            'demanda_id':         _int(data.get('demanda_id')),
+            'empresa_id':         _int(data.get('empresa_id')),
+            'tecnico':            data.get('tecnico') or _usuario(),
+            'data_visita':        data.get('data_visita') or _hoje(),
+            'hora_inicio':        data.get('hora_inicio'),
+            'hora_termino':       data.get('hora_termino'),
+            'tipo_visita':        data.get('tipo_visita', 'medicao'),
+            'resultado':          data.get('resultado', 'concluido'),
+            'observacao_geral':   data.get('observacao') or data.get('observacao_geral'),
+            'acompanhante':       data.get('acompanhante'),
+            'cargo_acompanhante': data.get('cargo_acompanhante'),
         })
 
         concluir_visita(vid, {
@@ -193,6 +195,11 @@ def api_salvar_visita():
             'agentes_adicionados':    _parse_lista(data.get('agentes_adicionados')),
             'cobravel':               int(data.get('cobravel', 1)),
             'observacao':             data.get('observacao') or data.get('observacao_geral'),
+            'acompanhante':           data.get('acompanhante'),
+            'cargo_acompanhante':     data.get('cargo_acompanhante'),
+            'dosimetros_usados':      data.get('dosimetros_usados'),
+            'bombas_usadas':          data.get('bombas_usadas'),
+            'trabalhadores_json':     data.get('trabalhadores_json'),
         })
 
         _salvar_assinatura(vid, data.get('assinatura_data_url'))
