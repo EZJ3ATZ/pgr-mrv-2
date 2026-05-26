@@ -457,25 +457,18 @@ def _extrair_agentes_de_texto(
 
     # Estratégia A: varrer aliases do maior para o menor (evita substring)
     for alias, canonical in _ALIAS_SORTED:
-        if len(alias) < _ALIAS_CURTO_MINLEN and alias in _ALIASES_AMBIGUOS:
-            # Alias ambíguo: só aceitar se cercado por espaços
+        if len(alias) < _ALIAS_CURTO_MINLEN:
+            # Alias curto: regex com fronteira de palavra
             pat = r'(?<!\w)' + re.escape(alias) + r'(?!\w)'
-            match = re.search(pat, txt_n)
-        elif len(alias) < _ALIAS_CURTO_MINLEN:
-            pat = r'(?<!\w)' + re.escape(alias) + r'(?!\w)'
-            match = re.search(pat, txt_n)
+            m = re.search(pat, txt_n)
+            if not m:
+                continue
+            start = m.start()
         else:
-            pos = txt_n.find(alias)
-            match = type('M', (), {'start': lambda s=pos: s, 'end': lambda s=pos+len(alias): s})() if pos >= 0 else None
-
-        if not match or (hasattr(match, 'start') and callable(match.start) and match.start() < 0):
-            continue
-        try:
-            start = match.start()
-        except Exception:
-            continue
-        if start < 0:
-            continue
+            # Alias longo: busca direta por substring
+            start = txt_n.find(alias)
+            if start < 0:
+                continue
 
         # Verificar fronteira de palavra
         pre_char  = txt_n[start - 1]   if start > 0              else ' '
