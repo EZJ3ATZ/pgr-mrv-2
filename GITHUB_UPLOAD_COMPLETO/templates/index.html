@@ -3873,7 +3873,7 @@
   <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;">
     <div>
       <div class="page-title">Empresas</div>
-      <div class="page-sub">Cadastro e histórico de todas as empresas atendidas</div>
+      <div class="page-sub">Dados cadastrais, coletas e histórico. Para OS ativas use 🏗️ Campo ou 📋 OS no painel da empresa.</div>
     </div>
     <button class="btn" onclick="goToTab('controle'); ctrlInit();" style="background:var(--orange);color:#fff;border:none;display:flex;align-items:center;gap:7px;cursor:pointer;padding:9px 18px;border-radius:8px;font-size:.82rem;font-weight:600;">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -3922,15 +3922,23 @@
 <div id="emp-painel-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 32px 64px rgba(0,0,0,.7);">
     <!-- Header do modal -->
-    <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-      <div>
-        <div style="font-size:1rem;font-weight:700;color:var(--text);" id="emp-painel-nome">—</div>
+    <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:1rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="emp-painel-nome">—</div>
         <div style="font-size:.72rem;color:var(--text3);margin-top:2px;" id="emp-painel-cnpj"></div>
       </div>
-      <button onclick="empFecharPainel()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text2);cursor:pointer;font-size:.8rem;display:flex;align-items:center;gap:5px;">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-        Fechar
-      </button>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button onclick="empIrParaCampo()" title="Ir para Vista de Campo desta empresa" style="background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:8px;padding:7px 11px;color:var(--brand);cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+          🏗️ Campo
+        </button>
+        <button onclick="empIrParaOS()" title="Ver pipeline de OS desta empresa" style="background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:7px 11px;color:var(--blue);cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+          📋 OS
+        </button>
+        <button onclick="empFecharPainel()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text2);cursor:pointer;font-size:.8rem;display:flex;align-items:center;gap:5px;">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          Fechar
+        </button>
+      </div>
     </div>
     <!-- Body com abas -->
     <div id="emp-painel-body" style="flex:1;overflow-y:auto;padding:20px 24px;"></div>
@@ -8686,8 +8694,36 @@ function empFecharPainel() {
   _empPainelData = null;
 }
 
+function empIrParaCampo() {
+  const nome = _empPainelData && _empPainelData.nome ? _empPainelData.nome : '';
+  empFecharPainel();
+  goToTab('controle');
+  ctrlInit();
+  setTimeout(() => {
+    ctrlSwitchSub('empresa', null);
+    const inp = document.getElementById('ctrl-fe-nome');
+    if (inp) { inp.value = nome; }
+    ctrlLoadPorEmpresa();
+  }, 400);
+}
+
+function empIrParaOS() {
+  const nome = _empPainelData && _empPainelData.nome ? _empPainelData.nome : '';
+  empFecharPainel();
+  goToTab('controle');
+  ctrlInit();
+  setTimeout(() => {
+    ctrlSwitchSub('demand', null);
+    const inp = document.getElementById('ctrl-fd-empresa');
+    if (inp) { inp.value = nome; }
+    ctrlLoadDemand();
+  }, 400);
+}
+
 function empPainelAba(aba) {
   _empPainelAba = aba;
+  // guard: 'demandas' tab was removed — fallback to resumo
+  if (!['resumo','agentes','coletas','tecnicos','historico'].includes(_empPainelAba)) _empPainelAba = 'resumo';
   empRenderPainel();
 }
 
@@ -8697,8 +8733,8 @@ function empRenderPainel() {
   const body = document.getElementById('emp-painel-body');
   if (!body) return;
   const s = d.stats || {};
-  const abas = ['resumo','demandas','agentes','coletas','tecnicos','historico'];
-  const abaLabel = {resumo:'Resumo',demandas:'Demandas',agentes:'Agentes',coletas:'Coletas',tecnicos:'Técnicos',historico:'Histórico'};
+  const abas = ['resumo','agentes','coletas','tecnicos','historico'];
+  const abaLabel = {resumo:'Resumo',agentes:'Agentes',coletas:'Coletas',tecnicos:'Técnicos',historico:'Histórico'};
 
   let content = '';
   if (_empPainelAba === 'resumo') {
@@ -8743,23 +8779,6 @@ function empRenderPainel() {
         </div>
       </div>` : ''}
     `;
-  } else if (_empPainelAba === 'demandas') {
-    const dems = d.demandas_recentes || [];
-    content = dems.length === 0 ? '<div style="color:var(--text3);padding:30px;text-align:center;">Nenhuma demanda encontrada.</div>' : `
-      <div style="display:flex;flex-direction:column;gap:6px;">
-        ${dems.map(dem => {
-          const statusCor = dem.status==='concluida'?'var(--green)':dem.status==='pendente'?'var(--yellow)':'var(--blue)';
-          return `
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
-            <div style="width:8px;height:8px;border-radius:50%;background:${statusCor};flex-shrink:0;"></div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:.81rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dem.titulo||dem.numero_os||'—'}</div>
-              <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">${dem.planner_bucket||dem.bucket||''} ${dem.responsavel?'· '+dem.responsavel:''} ${dem.prazo?'· prazo: '+dem.prazo:''}</div>
-            </div>
-            <div style="font-size:.7rem;font-weight:600;color:${statusCor};flex-shrink:0;">${dem.status||''}</div>
-          </div>`;
-        }).join('')}
-      </div>`;
   } else if (_empPainelAba === 'agentes') {
     const ags = d.agentes || [];
     content = ags.length === 0 ? '<div style="color:var(--text3);padding:30px;text-align:center;">Nenhum agente medido registrado.</div>' : `
