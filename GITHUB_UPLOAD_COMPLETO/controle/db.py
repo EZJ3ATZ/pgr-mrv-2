@@ -1258,34 +1258,56 @@ def get_empresa_demandas(empresa_id):
                 "SELECT id, agente, tipo_amostrador, qtd_pontos_feita, qtd_pontos_prevista "
                 "FROM medicoes WHERE demanda_id=? AND status!='realizado' ORDER BY agente",
                 (d['id'],)).fetchall()]
-            # Fallback: quando não há medições formais, usa agentes extraídos do Planner
+            # Fallback: quando não há medições formais, usa agentes do motor inteligente
             if not d.get('medicoes_pendentes') and d.get('status') != 'concluida':
                 _ej = d.get('extracao_json') or ''
+                _raw = []
+                # 1. Tentar extracao_json (já calculado no sync)
                 if _ej:
                     try:
                         import json as _jj
                         _raw = _jj.loads(_ej).get('agentes', [])
-                        if _raw:
-                            def _tip(c):
-                                c = (c or '').lower()
-                                if 'ruído' in c or 'ruido' in c or 'dosimetria' in c: return 'ruido'
-                                if 'calor' in c or 'ibutg' in c: return 'calor'
-                                if 'corpo inteiro' in c or ' vci' in c: return 'vibracao_vci'
-                                if 'mão' in c or 'braço' in c or ' vmb' in c or 'mao' in c or 'braco' in c: return 'vibracao_vbma'
-                                if 'vibr' in c: return 'vibracao'
-                                if 'silica' in c or 'sílica' in c or 'poeira' in c or 'particul' in c: return 'particulado'
-                                return 'quimico'
-                            d['medicoes_pendentes'] = [
-                                {'id': None, 'agente': a.get('canonical', ''),
-                                 'tipo_amostrador': _tip(a.get('canonical', '')),
-                                 'qtd_pontos_feita': 0,
-                                 'qtd_pontos_prevista': a.get('quantidade', 1),
-                                 'fonte': 'planner'}
-                                for a in _raw
-                                if a.get('canonical') and float(a.get('confianca', 1)) >= 0.55
-                            ]
                     except Exception:
                         pass
+                # 2. Se vazio, rodar motor diretamente (título + desc + checklist + bucket)
+                if not _raw:
+                    try:
+                        from .inteligencia_demandas import extrair_agentes_multifonte
+                        import json as _jj
+                        _cl = []
+                        try:
+                            _cl = _jj.loads(d.get('checklist') or '[]')
+                        except Exception:
+                            pass
+                        _ags = extrair_agentes_multifonte(
+                            titulo=d.get('titulo') or '',
+                            descricao=d.get('descricao') or '',
+                            checklist=_cl,
+                            bucket=d.get('planner_bucket') or '',
+                        )
+                        _raw = [{'canonical': a.canonical, 'quantidade': a.quantidade,
+                                 'confianca': a.confianca} for a in _ags]
+                    except Exception:
+                        pass
+                if _raw:
+                    def _tip(c):
+                        c = (c or '').lower()
+                        if 'ruído' in c or 'ruido' in c or 'dosimetria' in c: return 'ruido'
+                        if 'calor' in c or 'ibutg' in c: return 'calor'
+                        if 'corpo inteiro' in c or ' vci' in c: return 'vibracao_vci'
+                        if 'mão' in c or 'braço' in c or ' vmb' in c or 'mao' in c or 'braco' in c: return 'vibracao_vbma'
+                        if 'vibr' in c: return 'vibracao'
+                        if 'silica' in c or 'sílica' in c or 'poeira' in c or 'particul' in c: return 'particulado'
+                        return 'quimico'
+                    d['medicoes_pendentes'] = [
+                        {'id': None, 'agente': a.get('canonical', ''),
+                         'tipo_amostrador': _tip(a.get('canonical', '')),
+                         'qtd_pontos_feita': 0,
+                         'qtd_pontos_prevista': a.get('quantidade', 1),
+                         'fonte': 'planner'}
+                        for a in _raw
+                        if a.get('canonical') and float(a.get('confianca', 1)) >= 0.55
+                    ]
         emp['demandas'] = dems
         return emp
 

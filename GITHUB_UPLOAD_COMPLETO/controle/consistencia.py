@@ -104,7 +104,8 @@ def _parse_lista(v) -> list:
 
 
 def _ph():
-    return '%s' if USE_PG else '?'
+    # _PGCursor.execute() converte ? → %s automaticamente — usar sempre ?
+    return '?'
 
 
 # ════════════════════════════════════════════════════════════════════════
