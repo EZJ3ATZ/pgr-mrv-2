@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 288 56" fill="none">
+  <!-- Circular O mark -->
+  <circle cx="24" cy="28" r="19" stroke="white" stroke-width="3.5" fill="none"/>
+  <!-- Yellow-green dot inside O (upper area like the brand) -->
+  <circle cx="24" cy="20" r="6" fill="#c5d42a"/>
+  <!-- "cupacional" text -->
+  <text x="52" y="40"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Arial', sans-serif"
+    font-size="31" font-weight="800" fill="white" letter-spacing="-0.8">cupacional</text>
+</svg>

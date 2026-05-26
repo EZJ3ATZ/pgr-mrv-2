@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#07090E">
 <title>Ocupacional SST — Plataforma Operacional de Higiene Ocupacional</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,25 +14,35 @@
   --txt:     #EDF0F7; --txt2: #828DA8; --txt3: #485068;
   --green:   #10B981; --yellow: #F59E0B; --red: #EF4444;
   --blue:    #60A5FA; --purple: #A78BFA;
+  --accent:  #c5d42a;
 }
+html { scroll-behavior: smooth; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--txt); font-size: 14px; line-height: 1.5; overflow-x: hidden; }
+
+/* ─── LOGO COMPONENT ─── */
+.ocu-logo {
+  display: flex; align-items: center; gap: 0; text-decoration: none;
+}
+.ocu-logo-svg { height: 30px; width: auto; }
+.ocu-logo-svg-sm { height: 24px; width: auto; }
+.ocu-logo-svg-lg { height: 42px; width: auto; }
+.ocu-logo-sub {
+  font-size: .58rem; color: var(--txt3); margin-top: 1px; letter-spacing: .02em;
+  margin-left: 10px; border-left: 1px solid var(--bd2); padding-left: 10px; white-space: nowrap;
+}
 
 /* ─── HEADER ─── */
 .hdr {
-  height: 58px; background: rgba(7,9,14,.94); border-bottom: 1px solid var(--bd);
+  height: 58px; background: rgba(7,9,14,.96); border-bottom: 1px solid var(--bd);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 36px; position: sticky; top: 0; z-index: 200; backdrop-filter: blur(20px);
+  padding: 0 32px; position: sticky; top: 0; z-index: 200; backdrop-filter: blur(20px);
 }
-.hdr-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-.hdr-logo img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
-.hdr-logo-name { font-size: .9rem; font-weight: 800; letter-spacing: -.01em; color: var(--txt); }
-.hdr-logo-sub  { font-size: .6rem; color: var(--txt3); margin-top: 1px; letter-spacing: .02em; }
 .hdr-cta {
   display: inline-flex; align-items: center; gap: 8px;
   background: linear-gradient(135deg, var(--brand), var(--brand-d));
-  color: #fff; font-weight: 700; font-size: .8rem;
+  color: #fff; font-weight: 700; font-size: .78rem;
   padding: 8px 20px; border-radius: 8px; text-decoration: none;
-  box-shadow: 0 4px 16px rgba(27,107,107,.35); transition: all .2s;
+  box-shadow: 0 4px 16px rgba(27,107,107,.35); transition: all .2s; white-space: nowrap;
 }
 .hdr-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(27,107,107,.5); }
 
@@ -45,11 +56,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
   background: radial-gradient(700px circle at 25% 45%, rgba(27,107,107,.1) 0%, rgba(27,107,107,.03) 40%, transparent 70%);
 }
 .intro-inner {
-  position: relative; z-index: 2; max-width: 1140px; margin: 0 auto; padding: 0 32px;
+  position: relative; z-index: 2; max-width: 1140px; margin: 0 auto; padding: 80px 32px 100px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 52px; align-items: center; width: 100%;
 }
 
-/* left */
 .intro-badge {
   display: inline-flex; align-items: center; gap: 8px;
   background: rgba(27,107,107,.1); border: 1px solid rgba(27,107,107,.2);
@@ -79,9 +89,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 }
 .dor:hover { border-color: rgba(27,107,107,.3); }
 .dor-ic {
-  width: 28px; height: 28px; border-radius: 7px;
+  width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
   background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.16);
-  display: flex; align-items: center; justify-content: center; font-size: .78rem; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: .78rem;
 }
 .dor-title { font-size: .78rem; font-weight: 700; color: var(--txt); margin-bottom: 1px; }
 .dor-desc  { font-size: .68rem; color: var(--txt3); line-height: 1.4; }
@@ -95,10 +105,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 }
 .intro-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(27,107,107,.55); }
 
-/* ═══ PIPELINE FLOW — substitui o radar ═══ */
+/* ═══ PIPELINE PANEL ═══ */
 .pipeline-panel {
-  background: var(--s1); border: 1px solid var(--bd); border-radius: 18px;
-  overflow: hidden; position: relative;
+  background: var(--s1); border: 1px solid var(--bd); border-radius: 18px; overflow: hidden;
 }
 .pipeline-panel-hdr {
   display: flex; align-items: center; justify-content: space-between;
@@ -112,72 +121,53 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .pp-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5)} 50%{box-shadow:0 0 0 4px rgba(16,185,129,0)} }
 
-.pipeline-body { padding: 18px 20px; position: relative; }
+.pipeline-body { padding: 16px 18px; position: relative; }
 
-/* OS em progresso */
 .os-progress-badge {
   display: flex; align-items: center; gap: 10px;
   background: rgba(27,107,107,.08); border: 1px solid rgba(27,107,107,.18);
-  border-radius: 9px; padding: 10px 14px; margin-bottom: 18px;
+  border-radius: 9px; padding: 10px 14px; margin-bottom: 16px;
 }
-.os-progress-badge-ic { font-size: 1.1rem; }
 .os-badge-label { font-size: .72rem; font-weight: 700; color: var(--txt); }
-.os-badge-sub { font-size: .62rem; color: var(--txt3); }
+.os-badge-sub   { font-size: .62rem; color: var(--txt3); }
 
-/* fluxo vertical com linha animada */
-.flow-track {
-  position: relative; display: flex; flex-direction: column; gap: 0;
-}
-/* linha vertical contínua */
+.flow-track { position: relative; display: flex; flex-direction: column; gap: 0; }
 .flow-track::before {
   content: ''; position: absolute; left: 17px; top: 18px; bottom: 18px;
   width: 2px; background: var(--bd2); border-radius: 2px; z-index: 0;
 }
-/* progresso animado na linha */
 .flow-track-progress {
   position: absolute; left: 17px; top: 18px;
   width: 2px; background: linear-gradient(180deg, var(--brand-l), rgba(27,107,107,.3));
   border-radius: 2px; z-index: 1;
   animation: flow-grow 3s ease-in-out infinite alternate;
 }
-@keyframes flow-grow {
-  0%   { height: 20%; }
-  100% { height: 85%; }
-}
-
-/* dot viajando pela linha */
+@keyframes flow-grow { 0%{height:20%} 100%{height:85%} }
 .flow-dot-travel {
   position: absolute; left: 12px; width: 12px; height: 12px;
   background: var(--brand-l); border-radius: 50%;
   box-shadow: 0 0 10px var(--brand-l), 0 0 20px rgba(27,107,107,.5);
   z-index: 2; animation: dot-travel 3s ease-in-out infinite alternate;
 }
-@keyframes dot-travel {
-  0%   { top: 14px; opacity: 1; }
-  85%  { opacity: 1; }
-  100% { top: calc(100% - 50px); opacity: .4; }
-}
-
+@keyframes dot-travel { 0%{top:14px;opacity:1} 85%{opacity:1} 100%{top:calc(100% - 50px);opacity:.4} }
 .flow-step {
   display: flex; align-items: center; gap: 12px;
-  padding: 8px 0 8px 0; position: relative; z-index: 3;
+  padding: 8px 0; position: relative; z-index: 3;
 }
 .flow-step-ic {
   width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: .95rem;
-  border: 1px solid; transition: all .3s;
-  position: relative; z-index: 2;
+  border: 1px solid; transition: all .3s; position: relative; z-index: 2;
 }
 .flow-step-ic.done   { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); }
 .flow-step-ic.active { background: rgba(27,107,107,.15); border-color: rgba(27,107,107,.5); box-shadow: 0 0 14px rgba(27,107,107,.3); }
 .flow-step-ic.pend   { background: var(--s2); border-color: var(--bd); }
-
-.flow-step-info { flex: 1; }
-.flow-step-name { font-size: .78rem; font-weight: 700; color: var(--txt); }
+.flow-step-info { flex: 1; min-width: 0; }
+.flow-step-name { font-size: .76rem; font-weight: 700; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .flow-step-sub  { font-size: .62rem; color: var(--txt3); margin-top: 1px; }
 .flow-step-tag  {
   font-size: .58rem; font-weight: 700; padding: 2px 7px; border-radius: 7px;
-  white-space: nowrap; border: 1px solid transparent;
+  white-space: nowrap; border: 1px solid transparent; flex-shrink: 0;
 }
 .flow-step-tag.done   { background: rgba(16,185,129,.1); color: var(--green); border-color: rgba(16,185,129,.2); }
 .flow-step-tag.active { background: rgba(27,107,107,.12); color: var(--brand-l); border-color: rgba(27,107,107,.25); animation: blink-tag 1.8s ease infinite; }
@@ -205,7 +195,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .cscroll-title { text-align: center; margin-bottom: 26px; will-change: transform; }
 .cscroll-eyebrow { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--brand-l); margin-bottom: 10px; }
 .cscroll-title h2 { font-size: 2.1rem; font-weight: 900; letter-spacing: -.04em; color: var(--txt); line-height: 1.1; }
-.cscroll-title p { font-size: .86rem; color: var(--txt2); margin-top: 8px; }
+.cscroll-title p  { font-size: .86rem; color: var(--txt2); margin-top: 8px; }
 .cscroll-card {
   width: 100%; max-width: 920px; border: 2px solid #353535; border-radius: 22px;
   background: #1a1a1a; padding: 6px;
@@ -217,7 +207,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .mini-dash-left { border-right: 1px solid var(--bd); padding: 14px 10px; display: flex; flex-direction: column; gap: 7px; background: var(--s1); }
 .mini-nav-item { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 7px; font-size: .72rem; font-weight: 600; color: var(--txt3); }
 .mini-nav-item.active { background: rgba(27,107,107,.12); color: var(--brand-l); border: 1px solid rgba(27,107,107,.2); }
-.mini-dash-right { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.mini-dash-right { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
 .mini-kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
 .mini-kpi-card { background: var(--s1); border: 1px solid var(--bd); border-radius: 9px; padding: 10px 11px; }
 .mini-kpi-card-n { font-size: 1.45rem; font-weight: 900; letter-spacing: -.04em; line-height: 1; }
@@ -246,7 +236,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .fluxo-title { font-size: 2rem; font-weight: 900; letter-spacing: -.03em; color: var(--txt); margin-bottom: 10px; }
 .fluxo-sub { font-size: .88rem; color: var(--txt2); max-width: 520px; margin: 0 auto; }
 
-/* fluxo horizontal steps */
 .fluxo-steps {
   display: grid; grid-template-columns: repeat(5, 1fr);
   gap: 0; margin-bottom: 56px; position: relative;
@@ -277,7 +266,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .fs-name { font-size: .78rem; font-weight: 700; color: var(--txt); margin-bottom: 4px; }
 .fs-desc { font-size: .66rem; color: var(--txt3); line-height: 1.4; }
 
-/* funcao items */
 .funcao-item {
   display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
   margin-bottom: 68px; padding-bottom: 68px; border-bottom: 1px solid var(--bd);
@@ -318,7 +306,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .pipe-ic { width: 32px; height: 32px; border-radius: 8px; background: rgba(27,107,107,.12); border: 1px solid rgba(27,107,107,.25); display: flex; align-items: center; justify-content: center; font-size: .82rem; }
 .pipe-lbl { font-size: .56rem; color: var(--txt3); font-weight: 700; text-align: center; }
 
-/* filosofia */
 .filosofia-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 48px; }
 .fil-card {
   background: var(--s1); border: 1px solid var(--bd); border-radius: 14px;
@@ -332,10 +319,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 /* ═══ CTA FOOTER ═══ */
 .landing-footer { text-align: center; padding: 80px 28px 60px; background: var(--bg); border-top: 1px solid var(--bd); }
 .landing-footer-logo { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 24px; }
-.landing-footer-logo img { width: 40px; height: 40px; border-radius: 10px; }
-.landing-footer-logo-name { font-size: 1.1rem; font-weight: 800; color: var(--txt); }
 .landing-footer h2 { font-size: 1.9rem; font-weight: 900; letter-spacing: -.03em; color: var(--txt); margin-bottom: 10px; }
-.landing-footer p { font-size: .88rem; color: var(--txt2); margin-bottom: 28px; }
+.landing-footer p  { font-size: .88rem; color: var(--txt2); margin-bottom: 28px; }
 .cta-big {
   display: inline-flex; align-items: center; gap: 10px;
   background: linear-gradient(135deg, var(--brand), var(--brand-d));
@@ -349,20 +334,163 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 
 @keyframes fade-up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 .a1{animation:fade-up .4s ease both .05s} .a2{animation:fade-up .4s ease both .12s} .a3{animation:fade-up .4s ease both .2s}
+
+/* ══════════════════════════════════════════
+   MOBILE — TABLET  ≤ 1024px
+══════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .intro-inner { grid-template-columns: 1fr; gap: 36px; padding: 72px 24px 80px; }
+  .intro-sub { max-width: 100%; }
+  .cscroll-card-inner { height: 300px; }
+  .mini-kpi-row { grid-template-columns: repeat(2,1fr); }
+  .mini-trow { grid-template-columns: 1fr 80px 70px; }
+  .mini-trow > :nth-child(4) { display: none; }
+  .funcao-item { gap: 32px; }
+  .fluxo-steps { gap: 4px; }
+  .fs-desc { display: none; }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE  ≤ 768px
+══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  body { font-size: 13px; }
+
+  /* Header */
+  .hdr { height: 52px; padding: 0 16px; }
+  .ocu-logo-svg { height: 22px; }
+  .ocu-logo-sub { display: none; }
+  .hdr-cta { font-size: .72rem; padding: 7px 14px; gap: 5px; }
+  .hdr-cta .cta-arrow { display: none; }
+
+  /* Intro — stack single column */
+  .intro { min-height: auto; padding: 0; }
+  .intro-inner {
+    grid-template-columns: 1fr; gap: 24px;
+    padding: 64px 20px 60px;
+  }
+  .intro-badge { font-size: .58rem; padding: 4px 12px; }
+  .intro-title { font-size: 1.65rem; letter-spacing: -.025em; }
+  .intro-sub { font-size: .82rem; }
+  .dor { padding: 9px 12px; gap: 9px; }
+  .dor-ic { width: 26px; height: 26px; font-size: .72rem; }
+  .dor-title { font-size: .74rem; }
+  .dor-desc { font-size: .65rem; }
+  .intro-cta { font-size: .82rem; padding: 12px 22px; width: 100%; justify-content: center; }
+
+  /* Pipeline panel — condensed for mobile */
+  .pipeline-panel { border-radius: 14px; }
+  .pipeline-panel-hdr { padding: 11px 14px; }
+  .pipeline-panel-title { font-size: .7rem; }
+  .pipeline-body { padding: 12px 14px; }
+  .os-progress-badge { padding: 8px 12px; }
+  .os-badge-label { font-size: .68rem; }
+  .flow-step { gap: 9px; padding: 6px 0; }
+  .flow-step-ic { width: 30px; height: 30px; font-size: .8rem; border-radius: 7px; }
+  .flow-step-name { font-size: .7rem; }
+  .flow-step-sub { display: none; }
+  .flow-step-tag { font-size: .55rem; padding: 2px 6px; }
+
+  /* Scroll hint */
+  .scroll-hint { display: none; }
+
+  /* ContainerScroll — disable 3D on mobile, static layout */
+  .cscroll-wrap { min-height: auto; padding: 48px 16px; }
+  .cscroll-sticky { position: static; height: auto; }
+  .cscroll-title h2 { font-size: 1.5rem; }
+  .cscroll-card { border-radius: 14px; padding: 4px; }
+  .cscroll-card-inner { height: auto; border-radius: 10px; }
+
+  /* Mini-dash mobile: hide sidebar, stack vertically */
+  .mini-dash { grid-template-columns: 1fr; height: auto; }
+  .mini-dash-left { display: none; }
+  .mini-dash-right { padding: 14px 14px; gap: 12px; }
+  .mini-kpi-row { grid-template-columns: repeat(2,1fr); gap: 8px; }
+  .mini-kpi-card { padding: 10px; }
+  .mini-kpi-card-n { font-size: 1.25rem; }
+  .mini-trow { grid-template-columns: 1fr 80px; gap: 6px; font-size: .66rem; }
+  .mini-trow > :nth-child(3),
+  .mini-trow > :nth-child(4) { display: none; }
+
+  /* Fluxo section */
+  .fluxo-section { padding: 48px 0; }
+  .fluxo-inner { padding: 0 20px; }
+  .fluxo-header { margin-bottom: 36px; }
+  .fluxo-title { font-size: 1.4rem; }
+  .fluxo-sub { font-size: .82rem; }
+
+  /* Steps — 2 columns on mobile */
+  .fluxo-steps { grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 40px; }
+  .fluxo-steps::before { display: none; }
+  .fs-ic { width: 44px; height: 44px; font-size: 1.1rem; margin-bottom: 7px; }
+  .fs-ic.hl { box-shadow: none; }
+  .fs-name { font-size: .7rem; }
+  .fs-desc { display: none; }
+
+  /* Funcao items — single column */
+  .funcao-item {
+    grid-template-columns: 1fr; gap: 20px;
+    margin-bottom: 48px; padding-bottom: 48px;
+  }
+  .funcao-item.reverse { direction: ltr; }
+  .funcao-item.reverse > * { direction: ltr; }
+  .funcao-number { font-size: 2.8rem; }
+  .funcao-title { font-size: 1.15rem; }
+  .funcao-desc { font-size: .8rem; }
+  .funcao-bullet { font-size: .74rem; }
+
+  /* Filosofia */
+  .filosofia-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 32px; }
+  .fil-card { padding: 18px 16px; }
+  .fil-title { font-size: .82rem; }
+  .fil-desc { font-size: .7rem; }
+
+  /* Footer */
+  .landing-footer { padding: 56px 20px 44px; }
+  .landing-footer h2 { font-size: 1.4rem; }
+  .landing-footer p { font-size: .82rem; }
+  .cta-big { font-size: .88rem; padding: 14px 28px; width: 100%; justify-content: center; }
+  .footer-credit { font-size: .64rem; }
+}
+
+/* ══════════════════════════════════════════
+   MOBILE PEQUENO  ≤ 480px
+══════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .intro-title { font-size: 1.4rem; }
+  .intro-inner { padding: 56px 16px 52px; }
+  .fluxo-inner { padding: 0 16px; }
+  .fluxo-steps { grid-template-columns: repeat(3,1fr); gap: 6px; }
+  .fs-ic { width: 38px; height: 38px; font-size: 1rem; }
+  .fluxo-title { font-size: 1.2rem; }
+  .cscroll-wrap { padding: 36px 12px; }
+  .cscroll-title h2 { font-size: 1.3rem; }
+  .mini-kpi-card-n { font-size: 1.1rem; }
+
+  /* Pipeline panel super compact */
+  .flow-dot-travel,
+  .flow-track-progress,
+  .flow-track::before { display: none; }
+  .flow-step-ic { width: 28px; height: 28px; font-size: .75rem; }
+}
+
+/* ═══ Touch improvements ═══ */
+@media (hover: none) {
+  .dor:hover { border-color: var(--bd); }
+  .fil-card:hover { transform: none; background: var(--s1); border-color: var(--bd); }
+  .intro-cta:hover, .hdr-cta:hover, .cta-big:hover { transform: none; }
+}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header class="hdr">
-  <a href="/" class="hdr-logo">
-    <img src="/static/icon-192.png" alt="Ocupacional SST">
-    <div>
-      <div class="hdr-logo-name">Ocupacional SST</div>
-      <div class="hdr-logo-sub">Plataforma de Higiene Ocupacional</div>
-    </div>
+  <a href="/" class="ocu-logo">
+    <img src="/static/logo-ocupacional.svg" alt="Ocupacional SST" class="ocu-logo-svg">
+    <span class="ocu-logo-sub">Plataforma de Higiene Ocupacional</span>
   </a>
-  <a href="/login" class="hdr-cta">Entrar no sistema →</a>
+  <a href="/login" class="hdr-cta">Entrar <span class="cta-arrow">→</span></a>
 </header>
 
 <!-- ═══ INTRO ═══ -->
@@ -424,20 +552,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
         <span class="pp-live"><span class="pp-live-dot"></span>Ao vivo</span>
       </div>
       <div class="pipeline-body">
-        <!-- OS em progresso -->
         <div class="os-progress-badge">
-          <span class="os-progress-badge-ic">🏭</span>
+          <span style="font-size:1.1rem">🏭</span>
           <div>
             <div class="os-badge-label">MRV Engenharia — OS-2024-0301</div>
             <div class="os-badge-sub">Ruído · Calor · Matheus Costa</div>
           </div>
         </div>
-
-        <!-- fluxo vertical -->
         <div class="flow-track" id="flow-track">
           <div class="flow-track-progress" id="flow-progress"></div>
           <div class="flow-dot-travel" id="flow-dot"></div>
-
           <div class="flow-step">
             <div class="flow-step-ic done">📆</div>
             <div class="flow-step-info">
@@ -446,16 +570,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
             </div>
             <span class="flow-step-tag done">✓ Concluído</span>
           </div>
-
           <div class="flow-step">
             <div class="flow-step-ic done">📝</div>
             <div class="flow-step-info">
               <div class="flow-step-name">Planejamento definido</div>
-              <div class="flow-step-sub">Agentes, bombas e metodologia selecionados</div>
+              <div class="flow-step-sub">Agentes, bombas e metodologia</div>
             </div>
             <span class="flow-step-tag done">✓ Concluído</span>
           </div>
-
           <div class="flow-step">
             <div class="flow-step-ic active">🏗️</div>
             <div class="flow-step-info">
@@ -464,7 +586,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
             </div>
             <span class="flow-step-tag active">⏳ Em campo</span>
           </div>
-
           <div class="flow-step">
             <div class="flow-step-ic pend">🧪</div>
             <div class="flow-step-info">
@@ -473,7 +594,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
             </div>
             <span class="flow-step-tag pend">Aguardando</span>
           </div>
-
           <div class="flow-step">
             <div class="flow-step-ic pend">📄</div>
             <div class="flow-step-info">
@@ -482,11 +602,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
             </div>
             <span class="flow-step-tag pend">Pendente</span>
           </div>
-
           <div class="flow-step">
             <div class="flow-step-ic pend">📊</div>
             <div class="flow-step-info">
-              <div class="flow-step-name">Analytics — Indicadores atualizados</div>
+              <div class="flow-step-name">Analytics — Indicadores</div>
               <div class="flow-step-sub">Produtividade, SLA, rastreabilidade</div>
             </div>
             <span class="flow-step-tag pend">Pendente</span>
@@ -550,43 +669,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 <!-- ═══ FLUXO OPERACIONAL ═══ -->
 <section class="fluxo-section">
   <div class="fluxo-inner">
-
     <div class="fluxo-header">
       <div class="section-eyebrow">📖 Como funciona</div>
       <h2 class="fluxo-title">O fluxo completo — sem gap entre etapas</h2>
       <p class="fluxo-sub">15 módulos integrados em um único fluxo contínuo. Cada etapa alimenta automaticamente a próxima.</p>
     </div>
-
-    <!-- timeline horizontal dos 5 pilares -->
     <div class="fluxo-steps">
-      <div class="fluxo-step">
-        <div class="fs-ic hl"><span class="fs-num">1</span>📆</div>
-        <div class="fs-name">Planner</div>
-        <div class="fs-desc">Origem da demanda. OS criada e interpretada automaticamente.</div>
-      </div>
-      <div class="fluxo-step">
-        <div class="fs-ic hl"><span class="fs-num">2</span>📝</div>
-        <div class="fs-name">Planejamento</div>
-        <div class="fs-desc">Agentes, bombas, metodologia e equipe definidos antes da visita.</div>
-      </div>
-      <div class="fluxo-step">
-        <div class="fs-ic hl"><span class="fs-num">3</span>🏗️</div>
-        <div class="fs-name">Campo</div>
-        <div class="fs-desc">Fluxo guiado no celular. Assinatura digital. Offline-first.</div>
-      </div>
-      <div class="fluxo-step">
-        <div class="fs-ic hl"><span class="fs-num">4</span>🧪</div>
-        <div class="fs-name">Laboratório</div>
-        <div class="fs-desc">Cadeia de custódia, status das amostras e resultados vinculados.</div>
-      </div>
-      <div class="fluxo-step">
-        <div class="fs-ic hl"><span class="fs-num">5</span>📊</div>
-        <div class="fs-name">Analytics</div>
-        <div class="fs-desc">Métricas, produtividade, rastreabilidade e indicadores operacionais.</div>
-      </div>
+      <div class="fluxo-step"><div class="fs-ic hl"><span class="fs-num">1</span>📆</div><div class="fs-name">Planner</div><div class="fs-desc">Origem da demanda. OS criada e interpretada automaticamente.</div></div>
+      <div class="fluxo-step"><div class="fs-ic hl"><span class="fs-num">2</span>📝</div><div class="fs-name">Planejamento</div><div class="fs-desc">Agentes, bombas, metodologia e equipe definidos antes da visita.</div></div>
+      <div class="fluxo-step"><div class="fs-ic hl"><span class="fs-num">3</span>🏗️</div><div class="fs-name">Campo</div><div class="fs-desc">Fluxo guiado no celular. Assinatura digital. Offline-first.</div></div>
+      <div class="fluxo-step"><div class="fs-ic hl"><span class="fs-num">4</span>🧪</div><div class="fs-name">Laboratório</div><div class="fs-desc">Cadeia de custódia, status das amostras e resultados vinculados.</div></div>
+      <div class="fluxo-step"><div class="fs-ic hl"><span class="fs-num">5</span>📊</div><div class="fs-name">Analytics</div><div class="fs-desc">Métricas, produtividade, rastreabilidade e indicadores operacionais.</div></div>
     </div>
 
-    <!-- detalhe dos módulos -->
     <div class="funcao-item">
       <div>
         <div class="funcao-number">01</div>
@@ -724,33 +819,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
       </div>
     </div>
 
-    <!-- filosofia -->
     <div class="filosofia-grid">
-      <div class="fil-card">
-        <div class="fil-ic">✦</div>
-        <div class="fil-title">Design simplificado é tudo</div>
-        <div class="fil-desc">Cada tela tem exatamente o que o técnico precisa naquele momento. Complexidade fica no backend, não na interface.</div>
-      </div>
-      <div class="fil-card">
-        <div class="fil-ic">⚡</div>
-        <div class="fil-title">Criado por quem opera</div>
-        <div class="fil-desc">Não por empresa de software. Por técnico de segurança que calibrou bomba, esperou laudo e perdeu OS no Planner.</div>
-      </div>
-      <div class="fil-card">
-        <div class="fil-ic">📡</div>
-        <div class="fil-title">Dados em tempo real</div>
-        <div class="fil-desc">Sync com Planner a cada 15 minutos. Quando você abre o painel, os dados já estão lá — sempre atualizados.</div>
-      </div>
+      <div class="fil-card"><div class="fil-ic">✦</div><div class="fil-title">Design simplificado é tudo</div><div class="fil-desc">Cada tela tem exatamente o que o técnico precisa naquele momento. Complexidade fica no backend, não na interface.</div></div>
+      <div class="fil-card"><div class="fil-ic">⚡</div><div class="fil-title">Criado por quem opera</div><div class="fil-desc">Não por empresa de software. Por técnico de segurança que calibrou bomba, esperou laudo e perdeu OS no Planner.</div></div>
+      <div class="fil-card"><div class="fil-ic">📡</div><div class="fil-title">Dados em tempo real</div><div class="fil-desc">Sync com Planner a cada 15 minutos. Quando você abre o painel, os dados já estão lá — sempre atualizados.</div></div>
     </div>
-
   </div>
 </section>
 
 <!-- ═══ CTA FOOTER ═══ -->
 <footer class="landing-footer">
   <div class="landing-footer-logo">
-    <img src="/static/icon-192.png" alt="Ocupacional SST">
-    <div class="landing-footer-logo-name">Ocupacional SST</div>
+    <img src="/static/logo-ocupacional.svg" alt="Ocupacional SST" class="ocu-logo-svg-lg">
   </div>
   <h2>Pronto para sair da planilha?</h2>
   <p>Acesse a plataforma e opere com rastreabilidade completa.</p>
@@ -759,8 +839,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 </footer>
 
 <script>
-/* Sparkles */
+/* Sparkles — desativa em mobile para performance */
 (function(){
+  if(window.innerWidth < 768) return;
   const c=document.createElement('canvas');
   c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35';
   document.body.appendChild(c);
@@ -774,8 +855,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
   window.addEventListener('resize',init);init();loop();
 })();
 
-/* Spotlight */
+/* Spotlight — apenas desktop */
 (function(){
+  if(window.innerWidth < 768) return;
   const s=document.getElementById('spotlight');
   const i=document.getElementById('intro');
   if(!s||!i)return;
@@ -785,8 +867,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
   });
 })();
 
-/* Container Scroll */
+/* Container Scroll — desativa em mobile */
 (function(){
+  if(window.innerWidth < 768){
+    // no mobile, remove sticky and reset transforms
+    const card=document.getElementById('cscroll-card');
+    const title=document.getElementById('cscroll-title');
+    if(card) card.style.transform='none';
+    if(title) title.style.transform='none';
+    return;
+  }
   const wrap=document.getElementById('cscroll-wrap');
   const card=document.getElementById('cscroll-card');
   const title=document.getElementById('cscroll-title');
@@ -802,17 +892,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
   window.addEventListener('scroll',tick,{passive:true});tick();
 })();
 
-/* Pipeline flow — anima o passo ativo ciclicamente */
+/* Pipeline flow cycling */
 (function(){
   const steps=document.querySelectorAll('.flow-step');
   if(!steps.length)return;
   const configs=[
-    {ic:'done',tag:'done',tagTxt:'✓ Concluído'},
-    {ic:'done',tag:'done',tagTxt:'✓ Concluído'},
-    {ic:'active',tag:'active',tagTxt:'⏳ Em campo'},
-    {ic:'pend',tag:'pend',tagTxt:'Aguardando'},
-    {ic:'pend',tag:'pend',tagTxt:'Pendente'},
-    {ic:'pend',tag:'pend',tagTxt:'Pendente'},
+    {tagTxt:'✓ Concluído'},{tagTxt:'✓ Concluído'},{tagTxt:'⏳ Em campo'},
+    {tagTxt:'Aguardando'},{tagTxt:'Pendente'},{tagTxt:'Pendente'},
   ];
   let activeStep=2;
   function advance(){
