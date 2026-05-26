@@ -764,9 +764,11 @@ def _migrate(conn):
             pass
 
     # Tabela de log de extração (rastreabilidade)
-    conn.execute('''
+    # ATENÇÃO: AUTOINCREMENT é SQLite — PostgreSQL usa SERIAL
+    _pk_exlog = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    conn.execute(f'''
         CREATE TABLE IF NOT EXISTS extraction_log (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              {_pk_exlog},
             demanda_id      INTEGER,
             planner_task_id TEXT,
             score_geral     REAL,
