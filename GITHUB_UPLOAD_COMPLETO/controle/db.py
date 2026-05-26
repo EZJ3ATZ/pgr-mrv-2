@@ -1320,10 +1320,16 @@ def get_empresa_demandas(empresa_id):
                             bucket=d.get('planner_bucket') or '',
                         )
                         _raw = [{'canonical': a.canonical, 'quantidade': a.quantidade,
-                                 'confianca': a.confianca} for a in _ags]
+                                 'confianca': a.confianca, 'tipo': a.tipo} for a in _ags]
                     except Exception:
                         pass
                 if _raw:
+                    # Tipos que são documentos, não medições de campo — excluir dos chips
+                    _DOC_TIPOS = {'documento'}
+                    _DOC_CANONICALS = {
+                        'PGR', 'LTCAT', 'PCMSO', 'PPRA', 'PPP', 'AET',
+                        'Laudo de Insalubridade', 'Laudo de Periculosidade',
+                    }
                     def _tip(c):
                         c = (c or '').lower()
                         if 'ruído' in c or 'ruido' in c or 'dosimetria' in c: return 'ruido'
@@ -1340,8 +1346,18 @@ def get_empresa_demandas(empresa_id):
                          'qtd_pontos_prevista': a.get('quantidade', 1),
                          'fonte': 'planner'}
                         for a in _raw
-                        if a.get('canonical') and float(a.get('confianca', 1)) >= 0.55
+                        if (a.get('canonical')
+                            and float(a.get('confianca', 1)) >= 0.55
+                            and a.get('tipo', '') not in _DOC_TIPOS
+                            and a.get('canonical') not in _DOC_CANONICALS)
                     ]
+                    # Tag "Laudar" — menção a laudo/resultado no texto, mas não é uma medição
+                    _txt_busca = ((d.get('descricao') or '') + ' ' + (d.get('titulo') or '')).lower()
+                    _laudar_kws = ['laudar', 'laudo de', 'emitir laudo', 'elaborar laudo',
+                                   'liberar resultado', 'lançar no soc', 'lancar no soc',
+                                   'resultado da medição', 'resultado da medicao']
+                    if any(kw in _txt_busca for kw in _laudar_kws):
+                        d['laudar_tag'] = True
         emp['demandas'] = dems
         return emp
 
