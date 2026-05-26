@@ -641,14 +641,23 @@ def run_consistencia_geral() -> dict:
 # 7. CONSULTAS
 # ════════════════════════════════════════════════════════════════════════
 
-def listar_divergencias(status: str = 'aberta', limit: int = 100) -> list:
+def listar_divergencias(status: str = 'aberta', limit: int = 100,
+                        tipo: str = None, severidade: str = None) -> list:
     ph = _ph()
+    params = [status]
+    where_extra = ''
+    if tipo:
+        where_extra += f' AND d.tipo={ph}'
+        params.append(tipo)
+    if severidade:
+        where_extra += f' AND d.severidade={ph}'
+        params.append(severidade)
     with get_db() as conn:
         rows = conn.execute(f'''
             SELECT d.*, j.motivo, j.descricao AS just_descricao, j.tecnico AS just_tecnico
             FROM divergencias d
             LEFT JOIN justificativas_operacionais j ON j.divergencia_id = d.id
-            WHERE d.status={ph}
+            WHERE d.status={ph}{where_extra}
             ORDER BY
               CASE d.severidade
                 WHEN 'critico' THEN 1 WHEN 'alto' THEN 2
@@ -656,7 +665,7 @@ def listar_divergencias(status: str = 'aberta', limit: int = 100) -> list:
               END,
               d.detectado_em DESC
             LIMIT {limit}
-        ''', (status,)).fetchall()
+        ''', params).fetchall()
         return [dict(r) for r in rows]
 
 

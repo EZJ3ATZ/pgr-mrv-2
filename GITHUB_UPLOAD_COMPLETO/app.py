@@ -101,8 +101,27 @@ def _start_planner_scheduler():
             replace_existing=True,
             max_instances=1,
         )
+        # Consistência: roda 1x/dia às 06:00 UTC
+        def _consistencia_job():
+            try:
+                from controle.consistencia import run_consistencia_geral
+                r = run_consistencia_geral()
+                print(f'[scheduler] Consistência: {r.get("divergencias_novas",0)} divergências novas')
+            except Exception as e:
+                print(f'[scheduler] Consistência erro: {e}')
+
+        from apscheduler.triggers.cron import CronTrigger
+        scheduler.add_job(
+            _consistencia_job,
+            trigger=CronTrigger(hour=6, minute=0),
+            id='consistencia_diaria',
+            name='Consistência Operacional Diária',
+            replace_existing=True,
+            max_instances=1,
+        )
+
         scheduler.start()
-        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos iniciado')
+        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos + consistência diária 06h iniciado')
     except ImportError:
         print('[scheduler] APScheduler nao instalado — sync automatico desabilitado')
     except Exception as e:

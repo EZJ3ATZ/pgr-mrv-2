@@ -3151,14 +3151,17 @@ def api_vincular_empresa_pendente(pend_id):
 
 @controle_bp.route('/demandas/match-empresas', methods=['POST'])
 def api_match_empresas():
-    """Re-executa matching de empresa em todas as demandas sem vínculo."""
+    """Re-executa matching de empresa em todas as demandas sem vínculo.
+    threshold padrão: 0.65 (mais permissivo que o sync — 0.72)
+    """
     init_db()
     try:
         from .empresa_match import match_todas_demandas
+        threshold = float(request.json.get('threshold', 0.65)) if request.json else 0.65
         with get_db() as conn:
             if not USE_PG:
                 conn.execute('PRAGMA foreign_keys = OFF')
-            stats = match_todas_demandas(conn)
+            stats = match_todas_demandas(conn, threshold=threshold)
         return jsonify({'ok': True, **stats})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
