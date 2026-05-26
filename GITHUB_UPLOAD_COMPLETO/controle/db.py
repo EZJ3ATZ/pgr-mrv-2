@@ -835,6 +835,61 @@ def _migrate(conn):
                       ('trabalhadores_json', 'TEXT')]:
         _add_col(conn, 'execucao_campo', col, tipo)
 
+    # ── Camada de Consistência Operacional ──
+    _pk = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS divergencias (
+            id              {_pk},
+            tipo            TEXT NOT NULL,
+            severidade      TEXT DEFAULT 'medio',
+            entidade_tipo   TEXT,
+            entidade_id     INTEGER,
+            descricao       TEXT,
+            status          TEXT DEFAULT 'aberta',
+            resolvido_em    TEXT,
+            resolvido_por   TEXT,
+            detectado_em    TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS justificativas_operacionais (
+            id              {_pk},
+            divergencia_id  INTEGER,
+            motivo          TEXT,
+            descricao       TEXT,
+            tecnico         TEXT,
+            criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS alertas_operacionais (
+            id              {_pk},
+            tipo            TEXT,
+            prioridade      TEXT DEFAULT 'media',
+            titulo          TEXT,
+            descricao       TEXT,
+            entidade_tipo   TEXT,
+            entidade_id     INTEGER,
+            status          TEXT DEFAULT 'ativo',
+            criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+            reconhecido_em  TEXT,
+            resolvido_em    TEXT
+        )
+    ''')
+    for idx_sql in [
+        'CREATE INDEX IF NOT EXISTS idx_div_status    ON divergencias(status)',
+        'CREATE INDEX IF NOT EXISTS idx_div_tipo      ON divergencias(tipo)',
+        'CREATE INDEX IF NOT EXISTS idx_div_sev       ON divergencias(severidade)',
+        'CREATE INDEX IF NOT EXISTS idx_div_entidade  ON divergencias(entidade_tipo, entidade_id)',
+        'CREATE INDEX IF NOT EXISTS idx_just_div      ON justificativas_operacionais(divergencia_id)',
+        'CREATE INDEX IF NOT EXISTS idx_alerta_status ON alertas_operacionais(status)',
+        'CREATE INDEX IF NOT EXISTS idx_alerta_prio   ON alertas_operacionais(prioridade)',
+    ]:
+        try:
+            conn.execute(idx_sql)
+        except Exception:
+            pass
+
     # ── planner_raw_tasks: colunas extras ──
     raw_extra = {
         'planner_plan_id': 'TEXT', 'planner_plan_nome': 'TEXT',

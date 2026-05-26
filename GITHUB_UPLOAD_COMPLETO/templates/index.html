@@ -1359,6 +1359,19 @@
 
   <div class="sidebar-divider"></div>
 
+  <!-- CONSISTÊNCIA OPERACIONAL -->
+  <div class="sidebar-section">
+    <span class="sidebar-label">Consistência</span>
+    <div class="sidebar-item" data-name="consistencia" onclick="goToTab('consistencia'); consistInit();">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span>Consistência <span id="badge-consist" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:.7rem;margin-left:4px"></span></span>
+    </div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
   <!-- DOCUMENTOS — uso secundário, será migrado para outro site -->
   <div class="sidebar-section">
     <span class="sidebar-label" style="color:var(--text3);">Documentos</span>
@@ -1896,6 +1909,110 @@
   <div class="card">
     <div style="font-weight:700;font-size:1rem;margin-bottom:12px;color:var(--text)">Visitas Recentes pelo App</div>
     <div id="app-mobile-visitas" style="color:var(--text2);font-size:.85rem;">Carregando...</div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══ Painel CONSISTÊNCIA OPERACIONAL ══════════════════════════════════ -->
+<div id="tab-consistencia" class="tab-panel">
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h2 class="page-title">⚖️ Consistência Operacional</h2>
+      <div class="page-sub">Motor de validação de regras — cruzamento planejamento vs campo, métodos analíticos, alertas</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="consistRefresh()">🔄 Atualizar</button>
+      <button class="btn btn-primary" onclick="consistRodar()">▶ Rodar Verificação</button>
+    </div>
+  </div>
+
+  <!-- Cards de severidade -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;" id="consist-cards">
+    <div class="stat-card" style="border-left:4px solid #ef4444">
+      <div class="stat-value" id="cc-critico">—</div>
+      <div class="stat-label">🔴 Crítico</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid #f97316">
+      <div class="stat-value" id="cc-alto">—</div>
+      <div class="stat-label">🟠 Alto</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid #eab308">
+      <div class="stat-value" id="cc-medio">—</div>
+      <div class="stat-label">🟡 Médio</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid #22c55e">
+      <div class="stat-value" id="cc-baixo">—</div>
+      <div class="stat-label">🟢 Baixo</div>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--border)">
+      <div class="stat-value" id="cc-total">—</div>
+      <div class="stat-label">Total abertas</div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+    <select id="consist-filter-status" class="input" style="width:140px;" onchange="consistRefresh()">
+      <option value="aberta">Abertas</option>
+      <option value="justificada">Justificadas</option>
+      <option value="resolvida">Resolvidas</option>
+    </select>
+    <select id="consist-filter-sev" class="input" style="width:130px;" onchange="consistRefresh()">
+      <option value="">Todas sev.</option>
+      <option value="critico">🔴 Crítico</option>
+      <option value="alto">🟠 Alto</option>
+      <option value="medio">🟡 Médio</option>
+      <option value="baixo">🟢 Baixo</option>
+    </select>
+    <select id="consist-filter-tipo" class="input" style="width:200px;" onchange="consistRefresh()">
+      <option value="">Todos os tipos</option>
+      <option value="os_parada">OS Parada</option>
+      <option value="demanda_orfa">Demanda Órfã</option>
+      <option value="empresa_duplicada">Empresa Duplicada</option>
+      <option value="amostrador_vencendo">Amostrador Vencendo</option>
+      <option value="coleta_sem_resultado">Coleta sem Resultado</option>
+      <option value="visita_sem_coleta">Visita sem Coleta</option>
+      <option value="divergencia_campo">Divergência Campo</option>
+      <option value="vazao_invalida">Vazão Inválida</option>
+    </select>
+    <span id="consist-loading" style="display:none;color:var(--text3);font-size:.85rem;">Carregando…</span>
+  </div>
+
+  <!-- Tabela de divergências -->
+  <div class="table-wrap">
+    <table class="table" id="consist-table">
+      <thead>
+        <tr>
+          <th>Sev.</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th>Entidade</th>
+          <th>Detectado</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="consist-tbody">
+        <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Clique em "Rodar Verificação" para detectar inconsistências</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal justificativa -->
+  <div id="consist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border-radius:12px;padding:24px;width:min(480px,95vw);box-shadow:0 8px 32px rgba(0,0,0,.3);">
+      <h3 style="margin:0 0 16px;font-size:1rem;">Justificar Divergência #<span id="consist-modal-id"></span></h3>
+      <label style="display:block;margin-bottom:8px;font-size:.85rem;color:var(--text2);">Motivo</label>
+      <select id="consist-modal-motivo" class="input" style="width:100%;margin-bottom:12px;"></select>
+      <label style="display:block;margin-bottom:8px;font-size:.85rem;color:var(--text2);">Observação</label>
+      <textarea id="consist-modal-desc" class="input" rows="3" style="width:100%;resize:vertical;" placeholder="Detalhe se necessário…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="document.getElementById('consist-modal').style.display='none'">Cancelar</button>
+        <button class="btn btn-primary" onclick="consistSalvarJust()">Salvar Justificativa</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -10900,6 +11017,169 @@ document.addEventListener('DOMContentLoaded', () => {
 // Rastrear ações operacionais importantes
 function phTrack(evento, props) {
   try { if(window.posthog) posthog.capture(evento, props||{}); } catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CONSISTÊNCIA OPERACIONAL
+// ══════════════════════════════════════════════════════════════════
+
+let _consistInited = false;
+let _consistMotivoMap = {};
+let _consistActiveDivId = null;
+
+async function consistInit() {
+  if (_consistInited) { consistRefresh(); return; }
+  _consistInited = true;
+  // Carregar motivos
+  try {
+    const r = await fetch('/controle/consistencia/motivos');
+    if (r.ok) _consistMotivoMap = await r.json();
+  } catch(e) {}
+  await consistLoadStats();
+  await consistRefresh();
+  // badge
+  _consistUpdateBadge();
+}
+
+async function consistLoadStats() {
+  try {
+    const r = await fetch('/controle/consistencia/stats');
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('cc-critico').textContent = d.critico ?? 0;
+    document.getElementById('cc-alto').textContent    = d.alto    ?? 0;
+    document.getElementById('cc-medio').textContent   = d.medio   ?? 0;
+    document.getElementById('cc-baixo').textContent   = d.baixo   ?? 0;
+    document.getElementById('cc-total').textContent   = d.total   ?? 0;
+    // Badge sidebar
+    const total = (d.critico||0) + (d.alto||0);
+    const badge = document.getElementById('badge-consist');
+    if (badge) { badge.textContent = total; badge.style.display = total > 0 ? '' : 'none'; }
+  } catch(e) {}
+}
+
+function _consistUpdateBadge() {
+  consistLoadStats();
+}
+
+async function consistRefresh() {
+  const status = document.getElementById('consist-filter-status')?.value || 'aberta';
+  const sev    = document.getElementById('consist-filter-sev')?.value    || '';
+  const tipo   = document.getElementById('consist-filter-tipo')?.value   || '';
+  const loading = document.getElementById('consist-loading');
+  if (loading) loading.style.display = '';
+  try {
+    let url = `/controle/consistencia/divergencias?status=${encodeURIComponent(status)}&limit=200`;
+    if (sev)  url += `&severidade=${encodeURIComponent(sev)}`;
+    if (tipo) url += `&tipo=${encodeURIComponent(tipo)}`;
+    const r = await fetch(url);
+    if (!r.ok) { _consistShowErro('Erro ao carregar divergências'); return; }
+    const rows = await r.json();
+    _consistRenderTabela(rows);
+  } catch(e) {
+    _consistShowErro('Erro de rede');
+  } finally {
+    if (loading) loading.style.display = 'none';
+  }
+}
+
+function _consistRenderTabela(rows) {
+  const tbody = document.getElementById('consist-tbody');
+  if (!tbody) return;
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">Nenhuma divergência encontrada</td></tr>';
+    return;
+  }
+  const sevIcon = { critico:'🔴', alto:'🟠', medio:'🟡', baixo:'🟢' };
+  const statusLabel = { aberta:'Aberta', justificada:'Justificada', resolvida:'Resolvida' };
+  tbody.innerHTML = rows.map(d => {
+    const icon = sevIcon[d.severidade] || '⚪';
+    const sl   = statusLabel[d.status] || d.status;
+    const det  = d.detectado_em ? d.detectado_em.substring(0,10) : '—';
+    const acoes = d.status === 'resolvida' ? '' : `
+      <button class="btn btn-xs" onclick="consistAbrirModal(${d.id})" title="Justificar">📝</button>
+      <button class="btn btn-xs" style="background:var(--green);color:#fff" onclick="consistResolver(${d.id})" title="Resolver">✓</button>
+    `;
+    return `<tr>
+      <td>${icon} ${d.severidade||''}</td>
+      <td style="font-size:.8rem;color:var(--text2)">${d.tipo||''}</td>
+      <td style="max-width:320px;white-space:normal;font-size:.85rem">${_esc(d.descricao||'')}</td>
+      <td style="font-size:.8rem;color:var(--text3)">${d.entidade_tipo||''} ${d.entidade_id ? '#'+d.entidade_id : ''}</td>
+      <td style="font-size:.8rem">${det}</td>
+      <td><span style="font-size:.75rem;padding:2px 8px;border-radius:12px;background:${d.status==='resolvida'?'#22c55e33':d.status==='justificada'?'#3b82f633':'#ef444433'}">${sl}</span></td>
+      <td style="white-space:nowrap">${acoes}</td>
+    </tr>`;
+  }).join('');
+}
+
+function _consistShowErro(msg) {
+  const tbody = document.getElementById('consist-tbody');
+  if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#ef4444;padding:24px">${msg}</td></tr>`;
+}
+
+function consistAbrirModal(divId) {
+  _consistActiveDivId = divId;
+  document.getElementById('consist-modal-id').textContent = divId;
+  // Popular motivos
+  const sel = document.getElementById('consist-modal-motivo');
+  sel.innerHTML = Object.entries(_consistMotivoMap).map(([k,v]) =>
+    `<option value="${k}">${v}</option>`
+  ).join('');
+  if (!sel.innerHTML) sel.innerHTML = '<option value="outros">Outros</option>';
+  document.getElementById('consist-modal-desc').value = '';
+  document.getElementById('consist-modal').style.display = 'flex';
+}
+
+async function consistSalvarJust() {
+  if (!_consistActiveDivId) return;
+  const motivo = document.getElementById('consist-modal-motivo').value;
+  const desc   = document.getElementById('consist-modal-desc').value;
+  try {
+    const r = await fetch(`/controle/consistencia/divergencias/${_consistActiveDivId}/justificar`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ motivo, descricao: desc }),
+    });
+    if (!r.ok) { _showToast('Erro ao salvar justificativa', 'error'); return; }
+    document.getElementById('consist-modal').style.display = 'none';
+    _showToast('Justificativa salva', 'success');
+    consistRefresh();
+    consistLoadStats();
+  } catch(e) { _showToast('Erro de rede', 'error'); }
+}
+
+async function consistResolver(divId) {
+  if (!confirm('Marcar como resolvida?')) return;
+  try {
+    const r = await fetch(`/controle/consistencia/divergencias/${divId}/resolver`, { method: 'POST' });
+    if (!r.ok) { _showToast('Erro ao resolver', 'error'); return; }
+    _showToast('Divergência resolvida', 'success');
+    consistRefresh();
+    consistLoadStats();
+  } catch(e) { _showToast('Erro de rede', 'error'); }
+}
+
+async function consistRodar() {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando…'; }
+  try {
+    const r = await fetch('/controle/consistencia/rodar', { method: 'POST' });
+    if (!r.ok) { _showToast('Erro ao rodar verificação', 'error'); return; }
+    const d = await r.json();
+    const novos = d.divergencias_novas ?? 0;
+    _showToast(`Verificação concluída — ${novos} nova(s) divergência(s)`, novos > 0 ? 'warning' : 'success');
+    consistRefresh();
+    consistLoadStats();
+  } catch(e) {
+    _showToast('Erro de rede', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Rodar Verificação'; }
+  }
+}
+
+// Escape HTML
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 </script>

@@ -3848,3 +3848,137 @@ def admin_set_role(uid):
     registrar_evento('admin_set_role', f'uid={uid} role={role}',
                      usuario=current_user.nome, ip=request.remote_addr)
     return jsonify({'ok': True})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CAMADA DE CONSISTÊNCIA OPERACIONAL
+# ══════════════════════════════════════════════════════════════════════════════
+
+@controle_bp.route('/consistencia/stats')
+@login_required
+def consistencia_stats():
+    """Resumo de divergências por severidade."""
+    init_db()
+    try:
+        from .consistencia import stats_consistencia
+        return jsonify(stats_consistencia())
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+
+
+@controle_bp.route('/consistencia/divergencias')
+@login_required
+def consistencia_listar():
+    """Lista divergências com filtros opcionais."""
+    init_db()
+    status = request.args.get('status', 'aberta')
+    limit  = min(int(request.args.get('limit', 100)), 500)
+    tipo   = request.args.get('tipo')
+    sev    = request.args.get('severidade')
+    try:
+        from .consistencia import listar_divergencias
+        rows = listar_divergencias(status=status, limit=limit, tipo=tipo, severidade=sev)
+        return jsonify(rows)
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+
+
+@controle_bp.route('/consistencia/rodar', methods=['POST'])
+@login_required
+def consistencia_rodar():
+    """Executa todas as verificações de consistência e persiste divergências."""
+    init_db()
+    try:
+        from .consistencia import run_consistencia_geral
+        resultado = run_consistencia_geral()
+        return jsonify({'ok': True, **resultado})
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+
+
+@controle_bp.route('/consistencia/divergencias/<int:div_id>/justificar', methods=['POST'])
+@login_required
+def consistencia_justificar(div_id):
+    """Adiciona justificativa a uma divergência."""
+    init_db()
+    d = request.json or {}
+    motivo    = d.get('motivo', 'outros')
+    descricao = d.get('descricao', '')
+    tecnico   = current_user.nome if current_user.is_authenticated else 'sistema'
+    try:
+        from .consistencia import justificar_divergencia
+        justificar_divergencia(div_id, motivo, descricao, tecnico)
+        registrar_evento('consistencia_justificativa', f'div={div_id} motivo={motivo}',
+                         div_id, 'divergencia', tecnico, request.remote_addr)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/consistencia/divergencias/<int:div_id>/resolver', methods=['POST'])
+@login_required
+def consistencia_resolver(div_id):
+    """Marca divergência como resolvida."""
+    init_db()
+    tecnico = current_user.nome if current_user.is_authenticated else 'sistema'
+    try:
+        from .consistencia import resolver_divergencia
+        resolver_divergencia(div_id, tecnico)
+        registrar_evento('consistencia_resolvida', f'div={div_id}',
+                         div_id, 'divergencia', tecnico, request.remote_addr)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/consistencia/metodos/<path:agente>')
+@login_required
+def consistencia_metodo(agente):
+    """Retorna especificações do método analítico para um agente."""
+    try:
+        from .consistencia import info_metodo
+        return jsonify(info_metodo(agente))
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/consistencia/validar_vazao', methods=['POST'])
+@login_required
+def consistencia_validar_vazao():
+    """Valida se a vazão informada é compatível com o método analítico."""
+    d = request.json or {}
+    agente = d.get('agente', '')
+    vazao  = d.get('vazao_lpm')
+    try:
+        from .consistencia import validar_vazao
+        return jsonify(validar_vazao(agente, vazao))
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/consistencia/alertas')
+@login_required
+def consistencia_alertas():
+    """Lista alertas operacionais ativos."""
+    init_db()
+    status = request.args.get('status', 'ativo')
+    limit  = min(int(request.args.get('limit', 50)), 200)
+    with get_db() as conn:
+        rows = conn.execute(
+            'SELECT * FROM alertas_operacionais WHERE status=? ORDER BY criado_em DESC LIMIT ?',
+            (status, limit)
+        ).fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
+@controle_bp.route('/consistencia/motivos')
+def consistencia_motivos():
+    """Lista motivos padronizados de divergência."""
+    try:
+        from .consistencia import MOTIVOS_DIVERGENCIA
+        return jsonify(MOTIVOS_DIVERGENCIA)
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
