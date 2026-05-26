@@ -2993,6 +2993,9 @@
 
   <!-- Sub: Por Empresa (agrupado) - DEFAULT -->
   <div id="ctrl-sub-empresa">
+    <div style="background:rgba(45,212,191,.06);border-left:3px solid var(--brand);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--text2);">
+      <b>🏗️ Vista de Campo</b> — Mostra quais agentes faltam medir por empresa. Use para planejar visitas técnicas, verificar prazos e registrar contatos com clientes. Para ver o pipeline completo de OS, use a aba <b>Demandas/OS</b>.
+    </div>
     <div class="ctrl-filters">
       <input type="text" id="ctrl-fe-nome" placeholder="Buscar empresa..." oninput="ctrlLoadPorEmpresa()">
       <select id="ctrl-fe-status" onchange="ctrlLoadPorEmpresa()">
@@ -3764,6 +3767,35 @@
 </div>
 
 <!-- Modal Dar Baixa -->
+<!-- ── Modal Marcar Contato ─────────────────────────────────────────── -->
+<div class="ctrl-overlay" id="ctrl-contato-overlay" onclick="if(event.target===this)ctrlFecharContato()" style="z-index:1200;">
+  <div class="ctrl-modal" style="max-width:440px;">
+    <h3 style="margin-bottom:4px;">📞 Registrar Contato</h3>
+    <p id="ctrl-contato-empresa-nome" style="font-size:.82rem;color:var(--text2);margin-bottom:18px;"></p>
+    <input type="hidden" id="ctrl-contato-empresa-id">
+
+    <label style="font-size:.75rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Resultado</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 16px;">
+      <button onclick="ctrlContatoSelectResultado(this,'Agendado')"         class="ctrl-contato-opt" style="background:rgba(0,170,100,.15);border:1px solid rgba(0,170,100,.3);color:#0a7;border-radius:6px;padding:8px;font-size:.8rem;cursor:pointer;">✅ Agendado</button>
+      <button onclick="ctrlContatoSelectResultado(this,'Sem resposta')"     class="ctrl-contato-opt" style="background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:8px;font-size:.8rem;cursor:pointer;">📵 Sem resposta</button>
+      <button onclick="ctrlContatoSelectResultado(this,'Reagendado')"       class="ctrl-contato-opt" style="background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:8px;font-size:.8rem;cursor:pointer;">🔄 Reagendado</button>
+      <button onclick="ctrlContatoSelectResultado(this,'Aguardando proposta')" class="ctrl-contato-opt" style="background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:8px;font-size:.8rem;cursor:pointer;">⏳ Aguardando proposta</button>
+    </div>
+    <input type="hidden" id="ctrl-contato-resultado" value="">
+
+    <label style="font-size:.75rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Observação <span style="font-weight:400;text-transform:none;">(opcional)</span></label>
+    <textarea id="ctrl-contato-obs" rows="2" placeholder="Ex.: Confirmado visita 10/06, contato: João" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-size:.83rem;font-family:inherit;resize:vertical;margin:6px 0 16px;outline:none;"></textarea>
+
+    <label style="font-size:.75rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Próximo follow-up <span style="font-weight:400;text-transform:none;">(opcional)</span></label>
+    <input type="date" id="ctrl-contato-prox" style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;color:var(--text);font-size:.83rem;margin:6px 0 20px;outline:none;">
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="ctrlSalvarContato()" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:10px;font-size:.88rem;font-weight:600;cursor:pointer;">Salvar</button>
+      <button onclick="ctrlFecharContato()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);border-radius:6px;padding:10px 18px;font-size:.88rem;cursor:pointer;">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="ctrl-overlay" id="ctrl-baixa-overlay" onclick="if(event.target===this) ctrlCloseBaixa()">
   <div class="ctrl-modal">
     <h3>Dar Baixa em Amostrador</h3>
@@ -6533,11 +6565,23 @@ async function ctrlLoadPorEmpresa() {
       else if (atrasadas > 0){ corDias = '#e22'; lblDias = `⚠ ${atrasadas} atrasada${atrasadas>1?'s':''}`; }
       else                  { corDias = '#999'; lblDias = 'no prazo'; }
 
-      const contato = e.contato_feito ? 1 : 0;
-      const contatoBtn = pend > 0 ? (contato
-        ? `<span style="color:#0a7; font-size:.75rem;">✓ feito</span> <button onclick="ctrlMarcarContato(${e.empresa_id}, false)" style="background:transparent; color:var(--text3); border:1px solid var(--border); padding:2px 6px; border-radius:3px; font-size:.7rem; cursor:pointer; margin-left:4px;">desfazer</button>`
-        : `<button onclick="ctrlMarcarContato(${e.empresa_id}, true)" style="background:#39f; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.72rem; cursor:pointer;">📞 Marcar contato</button>`)
-        : '<span style="color:var(--text3); font-size:.72rem;">—</span>';
+      // Último contato
+      const nomeEsc = (e.empresa_nome||'').replace(/'/g,"\\'");
+      let contatoBtn = '<span style="color:var(--text3);font-size:.72rem;">—</span>';
+      if (pend > 0) {
+        if (e.contato_feito && e.contato_resultado) {
+          const _corRes = {
+            'Agendado':'#0a7','Reagendado':'#f80',
+            'Sem resposta':'#e22','Aguardando proposta':'#39f'
+          }[e.contato_resultado] || '#888';
+          let proxTxt = '';
+          if (e.proximo_contato) proxTxt = ` <span style="color:var(--text3);font-size:.68rem;">follow-up ${e.proximo_contato}</span>`;
+          contatoBtn = `<span style="color:${_corRes};font-size:.74rem;font-weight:600;">${e.contato_resultado}</span>${proxTxt}
+            <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.68rem;cursor:pointer;margin-left:4px;">atualizar</button>`;
+        } else {
+          contatoBtn = `<button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:#1a3a6a;color:#7bb3f0;border:1px solid #2a5599;padding:4px 10px;border-radius:4px;font-size:.72rem;cursor:pointer;">📞 Marcar contato</button>`;
+        }
+      }
 
       return `
       <tr style="cursor:pointer;" onclick="ctrlToggleExpandEmpresa(${e.empresa_id})">
@@ -6571,15 +6615,55 @@ async function ctrlLoadPorEmpresa() {
   }
 }
 
-async function ctrlMarcarContato(empresaId, feito) {
+function ctrlMarcarContato(empresaId, nomeEmpresa) {
+  document.getElementById('ctrl-contato-empresa-id').value = empresaId;
+  document.getElementById('ctrl-contato-empresa-nome').textContent = nomeEmpresa || '';
+  document.getElementById('ctrl-contato-resultado').value = '';
+  document.getElementById('ctrl-contato-obs').value = '';
+  document.getElementById('ctrl-contato-prox').value = '';
+  // Reset visual dos botões
+  document.querySelectorAll('.ctrl-contato-opt').forEach(b => {
+    b.style.background = 'rgba(255,255,255,.05)';
+    b.style.borderColor = 'var(--border2)';
+    b.style.color = 'var(--text2)';
+  });
+  document.getElementById('ctrl-contato-overlay').style.display = 'flex';
+}
+
+function ctrlContatoSelectResultado(btn, valor) {
+  document.querySelectorAll('.ctrl-contato-opt').forEach(b => {
+    b.style.background = 'rgba(255,255,255,.05)';
+    b.style.borderColor = 'var(--border2)';
+    b.style.color = 'var(--text2)';
+  });
+  btn.style.background = 'rgba(45,212,191,.15)';
+  btn.style.borderColor = 'rgba(45,212,191,.4)';
+  btn.style.color = 'var(--brand)';
+  document.getElementById('ctrl-contato-resultado').value = valor;
+}
+
+async function ctrlSalvarContato() {
+  const eid       = document.getElementById('ctrl-contato-empresa-id').value;
+  const resultado = document.getElementById('ctrl-contato-resultado').value;
+  const obs       = document.getElementById('ctrl-contato-obs').value.trim();
+  const prox      = document.getElementById('ctrl-contato-prox').value;
+  if (!resultado) { _showToast('Selecione o resultado do contato', 'warn'); return; }
   try {
-    await ctrlFetch(`/controle/empresa/${empresaId}/contato`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({feito, por: localStorage.getItem('ctrl_user') || 'Matheus'})
+    await ctrlFetch(`/controle/empresa/${eid}/contato`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        feito: 1, por: localStorage.getItem('ctrl_user') || 'Matheus',
+        resultado, obs: obs || null, proximo_contato: prox || null
+      })
     });
-    _showToast(feito ? '✓ Contato marcado como feito' : '↶ Contato desfeito', 'success');
+    _showToast(`✓ Contato registrado: ${resultado}`, 'success');
+    ctrlFecharContato();
     ctrlLoadPorEmpresa();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function ctrlFecharContato() {
+  document.getElementById('ctrl-contato-overlay').style.display = 'none';
 }
 
 async function ctrlToggleExpandEmpresa(empresaId) {
@@ -6633,7 +6717,13 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                   <td colspan="7" style="padding:4px 10px 8px 40px;">
                     <div style="font-size:.7rem; color:var(--text3); margin-bottom:4px;">Medições pendentes:</div>
                     <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                      ${meds.map(m => `<span style="background:var(--surface3); border:1px solid var(--border2); padding:2px 8px; border-radius:12px; font-size:.7rem; color:var(--text2);">${m.agente} <span style="color:var(--text3);">(${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</span></span>`).join('')}
+                      ${meds.map(m => {
+                          const fromPlanner = m.fonte === 'planner';
+                          const bg  = fromPlanner ? 'rgba(45,212,191,.07)'  : 'var(--surface3)';
+                          const brd = fromPlanner ? 'rgba(45,212,191,.25)'  : 'var(--border2)';
+                          const tag = fromPlanner ? ' <span style="font-size:.6rem;opacity:.6;">Planner</span>' : '';
+                          return `<span style="background:${bg};border:1px solid ${brd};padding:2px 8px;border-radius:12px;font-size:.7rem;color:var(--text2);">${m.agente}${tag} <span style="color:var(--text3);">(${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</span></span>`;
+                        }).join('')}
                     </div>
                   </td>
                 </tr>`;

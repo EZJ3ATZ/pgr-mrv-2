@@ -372,18 +372,31 @@ def marcar_contato(did):
 
 @controle_bp.route('/empresa/<int:eid>/contato', methods=['POST'])
 def marcar_contato_empresa(eid):
-    """Marca contato feito em TODAS as demandas pendentes da empresa."""
+    """Registra contato com empresa: resultado, observação, próximo contato."""
     init_db()
     d = request.json or {}
-    feito = 1 if d.get('feito', True) else 0
-    user = d.get('por', 'Matheus')
+    feito      = 1 if d.get('feito', True) else 0
+    user       = d.get('por', 'Matheus')
+    resultado  = d.get('resultado') or None      # Agendado | Sem resposta | Reagendado | Aguardando proposta
+    obs        = d.get('obs') or None
+    prox       = d.get('proximo_contato') or None
     with get_db() as conn:
         cur = conn.execute("""
-            UPDATE demandas SET contato_feito=?, contato_feito_em=CURRENT_TIMESTAMP,
-                                contato_feito_por=?
+            UPDATE demandas SET
+                contato_feito=?, contato_feito_em=CURRENT_TIMESTAMP,
+                contato_feito_por=?, contato_resultado=?,
+                contato_obs=?, proximo_contato=?
             WHERE empresa_id=? AND status != 'concluida'""",
-            (feito, user, eid))
+            (feito, user, resultado, obs, prox, eid))
         afetadas = cur.rowcount
+        # Log no histórico de eventos da empresa
+        if feito and resultado:
+            desc = f'Contato: {resultado}'
+            if obs: desc += f' — {obs[:120]}'
+            conn.execute(
+                "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
+                "VALUES ('contato_cliente', ?, ?, 'empresa', CURRENT_TIMESTAMP)",
+                (desc, eid))
     return jsonify({'ok': True, 'afetadas': afetadas})
 
 

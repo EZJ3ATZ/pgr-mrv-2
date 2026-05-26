@@ -737,7 +737,9 @@ def _migrate(conn):
         'etiquetas': 'TEXT', 'descricao': 'TEXT', 'cnpj': 'TEXT',
         'tem_comentarios': 'INTEGER DEFAULT 0',
         'contato_feito': 'INTEGER DEFAULT 0', 'contato_feito_em': 'TEXT',
-        'contato_feito_por': 'TEXT', 'planner_task_id': 'TEXT',
+        'contato_feito_por': 'TEXT', 'contato_resultado': 'TEXT DEFAULT NULL',
+        'contato_obs': 'TEXT DEFAULT NULL', 'proximo_contato': 'TEXT DEFAULT NULL',
+        'planner_task_id': 'TEXT',
         'planner_plan_id': 'TEXT', 'planner_plan_nome': 'TEXT',
         'planner_bucket_id': 'TEXT', 'planner_bucket': 'TEXT',
         'planner_group_id': 'TEXT', 'planner_group_nome': 'TEXT',
@@ -1162,6 +1164,10 @@ def list_demandas_por_empresa(filtros=None):
                MIN(NULLIF(d.prazo,'')) AS prazo_mais_proximo,
                COALESCE(MAX(d.responsavel), MAX(u.display_name)) AS responsavel,
                MAX(d.contato_feito) AS contato_feito,
+               MAX(d.contato_feito_em) AS contato_feito_em,
+               MAX(d.contato_resultado) AS contato_resultado,
+               MAX(d.contato_obs) AS contato_obs,
+               MIN(CASE WHEN d.status!='concluida' AND d.proximo_contato IS NOT NULL THEN d.proximo_contato END) AS proximo_contato,
                {_gcd("d.numero_os")} AS numeros_os
         FROM empresas e
         JOIN demandas d ON d.empresa_id = e.id
@@ -1252,6 +1258,34 @@ def get_empresa_demandas(empresa_id):
                 "SELECT id, agente, tipo_amostrador, qtd_pontos_feita, qtd_pontos_prevista "
                 "FROM medicoes WHERE demanda_id=? AND status!='realizado' ORDER BY agente",
                 (d['id'],)).fetchall()]
+            # Fallback: quando não há medições formais, usa agentes extraídos do Planner
+            if not d.get('medicoes_pendentes') and d.get('status') != 'concluida':
+                _ej = d.get('extracao_json') or ''
+                if _ej:
+                    try:
+                        import json as _jj
+                        _raw = _jj.loads(_ej).get('agentes', [])
+                        if _raw:
+                            def _tip(c):
+                                c = (c or '').lower()
+                                if 'ruído' in c or 'ruido' in c or 'dosimetria' in c: return 'ruido'
+                                if 'calor' in c or 'ibutg' in c: return 'calor'
+                                if 'corpo inteiro' in c or ' vci' in c: return 'vibracao_vci'
+                                if 'mão' in c or 'braço' in c or ' vmb' in c or 'mao' in c or 'braco' in c: return 'vibracao_vbma'
+                                if 'vibr' in c: return 'vibracao'
+                                if 'silica' in c or 'sílica' in c or 'poeira' in c or 'particul' in c: return 'particulado'
+                                return 'quimico'
+                            d['medicoes_pendentes'] = [
+                                {'id': None, 'agente': a.get('canonical', ''),
+                                 'tipo_amostrador': _tip(a.get('canonical', '')),
+                                 'qtd_pontos_feita': 0,
+                                 'qtd_pontos_prevista': a.get('quantidade', 1),
+                                 'fonte': 'planner'}
+                                for a in _raw
+                                if a.get('canonical') and float(a.get('confianca', 1)) >= 0.55
+                            ]
+                    except Exception:
+                        pass
         emp['demandas'] = dems
         return emp
 
