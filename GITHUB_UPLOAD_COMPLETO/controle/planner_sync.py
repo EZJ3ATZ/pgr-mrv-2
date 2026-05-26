@@ -29,6 +29,10 @@ from .graph import (
 from .db import get_db, init_db, upsert_raw_task, mark_raw_task
 from .empresa_match import match_todas_demandas, encontrar_empresa, extrair_campos, obter_ou_criar_pendente
 from .classificador import extrair_os, classificar
+from .inteligencia_demandas import (
+    analisar_tarefa_planner, extrair_os_multifonte,
+    extrair_agentes_multifonte, extrair_texto_chat,
+)
 
 log = logging.getLogger(__name__)
 
@@ -258,6 +262,7 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
                 etiquetas_json=?, descricao=?, checklist=?,
                 numero_os=COALESCE(numero_os, ?),
                 tipo_demanda=?,
+                needs_review=?, extracao_json=?,
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE planner_task_id=?
         ''', (
@@ -267,6 +272,7 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
             d['ms_assignee_id'], d['ms_assignees_json'],
             d['etiquetas_json'], desc, checklist_json,
             d['numero_os'], d['tipo_demanda'],
+            d.get('needs_review', 0), d.get('extracao_json', ''),
             d['planner_task_id'],
         ))
         return existing['id'], 'updated'
@@ -283,8 +289,9 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
                 ms_assignee_id, ms_assignees_json,
                 etiquetas_json, descricao, checklist,
                 numero_os, tipo_demanda,
+                needs_review, extracao_json,
                 origem, criado_em, atualizado_em
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'planner',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
         ''', (emp_id,
             d['planner_task_id'], d['planner_plan_id'], d['planner_plan_nome'],
             d['planner_bucket_id'], d['planner_bucket'],
@@ -294,6 +301,7 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
             d['ms_assignee_id'], d['ms_assignees_json'],
             d['etiquetas_json'], desc, checklist_json,
             d['numero_os'], d['tipo_demanda'],
+            d.get('needs_review', 0), d.get('extracao_json', ''),
         ))
         return cur.lastrowid, 'created'
 
@@ -574,16 +582,28 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                         for uid in list(tarefa.get('assignments', {}).keys()):
                             _upsert_ms_user(conn, uid)
 
-                        # ── FASE 3: Parser ────────────────────────────────
-                        os_num, os_fonte = _extrair_os_multi(titulo, desc, checklist)
+                        # ── FASE 3: Motor Inteligente ─────────────────────
+                        extracao = analisar_tarefa_planner(
+                            task=tarefa,
+                            task_details=details,
+                            group_id=gid,
+                            bucket_nome=bucket,
+                            graph_get_fn=None,  # chat via thread_id abaixo
+                        )
 
-                        # Tentar nos comentários se ainda não encontrou OS
+                        os_num  = extracao.numero_os
+                        os_conf = extracao.numero_os_confianca
+                        os_fonte = (extracao.numero_os_fontes[0].campo
+                                    if extracao.numero_os_fontes else 'nenhuma')
+
+                        # Fallback: comentários (sistema antigo) se OS ainda não encontrada
                         if not os_num:
                             thread_id = tarefa.get('conversationThreadId')
                             if thread_id:
                                 os_num = _extrair_os_comentarios(gid, thread_id)
                                 if os_num:
                                     os_fonte = 'comentarios'
+                                    os_conf  = 0.60
 
                         if not os_num:
                             stats['sem_os'] += 1
@@ -593,9 +613,17 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                                 'bucket':          bucket,
                             })
 
-                        # Mapear demanda com OS multi-fonte
+                        # Registrar warnings/inconsistências no log
+                        for inc in extracao.inconsistencias:
+                            log.warning('[inteligencia] task %s: %s', tid[:8], inc)
+                        for w in extracao.warnings:
+                            log.debug('[inteligencia] task %s: %s', tid[:8], w)
+
+                        # Mapear demanda
                         d = _task_to_demanda(tarefa, bucket_map, plano, grupo)
-                        d['numero_os'] = os_num  # sobrescreve com resultado multi-fonte
+                        d['numero_os']       = os_num
+                        d['needs_review']    = 1 if extracao.needs_review else 0
+                        d['extracao_json']   = json.dumps(extracao.to_dict(), ensure_ascii=False)
 
                         # ── FASE 4: Normalização de empresa ───────────────
                         empresa_id, emp_score, emp_metodo = encontrar_empresa(conn, titulo)

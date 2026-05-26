@@ -753,6 +753,44 @@ def _migrate(conn):
     for col, tipo in demandas_extra.items():
         _add_col(conn, 'demandas', col, tipo)
 
+    # Motor inteligente: score de confiança e fila de revisão humana
+    for col, dfn in [
+        ('needs_review',  'INTEGER DEFAULT 0'),
+        ('extracao_json', 'TEXT DEFAULT NULL'),
+    ]:
+        try:
+            conn.execute(f'ALTER TABLE demandas ADD COLUMN {col} {dfn}')
+        except Exception:
+            pass
+
+    # Tabela de log de extração (rastreabilidade)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS extraction_log (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            demanda_id      INTEGER,
+            planner_task_id TEXT,
+            score_geral     REAL,
+            needs_review    INTEGER DEFAULT 0,
+            numero_os       TEXT,
+            os_confianca    REAL,
+            empresa_nome    TEXT,
+            empresa_conf    REAL,
+            agentes_json    TEXT,
+            inconsistencias TEXT,
+            conflitos       TEXT,
+            warnings_json   TEXT,
+            fontes_lidas    TEXT,
+            extraido_em     TEXT,
+            criado_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    try:
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_exlog_demanda ON extraction_log(demanda_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_exlog_task ON extraction_log(planner_task_id)')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_exlog_review ON extraction_log(needs_review)')
+    except Exception:
+        pass
+
     # ── amostradores ──
     amostr_extra = {
         'data_envio_lab': 'TEXT', 'dias_validade': 'INTEGER DEFAULT 45',

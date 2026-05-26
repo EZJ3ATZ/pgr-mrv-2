@@ -3178,6 +3178,223 @@ def api_reclassificar():
         return jsonify({'erro': str(e)}), 500
 
 
+
+# ── Fila de Revisão Humana (baixa confiança de extração) ──────────────
+
+@controle_bp.route('/demandas/revisao')
+def api_fila_revisao():
+    """
+    Demandas marcadas como needs_review=1 pelo motor inteligente.
+    Retorna lista com score, inconsistências e fontes disponíveis.
+    """
+    init_db()
+    limit = min(int(request.args.get('limit', 100) or 100), 500)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT d.id, d.planner_task_id,
+                   COALESCE(d.titulo, d.nome_tarefa) AS titulo,
+                   d.numero_os, d.status, d.planner_bucket,
+                   d.empresa_id, e.nome AS empresa_nome,
+                   d.needs_review, d.extracao_json,
+                   d.criado_em, d.atualizado_em
+            FROM demandas d
+            LEFT JOIN empresas e ON e.id = d.empresa_id
+            WHERE d.needs_review = 1
+              AND d.origem = 'planner'
+            ORDER BY d.atualizado_em DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+    resultado = []
+    for r in rows:
+        d = row_to_dict(r)
+        if d.get('extracao_json'):
+            try:
+                import json as _j
+                d['extracao'] = _j.loads(d['extracao_json'])
+            except Exception:
+                d['extracao'] = {}
+        resultado.append(d)
+    return jsonify({
+        'total': len(resultado),
+        'demandas': resultado,
+    })
+
+
+@controle_bp.route('/demandas/<int:did>/extracao')
+def api_detalhe_extracao(did):
+    """Detalhe completo da extração inteligente de uma demanda."""
+    init_db()
+    with get_db() as conn:
+        row = conn.execute(
+            'SELECT id, titulo, numero_os, needs_review, extracao_json FROM demandas WHERE id=?',
+            (did,)
+        ).fetchone()
+    if not row:
+        return jsonify({'erro': 'Demanda não encontrada'}), 404
+    d = row_to_dict(row)
+    if d.get('extracao_json'):
+        try:
+            import json as _j
+            d['extracao'] = _j.loads(d['extracao_json'])
+        except Exception:
+            d['extracao'] = {}
+    return jsonify(d)
+
+
+@controle_bp.route('/demandas/<int:did>/revisar', methods=['POST'])
+def api_revisar_demanda(did):
+    """
+    Marca demanda como revisada pelo humano.
+    Body: { numero_os, empresa_id, observacao }
+    Limpa needs_review=0 após confirmação.
+    """
+    init_db()
+    payload = request.json or {}
+    updates = ['needs_review=0', 'atualizado_em=CURRENT_TIMESTAMP']
+    params  = []
+    if payload.get('numero_os'):
+        updates.append('numero_os=?')
+        params.append(payload['numero_os'])
+    if payload.get('empresa_id'):
+        updates.append('empresa_id=?')
+        params.append(int(payload['empresa_id']))
+    if payload.get('observacao'):
+        updates.append('observacao=?')
+        params.append(payload['observacao'])
+    params.append(did)
+    with get_db() as conn:
+        conn.execute(
+            f'UPDATE demandas SET {", ".join(updates)} WHERE id=?',
+            params
+        )
+        usuario = ''
+        try:
+            from flask_login import current_user
+            usuario = getattr(current_user, 'email', '') or ''
+        except Exception:
+            pass
+        registrar_evento('demanda_revisada_humano',
+                         f'Demanda {did} revisada manualmente',
+                         ref_id=did, ref_tipo='demanda', usuario=usuario,
+                         ip=request.remote_addr)
+    return jsonify({'ok': True, 'demanda_id': did})
+
+
+@controle_bp.route('/demandas/revisao/stats')
+def api_revisao_stats():
+    """Estatísticas da fila de revisão."""
+    init_db()
+    with get_db() as conn:
+        total_review = conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE needs_review=1 AND origem='planner'"
+        ).fetchone()['c']
+        total_sem_os = conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE (numero_os IS NULL OR numero_os='') AND origem='planner'"
+        ).fetchone()['c']
+        total_sem_empresa = conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE (empresa_id IS NULL OR empresa_id=0) AND origem='planner'"
+        ).fetchone()['c']
+        # Score médio (de extracao_json)
+        score_rows = conn.execute(
+            "SELECT extracao_json FROM demandas WHERE extracao_json IS NOT NULL AND extracao_json != '' LIMIT 500"
+        ).fetchall()
+    scores = []
+    for r in score_rows:
+        try:
+            import json as _j
+            ex = _j.loads(r['extracao_json'] if isinstance(r, dict) else r[0])
+            s = ex.get('score_geral', 0)
+            if s:
+                scores.append(s)
+        except Exception:
+            pass
+    return jsonify({
+        'necessitam_revisao': total_review,
+        'sem_numero_os':      total_sem_os,
+        'sem_empresa':        total_sem_empresa,
+        'score_medio':        round(sum(scores) / len(scores), 3) if scores else None,
+        'demandas_analisadas': len(scores),
+    })
+
+
+@controle_bp.route('/demandas/re-extrair', methods=['POST'])
+def api_re_extrair_demandas():
+    """
+    Re-executa o motor inteligente em todas as demandas do Planner.
+    Útil após atualizar o dicionário operacional.
+    Processa em background (retorna imediatamente).
+    """
+    init_db()
+    import threading as _thr
+    def _job():
+        try:
+            from .inteligencia_demandas import (
+                analisar_tarefa_planner, extrair_os_multifonte,
+                extrair_agentes_multifonte,
+            )
+            import json as _j
+            with get_db() as conn:
+                rows = conn.execute(
+                    "SELECT id, titulo, numero_os, descricao, checklist, "
+                    "planner_task_id, planner_bucket, percent_complete "
+                    "FROM demandas WHERE origem='planner' ORDER BY id"
+                ).fetchall()
+            processadas = 0
+            for r in rows:
+                try:
+                    d = row_to_dict(r)
+                    titulo   = d.get('titulo') or ''
+                    desc     = d.get('descricao') or ''
+                    bucket   = d.get('planner_bucket') or ''
+                    percent  = int(d.get('percent_complete') or 0)
+                    cl_raw   = d.get('checklist') or ''
+                    try:
+                        checklist = _j.loads(cl_raw) if cl_raw else []
+                    except Exception:
+                        checklist = []
+                    # Usar motor multi-fonte (sem Graph API - dados já no banco)
+                    os_num, os_conf, os_fontes = extrair_os_multifonte(
+                        titulo=titulo, descricao=desc,
+                        checklist_texto=' | '.join(
+                            (i.get('titulo','') if isinstance(i, dict) else str(i))
+                            for i in (checklist if isinstance(checklist, list) else [])
+                        ),
+                    )
+                    agentes = extrair_agentes_multifonte(
+                        titulo=titulo, descricao=desc,
+                        checklist=checklist, bucket=bucket,
+                    )
+                    from .inteligencia_demandas import ExtractionResult, validar_resultado
+                    result = ExtractionResult(
+                        task_id=d.get('planner_task_id', ''),
+                        titulo=titulo,
+                        numero_os=os_num or d.get('numero_os'),
+                        numero_os_confianca=os_conf,
+                        numero_os_fontes=os_fontes,
+                        agentes=agentes,
+                        fontes_lidas=['banco'],
+                    )
+                    result = validar_resultado(result, bucket, percent)
+                    result.calcular_score()
+                    with get_db() as conn2:
+                        conn2.execute(
+                            'UPDATE demandas SET needs_review=?, extracao_json=? WHERE id=?',
+                            (1 if result.needs_review else 0,
+                             _j.dumps(result.to_dict(), ensure_ascii=False),
+                             d['id'])
+                        )
+                    processadas += 1
+                except Exception as e:
+                    import logging as _log
+                    _log.getLogger(__name__).warning('re-extrair demanda %s: %s', d.get('id'), e)
+        except Exception as e:
+            import logging as _log
+            _log.getLogger(__name__).error('re-extrair job error: %s', e)
+    t = _thr.Thread(target=_job, daemon=True)
+    t.start()
+    return jsonify({'ok': True, 'info': 'Re-extração iniciada em background'})
+
+
 @controle_bp.route('/empresas/mesclar', methods=['POST'])
 def api_mesclar_empresas():
     """Mescla empresas duplicadas (mesmo nome normalizado)."""
