@@ -2851,6 +2851,19 @@
       <div id="plan-equip-chips" class="plan-equip-list"></div>
     </div>
 
+    <!-- ── Calculadora de Dias (baseada na planilha Excel) ── -->
+    <div id="plan-calc-dias" style="display:none;" class="plan-f">
+      <label style="display:flex;align-items:center;gap:6px;">
+        ⏱ Estimativa de Dias de Medição
+        <span style="font-size:.65rem;font-weight:600;background:rgba(59,130,246,.15);color:#93c5fd;padding:1px 6px;border-radius:3px;">calculado automaticamente</span>
+      </label>
+      <div id="plan-calc-body" style="margin-top:4px;"></div>
+      <button type="button" onclick="planUsarDias()"
+        style="margin-top:8px;background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3);padding:7px 14px;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;width:100%;">
+        📅 Sugerir data de início baseada nos dias calculados
+      </button>
+    </div>
+
     <div class="plan-f">
       <label>Observação</label>
       <textarea id="plan-obs" rows="2" placeholder="Pontos prioritários, restrições de acesso, contato na empresa..." style="resize:vertical;"></textarea>
@@ -6575,6 +6588,78 @@ function _planAtualizarEquipamentos() {
   } else {
     preview.style.display = 'none';
   }
+  _planCalcularDias();
+}
+
+// ── Calculadora de Dias — mesma lógica da planilha Excel ──────────────
+// Fonte: "Calculo de Dias de Medições 1.xlsx" (SharePoint grupo Ocupacional)
+// Fórmula: batches = ceil(qtd / equipamentos); dias = ceil(batches × duração_h / 8)
+const _CALC_PARAMS = {
+  ruido:    { duracao_h: 8.0,       equip: 15, label: '🔊 Ruído',        cor: 'var(--green)' },
+  quimico:  { duracao_h: 4.0,       equip: 6,  label: '⚗️ Químico',      cor: '#39f'         },
+  calor:    { duracao_h: 1.0,       equip: 1,  label: '🌡️ Calor (IBUTG)',cor: 'var(--yellow)'},
+  vibracao: { duracao_h: 40/60,     equip: 1,  label: '〰️ Vibração',     cor: 'var(--purple)'},
+};
+
+function _planCalcularDias() {
+  const agentes = window._planAgentes || [];
+  const elBox  = document.getElementById('plan-calc-dias');
+  const elBody = document.getElementById('plan-calc-body');
+  if (!elBox || !elBody) return;
+
+  if (!agentes.length) { elBox.style.display = 'none'; window._planDiasEstimado = 0; return; }
+
+  // Agrupa por tipo
+  const por_tipo = {};
+  agentes.forEach(a => { por_tipo[a.tipo] = (por_tipo[a.tipo] || 0) + (a.qtd || 1); });
+
+  let linhas = [];
+  let total  = 0;
+  for (const [tipo, qtd] of Object.entries(por_tipo)) {
+    const p = _CALC_PARAMS[tipo];
+    if (!p) continue;
+    const batches = Math.ceil(qtd / p.equip);
+    const dias    = Math.ceil(batches * p.duracao_h / 8);
+    linhas.push({ label: p.label, cor: p.cor, qtd, dias, batches, duracao_h: p.duracao_h, equip: p.equip });
+    total += dias;
+  }
+
+  window._planDiasEstimado = total;
+
+  elBody.innerHTML = linhas.map(l =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface2);border-radius:6px;margin-bottom:4px;font-size:.82rem;">
+      <span style="color:var(--text2);">${l.label} <span style="color:var(--text3);">× ${l.qtd} ${l.qtd===1?'unid.':'unid.'} / ${l.equip} equip. / ${l.duracao_h >= 1 ? l.duracao_h+'h' : Math.round(l.duracao_h*60)+'min'} cada</span></span>
+      <span style="font-weight:700;color:${l.cor};">${l.dias} dia${l.dias !== 1 ? 's' : ''}</span>
+    </div>`
+  ).join('') +
+  `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:8px;margin-top:8px;">
+    <span style="font-weight:700;color:var(--text);">Total estimado</span>
+    <span style="font-weight:800;font-size:1.1rem;color:#93c5fd;">${total} dia${total !== 1 ? 's' : ''}</span>
+  </div>`;
+
+  elBox.style.display = 'flex';
+}
+
+function planUsarDias() {
+  const dias = window._planDiasEstimado || 0;
+  if (!dias) return;
+  const dataInput = document.getElementById('plan-data-prevista');
+  if (!dataInput) return;
+  const base = dataInput.value;
+  if (!base) {
+    _showToast(`${dias} dia${dias>1?'s':''} estimados. Preencha a data de início primeiro.`, 'warn');
+    return;
+  }
+  // Calcula dias úteis a partir da data base
+  const d = new Date(base + 'T12:00:00');
+  let adicionados = 0;
+  while (adicionados < dias - 1) {
+    d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) adicionados++;
+  }
+  const fim = d.toISOString().slice(0, 10);
+  _showToast(`${dias} dia${dias>1?'s':''} úteis · Término: ${fim.split('-').reverse().join('/')}`, 'success');
 }
 
 async function planSalvar(status) {
