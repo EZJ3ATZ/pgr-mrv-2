@@ -6579,7 +6579,10 @@ async function ctrlLoadPorEmpresa() {
           contatoBtn = `<span style="color:${_corRes};font-size:.74rem;font-weight:600;">${e.contato_resultado}</span>${proxTxt}
             <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.68rem;cursor:pointer;margin-left:4px;">atualizar</button>`;
         } else {
-          contatoBtn = `<button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:#1a3a6a;color:#7bb3f0;border:1px solid #2a5599;padding:4px 10px;border-radius:4px;font-size:.72rem;cursor:pointer;">📞 Marcar contato</button>`;
+          contatoBtn = `<span style="display:inline-flex;align-items:center;gap:4px;">
+            <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:#1a3a6a;color:#7bb3f0;border:1px solid #2a5599;padding:4px 10px;border-radius:4px;font-size:.72rem;cursor:pointer;">📞 Marcar contato</button>
+            <span title="Registra o resultado de uma tentativa de contato com o cliente: agendado, sem resposta, reagendado ou aguardando proposta. Permite anotar observações e definir data de retorno (follow-up). Não conclui a OS — apenas documenta o histórico de comunicação." style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text3);font-size:.6rem;cursor:help;flex-shrink:0;">?</span>
+          </span>`;
         }
       }
 
