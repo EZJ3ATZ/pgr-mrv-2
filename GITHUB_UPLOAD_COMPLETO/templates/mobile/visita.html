@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>Visita — {{ planejamento.empresa_nome or 'Visita' }}</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <a href="/mobile/" class="topbar-icon">←</a>
+    <div style="text-align:center">
+      <div class="topbar-title">Planilha de Campo</div>
+      <div class="topbar-sub">OS {{ planejamento.numero_os or '—' }}</div>
+    </div>
+    <div style="width:36px"></div>
+  </div>
+
+  <div class="content">
+
+    <!-- Info da demanda -->
+    <div class="card">
+      <div class="card-title">{{ planejamento.empresa_nome or 'Empresa' }}</div>
+      {% if planejamento.demanda_titulo %}
+      <div class="card-sub" style="margin-top:4px">{{ planejamento.demanda_titulo }}</div>
+      {% endif %}
+      <hr>
+      <div class="info-row">
+        <span class="info-key">Data prevista</span>
+        <span class="info-val">{{ planejamento.data_prevista or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Técnico</span>
+        <span class="info-val">{{ planejamento.tecnico or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Dosímetros previstos</span>
+        <span class="info-val">{{ planejamento.qtd_dosim_prevista or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Bombas previstas</span>
+        <span class="info-val">{{ planejamento.qtd_bombas_previstas or '—' }}</span>
+      </div>
+    </div>
+
+    <!-- Formulário de campo -->
+    <form id="formCampo" onsubmit="salvarVisita(event)">
+      <input type="hidden" name="planejamento_id" value="{{ planejamento.id }}">
+      <input type="hidden" name="empresa_id" value="{{ planejamento.empresa_id }}">
+      <input type="hidden" name="demanda_id" value="{{ planejamento.demanda_id }}">
+
+      <div class="section-title">Dados da visita</div>
+
+      <div class="card">
+        <div class="form-group">
+          <label>Data da visita</label>
+          <input type="date" name="data_visita" value="{{ hoje }}" required>
+        </div>
+        <div style="display:flex; gap:12px">
+          <div class="form-group" style="flex:1">
+            <label>Início</label>
+            <input type="time" name="hora_inicio">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Término</label>
+            <input type="time" name="hora_termino">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Técnico responsável</label>
+          <input type="text" name="tecnico" value="{{ planejamento.tecnico or usuario }}" required>
+        </div>
+      </div>
+
+      <div class="section-title">Agentes avaliados</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Agentes executados</label>
+          <input type="text" name="agentes_executados"
+                 placeholder="Ex: Ruído, Calor, Químico"
+                 value="{{ planejamento.agentes_previstos or '' }}">
+        </div>
+        <div class="form-group">
+          <label>Agentes não executados (se houver)</label>
+          <input type="text" name="agentes_nao_executados" placeholder="Deixe em branco se todos executados">
+        </div>
+        <div class="form-group">
+          <label>Agentes adicionados no campo</label>
+          <input type="text" name="agentes_adicionados" placeholder="Agentes não previstos que foram medidos">
+        </div>
+      </div>
+
+      <div class="section-title">Equipamentos utilizados</div>
+      <div class="card">
+        <div style="display:flex; gap:12px">
+          <div class="form-group" style="flex:1">
+            <label>Dosímetros usados</label>
+            <input type="text" name="dosimetros_usados" placeholder="Ex: DOS-01, DOS-02">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Bombas usadas</label>
+            <input type="text" name="bombas_usadas" placeholder="Ex: B-01">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Resultado</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Resultado da visita</label>
+          <select name="resultado">
+            <option value="concluido">✅ Concluída com sucesso</option>
+            <option value="parcial">⚠ Parcialmente concluída</option>
+            <option value="reagendar">🔄 Reagendar</option>
+            <option value="cancelado">❌ Cancelada</option>
+          </select>
+        </div>
+        <div class="form-group" id="grpJustificativa" style="display:none">
+          <label>Justificativa</label>
+          <textarea name="justificativa" placeholder="Descreva o motivo..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Cobrável?</label>
+          <select name="cobravel">
+            <option value="1">Sim</option>
+            <option value="0">Não</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observações gerais</label>
+          <textarea name="observacao" placeholder="Anotações adicionais do campo..."></textarea>
+        </div>
+      </div>
+
+      <div class="section-title">Assinatura digital</div>
+      <div class="card">
+        <div style="font-size:.8rem; color:var(--muted); margin-bottom:8px">Assine com o dedo</div>
+        <div class="sig-wrap">
+          <canvas id="sigCanvas" height="160"></canvas>
+        </div>
+        <div class="sig-actions">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="limparAssinatura()">Limpar</button>
+          <span id="sigStatus" style="font-size:.75rem; color:var(--muted); align-self:center; margin-left:4px">Não assinado</span>
+        </div>
+        <input type="hidden" name="assinatura_data_url" id="assinaturaInput">
+      </div>
+
+      <div style="padding-bottom:24px">
+        <button type="submit" class="btn btn-success btn-block" id="btnSalvar">
+          💾 Salvar visita
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(console.warn);
+}
+
+// ── Mostrar/ocultar justificativa ──────────────────────────────────────
+document.querySelector('[name=resultado]').addEventListener('change', function() {
+  document.getElementById('grpJustificativa').style.display =
+    ['parcial','reagendar','cancelado'].includes(this.value) ? 'block' : 'none';
+});
+
+// ── Assinatura ─────────────────────────────────────────────────────────
+const canvas = document.getElementById('sigCanvas');
+const ctx    = canvas.getContext('2d');
+let drawing  = false;
+let hasSig   = false;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  canvas.width  = rect.width * dpr;
+  canvas.height = 160 * dpr;
+  canvas.style.height = '160px';
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = '#f1f5f9';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+}
+resizeCanvas();
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src  = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+}
+
+canvas.addEventListener('pointerdown', e => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+canvas.addEventListener('pointermove', e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasSig = true; document.getElementById('sigStatus').textContent = 'Assinado ✓'; e.preventDefault(); });
+canvas.addEventListener('pointerup',   e => { drawing = false; });
+canvas.addEventListener('pointerleave',e => { drawing = false; });
+
+function limparAssinatura() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  hasSig = false;
+  document.getElementById('sigStatus').textContent = 'Não assinado';
+  document.getElementById('assinaturaInput').value = '';
+}
+
+// ── Salvar visita ──────────────────────────────────────────────────────
+async function salvarVisita(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Salvando...';
+
+  // Captura assinatura
+  if (hasSig) {
+    document.getElementById('assinaturaInput').value = canvas.toDataURL('image/png');
+  }
+
+  // Monta payload
+  const fd = new FormData(document.getElementById('formCampo'));
+  const body = {};
+  fd.forEach((v, k) => { if (v) body[k] = v; });
+
+  const url = '/mobile/api/visita';
+
+  if (navigator.onLine) {
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        showToast('✅ Visita salva!');
+        setTimeout(() => location.href = '/mobile/', 1500);
+        return;
+      }
+      throw new Error(data.erro || 'Erro desconhecido');
+    } catch (err) {
+      showToast('⚠ Erro online — salvo offline: ' + err.message);
+    }
+  }
+
+  // Offline: salva na fila IndexedDB
+  await enqueueOffline(url, 'POST', body);
+  // Tenta registrar Background Sync (Android Chrome)
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    const sw = await navigator.serviceWorker.ready;
+    await sw.sync.register('sync-visitas').catch(() => {});
+  }
+  showToast('📴 Salvo offline — será enviado ao reconectar');
+  setTimeout(() => location.href = '/mobile/', 1800);
+}
+
+// ── IndexedDB fila offline ─────────────────────────────────────────────
+function openIDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('medicoes-offline', 1);
+    r.onupgradeneeded = e => e.target.result.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e);
+  });
+}
+async function enqueueOffline(url, method, body) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('queue', 'readwrite');
+    tx.objectStore('queue').add({ url, method, body, ts: Date.now() });
+    tx.oncomplete = () => res();
+    tx.onerror    = e => rej(e);
+  });
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+function showToast(msg, ms = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+</script>
+</body>
+</html>

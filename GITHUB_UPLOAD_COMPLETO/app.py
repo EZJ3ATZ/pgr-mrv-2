@@ -30,11 +30,12 @@ MODEL_DIR  = os.path.join(BASE_DIR, 'modelo_unpacked')
 
 # ── Modulo Controle de Medicoes e Amostradores (isolado via Blueprint) ─
 try:
-    from controle import controle_bp, auth_bp, login_manager, init_db as _controle_init_db
+    from controle import controle_bp, auth_bp, login_manager, init_db as _controle_init_db, mobile_bp
     from controle.db import get_db, row_to_dict, registrar_evento
     login_manager.init_app(app)
     app.register_blueprint(auth_bp)
     app.register_blueprint(controle_bp)
+    app.register_blueprint(mobile_bp)
     _controle_init_db()
 except Exception as _e:
     import traceback
@@ -797,6 +798,12 @@ def extrair_pdf(file_bytes):
     return dados
 
 # ── Rotas ─────────────────────────────────────────────────────────
+
+@app.route('/sw.js')
+def sw_js():
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+
+
 @app.route('/')
 def index():
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)

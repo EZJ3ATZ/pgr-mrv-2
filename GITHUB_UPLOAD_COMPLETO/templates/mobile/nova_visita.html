@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>Nova Visita — Medições</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <a href="/mobile/" class="topbar-icon">←</a>
+    <div style="text-align:center">
+      <div class="topbar-title">Nova Visita Avulsa</div>
+      <div class="topbar-sub">Sem planejamento prévio</div>
+    </div>
+    <div style="width:36px"></div>
+  </div>
+
+  <div class="content">
+    <form id="formNova" onsubmit="salvarNova(event)">
+
+      <div class="section-title">Empresa</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Buscar empresa</label>
+          <input type="text" id="buscaEmpresa" placeholder="Digite o nome..." autocomplete="off"
+                 oninput="buscarEmpresas(this.value)">
+          <div id="listaEmpresas" style="margin-top:6px"></div>
+          <input type="hidden" name="empresa_id" id="empresaId">
+          <input type="hidden" name="empresa_nome" id="empresaNome">
+        </div>
+        <div class="form-group">
+          <label>Número de OS</label>
+          <input type="text" name="numero_os" placeholder="Ex: 6077430">
+        </div>
+      </div>
+
+      <div class="section-title">Dados da visita</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Data</label>
+          <input type="date" name="data_visita" value="{{ hoje }}" required>
+        </div>
+        <div style="display:flex; gap:12px">
+          <div class="form-group" style="flex:1">
+            <label>Início</label>
+            <input type="time" name="hora_inicio">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Término</label>
+            <input type="time" name="hora_termino">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Técnico</label>
+          <input type="text" name="tecnico" value="{{ usuario }}" required>
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select name="tipo_visita">
+            <option value="medicao">Medição</option>
+            <option value="reconhecimento">Reconhecimento</option>
+            <option value="entrega">Entrega de laudo</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title">Agentes / Observações</div>
+      <div class="card">
+        <div class="form-group">
+          <label>Agentes avaliados</label>
+          <input type="text" name="agentes_executados" placeholder="Ex: Ruído, Calor">
+        </div>
+        <div class="form-group">
+          <label>Resultado</label>
+          <select name="resultado">
+            <option value="concluido">✅ Concluída</option>
+            <option value="parcial">⚠ Parcial</option>
+            <option value="reagendar">🔄 Reagendar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Observações</label>
+          <textarea name="observacao" placeholder="Anotações do campo..."></textarea>
+        </div>
+      </div>
+
+      <div style="padding-bottom:24px">
+        <button type="submit" class="btn btn-success btn-block" id="btnSalvar">
+          💾 Salvar visita
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(console.warn);
+}
+
+// ── Busca de empresas ──────────────────────────────────────────────────
+let _timer = null;
+function buscarEmpresas(q) {
+  clearTimeout(_timer);
+  const lista = document.getElementById('listaEmpresas');
+  if (q.length < 2) { lista.innerHTML = ''; return; }
+  _timer = setTimeout(async () => {
+    try {
+      const r = await fetch(`/mobile/api/empresas?q=${encodeURIComponent(q)}&limit=6`);
+      const empresas = await r.json();
+      lista.innerHTML = empresas.map(e =>
+        `<div class="check-item" onclick="selecionarEmpresa(${e.id}, '${e.nome.replace(/'/g,"\\'")}')">
+          <span class="check-label">${e.nome}</span>
+        </div>`
+      ).join('');
+    } catch (_) {}
+  }, 300);
+}
+
+function selecionarEmpresa(id, nome) {
+  document.getElementById('empresaId').value = id;
+  document.getElementById('empresaNome').value = nome;
+  document.getElementById('buscaEmpresa').value = nome;
+  document.getElementById('listaEmpresas').innerHTML = '';
+}
+
+// ── Salvar ─────────────────────────────────────────────────────────────
+async function salvarNova(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btnSalvar');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  const fd = new FormData(document.getElementById('formNova'));
+  const body = {};
+  fd.forEach((v, k) => { if (v) body[k] = v; });
+  body.tipo_visita = body.tipo_visita || 'medicao';
+
+  const url = '/mobile/api/visita';
+
+  if (navigator.onLine) {
+    try {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await r.json();
+      if (r.ok && data.ok) { showToast('✅ Visita salva!'); setTimeout(() => location.href = '/mobile/', 1500); return; }
+      throw new Error(data.erro || 'Erro');
+    } catch (err) {
+      showToast('⚠ Salvando offline: ' + err.message);
+    }
+  }
+
+  await enqueueOffline(url, 'POST', body);
+  if ('serviceWorker' in navigator && 'SyncManager' in window) {
+    const sw = await navigator.serviceWorker.ready;
+    await sw.sync.register('sync-visitas').catch(() => {});
+  }
+  showToast('📴 Salvo offline');
+  setTimeout(() => location.href = '/mobile/', 1800);
+}
+
+function openIDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('medicoes-offline', 1);
+    r.onupgradeneeded = e => e.target.result.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e);
+  });
+}
+async function enqueueOffline(url, method, body) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('queue', 'readwrite');
+    tx.objectStore('queue').add({ url, method, body, ts: Date.now() });
+    tx.oncomplete = () => res();
+    tx.onerror    = e => rej(e);
+  });
+}
+
+function showToast(msg, ms = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+</script>
+</body>
+</html>
