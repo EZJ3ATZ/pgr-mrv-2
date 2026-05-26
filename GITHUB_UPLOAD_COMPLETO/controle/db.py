@@ -666,9 +666,13 @@ def _get_table_cols(conn, table):
 def _add_col(conn, table, col, col_type):
     """Adiciona coluna se não existir (idempotente)."""
     try:
-        cols = _get_table_cols(conn, table)
-        if col not in cols:
-            conn.execute(f'ALTER TABLE {table} ADD COLUMN {col} {col_type}')
+        if USE_PG:
+            # ADD COLUMN IF NOT EXISTS evita 50+ queries a information_schema
+            conn.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}')
+        else:
+            cols = _get_table_cols(conn, table)
+            if col not in cols:
+                conn.execute(f'ALTER TABLE {table} ADD COLUMN {col} {col_type}')
     except Exception as e:
         print(f'[migrate] {table}.{col}: {e}')
 
