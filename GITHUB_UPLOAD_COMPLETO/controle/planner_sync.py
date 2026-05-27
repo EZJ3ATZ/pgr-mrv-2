@@ -14,6 +14,7 @@ Chamado periodicamente pelo APScheduler (app.py) e manualmente via endpoint.
 
 import logging
 import json
+import re
 import threading
 import unicodedata
 from datetime import datetime, timezone
@@ -94,6 +95,35 @@ _BUCKETS_IGNORADOS = {
     'avançar', 'recursos humanos', 'rh', 'onboarding',
     'financeiro', 'compras', 'contratação',
 }
+
+# ── Filtro AET (Análise Ergonômica do Trabalho) ───────────────────────────
+# AET é ergonomia — NÃO entra no sistema de medições.
+# Regra: tarefa com "AET" no título MAS SEM componente de medição → ignorada.
+# Tarefa mista "AET/MEDIÇÕES - ..." → importada normalmente (medição tem prioridade).
+_AET_RE     = re.compile(r'\bAET\b', re.IGNORECASE)
+_MEDICAO_RE = re.compile(
+    r'\bMEDI[CÇ][OÃ][EÕS]*\b'    # MEDIÇÃO / MEDIÇÕES / MEDICOES
+    r'|\bRUÍDO\b|\bRUIDO\b'       # ruído
+    r'|\bCALOR\b|\bVIBRA[CÇ]'     # calor, vibração
+    r'|\bQUÍMIC[AO]\b|\bQUIMIC[AO]\b'  # químico/a
+    r'|\bILUMIN'                   # iluminamento
+    r'|\bNR[-\s]?15\b',            # NR-15 → agentes insalubres = medição
+    re.IGNORECASE,
+)
+
+
+def _e_tarefa_aet_pura(titulo: str) -> bool:
+    """
+    Retorna True se a tarefa é puramente AET (ergonomia) e NÃO tem
+    componente de medição de agentes físicos/químicos.
+    Tarefas mistas (ex: 'AET/MEDIÇÕES - 12345 - Empresa') retornam False
+    e continuam sendo importadas normalmente.
+    """
+    if not _AET_RE.search(titulo):
+        return False  # nem tem AET — não é caso AET
+    if _MEDICAO_RE.search(titulo):
+        return False  # tem AET + medição → tarefa mista, importar
+    return True       # só AET, sem medição → ignorar
 
 
 
@@ -546,6 +576,19 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                                     log.info('[planner_sync] checkpoint commit: %d tasks processadas', _task_count)
 
                                 continue  # NÃO vai para demandas
+
+                        # ── FILTRO AET: tarefa é puramente ergonomia → ignorar ──────────
+                        # Tarefas com "AET" no título mas sem componente de medição
+                        # (ruído, calor, químico, NR-15, etc.) não entram no sistema.
+                        # Tarefas mistas "AET/MEDIÇÕES - ..." continuam sendo importadas.
+                        if _e_tarefa_aet_pura(titulo):
+                            mark_raw_task(conn, raw_id, 'ignored', 'AET pura — sem componente de medição')
+                            stats['bucket_ignoradas'] += 1
+                            log.debug('[planner_sync] AET ignorada: %s', titulo[:80])
+                            _task_count += 1
+                            if _task_count % COMMIT_INTERVAL == 0:
+                                conn.commit()
+                            continue  # NÃO vai para demandas
 
                         # ── Buscar detalhes SOMENTE para tasks que passaram no filtro ──
                         details = get_task_details(tid)
