@@ -6607,7 +6607,12 @@ async function ctrlLoadPorEmpresa() {
         <td><span style="color:${corDias}; font-weight:600;">${lblDias}</span></td>
         <td>${e.responsavel||'—'}</td>
         <td onclick="event.stopPropagation()">${contatoBtn}</td>
-        <td onclick="event.stopPropagation()">${pend > 0 ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaEmpresa(${e.empresa_id})">Dar Baixa</button>` : ''}</td>
+        <td onclick="event.stopPropagation()">
+          <div style="display:flex;gap:4px;align-items:center;justify-content:flex-end;">
+            <button onclick="empAbrirPainel(${e.empresa_id})" title="Ver detalhes, coletas e histórico desta empresa" style="background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:4px;padding:4px 8px;font-size:.8rem;cursor:pointer;flex-shrink:0;">📊</button>
+            ${pend > 0 ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaEmpresa(${e.empresa_id})">Dar Baixa</button>` : ''}
+          </div>
+        </td>
       </tr>
       <tr id="ctrl-eexp-${e.empresa_id}" style="display:none;">
         <td colspan="9" style="background:rgba(255,255,255,.02); padding:14px 24px;">
@@ -8677,7 +8682,7 @@ async function empAbrirPainel(empresaId) {
   document.body.style.overflow = 'hidden';
   try {
     _empPainelData = await ctrlFetch(`/controle/empresas/${empresaId}/painel`);
-    _empPainelAba = 'resumo';
+    _empPainelAba = 'os_ativas';
     const nomeEl = document.getElementById('emp-painel-nome');
     const cnpjEl = document.getElementById('emp-painel-cnpj');
     if (nomeEl) nomeEl.textContent = _empPainelData.nome || '—';
@@ -8723,8 +8728,7 @@ function empIrParaOS() {
 
 function empPainelAba(aba) {
   _empPainelAba = aba;
-  // guard: 'demandas' tab was removed — fallback to resumo
-  if (!['resumo','agentes','coletas','tecnicos','historico'].includes(_empPainelAba)) _empPainelAba = 'resumo';
+  if (!['os_ativas','resumo','agentes','coletas','tecnicos','historico'].includes(_empPainelAba)) _empPainelAba = 'os_ativas';
   empRenderPainel();
 }
 
@@ -8734,11 +8738,44 @@ function empRenderPainel() {
   const body = document.getElementById('emp-painel-body');
   if (!body) return;
   const s = d.stats || {};
-  const abas = ['resumo','agentes','coletas','tecnicos','historico'];
-  const abaLabel = {resumo:'Resumo',agentes:'Agentes',coletas:'Coletas',tecnicos:'Técnicos',historico:'Histórico'};
+  const abas = ['os_ativas','resumo','agentes','coletas','tecnicos','historico'];
+  const abaLabel = {os_ativas:'OS Ativas',resumo:'Resumo',agentes:'Agentes',coletas:'Coletas',tecnicos:'Técnicos',historico:'Histórico'};
+
+  // guard: map allowed tabs
+  if (!abas.includes(_empPainelAba)) _empPainelAba = 'os_ativas';
 
   let content = '';
-  if (_empPainelAba === 'resumo') {
+  if (_empPainelAba === 'os_ativas') {
+    const dems = d.demandas_recentes || [];
+    content = dems.length === 0
+      ? `<div style="color:var(--text3);padding:30px;text-align:center;">Nenhuma OS encontrada para esta empresa.</div>`
+      : `<div style="display:flex;flex-direction:column;gap:8px;">
+        ${dems.map(dem => {
+          const isDone = dem.status === 'concluida';
+          const statusCor = isDone ? 'var(--green)' : dem.status === 'pendente' ? 'var(--yellow)' : 'var(--blue)';
+          const atrasada = dem.prazo && !isDone && dem.prazo < new Date().toISOString().slice(0,10);
+          const chips = (dem.medicoes_pendentes || []).filter(a => !isDone);
+          return `
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips.length ? '8px' : '0'};">
+              <div style="width:8px;height:8px;border-radius:50%;background:${statusCor};flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dem.titulo || dem.numero_os || '—'}</div>
+                <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">
+                  ${dem.planner_bucket || ''} ${dem.responsavel ? '· ' + dem.responsavel : ''}
+                  ${dem.prazo ? ' · prazo: <span style="color:' + (atrasada ? 'var(--red)' : 'var(--text3)') + '">' + dem.prazo + (atrasada ? ' ⚠' : '') + '</span>' : ''}
+                </div>
+              </div>
+              <div style="font-size:.7rem;font-weight:600;color:${statusCor};flex-shrink:0;">${dem.status || ''}</div>
+            </div>
+            ${chips.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;">
+              ${chips.map(a => `<span style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);padding:2px 8px;border-radius:12px;font-size:.68rem;color:var(--orange);">${a.canonical || a.agente || a}</span>`).join('')}
+            </div>` : ''}
+            ${dem.laudar_tag ? `<span style="display:inline-block;margin-top:6px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);padding:2px 8px;border-radius:12px;font-size:.68rem;color:#fbbf24;">📄 Laudar</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`;
+  } else if (_empPainelAba === 'resumo') {
     const va = d.visitas_stats || {};
     const cr = d.coletas_ruido || {};
     const cq = d.coletas_quimico || {};

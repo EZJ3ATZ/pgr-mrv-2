@@ -1393,20 +1393,47 @@ def get_empresa_painel(empresa_id):
         """, ids_iguais).fetchone())
         emp['stats'] = stats
 
-        # ─ Últimas 15 demandas ───────────────────────────────────────────
-        emp['demandas_recentes'] = [row_to_dict(r) for r in conn.execute(f"""
+        # ─ Demandas recentes (abertas primeiro, depois concluídas) ──────
+        import json as _json
+        _DOC_CANONICALS = {'PGR','LTCAT','PCMSO','PPRA','PPP','AET',
+                           'Laudo de Insalubridade','Laudo de Periculosidade'}
+        _LAUDAR_KWS = ['laudar','laudo de','emitir laudo','elaborar laudo',
+                       'liberar resultado','lançar no soc','lancar no soc']
+        raw_dems = [row_to_dict(r) for r in conn.execute(f"""
             SELECT d.id, d.numero_os,
                    COALESCE(d.titulo, d.nome_tarefa) AS titulo,
                    d.status, d.prazo, d.bucket, d.planner_bucket,
                    COALESCE(d.responsavel, u.display_name) AS responsavel,
                    {_ds("d.criado_em")} AS dias_aberta,
+                   d.extracao_json, d.descricao,
                    (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id) AS total_medicoes
             FROM demandas d
             LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
             WHERE d.empresa_id IN ({ph})
               AND UPPER(COALESCE(d.titulo,'')) NOT LIKE '%PROCESSO ANTIGO%'
-            ORDER BY d.criado_em DESC LIMIT 15
+            ORDER BY
+              CASE WHEN d.status != 'concluida' THEN 0 ELSE 1 END,
+              d.criado_em DESC
+            LIMIT 20
         """, ids_iguais).fetchall()]
+        for _d in raw_dems:
+            # Parse extracao_json → chips de agentes
+            try:
+                _ext = _json.loads(_d.get('extracao_json') or '{}')
+                _ags = [a for a in (_ext.get('agentes') or [])
+                        if a.get('canonical') and a.get('canonical') not in _DOC_CANONICALS
+                        and a.get('tipo','') != 'documento'
+                        and float(a.get('confianca', 1)) >= 0.55]
+                _d['medicoes_pendentes'] = _ags if _d.get('status') != 'concluida' else []
+            except Exception:
+                _d['medicoes_pendentes'] = []
+            # Tag laudar
+            _txt = ((_d.get('descricao') or '') + ' ' + (_d.get('titulo') or '')).lower()
+            _d['laudar_tag'] = any(kw in _txt for kw in _LAUDAR_KWS)
+            # Limpar campos pesados
+            _d.pop('extracao_json', None)
+            _d.pop('descricao', None)
+        emp['demandas_recentes'] = raw_dems
 
         # ─ Agentes medidos (por demanda/medicao) ─────────────────────────
         emp['agentes'] = [row_to_dict(r) for r in conn.execute(f"""
