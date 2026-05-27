@@ -3522,6 +3522,23 @@
     .nv-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px;}
     .nv-card-title{font-size:.68rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.09em;margin-bottom:14px;}
     .nv-f label{display:block;font-size:.67rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:3px;}
+
+    /* ── Tipo de Medição — chips múltiplos ── */
+    .nv-tipo-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .nv-tipo-chip { display: none; }
+    .nv-tipo-chip + label {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 14px; border-radius: 8px; cursor: pointer;
+      font-size: .82rem; font-weight: 600; text-transform: none; letter-spacing: normal;
+      border: 1.5px solid var(--border); background: var(--surface2);
+      color: var(--text2); transition: all .18s; user-select: none;
+    }
+    .nv-tipo-chip + label:hover { border-color: var(--border2); color: var(--text); }
+    .nv-tipo-chip:checked + label {
+      border-color: var(--orange); background: rgba(27,107,107,.12);
+      color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange);
+    }
+    /* ─────────────────────────────────────── */
     .nv-f input,.nv-f select,.nv-f textarea{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-size:.85rem;outline:none;transition:border-color .15s;font-family:inherit;}
     .nv-f input:focus,.nv-f select:focus{border-color:var(--orange);}
     .nv-g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -3596,14 +3613,20 @@
         </div>
       </div>
       <div class="nv-f">
-        <label>Tipo de Medição *</label>
-        <select id="nv-tipo" onchange="nvTipoChange()">
-          <option value="">— Selecione o tipo —</option>
-          <option value="ruido">🔊 Ruído</option>
-          <option value="quimico">⚗️ Agentes Químicos</option>
-          <option value="calor">🌡️ Calor (IBUTG)</option>
-          <option value="vibracao">〰️ Vibração</option>
-        </select>
+        <label>Tipo de Medição * <span style="font-weight:400;text-transform:none;color:var(--text3)">(selecione um ou mais)</span></label>
+        <div class="nv-tipo-chips">
+          <input class="nv-tipo-chip" type="checkbox" id="nv-tipo-ruido"     value="ruido"     onchange="nvTipoChange()">
+          <label for="nv-tipo-ruido">🔊 Ruído</label>
+
+          <input class="nv-tipo-chip" type="checkbox" id="nv-tipo-quimico"   value="quimico"   onchange="nvTipoChange()">
+          <label for="nv-tipo-quimico">⚗️ Agentes Químicos</label>
+
+          <input class="nv-tipo-chip" type="checkbox" id="nv-tipo-calor"     value="calor"     onchange="nvTipoChange()">
+          <label for="nv-tipo-calor">🌡️ Calor (IBUTG)</label>
+
+          <input class="nv-tipo-chip" type="checkbox" id="nv-tipo-vibracao"  value="vibracao"  onchange="nvTipoChange()">
+          <label for="nv-tipo-vibracao">〰️ Vibração</label>
+        </div>
       </div>
     </div>
   </div>
@@ -10613,13 +10636,16 @@ async function coletaQuimicoSalvar() {
 // CENTRAL OPERACIONAL DE COLETA — Wizard 6 Etapas
 // ═══════════════════════════════════════════════════════════════════════
 let _nvStep  = 1;
-let _nvTipo  = '';
+let _nvTipo  = '';      // compatibilidade — primeiro tipo selecionado
+let _nvTipos = [];      // array com todos os tipos selecionados
 let _nvCrTrabs  = [];
 let _nvCrTermos = [];
 let _nvCqAgentes = [];  // multi-agente químico
 
 function nvTipoChange() {
-  _nvTipo = document.getElementById('nv-tipo')?.value || '';
+  _nvTipos = ['ruido','quimico','calor','vibracao']
+    .filter(v => document.getElementById('nv-tipo-' + v)?.checked);
+  _nvTipo = _nvTipos[0] || '';  // compatibilidade com código legado
 }
 
 function nvGotoStep(n) {
@@ -10650,14 +10676,28 @@ function nvGotoStep(n) {
 }
 
 function nvShowStep3() {
-  const t = _nvTipo;
-  document.getElementById('nv-s3-ruido').style.display    = t === 'ruido'   ? '' : 'none';
-  document.getElementById('nv-s3-quimico').style.display  = t === 'quimico' ? '' : 'none';
-  document.getElementById('nv-s3-generic').style.display  = (t !== 'ruido' && t !== 'quimico') ? '' : 'none';
-  if (t === 'quimico' && !_nvCqAgentes.length) {
+  const temRuido   = _nvTipos.includes('ruido');
+  const temQuimico = _nvTipos.includes('quimico');
+  const temGeneric = _nvTipos.some(v => v === 'calor' || v === 'vibracao');
+
+  document.getElementById('nv-s3-ruido').style.display   = temRuido   ? '' : 'none';
+  document.getElementById('nv-s3-quimico').style.display = temQuimico ? '' : 'none';
+  // Genérico (calor/vibração): só mostra se não há ruído nem químico, OU se calor/vibração estão selecionados
+  document.getElementById('nv-s3-generic').style.display = temGeneric ? '' : 'none';
+
+  // Atualiza label do bloco genérico para refletir os tipos
+  const genTitle = document.getElementById('nv-s3-generic-title');
+  if (genTitle) {
+    const labels = [];
+    if (_nvTipos.includes('calor'))    labels.push('🌡️ Calor (IBUTG)');
+    if (_nvTipos.includes('vibracao')) labels.push('〰️ Vibração');
+    if (labels.length) genTitle.textContent = labels.join(' + ');
+  }
+
+  // Inicializar agentes químicos a partir do planejamento
+  if (temQuimico && !_nvCqAgentes.length) {
     const itens = window._ctrlNvItens || [];
     if (itens.length > 0) {
-      // Pré-preencher agentes a partir do planejamento (Step 2)
       itens.forEach(item => {
         const ag = nvCqNewAgente();
         ag.substancias = item.agente || '';
@@ -10671,16 +10711,13 @@ function nvShowStep3() {
         _nvCqAgentes.push(ag);
       });
       nvCqRenderAgentes();
-    } else {
-      nvCqAddAgente();
-    }
-  } else if (t === 'quimico') { nvCqRenderAgentes(); }
+    } else { nvCqAddAgente(); }
+  } else if (temQuimico) { nvCqRenderAgentes(); }
 }
 
 function nvShowStep4() {
-  const t = _nvTipo;
-  document.getElementById('nv-equip-ruido').style.display   = t === 'ruido'   ? '' : 'none';
-  document.getElementById('nv-equip-quimico').style.display = t === 'quimico' ? '' : 'none';
+  document.getElementById('nv-equip-ruido').style.display   = _nvTipos.includes('ruido')   ? '' : 'none';
+  document.getElementById('nv-equip-quimico').style.display = _nvTipos.includes('quimico') ? '' : 'none';
 }
 
 function nvNext() {
@@ -10694,22 +10731,21 @@ function nvBack() {
 
 function nvValidateStep(s) {
   if (s === 1) {
-    const emp  = document.getElementById('ctrl-nv-empresa')?.value.trim();
-    const tipo = document.getElementById('nv-tipo')?.value;
-    if (!emp)  { _showToast('⚠ Informe a empresa', 'warn'); return false; }
-    if (!tipo) { _showToast('⚠ Selecione o tipo de medição', 'warn'); return false; }
-    _nvTipo = tipo;
+    const emp = document.getElementById('ctrl-nv-empresa')?.value.trim();
+    if (!emp)          { _showToast('⚠ Informe a empresa', 'warn'); return false; }
+    nvTipoChange();    // garante _nvTipos atualizado
+    if (!_nvTipos.length) { _showToast('⚠ Selecione ao menos um tipo de medição', 'warn'); return false; }
     nvAdaptStep2();
   }
   return true;
 }
 
 function nvAdaptStep2() {
-  const t = _nvTipo;
-  document.getElementById('nv-plan-ruido').style.display    = t === 'ruido'    ? '' : 'none';
-  document.getElementById('nv-plan-quimico').style.display  = t === 'quimico'  ? '' : 'none';
-  document.getElementById('nv-plan-calor').style.display    = t === 'calor'    ? '' : 'none';
-  document.getElementById('nv-plan-vibracao').style.display = t === 'vibracao' ? '' : 'none';
+  // Mostra todos os painéis de planejamento correspondentes aos tipos selecionados
+  ['ruido','quimico','calor','vibracao'].forEach(v => {
+    const el = document.getElementById('nv-plan-' + v);
+    if (el) el.style.display = _nvTipos.includes(v) ? '' : 'none';
+  });
 }
 
 // ═══ CADASTRO DE EQUIPAMENTOS — Sprint 4 ═══════════════════════════
@@ -10815,7 +10851,12 @@ function nvEquipAutoFill(campo, valor) {
 // ═══════════════════════════════════════════════════════════════════
 
 function nvReset() {
-  _nvStep = 1; _nvTipo = '';
+  _nvStep = 1; _nvTipo = ''; _nvTipos = [];
+  // Desmarcar todos os chips de tipo
+  ['ruido','quimico','calor','vibracao'].forEach(v => {
+    const el = document.getElementById('nv-tipo-' + v);
+    if (el) el.checked = false;
+  });
   _nvCrTrabs = []; _nvCrTermos = []; _nvCqAgentes = [];
   window._ctrlNvEmpresa = null;
   window._ctrlNvItens   = [];
@@ -11189,7 +11230,7 @@ function nvSigGetData(id) {
 function nvSigShowSection() {
   const sec = document.getElementById('nv-sig-section');
   if (!sec) return;
-  const show = (_nvTipo === 'quimico' || _nvTipo === 'ruido');
+  const show = _nvTipos.includes('quimico') || _nvTipos.includes('ruido');
   sec.style.display = show ? 'block' : 'none';
   if (show) { nvSigInit('nv-sig-avaliado'); nvSigInit('nv-sig-empresa'); }
 }
@@ -11198,17 +11239,19 @@ function nvSigShowSection() {
 function nvGerarResumo() {
   const el = document.getElementById('nv-final-resumo'); if(!el) return;
   const emp  = document.getElementById('ctrl-nv-empresa')?.value || '—';
-  const tipo = _nvTipo || '—';
   const data = document.getElementById('ctrl-nv-data')?.value || '—';
   const tec  = document.getElementById('ctrl-nv-avaliador')?.value || '—';
   const os   = document.getElementById('ctrl-nv-os')?.value || '—';
-  let extra  = '';
-  if (tipo==='ruido')  extra=`<br>👥 <b>${_nvCrTrabs.length}</b> trabalhador(es)`;
-  if (tipo==='quimico') { const tot=_nvCqAgentes.reduce((s,ag)=>s+ag.amostradores.length,0); extra=`<br>⚗️ <b>${_nvCqAgentes.length}</b> agente(s) · <b>${tot}</b> amostrador(es)`; }
+  const tiposLabel = { ruido:'🔊 Ruído', quimico:'⚗️ Químico', calor:'🌡️ Calor', vibracao:'〰️ Vibração' };
+  const tipos = _nvTipos.map(v => tiposLabel[v] || v).join(' + ') || '—';
+  let extras = [];
+  if (_nvTipos.includes('ruido'))   extras.push(`👥 <b>${_nvCrTrabs.length}</b> trabalhador(es)`);
+  if (_nvTipos.includes('quimico')){ const tot=_nvCqAgentes.reduce((s,ag)=>s+ag.amostradores.length,0); extras.push(`⚗️ <b>${_nvCqAgentes.length}</b> agente(s) · <b>${tot}</b> amostrador(es)`); }
+  const extraStr = extras.length ? '<br>' + extras.join(' &nbsp;·&nbsp; ') : '';
   el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.82rem;">
     <div>🏢 <b>Empresa:</b> ${emp}</div><div>📋 <b>OS:</b> ${os}</div>
     <div>📅 <b>Data:</b> ${data}</div><div>👷 <b>Técnico:</b> ${tec}</div>
-    <div>🔬 <b>Tipo:</b> ${tipo.toUpperCase()}${extra}</div>
+    <div style="grid-column:1/-1">🔬 <b>Tipo(s):</b> ${tipos}${extraStr}</div>
   </div>`;
 }
 
@@ -11224,7 +11267,8 @@ async function nvSalvarMedicao() {
       data:         document.getElementById('ctrl-nv-data')?.value || '',
       prazo:        document.getElementById('nv-prazo')?.value || '',
       avaliador:    document.getElementById('ctrl-nv-avaliador')?.value || '',
-      tipo:         _nvTipo,
+      tipo:         _nvTipo,         // compatibilidade backend (primeiro tipo)
+      tipos:        _nvTipos,        // array completo de tipos
       unidade:      document.getElementById('nv-unidade')?.value || '',
       cidade:       document.getElementById('nv-cidade')?.value || '',
       resp_empresa: document.getElementById('nv-resp-empresa')?.value || '',
