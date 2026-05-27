@@ -1534,6 +1534,13 @@
       </svg>
       <span>Planilha de Campo</span>
     </div>
+
+    <div class="sidebar-item" data-name="coleta" onclick="goToTab('coleta')" title="Coletas digitais de Ruído e Químico">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+      </svg>
+      <span>Coletas de Campo</span>
+    </div>
   </div>
 
   <div class="sidebar-divider"></div>
@@ -1759,10 +1766,10 @@
       <div class="fluxo-node" data-tip="Relatório resumindo o que foi medido, condições de campo e observações técnicas." onclick="goToTab('relatorios');">
         <div class="fluxo-ball">📝</div><div class="fluxo-lbl">Relatório de Visita</div>
       </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Amostradores enviados ao laboratório para análise química ou físico-química." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('stock',null),400);">
+      <div class="fluxo-node" data-tip="Amostradores enviados ao laboratório para análise química ou físico-química." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400);">
         <div class="fluxo-ball">🧪</div><div class="fluxo-lbl">Laboratório</div>
       </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Laboratório retorna os resultados analíticos (concentração, dose, IBUTG etc)." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('stock',null),400);">
+      <div class="fluxo-node" data-tip="Laboratório retorna os resultados analíticos (concentração, dose, IBUTG etc)." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400);">
         <div class="fluxo-ball">📊</div><div class="fluxo-lbl">Resultado</div>
       </div><div class="fluxo-arr">›</div>
       <div class="fluxo-node" data-tip="Laudo técnico gerado com os resultados. Comparação com limites da NR-15." onclick="goToTab('ruido');">
@@ -4187,7 +4194,7 @@
       </div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
         <span style="color:var(--text2);">Banco de dados</span>
-        <span style="color:var(--text);font-weight:600;">SQLite</span>
+        <span style="color:var(--text);font-weight:600;">PostgreSQL</span>
       </div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;">
         <span style="color:var(--text2);">Backend</span>
@@ -4259,7 +4266,7 @@
         <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Planejamento</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Data, equipe, agentes e amostradores — organizado antes de ir a campo.</div></div>
         <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
       </div>
-      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('stock',null),400);">
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('amostr',null),400);">
         <span style="width:20px;flex-shrink:0;">📦</span>
         <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Amostradores</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Estoque, validade, envio ao lab, resultado. Alerta de vencimento em ≤30 dias.</div></div>
         <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
@@ -10073,7 +10080,7 @@ async function coletaQuimicoGerarLaudo() {
     if (!c) { _showToast('Erro ao carregar coleta', 'err'); return; }
 
     // Navegar para a seção de Análise Química
-    showSection('quimico');
+    goToTab('quimico');
 
     // Pré-preencher campos da empresa
     const razaoEl = document.getElementById('q-razao');
