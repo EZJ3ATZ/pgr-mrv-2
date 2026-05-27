@@ -1340,17 +1340,28 @@
     position: relative;
     border-radius: 18px;
     overflow: hidden;
-    background: radial-gradient(ellipse at 60% 40%, rgba(244,123,42,.07) 0%, transparent 70%);
+    background:
+      radial-gradient(ellipse at 55% 45%, rgba(244,123,42,.22) 0%, rgba(244,123,42,.06) 45%, transparent 70%),
+      radial-gradient(ellipse at 80% 80%, rgba(255,170,96,.14) 0%, transparent 55%),
+      linear-gradient(160deg, #1a1008 0%, #0d0d0f 60%, #120c04 100%);
   }
 
   .home-spline-wrap spline-viewer {
     width: 100%;
     height: 100%;
     display: block;
+    --spline-viewer-bg: transparent;
   }
 
-  /* remove the "built with spline" logo */
-  .home-spline-wrap spline-viewer::part(logo) { display: none !important; }
+  /* Overlay to hide "Built with Spline" badge (bottom-right corner) */
+  .home-spline-cover {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 170px; height: 36px;
+    background: linear-gradient(135deg, #120c04, #1a1008);
+    border-radius: 0 0 18px 0;
+    z-index: 10;
+  }
 
   /* Spotlight SVG glow behind robot */
   .home-spotlight {
@@ -1703,8 +1714,10 @@
         <!-- Spline 3D robot -->
         <spline-viewer
           url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-          style="position:relative;z-index:1;">
+          style="position:relative;z-index:1;background:transparent;">
         </spline-viewer>
+        <!-- hide "Built with Spline" badge -->
+        <div class="home-spline-cover"></div>
       </div>
       <div class="home-robot-tagline">A evolu&#231;&#227;o de SST come&#231;a aqui.</div>
     </div>
