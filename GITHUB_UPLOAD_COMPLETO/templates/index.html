@@ -1325,8 +1325,62 @@
       .ob-benefits { grid-template-columns: 1fr; }
       .fluxo-node { min-width: 60px; }
     }
+  /* ═══ SPLINE HERO ROBOT ══════════════════════════════════════════ */
+  .home-hero-right {
+    flex-shrink: 0;
+    width: 420px;
+    display: none;
+    position: relative;
+  }
+  @media (min-width: 860px) { .home-hero-right { display: block; } }
+
+  .home-spline-wrap {
+    width: 100%;
+    height: 380px;
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 60% 40%, rgba(244,123,42,.07) 0%, transparent 70%);
+  }
+
+  .home-spline-wrap spline-viewer {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* remove the "built with spline" logo */
+  .home-spline-wrap spline-viewer::part(logo) { display: none !important; }
+
+  /* Spotlight SVG glow behind robot */
+  .home-spotlight {
+    pointer-events: none;
+    position: absolute;
+    top: -60px; left: -80px;
+    width: 140%; height: 140%;
+    z-index: 0;
+    animation: spotlightFade 1.2s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes spotlightFade {
+    to { opacity: 1; }
+  }
+
+  /* tagline under robot */
+  .home-robot-tagline {
+    text-align: center;
+    margin-top: 14px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--text3);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
   </style>
 </head>
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js"></script>
 <body data-user="{{ current_user.email if current_user.is_authenticated else 'anon' }}">
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="mobileSidebarClose()"></div>
 
@@ -1608,8 +1662,8 @@
       </div>
       <h1 class="home-h1">Controle de<br><span>Medi&#231;&#245;es.</span></h1>
       <p class="home-p">
-        Gerencie demandas, amostradores, OS e prazos — tudo integrado com o Planner.
-        Do planejamento da visita ao resultado no laborat&#243;rio, sem planilha.
+        A evolu&#231;&#227;o de SST come&#231;a aqui. Gerencie demandas, amostradores, OS e prazos —
+        tudo integrado com o Planner, sem planilha.
       </p>
       <div class="home-cta-row">
         <button class="home-btn-primary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),300);">
@@ -1629,56 +1683,30 @@
 
     <!-- Dashboard preview card -->
     <div class="home-hero-right">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:0 20px 40px rgba(0,0,0,.5);">
-        <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Indicadores Gerais</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Medições realizadas</div>
-            <div style="font-size:1.4rem;font-weight:800;color:var(--text);" id="hp-med">—</div>
-            <div style="font-size:.65rem;color:var(--green);margin-top:2px;">em andamento</div>
-          </div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Amostradores em estoque</div>
-            <div style="font-size:1.4rem;font-weight:800;color:var(--text);" id="hp-est">—</div>
-            <div style="font-size:.65rem;color:var(--blue);margin-top:2px;">disponíveis</div>
-          </div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">Demandas em aberto</div>
-            <div style="font-size:1.4rem;font-weight:800;color:var(--yellow);" id="hp-dem">—</div>
-            <div style="font-size:.65rem;color:var(--text3);margin-top:2px;">pendentes</div>
-          </div>
-          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:.65rem;color:var(--text3);margin-bottom:4px;">No laboratório</div>
-            <div style="font-size:1.4rem;font-weight:800;color:var(--orange);" id="hp-lab">—</div>
-            <div style="font-size:.65rem;color:var(--text3);margin-top:2px;">aguardando</div>
-          </div>
-        </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
-          <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-weight:600;">Tipos de Medição</div>
-          <div style="display:flex;flex-direction:column;gap:5px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;"></div>
-              <div style="font-size:.7rem;color:var(--text2);flex:1;">Ruído</div>
-              <div style="font-size:.7rem;color:var(--text3);">NR-15 An.1</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;"></div>
-              <div style="font-size:.7rem;color:var(--text2);flex:1;">Calor / IBUTG</div>
-              <div style="font-size:.7rem;color:var(--text3);">NR-15 An.3</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0;"></div>
-              <div style="font-size:.7rem;color:var(--text2);flex:1;">Agentes Químicos</div>
-              <div style="font-size:.7rem;color:var(--text3);">NR-15 An.13</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
-              <div style="font-size:.7rem;color:var(--text2);flex:1;">PGR / Riscos</div>
-              <div style="font-size:.7rem;color:var(--text3);">NR-1</div>
-            </div>
-          </div>
-        </div>
+      <div class="home-spline-wrap">
+        <!-- Spotlight glow -->
+        <svg class="home-spotlight" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3787 2842" fill="none" aria-hidden="true">
+          <g filter="url(#sp-filter)">
+            <ellipse cx="1924.71" cy="273.501" rx="1924.71" ry="273.501"
+              transform="matrix(-0.822377 -0.568943 -0.568943 0.822377 3631.88 2291.09)"
+              fill="rgba(244,123,42,0.18)"/>
+          </g>
+          <defs>
+            <filter id="sp-filter" x="0" y="0" width="3787" height="2842"
+              filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+              <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+              <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+              <feGaussianBlur stdDeviation="120" result="effect1_foregroundBlur"/>
+            </filter>
+          </defs>
+        </svg>
+        <!-- Spline 3D robot -->
+        <spline-viewer
+          url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+          style="position:relative;z-index:1;">
+        </spline-viewer>
       </div>
+      <div class="home-robot-tagline">A evolu&#231;&#227;o de SST come&#231;a aqui.</div>
     </div>
   </div>
 
