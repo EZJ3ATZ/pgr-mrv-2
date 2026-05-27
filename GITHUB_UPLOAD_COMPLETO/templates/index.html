@@ -594,17 +594,47 @@
     .home-h1 {
       font-size: 2.6rem;
       font-weight: 800;
-      line-height: 1.15;
+      line-height: 1.2;
       color: var(--text);
       letter-spacing: -.03em;
       margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
     }
 
-    .home-h1 span {
-      background: linear-gradient(135deg, var(--orange), #FFAA60);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    /* split-text lines */
+    .home-h1-line {
+      display: inline-flex;
+      align-items: flex-start;
+      line-height: 1;
+    }
+
+    /* each char wrapper */
+    .spl-wrap {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      height: 1em;
+      overflow: hidden;
+      cursor: default;
+    }
+
+    .spl-top, .spl-bot {
+      display: block;
+      height: 0.5em;
+      overflow: hidden;
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+      line-height: 1;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .spl-bot-inner {
+      display: block;
+      transform: translateY(-50%);
+      line-height: 1;
     }
 
     .home-p {
@@ -1677,7 +1707,14 @@
         <div class="home-eyebrow-dot"></div>
         Setor de Medi&#231;&#245;es · Ocupacional SST
       </div>
-      <h1 class="home-h1">Controle de<br><span>Medi&#231;&#245;es.</span></h1>
+      <h1 class="home-h1">
+        <span class="home-h1-line" data-split
+          data-top="#e4e4e7"
+          data-bot="rgba(161,161,170,0.45)">Controle de</span>
+        <span class="home-h1-line" data-split
+          data-top="#10B981"
+          data-bot="#065F3C">Medi&#231;&#245;es.</span>
+      </h1>
       <p class="home-p">
         A evolu&#231;&#227;o de SST come&#231;a aqui. Gerencie demandas, amostradores, OS e prazos —
         tudo integrado com o Planner, sem planilha.
@@ -11980,7 +12017,62 @@ function _esc(s) {
 </div>
 
 <script>
-// Hide "Built with Spline" badge from shadow DOM
+// ── Split Text ──────────────────────────────────────────────────────
+function initSplitText(el) {
+  const text    = el.textContent;
+  const topClr  = el.dataset.top || '#ffffff';
+  const botClr  = el.dataset.bot || 'rgba(255,255,255,0.4)';
+  const maxMove = parseFloat(el.dataset.max  || '48');
+  const falloff = parseFloat(el.dataset.fall || '0.32');
+
+  el.textContent = '';
+
+  const chars = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i] === ' ' ? ' ' : text[i];
+
+    const wrap = document.createElement('span');
+    wrap.className = 'spl-wrap';
+
+    const top = document.createElement('span');
+    top.className = 'spl-top';
+    top.textContent = ch;
+    top.style.color = topClr;
+
+    const bot = document.createElement('span');
+    bot.className = 'spl-bot';
+    bot.style.color = botClr;
+    const botInner = document.createElement('span');
+    botInner.className = 'spl-bot-inner';
+    botInner.textContent = ch;
+    bot.appendChild(botInner);
+
+    wrap.appendChild(top);
+    wrap.appendChild(bot);
+    el.appendChild(wrap);
+    chars.push({ wrap, top, bot });
+
+    wrap.addEventListener('mouseenter', () => {
+      chars.forEach(({ top: t, bot: b }, j) => {
+        const dist = Math.abs(j - i);
+        const off  = Math.max(0, maxMove * (1 - dist * falloff));
+        t.style.transform = `translateY(-${off}%)`;
+        b.style.transform = `translateY(${off}%)`;
+      });
+    });
+    wrap.addEventListener('mouseleave', () => {
+      chars.forEach(({ top: t, bot: b }) => {
+        t.style.transform = 'translateY(0)';
+        b.style.transform = 'translateY(0)';
+      });
+    });
+  }
+}
+
+document.querySelectorAll('[data-split]').forEach(initSplitText);
+
+// ── Hide "Built with Spline" badge from shadow DOM ──────────────────
 (function hideSplineBadge() {
   const tryHide = () => {
     const viewer = document.getElementById('hero-spline');
