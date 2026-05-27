@@ -1410,7 +1410,7 @@
   #particle-tagline {
     display: block;
     width: 100%;
-    height: 96px;
+    height: 108px;
     margin-top: 6px;
   }
 
@@ -12013,7 +12013,7 @@ function _esc(s) {
 
   const layoutW = canvas.parentElement ? canvas.parentElement.offsetWidth : 420;
   const W = Math.max(layoutW, 300);
-  const H = 96;
+  const H = 108;
   canvas.width  = W;
   canvas.height = H;
 
@@ -12024,9 +12024,9 @@ function _esc(s) {
   // Brand green palette
   const GREEN = { r: 16, g: 185, b: 129 };
 
-  const PIXEL_STEPS = 3;
+  const PIXEL_STEPS = 1; // sample every pixel → máxima densidade
 
-  // Fill with solid bg on init so there is no flash
+  // Fill with solid bg on init — sem flash
   ctx.fillStyle = 'rgb(7,9,14)';
   ctx.fillRect(0, 0, W, H);
 
@@ -12067,7 +12067,7 @@ function _esc(s) {
       const g = Math.round(this.startColor.g + (this.targetColor.g - this.startColor.g) * this.colorWeight);
       const b = Math.round(this.startColor.b + (this.targetColor.b - this.startColor.b) * this.colorWeight);
       ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
-      ctx.fillRect(this.pos.x, this.pos.y, 2, 2);
+      ctx.fillRect(this.pos.x, this.pos.y, 3, 3); // 3×3px → mais visível
     }
   }
 
@@ -12081,13 +12081,13 @@ function _esc(s) {
     octx.clearRect(0, 0, W, H);
     octx.fillStyle = 'white';
     // Line 1: "Ocupacional" — bold, larger
-    octx.font = 'bold 36px Inter, Arial';
+    octx.font = 'bold 44px Inter, Arial';
     octx.textAlign = 'center';
     octx.textBaseline = 'alphabetic';
-    octx.fillText('Ocupacional', W/2, 40);
-    // Line 2: "o futuro da SST" — lighter weight, smaller
-    octx.font = '600 22px Inter, Arial';
-    octx.fillText('o futuro da SST', W/2, 76);
+    octx.fillText('Ocupacional', W/2, 48);
+    // Line 2: "o futuro da SST"
+    octx.font = '600 26px Inter, Arial';
+    octx.fillText('o futuro da SST', W/2, 84);
 
     const imgData = octx.getImageData(0, 0, W, H);
     const px = imgData.data;
@@ -12122,8 +12122,8 @@ function _esc(s) {
   }
 
   function animate() {
-    // Solid bg fill — same as page, no transparency flash
-    ctx.fillStyle = 'rgb(7,9,14)';
+    // Leve motion blur — fundo converge para #07090E mas deixa trilha suave
+    ctx.fillStyle = 'rgba(7,9,14,0.22)';
     ctx.fillRect(0, 0, W, H);
 
     for (const p of particles) { p.move(); p.draw(ctx); }
