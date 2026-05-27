@@ -1490,13 +1490,6 @@
   <div class="sidebar-section">
     <span class="sidebar-label">Cadastros</span>
 
-    <div class="sidebar-item" data-name="empresas" onclick="goToTab('empresas')">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M10 6h4m-4 4h4m-4 4h4"/>
-      </svg>
-      <span>Empresas</span>
-    </div>
-
     <div class="sidebar-item" data-name="agentes" onclick="goToTab('agentes')">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/>
@@ -3868,8 +3861,8 @@
 
 </div>
 
-<!-- ══ Painel EMPRESAS ══════════════════════════════════════════════════ -->
-<div id="tab-empresas" class="tab-panel">
+<!-- ══ Painel EMPRESAS — removido do sidebar, mantido para compatibilidade ══ -->
+<div id="tab-empresas" class="tab-panel" style="display:none!important">
 <div class="page" style="max-width:1100px;">
   <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;">
     <div>
@@ -4216,9 +4209,9 @@
         <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Amostradores</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Estoque, validade, envio ao lab, resultado. Alerta de vencimento em ≤30 dias.</div></div>
         <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
       </div>
-      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('empresas');">
+      <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('empresa',null),400);">
         <span style="width:20px;flex-shrink:0;">🏢</span>
-        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Empresas</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Cadastro de clientes. Reconhecimento automático por nome/CNPJ/OS.</div></div>
+        <div><div style="font-size:.8rem;font-weight:600;color:var(--text);">Empresas</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px;">Vista de Campo por empresa. Clique 📊 para ver detalhes, OS ativas e agentes.</div></div>
         <span style="margin-left:auto;color:var(--text3);font-size:.8rem;">›</span>
       </div>
       <div style="display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="goToTab('consistencia');">
