@@ -12071,23 +12071,26 @@ function _esc(s) {
     }
   }
 
+  const PHRASES = [
+    { text: 'Ocupacional',      font: 'bold 52px Inter, Arial',   color: GREEN },
+    { text: 'o futuro da SST',  font: 'bold 38px Inter, Arial',   color: { r:52, g:211, b:153 } },
+  ];
+  let phraseIndex = 0;
   let particles = [];
+  let frame = 0;
   let animId = null;
 
-  function buildParticles() {
+  function showPhrase(idx) {
+    const { text, font, color } = PHRASES[idx];
     const off = document.createElement('canvas');
     off.width = W; off.height = H;
     const octx = off.getContext('2d');
     octx.clearRect(0, 0, W, H);
     octx.fillStyle = 'white';
-    // Line 1: "Ocupacional" — bold, larger
-    octx.font = 'bold 44px Inter, Arial';
+    octx.font = font;
     octx.textAlign = 'center';
-    octx.textBaseline = 'alphabetic';
-    octx.fillText('Ocupacional', W/2, 48);
-    // Line 2: "o futuro da SST"
-    octx.font = '600 26px Inter, Arial';
-    octx.fillText('o futuro da SST', W/2, 84);
+    octx.textBaseline = 'middle';
+    octx.fillText(text, W/2, H/2);
 
     const imgData = octx.getImageData(0, 0, W, H);
     const px = imgData.data;
@@ -12095,43 +12098,72 @@ function _esc(s) {
     for (let i = 0; i < px.length; i += PIXEL_STEPS * 4) {
       if (px[i+3] > 0) coords.push(i);
     }
-    // Shuffle
     for (let i = coords.length-1; i > 0; i--) {
       const j = Math.floor(Math.random()*(i+1));
       const t = coords[i]; coords[i] = coords[j]; coords[j] = t;
     }
 
-    particles = [];
+    let pi = 0;
     for (const ci of coords) {
       const x = (ci/4) % W;
       const y = Math.floor(ci/4/W);
-      const p = new Particle();
-      // start scattered, move to target
-      p.pos.x = (Math.random()-0.5)*W*2 + W/2;
-      p.pos.y = (Math.random()-0.5)*H*2 + H/2;
+      let p;
+      if (pi < particles.length) {
+        p = particles[pi]; p.isKilled = false; pi++;
+      } else {
+        p = new Particle();
+        p.pos.x = (Math.random()-0.5)*W*2 + W/2;
+        p.pos.y = (Math.random()-0.5)*H*2 + H/2;
+        particles.push(p); pi++;
+      }
+      p.startColor = {
+        r: Math.round(p.startColor.r + (p.targetColor.r - p.startColor.r) * p.colorWeight),
+        g: Math.round(p.startColor.g + (p.targetColor.g - p.startColor.g) * p.colorWeight),
+        b: Math.round(p.startColor.b + (p.targetColor.b - p.startColor.b) * p.colorWeight),
+      };
+      p.targetColor = color;
+      p.colorWeight = 0;
       p.target.x = x;
       p.target.y = y;
-      // line 2 gets slightly lighter green tint
-      if (y > H/2) {
-        p.targetColor = { r: 52, g: 211, b: 153 }; // #34D399
-        p.startColor  = { r: 52, g: 211, b: 153 };
-      }
+    }
+    // Kill extras
+    for (let i = pi; i < particles.length; i++) {
+      const p = particles[i];
+      p.target.x = (Math.random()-0.5)*W*3 + W/2;
+      p.target.y = (Math.random()-0.5)*H*3 + H/2;
+      p.startColor = {
+        r: Math.round(p.startColor.r + (p.targetColor.r - p.startColor.r) * p.colorWeight),
+        g: Math.round(p.startColor.g + (p.targetColor.g - p.startColor.g) * p.colorWeight),
+        b: Math.round(p.startColor.b + (p.targetColor.b - p.startColor.b) * p.colorWeight),
+      };
+      p.targetColor = BG;
       p.colorWeight = 0;
-      particles.push(p);
+      p.isKilled = true;
     }
   }
 
   function animate() {
-    // Leve motion blur — fundo converge para #07090E mas deixa trilha suave
     ctx.fillStyle = 'rgba(7,9,14,0.22)';
     ctx.fillRect(0, 0, W, H);
 
-    for (const p of particles) { p.move(); p.draw(ctx); }
+    for (let i = particles.length-1; i >= 0; i--) {
+      const p = particles[i];
+      p.move(); p.draw(ctx);
+      if (p.isKilled && (p.pos.x < -40 || p.pos.x > W+40 || p.pos.y < -40 || p.pos.y > H+40)) {
+        particles.splice(i, 1);
+      }
+    }
+
+    frame++;
+    if (frame % 260 === 0) {
+      phraseIndex = (phraseIndex + 1) % PHRASES.length;
+      showPhrase(phraseIndex);
+    }
 
     animId = requestAnimationFrame(animate);
   }
 
-  setTimeout(() => { buildParticles(); animate(); }, 350);
+  setTimeout(() => { showPhrase(0); animate(); }, 350);
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { cancelAnimationFrame(animId); }
