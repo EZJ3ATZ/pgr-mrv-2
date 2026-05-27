@@ -18,16 +18,16 @@ import unicodedata
 # ── Palavras que indicam que a linha NÃO é uma medição ──────────────
 _IGNORAR_LINHA = re.compile(
     r'\b(AET|treinamento|NR[-\s]?\d+|LIP\b|LTCAT|PCMSO|PPRA|PGR\b|'
-    r'elabora[çc][aã]o|laudo|faturamento|proposta|visita|'
+    r'laudo|faturamento|proposta|visita|'
     r'cargos?\b|fun[çc][oõ][ens]+|email|contato|cliente|obs\b|observa)',
     re.IGNORECASE
 )
 
 # ── Padrões de extração ──────────────────────────────────────────────
 
-# A: "04 medições de ruído" / "3 pontos de Vibração Mãos e Braços"
+# A: "04 medições de ruído" / "3 pontos de Vibração" / "2 avaliações de calor"
 _PAT_A = re.compile(
-    r'(\d+)\s+(?:medi[çc][oõ]es?|pontos?)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)]{1,60})',
+    r'(\d+)\s+(?:medi[çc][oõ]es?|avalia[çc][oõ]es?|pontos?)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)]{1,60})',
     re.IGNORECASE
 )
 
@@ -52,6 +52,13 @@ _PAT_D = re.compile(
 # E: "e N de X" — continuação inline: "3 de ruído e 3 de calor"
 _PAT_E = re.compile(
     r'\be\s+(\d+)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)]{1,40})',
+    re.IGNORECASE
+)
+
+# F: "medição/avaliação de X" sem número explícito (qtd implícita = 1)
+#    ex: "medição de ruído", "avaliação de calor", "realizar medição de silica"
+_PAT_F = re.compile(
+    r'(?:medi[çc][aã]o|avalia[çc][aã]o)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)\d]{2,60})',
     re.IGNORECASE
 )
 
@@ -146,7 +153,13 @@ def extrair_agentes(descricao: str) -> list:
         if not _linha_ignoravel(texto):
             _adicionar(resultados, m.group(2), texto)
 
-    # Padrão B — "N X" no início de linha (só se ainda não extraiu nada por A)
+    # Padrão F — "medição/avaliação de X" sem número (qtd=1 implícita)
+    for m in _PAT_F.finditer(descricao):
+        texto = m.group(1)
+        if not _linha_ignoravel(texto):
+            _adicionar(resultados, '1', texto)
+
+    # Padrão B — "N X" no início de linha (só se ainda não extraiu nada por A/E/F)
     if not resultados:
         for m in _PAT_B.finditer(descricao):
             texto = m.group(2)
