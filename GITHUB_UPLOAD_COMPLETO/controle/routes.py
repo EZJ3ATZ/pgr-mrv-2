@@ -3073,6 +3073,45 @@ def graph_debug_groups():
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
 
 
+@controle_bp.route('/debug/demandas_fantasmas')
+def debug_demandas_fantasmas():
+    """Debug: demandas sem numero_os e sem titulo — mostra campos brutos para investigação."""
+    try:
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT d.id, d.numero_os, d.titulo, d.nome_tarefa, d.status,
+                       d.empresa_id, e.nome AS empresa_nome,
+                       d.planner_task_id, d.planner_bucket, d.origem,
+                       d.descricao, d.checklist, d.extracao_json,
+                       d.responsavel, d.prazo,
+                       (SELECT COUNT(*) FROM medicoes m WHERE m.demanda_id=d.id) AS n_medicoes
+                FROM demandas d
+                LEFT JOIN empresas e ON e.id = d.empresa_id
+                WHERE (d.numero_os IS NULL OR d.numero_os = '')
+                  AND (d.titulo   IS NULL OR d.titulo   = '')
+                ORDER BY d.id DESC
+                LIMIT 50
+            """).fetchall()
+        result = []
+        for r in rows:
+            row = dict(r)
+            # Tentar extrair checklist
+            import json as _j
+            try:
+                row['checklist_parsed'] = _j.loads(row.get('checklist') or '[]')
+            except Exception:
+                row['checklist_parsed'] = []
+            try:
+                row['extracao'] = _j.loads(row.get('extracao_json') or '{}')
+            except Exception:
+                row['extracao'] = {}
+            result.append(row)
+        return jsonify({'total': len(result), 'demandas': result})
+    except Exception as e:
+        import traceback
+        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:2000]}), 500
+
+
 @controle_bp.route('/graph/debug_empresa_titulos')
 def graph_debug_empresa_titulos():
     """Debug: retorna títulos das demandas vinculadas a uma empresa (por id ou nome parcial)."""

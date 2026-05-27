@@ -1301,7 +1301,6 @@ def get_empresa_demandas(empresa_id):
             JOIN empresas e ON e.id = d.empresa_id
             LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
             WHERE d.empresa_id IN ({ph})
-              AND NOT (COALESCE(d.numero_os,'')='' AND COALESCE(d.nome_tarefa,'')='' AND COALESCE(d.titulo,'')='')
             ORDER BY d.status ASC, d.criado_em DESC
         """, ids_iguais).fetchall()]
         for d in dems:
