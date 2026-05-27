@@ -7302,7 +7302,13 @@ async function ctrlToggleExpandEmpresa(empresaId) {
     const cont = document.getElementById('ctrl-eexp-content-'+empresaId);
     try {
       const e = await ctrlFetch('/controle/empresa/' + empresaId + '/demandas');
-      const dems = e.demandas || [];
+      // Filtrar OS fantasmas — sem número de OS e sem título
+      const demsRaw = e.demandas || [];
+      const dems = demsRaw.filter(d => {
+        const hasOs    = d.numero_os && d.numero_os !== '—';
+        const hasTit   = d.tarefa_display || d.nome_tarefa || d.titulo;
+        return hasOs || hasTit;
+      });
       if (!dems.length) { cont.innerHTML = '<i>Sem demandas.</i>'; return; }
       cont.innerHTML = `
         <table style="width:100%; border-collapse:collapse;">
