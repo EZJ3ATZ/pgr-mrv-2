@@ -1374,6 +1374,21 @@ def get_empresa_demandas(empresa_id):
                                    'resultado da medição', 'resultado da medicao']
                     if any(kw in _txt_busca for kw in _laudar_kws):
                         d['laudar_tag'] = True
+
+            # ── Fallback para OS manuais sem número e sem título ─────────────
+            # origem='manual', numero_os='', titulo=None  →  gera display legível
+            if d.get('origem') == 'manual' and not (d.get('numero_os') or '').strip():
+                d['numero_os'] = f"MAN-{d['id']}"
+                # Título: lista de agentes das medições (todos, não só pendentes)
+                _rows_ag = conn.execute(
+                    "SELECT DISTINCT agente FROM medicoes WHERE demanda_id=? AND agente IS NOT NULL AND agente != '' ORDER BY agente",
+                    (d['id'],)).fetchall()
+                todos_agentes = [r[0] for r in _rows_ag if r[0]]
+                if todos_agentes:
+                    d['tarefa_display'] = d['nome_tarefa'] = ', '.join(todos_agentes)
+                else:
+                    d['tarefa_display'] = d['nome_tarefa'] = 'OS Manual (sem descrição)'
+
         emp['demandas'] = dems
         return emp
 
