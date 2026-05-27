@@ -134,10 +134,16 @@ class _PGCursor:
 
 
 class _PGConn:
-    """Conexão psycopg2 com interface compatível com sqlite3.Connection."""
+    """Conexão psycopg2 com interface compatível com sqlite3.Connection.
 
-    def __init__(self, pg_conn):
+    Ao chamar close(), devolve a conexão ao pool em vez de fechá-la fisicamente,
+    evitando pool exhaustion quando usado fora do context manager get_db().
+    """
+
+    def __init__(self, pg_conn, pool=None):
         self._conn = pg_conn
+        self._pool = pool   # referência ao pool para devolver no close()
+        self._closed = False
 
     def execute(self, sql, params=None):
         cur = _PGCursor(self._conn)
@@ -165,10 +171,31 @@ class _PGConn:
         self._conn.commit()
 
     def rollback(self):
-        self._conn.rollback()
+        try:
+            self._conn.rollback()
+        except Exception:
+            pass
 
     def close(self):
-        self._conn.close()
+        """Devolve ao pool (não fecha fisicamente) — evita pool exhaustion."""
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            self._conn.rollback()  # limpa transação pendente antes de devolver
+        except Exception:
+            pass
+        if self._pool is not None:
+            try:
+                self._pool.putconn(self._conn)
+                return
+            except Exception:
+                pass
+        # fallback: fechar fisicamente só se não tiver pool
+        try:
+            self._conn.close()
+        except Exception:
+            pass
 
 
 # ── Schema SQLite ──────────────────────────────────────────────────────
@@ -661,41 +688,72 @@ def _connect_sqlite():
 
 
 _pg_pool = None
+_pg_pool_lock = None
 
 def _get_pool():
-    global _pg_pool
+    global _pg_pool, _pg_pool_lock
+    import threading
+    if _pg_pool_lock is None:
+        _pg_pool_lock = threading.Lock()
     if _pg_pool is None:
-        _pg_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1, maxconn=5, dsn=_DATABASE_URL
-        )
+        with _pg_pool_lock:
+            if _pg_pool is None:  # double-check
+                _pg_pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=2,
+                    maxconn=15,   # Railway Pro suporta até ~97 conexões simultâneas
+                    dsn=_DATABASE_URL,
+                    connect_timeout=10,
+                )
     return _pg_pool
 
 
-def _connect_pg():
-    raw = _get_pool().getconn()
-    raw.autocommit = False
-    return _PGConn(raw)
+def _get_pool_conn(pool, retries=4, delay=0.25):
+    """Tenta pegar conexão do pool com retries — evita PoolError imediato."""
+    import time
+    last_err = None
+    for i in range(retries):
+        try:
+            return pool.getconn()
+        except psycopg2.pool.PoolError as e:
+            last_err = e
+            if i < retries - 1:
+                time.sleep(delay * (i + 1))
+    raise last_err
 
 
 def _connect():
     return _connect_pg() if USE_PG else _connect_sqlite()
+
+def _connect_pg():
+    pool = _get_pool()
+    raw = _get_pool_conn(pool)
+    raw.autocommit = False
+    return _PGConn(raw, pool=pool)   # passa pool → close() vai devolver, não fechar
 
 
 @contextmanager
 def get_db():
     if USE_PG:
         pool = _get_pool()
-        raw = pool.getconn()
+        raw = _get_pool_conn(pool)
         raw.autocommit = False
-        conn = _PGConn(raw)
+        conn = _PGConn(raw, pool=pool)
         try:
             yield conn
             conn.commit()
         except Exception:
-            conn.rollback()
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             raise
         finally:
-            pool.putconn(raw)
+            # putconn direto aqui (mais seguro que delegar ao close)
+            try:
+                pool.putconn(raw)
+                conn._closed = True  # marca como devolvida para evitar double-putconn
+            except Exception:
+                pass
     else:
         conn = _connect_sqlite()
         try:
