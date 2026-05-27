@@ -182,6 +182,95 @@ def delete_amostrador(aid):
     return jsonify({'ok': True})
 
 
+@controle_bp.route('/amostradores/baixa_simples', methods=['POST'])
+def baixa_simples_lote():
+    """Baixa rápida em lote: sem bomba/vazão. Atualiza status para Laboratorio + dados básicos."""
+    init_db()
+    d = request.json or {}
+    ids = [int(i) for i in d.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'erro': 'Nenhum amostrador selecionado'}), 400
+
+    empresa_nome = (d.get('empresa_nome') or '').strip()
+    avaliador    = d.get('avaliador', '')
+    data_med     = d.get('data_medicao') or datetime.now().strftime('%Y-%m-%d')
+    obs          = d.get('observacao', '')
+
+    empresa_id = None
+    if empresa_nome:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT id FROM empresas WHERE lower(nome) LIKE lower(?) LIMIT 1",
+                (f'%{empresa_nome}%',)
+            ).fetchone()
+            if row:
+                empresa_id = row['id']
+
+    ph = ','.join(['?'] * len(ids))
+    obs_final = obs or (f'Baixa rápida — {empresa_nome}' if empresa_nome else 'Baixa rápida')
+
+    with get_db() as conn:
+        conn.execute(
+            f"""UPDATE amostradores
+                SET status='Laboratorio', avaliador=?, data_medicao=?,
+                    observacao=?, empresa_id=COALESCE(?,empresa_id),
+                    atualizado_em=CURRENT_TIMESTAMP
+                WHERE id IN ({ph}) AND status='Estoque'""",
+            [avaliador, data_med, obs_final, empresa_id] + ids
+        )
+        afetados = conn.execute(
+            f"SELECT COUNT(*) AS c FROM amostradores WHERE id IN ({ph})", ids
+        ).fetchone()['c']
+
+    user = getattr(current_user, 'email', 'sistema') if current_user.is_authenticated else 'sistema'
+    for aid in ids:
+        registrar_evento('amostrador_atualizado', f'Baixa rápida — {empresa_nome or "s/empresa"}',
+                         aid, 'amostrador', user)
+    return jsonify({'ok': True, 'afetados': afetados})
+
+
+@controle_bp.route('/amostradores/concluir', methods=['POST'])
+def concluir_amostradores():
+    """Marca amostradores como Concluido. Só precisa do nome da empresa."""
+    init_db()
+    d = request.json or {}
+    ids = [int(i) for i in d.get('ids', []) if str(i).isdigit()]
+    if not ids:
+        return jsonify({'erro': 'Nenhum amostrador selecionado'}), 400
+
+    empresa_nome = (d.get('empresa_nome') or '').strip()
+    obs          = d.get('observacao', '')
+
+    empresa_id = None
+    if empresa_nome:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT id FROM empresas WHERE lower(nome) LIKE lower(?) LIMIT 1",
+                (f'%{empresa_nome}%',)
+            ).fetchone()
+            if row:
+                empresa_id = row['id']
+
+    ph = ','.join(['?'] * len(ids))
+    obs_final = obs or (f'Concluído — {empresa_nome}' if empresa_nome else 'Concluído')
+
+    with get_db() as conn:
+        conn.execute(
+            f"""UPDATE amostradores
+                SET status='Concluido', observacao=?,
+                    empresa_id=COALESCE(?,empresa_id),
+                    atualizado_em=CURRENT_TIMESTAMP
+                WHERE id IN ({ph})""",
+            [obs_final, empresa_id] + ids
+        )
+
+    user = getattr(current_user, 'email', 'sistema') if current_user.is_authenticated else 'sistema'
+    for aid in ids:
+        registrar_evento('amostrador_atualizado', f'Concluído — {empresa_nome or "s/empresa"}',
+                         aid, 'amostrador', user)
+    return jsonify({'ok': True, 'afetados': len(ids)})
+
+
 # ── Manutencao / bulk updates ─────────────────────────────────────────
 @controle_bp.route('/amostradores/fix_data_entrada', methods=['POST'])
 def fix_data_entrada():

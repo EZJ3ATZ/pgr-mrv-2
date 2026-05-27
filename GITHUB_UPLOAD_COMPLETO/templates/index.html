@@ -3451,6 +3451,7 @@
   .ctrl-badge.laboratorio{ background:rgba(96,165,250,.12);  color:var(--blue); }
   .ctrl-badge.reservado  { background:rgba(245,158,11,.12);  color:var(--yellow); }
   .ctrl-badge.devolvido  { background:rgba(150,150,150,.1);  color:#888; }
+  .ctrl-badge.concluido  { background:rgba(42,157,157,.12);  color:var(--primary-l); }
   .ctrl-badge.pendente   { background:rgba(239,68,68,.12);   color:var(--red); }
   .ctrl-badge.parcial    { background:rgba(245,158,11,.12);  color:var(--yellow); }
   .ctrl-badge.realizado, .ctrl-badge.concluida { background:rgba(16,185,129,.12); color:var(--green); }
@@ -3559,6 +3560,7 @@
           <option>Laboratorio</option>
           <option>Reservado</option>
           <option>Devolvido</option>
+          <option>Concluido</option>
         </select>
         <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()">
           <option value="">— Tipo —</option>
@@ -3575,15 +3577,23 @@
         <button class="ctrl-import-btn" id="btn-fix-data-entrada" onclick="ctrlFixDataEntrada()" style="background:#555;display:none;" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</button>
         <button class="ctrl-import-btn" onclick="ctrlAbrirNovoAmostrador()" style="background:var(--brand);">+ Adicionar</button>
       </div>
+      <!-- Barra de ações em lote (aparece ao selecionar) -->
+      <div id="ctrl-amostr-bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:rgba(42,157,157,.08);border:1px solid var(--bd-teal);border-radius:8px;">
+        <span id="ctrl-amostr-bulk-count" style="font-size:.82rem;font-weight:700;color:var(--primary-l);">0 selecionados</span>
+        <button onclick="ctrlAbrirBaixaLote()" style="background:var(--primary);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">↓ Dar Baixa</button>
+        <button onclick="ctrlAbrirConcluirLote()" style="background:var(--green);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">✓ Concluído</button>
+        <button onclick="ctrlDeselAllAmostr()" style="background:transparent;color:var(--text3);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:.8rem;cursor:pointer;">Limpar seleção</button>
+      </div>
       <div class="ctrl-table-wrap">
         <table class="ctrl-table">
           <thead>
             <tr>
+              <th style="width:32px;"><input type="checkbox" id="ctrl-amostr-chk-all" onchange="ctrlSelAllAmostr(this.checked)" title="Selecionar todos"></th>
               <th>Status</th><th>Tipo</th><th>Código</th><th>Entrada</th>
               <th>Empresa</th><th>Avaliador</th><th>Data Medição</th><th>Parado</th><th></th>
             </tr>
           </thead>
-          <tbody id="ctrl-tb-amostr"><tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr></tbody>
+          <tbody id="ctrl-tb-amostr"><tr><td colspan="10" class="ctrl-empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -4480,6 +4490,64 @@
   </div>
 </div>
 
+<!-- Modal: Baixa Rápida em Lote (sem bomba/vazão) -->
+<div class="ctrl-overlay" id="ctrl-baixa-lote-overlay" onclick="if(event.target===this) ctrlFecharBaixaLote()">
+  <div class="ctrl-modal" style="max-width:460px;">
+    <h3>↓ Dar Baixa em Lote</h3>
+    <div class="ctrl-info-box" style="margin-bottom:14px;">
+      <span id="ctrl-bxl-count-msg" style="font-size:.82rem;">Amostradores selecionados serão movidos para <b>Laboratório</b>.</span>
+    </div>
+
+    <label>Empresa</label>
+    <input type="text" id="ctrl-bxl-empresa" placeholder="Nome da empresa (opcional)" list="ctrl-bxl-empresa-list">
+    <datalist id="ctrl-bxl-empresa-list"></datalist>
+
+    <div class="row2" style="margin-top:12px;">
+      <div>
+        <label>Avaliador</label>
+        <select id="ctrl-bxl-avaliador">
+          <option>Wesley</option><option>Helbert</option><option>Matheus</option><option>Kelly</option>
+        </select>
+      </div>
+      <div>
+        <label>Data da Medição</label>
+        <input type="date" id="ctrl-bxl-data">
+      </div>
+    </div>
+
+    <label style="margin-top:10px;">Observação</label>
+    <input type="text" id="ctrl-bxl-obs" placeholder="Opcional">
+
+    <div class="ctrl-actions">
+      <button class="ctrl-btn-cancel" onclick="ctrlFecharBaixaLote()">Cancelar</button>
+      <button class="ctrl-btn-ok" onclick="ctrlConfirmarBaixaLote()">✓ Confirmar Baixa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Concluído em Lote -->
+<div class="ctrl-overlay" id="ctrl-concluir-overlay" onclick="if(event.target===this) ctrlFecharConcluir()">
+  <div class="ctrl-modal" style="max-width:420px;">
+    <h3>✓ Marcar como Concluído</h3>
+    <div class="ctrl-info-box" style="margin-bottom:14px;">
+      <span id="ctrl-conc-count-msg" style="font-size:.82rem;">Amostradores selecionados serão marcados como <b>Concluído</b>.</span>
+    </div>
+
+    <label>Empresa</label>
+    <input type="text" id="ctrl-conc-empresa" placeholder="Nome da empresa" list="ctrl-conc-empresa-list">
+    <datalist id="ctrl-conc-empresa-list"></datalist>
+
+    <label style="margin-top:10px;">Observação</label>
+    <input type="text" id="ctrl-conc-obs" placeholder="Opcional">
+
+    <div class="ctrl-actions">
+      <button class="ctrl-btn-cancel" onclick="ctrlFecharConcluir()">Cancelar</button>
+      <button class="ctrl-btn-ok" style="background:var(--green);" onclick="ctrlConfirmarConcluir()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Dar Baixa (individual — modo antigo) -->
 <div class="ctrl-overlay" id="ctrl-baixa-overlay" onclick="if(event.target===this) ctrlCloseBaixa()">
   <div class="ctrl-modal">
     <h3>Dar Baixa em Amostrador</h3>
@@ -8760,13 +8828,8 @@ async function ctrlLoadAmostr() {
         else if (parado > 7) { corParado = '#fc6'; lblParado = `${parado}d`; }
         else { corParado = 'var(--text3)'; lblParado = `${parado}d`; }
       }
-      // Linha com fundo levemente colorido para vencidos/urgentes no lab
       let rowStyle = '';
-      if (st.includes('lab') && a.data_envio_lab) {
-        const diasV = a.dias_para_vencer; // pode não existir aqui, ok
-        // Sem calcular, confiamos no status
-        rowStyle = 'background:rgba(255,136,0,.03);';
-      }
+      if (st.includes('lab') && a.data_envio_lab) rowStyle = 'background:rgba(255,136,0,.03);';
       const acoes = [
         st === 'estoque' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : '',
         `<select onchange="ctrlMudarStatusAmostr(${a.id}, this.value, this)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text3); border-radius:4px; font-size:.68rem; padding:2px 4px; margin-left:4px; cursor:pointer;" title="Alterar status">
@@ -8775,9 +8838,11 @@ async function ctrlLoadAmostr() {
           <option value="Laboratorio" ${st==='laboratorio'?'selected':''}>Laboratório</option>
           <option value="Reservado" ${st==='reservado'?'selected':''}>Reservado</option>
           <option value="Devolvido" ${st==='devolvido'?'selected':''}>Devolvido</option>
+          <option value="Concluido" ${st==='concluido'?'selected':''}>Concluído</option>
         </select>`
       ].join('');
-      return `<tr style="${rowStyle}">
+      return `<tr style="${rowStyle}" data-amostr-id="${a.id}">
+        <td><input type="checkbox" class="ctrl-amostr-chk" value="${a.id}" onchange="ctrlAtualizarBulkBar()" ${st!=='estoque'?'disabled':''}></td>
         <td><span class="ctrl-badge ${st}">${a.status||'—'}</span></td>
         <td><b>${a.tipo||'—'}</b></td>
         <td style="font-family:monospace; font-size:.82rem;">${a.codigo||'—'}</td>
@@ -9501,6 +9566,121 @@ async function ctrlConfirmarBaixa() {
   } catch(e) {
     alert('Erro: ' + e.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AMOSTRADORES — BULK ACTIONS (checkboxes + baixa rápida + concluído)
+// ═══════════════════════════════════════════════════════════════════════
+
+function _ctrlAmostrChecked() {
+  return [...document.querySelectorAll('.ctrl-amostr-chk:not([disabled]):checked')].map(c => +c.value);
+}
+
+function ctrlAtualizarBulkBar() {
+  const ids = _ctrlAmostrChecked();
+  const bar = document.getElementById('ctrl-amostr-bulk-bar');
+  const cnt = document.getElementById('ctrl-amostr-bulk-count');
+  if (bar) bar.style.display = ids.length ? 'flex' : 'none';
+  if (cnt) cnt.textContent = `${ids.length} selecionado${ids.length !== 1 ? 's' : ''}`;
+  // sincroniza o "select all"
+  const all = document.querySelectorAll('.ctrl-amostr-chk:not([disabled])');
+  const chkAll = document.getElementById('ctrl-amostr-chk-all');
+  if (chkAll) chkAll.checked = all.length > 0 && ids.length === all.length;
+}
+
+function ctrlSelAllAmostr(checked) {
+  document.querySelectorAll('.ctrl-amostr-chk:not([disabled])').forEach(c => c.checked = checked);
+  ctrlAtualizarBulkBar();
+}
+
+function ctrlDeselAllAmostr() {
+  document.querySelectorAll('.ctrl-amostr-chk').forEach(c => c.checked = false);
+  const chkAll = document.getElementById('ctrl-amostr-chk-all');
+  if (chkAll) chkAll.checked = false;
+  ctrlAtualizarBulkBar();
+}
+
+// Preenche datalist de empresas nos modais
+async function _ctrlFillEmpresaDatalist(datalistId) {
+  try {
+    const data = await ctrlFetch('/controle/operacional/por_empresa?limit=200');
+    const dl = document.getElementById(datalistId);
+    if (dl) dl.innerHTML = (data || []).map(e => `<option value="${e.empresa||''}">`).join('');
+  } catch(_) {}
+}
+
+function ctrlAbrirBaixaLote() {
+  const ids = _ctrlAmostrChecked();
+  if (!ids.length) { alert('Selecione ao menos um amostrador em Estoque'); return; }
+  const msg = document.getElementById('ctrl-bxl-count-msg');
+  if (msg) msg.innerHTML = `<b>${ids.length}</b> amostrador(es) serão movidos para <b>Laboratório</b>.`;
+  document.getElementById('ctrl-bxl-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-bxl-empresa').value = '';
+  document.getElementById('ctrl-bxl-obs').value = '';
+  _ctrlFillEmpresaDatalist('ctrl-bxl-empresa-list');
+  document.getElementById('ctrl-baixa-lote-overlay').classList.add('show');
+}
+
+function ctrlFecharBaixaLote() {
+  document.getElementById('ctrl-baixa-lote-overlay').classList.remove('show');
+}
+
+async function ctrlConfirmarBaixaLote() {
+  const ids = _ctrlAmostrChecked();
+  if (!ids.length) { alert('Nenhum amostrador selecionado'); return; }
+  const payload = {
+    ids,
+    empresa_nome: document.getElementById('ctrl-bxl-empresa').value.trim(),
+    avaliador:    document.getElementById('ctrl-bxl-avaliador').value,
+    data_medicao: document.getElementById('ctrl-bxl-data').value,
+    observacao:   document.getElementById('ctrl-bxl-obs').value,
+  };
+  try {
+    const r = await ctrlFetch('/controle/amostradores/baixa_simples', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    _showToast(`✓ Baixa registrada — ${ids.length} amostrador(es) enviados ao Laboratório`, 'success');
+    ctrlFecharBaixaLote();
+    ctrlDeselAllAmostr();
+    ctrlLoadAmostr();
+    ctrlLoadStats();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+function ctrlAbrirConcluirLote() {
+  const ids = _ctrlAmostrChecked();
+  if (!ids.length) { alert('Selecione ao menos um amostrador'); return; }
+  const msg = document.getElementById('ctrl-conc-count-msg');
+  if (msg) msg.innerHTML = `<b>${ids.length}</b> amostrador(es) serão marcados como <b>Concluído</b>.`;
+  document.getElementById('ctrl-conc-empresa').value = '';
+  document.getElementById('ctrl-conc-obs').value = '';
+  _ctrlFillEmpresaDatalist('ctrl-conc-empresa-list');
+  document.getElementById('ctrl-concluir-overlay').classList.add('show');
+}
+
+function ctrlFecharConcluir() {
+  document.getElementById('ctrl-concluir-overlay').classList.remove('show');
+}
+
+async function ctrlConfirmarConcluir() {
+  const ids = _ctrlAmostrChecked();
+  if (!ids.length) { alert('Nenhum amostrador selecionado'); return; }
+  const empresa_nome = document.getElementById('ctrl-conc-empresa').value.trim();
+  const payload = {
+    ids,
+    empresa_nome,
+    observacao: document.getElementById('ctrl-conc-obs').value,
+  };
+  try {
+    await ctrlFetch('/controle/amostradores/concluir', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    _showToast(`✓ ${ids.length} amostrador(es) marcados como Concluído`, 'success');
+    ctrlFecharConcluir();
+    ctrlDeselAllAmostr();
+    ctrlLoadAmostr();
+    ctrlLoadStats();
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
