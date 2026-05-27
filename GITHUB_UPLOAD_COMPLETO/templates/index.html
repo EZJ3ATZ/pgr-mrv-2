@@ -1414,6 +1414,114 @@
     margin-top: 6px;
   }
 
+  /* ═══ HERO V3 — Enterprise Split (reversível) ═══════════════════ */
+  .home-hero-v3 {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin: 0 -28px 40px;
+  }
+
+  .home-hero-v3-left {
+    padding: 52px 44px 52px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+  }
+
+  .home-hero-v3-left::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 80% 70% at -5% 60%, rgba(27,107,107,.1), transparent 60%);
+  }
+
+  .home-hero-v3-metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0; margin-top: 34px;
+    border-top: 1px solid var(--border);
+  }
+
+  .home-hero-v3-metric { padding: 16px 0; }
+  .home-hero-v3-metric + .home-hero-v3-metric { border-left: 1px solid var(--border); padding-left: 18px; }
+  .hv3-metric-n { font-size: 1.65rem; font-weight: 900; letter-spacing: -.02em; color: var(--text); }
+  .hv3-metric-n .hv3-plus { color: var(--green); font-size: 1.1rem; }
+  .hv3-metric-l { font-size: .67rem; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* RIGHT DATA PANEL */
+  .home-hero-v3-right {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    padding: 18px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    position: relative;
+    max-height: calc(100vh - 64px);
+  }
+
+  .home-hero-v3-right::before {
+    content: '';
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(circle, rgba(27,107,107,.1) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  .hv3-sync-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(16,185,129,.05); border: 1px solid rgba(16,185,129,.16);
+    border-radius: 8px; padding: 8px 11px; position: relative; z-index: 1; flex-shrink: 0;
+  }
+
+  .hv3-sync-left { display: flex; align-items: center; gap: 8px; }
+  .hv3-sync-icon { width: 24px; height: 24px; background: rgba(16,185,129,.1); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hv3-sync-icon svg { width: 12px; height: 12px; }
+  .hv3-sync-lbl { font-size: .73rem; font-weight: 600; }
+  .hv3-sync-sub { font-size: .63rem; color: var(--text3); margin-top: 1px; }
+  .hv3-sync-val { font-size: .76rem; font-weight: 700; color: var(--green); white-space: nowrap; }
+
+  .hv3-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; position: relative; z-index: 1; flex-shrink: 0;
+  }
+
+  .hv3-card-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+  .hv3-card-title { font-size: .76rem; font-weight: 700; }
+  .hv3-live-badge { display: flex; align-items: center; gap: 4px; font-size: .61rem; font-weight: 700; color: var(--green); }
+  .hv3-live-dot { width: 4px; height: 4px; background: var(--green); border-radius: 50%; animation: pulseGreen 2s infinite; }
+  @keyframes pulseGreen { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .hv3-os-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 6px; align-items: start;
+    padding: 6px 7px; background: var(--surface); border-radius: 5px;
+    margin-bottom: 4px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s;
+  }
+  .hv3-os-row:hover { border-color: var(--border2); }
+  .hv3-os-empresa { font-size: .71rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hv3-os-sub { font-size: .62rem; color: var(--text3); margin-top: 1px; }
+  .hv3-status { padding: 2px 7px; border-radius: 100px; font-size: .6rem; font-weight: 700; white-space: nowrap; margin-top: 1px; }
+  .hv3-s-o { background: rgba(16,185,129,.1); color: var(--green); }
+  .hv3-s-p { background: rgba(245,158,11,.09); color: var(--yellow); }
+  .hv3-s-a { background: rgba(239,68,68,.09); color: var(--red); }
+
+  .hv3-prog-item { margin-bottom: 7px; }
+  .hv3-prog-item:last-child { margin-bottom: 0; }
+  .hv3-prog-hdr { display: flex; justify-content: space-between; font-size: .68rem; margin-bottom: 3px; }
+  .hv3-prog-hdr strong { font-weight: 600; }
+  .hv3-prog-hdr span { color: var(--text3); font-size: .62rem; }
+  .hv3-prog-bar { height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+  .hv3-prog-fill { height: 100%; background: linear-gradient(90deg, var(--orange-d), var(--orange)); border-radius: 2px; transition: width 1.2s cubic-bezier(.16,1,.3,1); }
+
+  @media (max-width: 860px) {
+    .home-hero-v3 { grid-template-columns: 1fr; }
+    .home-hero-v3-right { display: none; }
+    .home-hero-v3-left { padding: 40px 28px 32px; }
+  }
+  /* ════════════════════════════════════════════════════════════════ */
+
   </style>
 </head>
 <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js"></script>
@@ -1665,7 +1773,9 @@
 <div id="tab-home" class="tab-panel active">
 <div class="home-wrap">
 
-  <!-- Hero -->
+  <!-- ══ HERO V1 (ORIGINAL) — desativado para comparação ══════════════
+  Para reverter: remova os comentários abaixo e comente/remova o HERO V3
+  ═══════════════════════════════════════════════════════════════════════
   <div class="home-hero">
     <div class="home-hero-left">
       <div class="home-eyebrow">
@@ -1699,19 +1809,149 @@
         </button>
       </div>
     </div>
-
-    <!-- Dashboard preview card -->
     <div class="home-hero-right">
       <div class="home-spline-wrap">
-        <spline-viewer
-          id="hero-spline"
-          url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode">
-        </spline-viewer>
+        <spline-viewer id="hero-spline" url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"></spline-viewer>
         <div class="home-spline-cover"></div>
       </div>
       <canvas id="particle-tagline"></canvas>
     </div>
   </div>
+  ══ FIM HERO V1 ════════════════════════════════════════════════════ -->
+
+  <!-- ══ HERO V3 — Enterprise Split ══════════════════════════════════ -->
+  <div class="home-hero-v3">
+
+    <!-- PAINEL ESQUERDO: texto + métricas -->
+    <div class="home-hero-v3-left">
+      <div class="home-eyebrow">
+        <div class="home-eyebrow-dot"></div>
+        Setor de Medi&#231;&#245;es · Ocupacional SST
+      </div>
+      <h1 class="home-h1">
+        <span class="home-h1-line" data-split
+          data-top="#e4e4e7"
+          data-bot="rgba(161,161,170,0.45)">Controle de</span>
+        <span class="home-h1-line" data-split
+          data-top="#10B981"
+          data-bot="#065F3C">Medi&#231;&#245;es.</span>
+      </h1>
+      <p class="home-p">
+        A evolu&#231;&#227;o de SST come&#231;a aqui. Gerencie demandas, amostradores, OS e prazos —
+        tudo integrado com o Planner, sem planilha.
+      </p>
+      <div class="home-cta-row">
+        <button class="home-btn-primary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),300);">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nova Medi&#231;&#227;o
+        </button>
+        <button class="home-btn-secondary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+          Ver Demandas
+        </button>
+      </div>
+      <!-- Métricas ao vivo (alimentadas pelo homeLoadStats) -->
+      <div class="home-hero-v3-metrics">
+        <div class="home-hero-v3-metric">
+          <div class="hv3-metric-n" id="hv3-dem">—</div>
+          <div class="hv3-metric-l">Demandas abertas</div>
+        </div>
+        <div class="home-hero-v3-metric">
+          <div class="hv3-metric-n" id="hv3-emp">—</div>
+          <div class="hv3-metric-l">Empresas ativas</div>
+        </div>
+        <div class="home-hero-v3-metric">
+          <div class="hv3-metric-n" id="hv3-amostr">—</div>
+          <div class="hv3-metric-l">Em estoque</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAINEL DIREITO: dados ao vivo -->
+    <div class="home-hero-v3-right">
+
+      <!-- Sync Planner -->
+      <div class="hv3-sync-bar">
+        <div class="hv3-sync-left">
+          <div class="hv3-sync-icon">
+            <svg fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" d="M1 4v6h6M23 20v-6h-6"/>
+              <path stroke-linecap="round" d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/>
+            </svg>
+          </div>
+          <div>
+            <div class="hv3-sync-lbl">Planner Sync</div>
+            <div class="hv3-sync-sub" id="hv3-sync-sub">Verificando...</div>
+          </div>
+        </div>
+        <div class="hv3-sync-val" id="hv3-sync-val">—</div>
+      </div>
+
+      <!-- Demandas recentes -->
+      <div class="hv3-card">
+        <div class="hv3-card-hdr">
+          <div class="hv3-card-title">Demandas Recentes</div>
+          <div class="hv3-live-badge"><div class="hv3-live-dot"></div>ao vivo</div>
+        </div>
+        <div id="hv3-os-list">
+          <div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Carregando...</div>
+        </div>
+        <div style="margin-top:6px;text-align:right;">
+          <span style="font-size:.67rem;color:var(--orange);cursor:pointer;font-weight:600;"
+            onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
+            Ver todas →
+          </span>
+        </div>
+      </div>
+
+      <!-- Agentes monitorados -->
+      <div class="hv3-card">
+        <div class="hv3-card-hdr">
+          <div class="hv3-card-title">Agentes · NR-15</div>
+          <span style="font-size:.62rem;color:var(--text3)">cobertura do sistema</span>
+        </div>
+        <div class="hv3-prog-item">
+          <div class="hv3-prog-hdr"><strong>Ru&#237;do Cont&#237;nuo</strong><span>An.1 · 85 dB LEO</span></div>
+          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:85%"></div></div>
+        </div>
+        <div class="hv3-prog-item">
+          <div class="hv3-prog-hdr"><strong>Agentes Qu&#237;micos</strong><span>An.11/13 · NHO</span></div>
+          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:70%"></div></div>
+        </div>
+        <div class="hv3-prog-item">
+          <div class="hv3-prog-hdr"><strong>Calor · IBUTG</strong><span>An.3 · M&#233;todo IBUTG</span></div>
+          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:60%"></div></div>
+        </div>
+        <div class="hv3-prog-item">
+          <div class="hv3-prog-hdr"><strong>Vibra&#231;&#227;o</strong><span>An.8 · ISO 5349</span></div>
+          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:40%"></div></div>
+        </div>
+      </div>
+
+      <!-- Lab status -->
+      <div class="hv3-card">
+        <div class="hv3-card-hdr">
+          <div class="hv3-card-title">Laborat&#243;rio</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-size:1.2rem;font-weight:900;color:var(--blue);" id="hv3-lab">—</div>
+            <div style="font-size:.63rem;color:var(--text3);margin-top:2px;">no laborat&#243;rio</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;">
+            <div style="font-size:1.2rem;font-weight:900;color:var(--green);" id="hv3-estoque">—</div>
+            <div style="font-size:.63rem;color:var(--text3);margin-top:2px;">em estoque</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- ══ FIM HERO V3 ═══════════════════════════════════════════════ -->
 
   <!-- ── Fluxo Operacional Visual ── -->
   <div class="fluxo-wrap" id="fluxo-widget">
@@ -4796,26 +5036,86 @@ async function homeLoadStats() {
     if (!r.ok) return;
     const d = await r.json();
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v ?? '—'); };
-    // Stats row
+    // Stats row (painel rápido)
     set('hs-total', d.estoque);
     set('hs-lab',   d.laboratorio);
     set('hs-dem',   d.demandas_pendentes);
     set('hs-emp',   d.empresas_ativas);
-    // Hero dashboard preview
+    // Hero dashboard preview (V1 — mantido no JS por segurança)
     set('hp-med',  d.medicoes_pendentes);
     set('hp-est',  d.estoque);
     set('hp-dem',  d.demandas_pendentes);
     set('hp-lab',  d.laboratorio);
+    // ── Hero V3: métricas nas 3 colunas do painel esquerdo ──
+    set('hv3-dem',    d.demandas_pendentes);
+    set('hv3-emp',    d.empresas_ativas);
+    set('hv3-amostr', d.estoque);
+    set('hv3-lab',    d.laboratorio);
+    set('hv3-estoque',d.estoque);
   } catch(e) { /* silencioso */ }
+
+  // ── Hero V3: Demandas recentes no painel direito ──
+  try {
+    const rd = await fetch('/controle/operacional/por_empresa?ordem=empresa&limit=6');
+    if (rd.ok) {
+      const rows = await rd.json();
+      const list = document.getElementById('hv3-os-list');
+      if (list && rows.length) {
+        list.innerHTML = rows.slice(0, 5).map(e => {
+          const pend = e.demandas_pendentes || 0;
+          const concl = e.demandas_concluidas || 0;
+          const total = e.total_demandas || 0;
+          const st = pend > 0 ? 'hv3-s-p' : (concl === total && total > 0 ? 'hv3-s-o' : 'hv3-s-p');
+          const stLabel = pend > 0 ? `${pend} pend.` : 'ok';
+          return `<div class="hv3-os-row" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
+            <div>
+              <div class="hv3-os-empresa">${e.empresa || '—'}</div>
+              <div class="hv3-os-sub">${total} OS · ${concl} concluída${concl!==1?'s':''}</div>
+            </div>
+            <div class="hv3-status ${st}">${stLabel}</div>
+          </div>`;
+        }).join('');
+      } else if (list) {
+        list.innerHTML = '<div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Nenhuma demanda registrada.</div>';
+      }
+    }
+  } catch(_) {}
+
+  // ── Hero V3: Sync status ──
+  try {
+    const rs = await fetch('/controle/graph/status');
+    if (rs.ok) {
+      const s = await rs.json();
+      const sub = document.getElementById('hv3-sync-sub');
+      const val = document.getElementById('hv3-sync-val');
+      if (sub) sub.textContent = s.ultimo_sync ? `há ${hv3TimeSince(s.ultimo_sync)}` : 'nunca executado';
+      if (val) val.textContent = s.tarefas_raw != null ? `${s.tarefas_raw} tasks ✓` : '—';
+    }
+  } catch(_) {
+    const sub = document.getElementById('hv3-sync-sub');
+    if (sub) sub.textContent = 'não configurado';
+  }
+
   // Buscar count empresas pendentes
   try {
     const ep = await fetch('/controle/empresas/pendentes');
     if (ep.ok) {
       const data = await ep.json();
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v ?? '—'); };
       if (Array.isArray(data)) set('hs-emp-pendentes', data.length);
     }
   } catch(_) {}
 }
+
+function hv3TimeSince(isoStr) {
+  try {
+    const diff = Math.floor((Date.now() - new Date(isoStr)) / 60000);
+    if (diff < 1) return 'agora';
+    if (diff < 60) return `${diff} min`;
+    return `${Math.floor(diff/60)}h`;
+  } catch(_) { return '—'; }
+}
+
 homeLoadStats();
 
 // ── Estado ───────────────────────────────────────────────────────────
