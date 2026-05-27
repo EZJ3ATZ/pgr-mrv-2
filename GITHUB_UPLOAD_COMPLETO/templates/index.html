@@ -1759,6 +1759,272 @@
 
 /* ═══════════════════════════════════════════════════════════════ */
 
+/* ════════════════════════════════════════════════════════════════
+   HOME V4 — AntiGravityCanvas Hero + FeatureCarousel Fluxo
+   Biblioteca: #14 (Canvas), #6 (Spotlights), #16 (Carousel)
+════════════════════════════════════════════════════════════════ */
+
+/* @property for ph-pulse */
+@property --hp-pp { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+
+/* Dashboard grid */
+.hv4-dash {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* ── Hero Panel ── */
+.hv4-hero {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 40px 44px 38px;
+  overflow: hidden;
+  min-height: 400px;
+}
+.hv4-hero::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(42,157,157,.5), transparent);
+}
+.hv4-spots { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.hv4-spot {
+  position: absolute; left: 0; right: 0; margin: 0 auto;
+  top: -6em; width: 40em; height: 110%;
+  border-radius: 0 0 50% 50%;
+  transform-origin: 50% 0;
+  filter: blur(18px) opacity(.4);
+}
+.hv4-spot1 {
+  background-image: conic-gradient(from 0deg at 50% -5%, transparent 44%, rgba(42,157,157,.3) 48%, rgba(42,157,157,.55) 50%, rgba(42,157,157,.3) 52%, transparent 56%);
+  transform: rotate(18deg);
+  animation: hv4SpotFlick 19s ease-in-out infinite;
+}
+.hv4-spot2 {
+  background-image: conic-gradient(from 0deg at 50% -5%, transparent 44%, rgba(27,107,107,.25) 48%, rgba(27,107,107,.45) 50%, rgba(27,107,107,.25) 52%, transparent 56%);
+  transform: rotate(-18deg);
+  animation: hv4SpotFlick 14s ease-in-out infinite reverse;
+}
+#hv4-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 1;
+}
+.hv4-hero-content { position: relative; z-index: 2; }
+
+.hv4-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(27,107,107,.1); border: 1px solid var(--bd-teal);
+  color: var(--primary-l); padding: 6px 13px; border-radius: 24px;
+  font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; margin-bottom: 22px;
+}
+.hv4-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse-dot 2s infinite; }
+
+.hv4-h1 { font-size: 52px; font-weight: 900; letter-spacing: -.045em; line-height: 1.02; margin-bottom: 4px; color: var(--text); }
+.hv4-h1-wrap { position: relative; display: inline-block; }
+.hv4-h1-pulse {
+  font-size: 52px; font-weight: 900; letter-spacing: -.045em; line-height: 1.02;
+  background:
+    radial-gradient(3em 3em at 50% 50%,
+      transparent calc(var(--hp-pp, 0%) - 3em),
+      #fff calc(var(--hp-pp, 0%) - 1.5em),
+      #fff calc(var(--hp-pp, 0%) - .5em),
+      transparent var(--hp-pp, 0%)
+    ),
+    linear-gradient(135deg, var(--primary-l) 0%, var(--green) 55%, var(--primary-xl) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: hv4PhPulse 8s linear 1s infinite;
+}
+.hv4-h1-blur {
+  position: absolute; left: 0; top: 0;
+  font-size: 52px; font-weight: 900; letter-spacing: -.045em; line-height: 1.02;
+  background: radial-gradient(3em 3em at 50% 50%,
+    transparent calc(var(--hp-pp, 0%) - 3em),
+    transparent calc(var(--hp-pp, 0%) - 1.5em),
+    rgba(42,157,157,.65) calc(var(--hp-pp, 0%) - 1.5em),
+    rgba(42,157,157,.65) calc(var(--hp-pp, 0%) - .5em),
+    transparent calc(var(--hp-pp, 0%) - .5em),
+    transparent var(--hp-pp, 0%)
+  );
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: blur(14px) opacity(.5);
+  animation: hv4PhPulse 8s linear 1s infinite;
+  pointer-events: none; user-select: none;
+}
+.hv4-desc {
+  font-size: 14.5px; color: var(--text2); line-height: 1.65;
+  max-width: 520px; margin: 16px 0 24px;
+}
+.hv4-desc b { color: var(--text); font-weight: 600; }
+.hv4-ctas { display: flex; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
+
+.hv4-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border); padding-top: 24px;
+}
+.hv4-stat { position: relative; padding: 0 4px; }
+.hv4-stat:not(:last-child)::after {
+  content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 48px; background: var(--border);
+}
+.hv4-stat-num {
+  font-size: 40px; font-weight: 900; color: var(--text);
+  letter-spacing: -.045em; line-height: 1;
+}
+.hv4-stat-lbl {
+  font-size: 10.5px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .12em; font-weight: 700;
+  margin-top: 8px; font-family: var(--mono);
+}
+
+/* ── Right Column ── */
+.hv4-right { display: flex; flex-direction: column; gap: 14px; }
+.hv4-panel {
+  background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 18px;
+  transition: border-color .2s;
+}
+.hv4-panel:hover { border-color: var(--bd-teal); }
+.hv4-panel-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.hv4-panel-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: -.01em;
+}
+.hv4-panel-title svg { width: 15px; height: 15px; color: var(--primary-l); flex-shrink:0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.hv4-panel-meta { font-size: 10.5px; color: var(--text3); font-weight: 600; }
+.hv4-live-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--green); font-weight: 700; }
+.hv4-live-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
+
+/* Planner sync */
+.hv4-psync { display: flex; align-items: center; gap: 13px; }
+.hv4-psync-ic {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  background: rgba(27,107,107,.15); border: 1px solid var(--bd-teal);
+  color: var(--primary-l); display: flex; align-items: center; justify-content: center;
+}
+.hv4-psync-ic svg { width: 18px; height: 18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; animation: hv4Spin 6s linear infinite; }
+.hv4-psync-body { flex: 1; min-width: 0; }
+.hv4-psync-row { display: flex; align-items: baseline; justify-content: space-between; }
+.hv4-psync-l { font-size: 13px; font-weight: 700; }
+.hv4-psync-r { font-size: 13.5px; font-weight: 800; color: var(--green); font-family: var(--mono); }
+.hv4-psync-t { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+
+/* Agentes bars */
+.hv4-agentes { display: flex; flex-direction: column; gap: 11px; margin-top: 4px; }
+.hv4-ag-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.hv4-ag-name { font-size: 12px; font-weight: 700; }
+.hv4-ag-meta { font-size: 10px; color: var(--text3); font-weight: 600; font-family: var(--mono); }
+.hv4-ag-bar { height: 5px; border-radius: 3px; background: var(--surface3); overflow: hidden; }
+.hv4-ag-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--primary-l), var(--green)); box-shadow: 0 0 8px rgba(42,157,157,.35); animation: hv4BarLoad 1.6s cubic-bezier(.3,.7,.3,1) both; }
+
+/* Lab */
+.hv4-lab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hv4-lab-card { background: rgba(7,9,14,.6); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; }
+.hv4-lab-n { font-size: 28px; font-weight: 900; color: var(--primary-l); letter-spacing: -.045em; line-height: 1; }
+.hv4-lab-card.est .hv4-lab-n { color: var(--green); }
+.hv4-lab-l { font-size: 11px; color: var(--text3); font-weight: 600; margin-top: 6px; font-family: var(--mono); }
+
+/* ── Fluxo V4 ── */
+.hv4-fluxo {
+  background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+  border: 1px solid var(--border); border-radius: 18px;
+  padding: 22px 28px; margin-bottom: 20px;
+  position: relative; overflow: hidden;
+}
+.hv4-fluxo::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(42,157,157,.3), transparent);
+}
+.hv4-fluxo-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.hv4-fluxo-h-l { display: flex; align-items: center; gap: 10px; }
+.hv4-fluxo-ic {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: rgba(27,107,107,.14); border: 1px solid var(--bd-teal);
+  color: var(--primary-l); display: flex; align-items: center; justify-content: center;
+}
+.hv4-fluxo-ic svg { width: 15px; height: 15px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.hv4-fluxo-title { font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.hv4-fluxo-progress { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text3); font-weight: 600; font-family: var(--mono); }
+.hv4-fluxo-bar-wrap { width: 80px; height: 3px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+.hv4-fluxo-bar-fill { height: 100%; background: var(--primary-l); border-radius: 2px; transition: width .05s linear; }
+
+.hv4-fluxo-track {
+  display: grid; grid-template-columns: repeat(10, 1fr);
+  align-items: flex-start; gap: 0; padding: 0 4px;
+}
+.hv4-fluxo-step {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; cursor: pointer; padding: 8px 4px; border-radius: 10px;
+  transition: background .2s;
+}
+.hv4-fluxo-step:hover { background: rgba(42,157,157,.07); }
+.hv4-fs-ic {
+  width: 42px; height: 42px; border-radius: 11px;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); margin-bottom: 9px; position: relative;
+  transition: all .3s;
+}
+.hv4-fs-ic svg { width: 18px; height: 18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.hv4-fluxo-step.done .hv4-fs-ic { background: rgba(16,185,129,.09); border-color: rgba(16,185,129,.3); color: var(--green-l); }
+.hv4-fluxo-step.done .hv4-fs-ic::after {
+  content: ''; position: absolute; top: -3px; right: -3px;
+  width: 14px; height: 14px; border-radius: 50%; background: var(--green);
+  border: 2px solid #0c0e15;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='4 12 10 18 20 6'/></svg>");
+  background-size: 9px; background-position: center; background-repeat: no-repeat;
+}
+.hv4-fluxo-step.active .hv4-fs-ic { background: rgba(42,157,157,.14); border-color: rgba(42,157,157,.5); color: var(--primary-xl); box-shadow: 0 0 18px rgba(42,157,157,.35); }
+.hv4-fluxo-step.active .hv4-fs-ic::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 14px;
+  border: 1.5px solid rgba(42,157,157,.45);
+  animation: hv4RingPulse 2s ease-out infinite;
+}
+.hv4-fluxo-step.pend .hv4-fs-ic { color: var(--text4); }
+.hv4-fs-name { font-size: 11.5px; font-weight: 700; color: var(--text); letter-spacing: -.005em; line-height: 1.2; }
+.hv4-fluxo-step.pend .hv4-fs-name { color: var(--text3); }
+.hv4-fluxo-step.active .hv4-fs-name { color: var(--primary-xl); }
+
+.hv4-fluxo-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border);
+  flex-wrap: wrap; gap: 10px;
+}
+.hv4-fluxo-legend { display: flex; align-items: center; gap: 18px; }
+.hv4-fl-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text2); font-weight: 500; }
+.hv4-fl-dot { width: 8px; height: 8px; border-radius: 50%; }
+.hv4-fl-dot.done { background: var(--green); }
+.hv4-fl-dot.active { background: var(--primary-l); box-shadow: 0 0 6px var(--primary-l); }
+.hv4-fl-dot.pend { background: var(--text4); }
+.hv4-fluxo-hint { font-size: 11.5px; color: var(--text3); }
+
+/* Keyframes */
+@keyframes hv4PhPulse { 0%{--hp-pp:0%} 50%{--hp-pp:280%} 100%{--hp-pp:280%} }
+@keyframes hv4Spin { to{transform:rotate(360deg)} }
+@keyframes hv4BarLoad { from{width:0 !important} }
+@keyframes hv4RingPulse { 0%{transform:scale(1);opacity:.7} 100%{transform:scale(1.35);opacity:0} }
+@keyframes hv4SpotFlick { 0%,100%{transform:rotate(18deg)} 33%{transform:rotate(12deg)} 66%{transform:rotate(22deg)} }
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .hv4-dash { grid-template-columns: 1fr; }
+  .hv4-h1, .hv4-h1-pulse, .hv4-h1-blur { font-size: 42px; }
+  .hv4-stat-num { font-size: 34px; }
+}
+@media (max-width: 900px) {
+  .hv4-hero { padding: 28px 22px; min-height: auto; }
+  .hv4-h1, .hv4-h1-pulse, .hv4-h1-blur { font-size: 32px; }
+  .hv4-fluxo-track { grid-template-columns: repeat(5, 1fr); }
+}
+@media (max-width: 700px) {
+  .hv4-right { flex-direction: row; flex-wrap: wrap; }
+  .hv4-right .hv4-panel { flex: 1; min-width: 240px; }
+}
+
   </style>
 </head>
 <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js"></script>
@@ -2015,233 +2281,186 @@
 
 <!-- ══ Painel HOME ══════════════════════════════════════════════════════ -->
 <div id="tab-home" class="tab-panel active">
-<div class="home-wrap">
+<div class="home-wrap" id="tab-home-wrap">
 
-  <!-- ══ HERO V1 (ORIGINAL) — desativado para comparação ══════════════
-  Para reverter: remova os comentários abaixo e comente/remova o HERO V3
-  ═══════════════════════════════════════════════════════════════════════
-  <div class="home-hero">
-    <div class="home-hero-left">
-      <div class="home-eyebrow">
-        <div class="home-eyebrow-dot"></div>
-        Setor de Medi&#231;&#245;es · Ocupacional SST
-      </div>
-      <h1 class="home-h1">
-        <span class="home-h1-line" data-split
-          data-top="#e4e4e7"
-          data-bot="rgba(161,161,170,0.45)">Controle de</span>
-        <span class="home-h1-line" data-split
-          data-top="#10B981"
-          data-bot="#065F3C">Medi&#231;&#245;es.</span>
-      </h1>
-      <p class="home-p">
-        A evolu&#231;&#227;o de SST come&#231;a aqui. Gerencie demandas, amostradores, OS e prazos —
-        tudo integrado com o Planner, sem planilha.
-      </p>
-      <div class="home-cta-row">
-        <button class="home-btn-primary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),300);">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-          Nova Medi&#231;&#227;o
-        </button>
-        <button class="home-btn-secondary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-          </svg>
-          Ver Demandas
-        </button>
-      </div>
-    </div>
-    <div class="home-hero-right">
-      <div class="home-spline-wrap">
-        <spline-viewer id="hero-spline" url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"></spline-viewer>
-        <div class="home-spline-cover"></div>
-      </div>
-      <canvas id="particle-tagline"></canvas>
-    </div>
-  </div>
-  ══ FIM HERO V1 ════════════════════════════════════════════════════ -->
+  <!-- ══ HERO V4 — AntiGravityCanvas + ph-pulse + Right Panels ══════ -->
+  <div class="hv4-dash">
 
-  <!-- ══ HERO V3 — Enterprise Split ══════════════════════════════════ -->
-  <div class="home-hero-v3">
+    <!-- ── Hero Panel ── -->
+    <section class="hv4-hero" id="hv4-hero-section">
+      <div class="hv4-spots">
+        <div class="hv4-spot hv4-spot1"></div>
+        <div class="hv4-spot hv4-spot2"></div>
+      </div>
+      <canvas id="hv4-canvas"></canvas>
 
-    <!-- PAINEL ESQUERDO: texto + métricas -->
-    <div class="home-hero-v3-left">
-      <div class="home-eyebrow">
-        <div class="home-eyebrow-dot"></div>
-        Setor de Medi&#231;&#245;es · Ocupacional SST
-      </div>
-      <h1 class="home-h1">
-        <span class="home-h1-line" data-split
-          data-top="#e4e4e7"
-          data-bot="rgba(161,161,170,0.45)">Controle de</span>
-        <span class="home-h1-line" data-split
-          data-top="#10B981"
-          data-bot="#065F3C">Medi&#231;&#245;es.</span>
-      </h1>
-      <p class="home-p">
-        A evolu&#231;&#227;o de SST come&#231;a aqui. Gerencie demandas, amostradores, OS e prazos —
-        tudo integrado com o Planner, sem planilha.
-      </p>
-      <div class="home-cta-row">
-        <button class="home-btn-primary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),300);">
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-          Nova Medi&#231;&#227;o
-        </button>
-        <button class="home-btn-secondary" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-          </svg>
-          Ver Demandas
-        </button>
-      </div>
-      <!-- Métricas ao vivo (alimentadas pelo homeLoadStats) -->
-      <div class="home-hero-v3-metrics">
-        <div class="home-hero-v3-metric">
-          <div class="hv3-metric-n" id="hv3-dem">—</div>
-          <div class="hv3-metric-l">Demandas abertas</div>
+      <div class="hv4-hero-content">
+        <div class="hv4-badge">
+          <div class="hv4-badge-dot"></div>
+          Setor de Medi&#231;&#245;es · Ocupacional SST
         </div>
-        <div class="home-hero-v3-metric">
-          <div class="hv3-metric-n" id="hv3-emp">—</div>
-          <div class="hv3-metric-l">Empresas ativas</div>
-        </div>
-        <div class="home-hero-v3-metric">
-          <div class="hv3-metric-n" id="hv3-amostr">—</div>
-          <div class="hv3-metric-l">Em estoque</div>
-        </div>
-      </div>
-    </div>
 
-    <!-- PAINEL DIREITO: dados ao vivo -->
-    <div class="home-hero-v3-right">
+        <div class="hv4-h1">Controle de</div>
+        <div class="hv4-h1-wrap">
+          <div class="hv4-h1-pulse">Medi&#231;&#245;es.</div>
+          <div class="hv4-h1-blur" aria-hidden="true">Medi&#231;&#245;es.</div>
+        </div>
 
-      <!-- Sync Planner -->
-      <div class="hv3-sync-bar">
-        <div class="hv3-sync-left">
-          <div class="hv3-sync-icon">
-            <svg fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" d="M1 4v6h6M23 20v-6h-6"/>
-              <path stroke-linecap="round" d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/>
-            </svg>
+        <p class="hv4-desc">
+          A evolu&#231;&#227;o de SST come&#231;a aqui. Gerencie <b>demandas, amostradores, OS e prazos</b> —
+          tudo integrado com o Planner, sem planilha.
+        </p>
+
+        <div class="hv4-ctas">
+          <button class="btn-primary-v2" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),300);">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            Nova Medi&#231;&#227;o
+          </button>
+          <button class="btn-ghost-v2" onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>{ ctrlSwitchSub('demand', null); },500);">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M7 8h10M7 12h7M7 16h5"/></svg>
+            Ver Demandas
+          </button>
+        </div>
+
+        <!-- Métricas ao vivo (alimentadas pelo homeLoadStats) -->
+        <div class="hv4-stats">
+          <div class="hv4-stat">
+            <div class="hv4-stat-num" id="hv3-dem">—</div>
+            <div class="hv4-stat-lbl">Demandas Abertas</div>
           </div>
-          <div>
-            <div class="hv3-sync-lbl">Planner Sync</div>
-            <div class="hv3-sync-sub" id="hv3-sync-sub">Verificando...</div>
+          <div class="hv4-stat">
+            <div class="hv4-stat-num" id="hv3-emp">—</div>
+            <div class="hv4-stat-lbl">Empresas Ativas</div>
+          </div>
+          <div class="hv4-stat">
+            <div class="hv4-stat-num" id="hv3-amostr">—</div>
+            <div class="hv4-stat-lbl">Em Estoque</div>
           </div>
         </div>
-        <div class="hv3-sync-val" id="hv3-sync-val">—</div>
+      </div>
+    </section>
+
+    <!-- ── Right Column ── -->
+    <div class="hv4-right">
+
+      <!-- Planner Sync -->
+      <div class="hv4-panel">
+        <div class="hv4-psync">
+          <div class="hv4-psync-ic">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-6.2-8.6"/><polyline points="21 4 21 10 15 10"/></svg>
+          </div>
+          <div class="hv4-psync-body">
+            <div class="hv4-psync-row">
+              <span class="hv4-psync-l">Planner Sync</span>
+              <span class="hv4-psync-r" id="hv3-sync-val">—</span>
+            </div>
+            <div class="hv4-psync-t" id="hv3-sync-sub">Verificando...</div>
+          </div>
+        </div>
       </div>
 
-      <!-- Demandas recentes -->
-      <div class="hv3-card">
-        <div class="hv3-card-hdr">
-          <div class="hv3-card-title">Demandas Recentes</div>
-          <div class="hv3-live-badge"><div class="hv3-live-dot"></div>ao vivo</div>
+      <!-- Demandas Recentes -->
+      <div class="hv4-panel">
+        <div class="hv4-panel-h">
+          <div class="hv4-panel-title">
+            <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
+            Demandas Recentes
+          </div>
+          <div class="hv4-live-pill">ao vivo</div>
         </div>
         <div id="hv3-os-list">
           <div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Carregando...</div>
         </div>
-        <div style="margin-top:6px;text-align:right;">
-          <span style="font-size:.67rem;color:var(--orange);cursor:pointer;font-weight:600;"
-            onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
+        <div style="margin-top:8px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+          <span class="hv4-dr-link" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
             Ver todas →
           </span>
         </div>
       </div>
 
-      <!-- Agentes monitorados -->
-      <div class="hv3-card">
-        <div class="hv3-card-hdr">
-          <div class="hv3-card-title">Agentes · NR-15</div>
-          <span style="font-size:.62rem;color:var(--text3)">cobertura do sistema</span>
+      <!-- Agentes NR-15 -->
+      <div class="hv4-panel">
+        <div class="hv4-panel-h">
+          <div class="hv4-panel-title">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Agentes · NR-15
+          </div>
+          <div class="hv4-panel-meta">cobertura</div>
         </div>
-        <div class="hv3-prog-item">
-          <div class="hv3-prog-hdr"><strong>Ru&#237;do Cont&#237;nuo</strong><span>An.1 · 85 dB LEO</span></div>
-          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:85%"></div></div>
-        </div>
-        <div class="hv3-prog-item">
-          <div class="hv3-prog-hdr"><strong>Agentes Qu&#237;micos</strong><span>An.11/13 · NHO</span></div>
-          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:70%"></div></div>
-        </div>
-        <div class="hv3-prog-item">
-          <div class="hv3-prog-hdr"><strong>Calor · IBUTG</strong><span>An.3 · M&#233;todo IBUTG</span></div>
-          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:60%"></div></div>
-        </div>
-        <div class="hv3-prog-item">
-          <div class="hv3-prog-hdr"><strong>Vibra&#231;&#227;o</strong><span>An.8 · ISO 5349</span></div>
-          <div class="hv3-prog-bar"><div class="hv3-prog-fill" style="width:40%"></div></div>
+        <div class="hv4-agentes">
+          <div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Ru&#237;do Cont&#237;nuo</span><span class="hv4-ag-meta">An.1 · 85 dB</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:92%"></div></div>
+          </div>
+          <div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Agentes Qu&#237;micos</span><span class="hv4-ag-meta">An.11/13 · NHO</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:76%;animation-delay:.1s"></div></div>
+          </div>
+          <div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Calor · IBUTG</span><span class="hv4-ag-meta">An.3 · IBUTG</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:64%;animation-delay:.2s"></div></div>
+          </div>
+          <div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Vibra&#231;&#227;o</span><span class="hv4-ag-meta">An.8 · ISO 5349</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:48%;animation-delay:.3s"></div></div>
+          </div>
         </div>
       </div>
 
-      <!-- Lab status -->
-      <div class="hv3-card">
-        <div class="hv3-card-hdr">
-          <div class="hv3-card-title">Laborat&#243;rio</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;">
-            <div style="font-size:1.2rem;font-weight:900;color:var(--blue);" id="hv3-lab">—</div>
-            <div style="font-size:.63rem;color:var(--text3);margin-top:2px;">no laborat&#243;rio</div>
+      <!-- Laboratório -->
+      <div class="hv4-panel">
+        <div class="hv4-panel-h">
+          <div class="hv4-panel-title">
+            <svg viewBox="0 0 24 24"><path d="M9 3v8.5L4 19c-.7 1 0 2 1 2h14c1 0 1.7-1 1-2l-5-7.5V3M8 3h8"/></svg>
+            Laborat&#243;rio
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;">
-            <div style="font-size:1.2rem;font-weight:900;color:var(--green);" id="hv3-estoque">—</div>
-            <div style="font-size:.63rem;color:var(--text3);margin-top:2px;">em estoque</div>
+        </div>
+        <div class="hv4-lab-grid">
+          <div class="hv4-lab-card">
+            <div class="hv4-lab-n" id="hv3-lab">—</div>
+            <div class="hv4-lab-l">no laborat&#243;rio</div>
+          </div>
+          <div class="hv4-lab-card est">
+            <div class="hv4-lab-n" id="hv3-estoque">—</div>
+            <div class="hv4-lab-l">em estoque</div>
           </div>
         </div>
       </div>
 
     </div>
   </div>
-  <!-- ══ FIM HERO V3 ═══════════════════════════════════════════════ -->
+  <!-- ══ FIM HERO V4 ══════════════════════════════════════════════ -->
 
-  <!-- ── Fluxo Operacional Visual ── -->
-  <div class="fluxo-wrap" id="fluxo-widget">
-    <div class="fluxo-head">
-      <span class="fluxo-head-label">🔄 Fluxo operacional de medi&#231;&#245;es</span>
-      <button class="fluxo-head-link" onclick="obOpen()">? Ver guia completo</button>
-    </div>
-    <div class="fluxo-chain" id="fluxo-chain">
-      <div class="fluxo-node" data-tip="Tarefa criada no Planner com etiqueta MEDIÇÕES. Ponto de partida de toda demanda." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demand',null),400);">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M7 15h7v2H7zm0-4h10v2H7zm0-4h10v2H7zm12-4h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-.14 0-.27.01-.4.04-.39.08-.74.28-1.01.55-.18.18-.33.4-.43.64-.1.23-.16.49-.16.77v14c0 .27.06.54.16.78s.25.45.43.64c.27.27.62.47 1.01.55.13.02.26.03.4.03h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-7-.25c.41 0 .75.34.75.75s-.34.75-.75.75-.75-.34-.75-.75.34-.75.75-.75M19 19H5V5h14z"/></svg></div><div class="fluxo-lbl">Planner</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Equipe define data, técnicos responsáveis e equipamentos necessários antes de ir a campo." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan',null),400);">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m0 18H4V10h16zm0-13H4V5h16z"/></svg></div><div class="fluxo-lbl">Planejamento</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Visita técnica à empresa. Coleta de dados de campo com amostradores calibrados." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),400);">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4m-6 4c.22-.72 3.31-2 6-2 2.7 0 5.8 1.29 6 2zM4.74 9H5c0 2.21 1.79 4 4 4s4-1.79 4-4h.26c.27 0 .49-.22.49-.49v-.02c0-.27-.22-.49-.49-.49H13c0-1.48-.81-2.75-2-3.45v.95c0 .28-.22.5-.5.5s-.5-.22-.5-.5V4.14C9.68 4.06 9.35 4 9 4s-.68.06-1 .14V5.5c0 .28-.22.5-.5.5S7 5.78 7 5.5v-.95C5.81 5.25 5 6.52 5 8h-.26c-.27 0-.49.22-.49.49v.03c0 .26.22.48.49.48M11 9c0 1.1-.9 2-2 2s-2-.9-2-2zm10.98-2.77.93-.83-.75-1.3-1.19.39c-.14-.11-.3-.2-.47-.27L20.25 3h-1.5l-.25 1.22q-.255.105-.48.27l-1.18-.39-.75 1.3.93.83c-.02.17-.02.35 0 .52l-.93.85.75 1.3 1.2-.38c.13.1.28.18.43.25l.28 1.23h1.5l.27-1.22c.16-.07.3-.15.44-.25l1.19.38.75-1.3-.93-.85c.03-.19.02-.36.01-.53M19.5 7.75c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25m-.1 3.04-.85.28c-.1-.08-.21-.14-.33-.19l-.18-.88h-1.07l-.18.87c-.12.05-.24.12-.34.19l-.84-.28-.54.93.66.59c-.01.13-.01.25 0 .37l-.66.61.54.93.86-.27c.1.07.2.13.31.18l.18.88h1.07l.19-.87c.11-.05.22-.11.32-.18l.85.27.54-.93-.66-.61c.01-.13.01-.25 0-.37l.66-.59zm-1.9 2.6c-.49 0-.89-.4-.89-.89s.4-.89.89-.89.89.4.89.89-.4.89-.89.89"/></svg></div><div class="fluxo-lbl">Campo</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Técnico responsável assina a folha de campo. Garante rastreabilidade legal." onclick="goToTab('controle'); ctrlInit();">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="m18.85 10.39 1.06-1.06c.78-.78.78-2.05 0-2.83L18.5 5.09c-.78-.78-2.05-.78-2.83 0l-1.06 1.06zm-4.24 1.42L7.41 19H6v-1.41l7.19-7.19zm-1.42-4.25L4 16.76V21h4.24l9.19-9.19zM19 17.5c0 2.19-2.54 3.5-5 3.5-.55 0-1-.45-1-1s.45-1 1-1c1.54 0 3-.73 3-1.5 0-.47-.48-.87-1.23-1.2l1.48-1.48c1.07.63 1.75 1.47 1.75 2.68M4.58 13.35C3.61 12.79 3 12.06 3 11c0-1.8 1.89-2.63 3.56-3.36C7.59 7.18 9 6.56 9 6c0-.41-.78-1-2-1-1.26 0-1.8.61-1.83.64-.35.41-.98.46-1.4.12-.41-.34-.49-.95-.15-1.38C3.73 4.24 4.76 3 7 3s4 1.32 4 3c0 1.87-1.93 2.72-3.64 3.47C6.42 9.88 5 10.5 5 11c0 .31.43.6 1.07.86z"/></svg></div><div class="fluxo-lbl">Assinatura</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Relatório resumindo o que foi medido, condições de campo e observações técnicas." onclick="goToTab('relatorios');">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5z"/></svg></div><div class="fluxo-lbl">Relatório de Visita</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Amostradores enviados ao laboratório para análise química ou físico-química." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400);">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M13 11.33 18 18H6l5-6.67V6h2m2.96-2H8.04c-.42 0-.65.48-.39.81L9 6.5v4.17L3.2 18.4c-.49.66-.02 1.6.8 1.6h16c.82 0 1.29-.94.8-1.6L15 10.67V6.5l1.35-1.69c.26-.33.03-.81-.39-.81"/></svg></div><div class="fluxo-lbl">Laboratório</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Laboratório retorna os resultados analíticos (concentração, dose, IBUTG etc)." onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400);">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M9 17H7v-7h2zm4 0h-2V7h2zm4 0h-2v-4h2zm2.5 2.1h-15V5h15zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2"/></svg></div><div class="fluxo-lbl">Resultado</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Laudo técnico gerado com os resultados. Comparação com limites da NR-15." onclick="goToTab('ruido');">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 5v14H5V5zm0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2"/><path d="M14 17H7v-2h7zm3-4H7v-2h10zm0-4H7V7h10z"/></svg></div><div class="fluxo-lbl">Laudo</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Indicadores consolidados: empresas atendidas, conformidade, histórico de medições." onclick="goToTab('indicadores');">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="m16 6 2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg></div><div class="fluxo-lbl">Analytics</div>
-      </div><div class="fluxo-arr">›</div>
-      <div class="fluxo-node" data-tip="Histórico completo de todas as medições da empresa. Base para o PGR e auditorias." onclick="goToTab('indicadores');">
-        <div class="fluxo-ball"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2m0 12H4V8h16z"/></svg></div><div class="fluxo-lbl">Histórico</div>
+  <!-- ── Fluxo Operacional V4 — FeatureCarousel ── -->
+  <section class="hv4-fluxo">
+    <div class="hv4-fluxo-h">
+      <div class="hv4-fluxo-h-l">
+        <div class="hv4-fluxo-ic">
+          <svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>
+        </div>
+        <div class="hv4-fluxo-title">Fluxo Operacional de Medi&#231;&#245;es</div>
+      </div>
+      <div class="hv4-fluxo-progress">
+        <span id="hv4-fluxo-lbl">Campo — etapa 3/10</span>
+        <div class="hv4-fluxo-bar-wrap">
+          <div class="hv4-fluxo-bar-fill" id="hv4-fluxo-bar" style="width:0%"></div>
+        </div>
+        <span id="hv4-fluxo-pct">0%</span>
       </div>
     </div>
-    <div class="fluxo-footer">
-      <div class="fluxo-leg"><div class="fluxo-dot" style="background:var(--green)"></div>Conclu&#237;do</div>
-      <div class="fluxo-leg"><div class="fluxo-dot" style="background:var(--orange)"></div>Em andamento</div>
-      <div class="fluxo-leg"><div class="fluxo-dot" style="background:var(--border2)"></div>Aguardando</div>
-      <div style="margin-left:auto;font-size:.62rem;color:var(--text3);">Clique em qualquer etapa para ir ao m&#243;dulo</div>
+
+    <div class="hv4-fluxo-track" id="hv4-fluxo-track"></div>
+
+    <div class="hv4-fluxo-foot">
+      <div class="hv4-fluxo-legend">
+        <div class="hv4-fl-item"><span class="hv4-fl-dot done"></span>Conclu&#237;do</div>
+        <div class="hv4-fl-item"><span class="hv4-fl-dot active"></span>Em andamento</div>
+        <div class="hv4-fl-item"><span class="hv4-fl-dot pend"></span>Aguardando</div>
+      </div>
+      <div class="hv4-fluxo-hint">Auto-avan&#231;a · clique em qualquer etapa</div>
     </div>
-  </div>
+  </section>
+  <!-- ══ FIM FLUXO V4 ══════════════════════════════════════════════ -->
 
   <!-- Módulos operacionais -->
   <div class="home-section-label">M&#243;dulos operacionais</div>
@@ -2343,72 +2562,6 @@
 
   </div>
 
-  <!-- Fluxo Operacional -->
-  <div class="home-section-label">Fluxo operacional</div>
-  <div class="home-flow" id="home-flow">
-    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('plan',null),300);mbnActive('controle')">
-      <div class="hf-num">1</div>
-      <div class="hf-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-      </div>
-      <div class="hf-label">Planejamento</div>
-      <div class="hf-desc">Demandas do Planner</div>
-    </div>
-    <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('nova',null),300);mbnActive('controle')">
-      <div class="hf-num">2</div>
-      <div class="hf-icon" style="background:rgba(251,146,60,.12);color:var(--orange)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-      </div>
-      <div class="hf-label">Nova Medição</div>
-      <div class="hf-desc">Registrar OS + equip.</div>
-    </div>
-    <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('nova',null),300);mbnActive('controle')">
-      <div class="hf-num">3</div>
-      <div class="hf-icon" style="background:rgba(16,185,129,.12);color:var(--green)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-      </div>
-      <div class="hf-label">Campo</div>
-      <div class="hf-desc">Coleta + amostradores</div>
-    </div>
-    <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('amostr',null),300);mbnActive('controle')">
-      <div class="hf-num">4</div>
-      <div class="hf-icon" style="background:rgba(96,165,250,.12);color:var(--blue)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 0010 10.172V5L8 4z"/></svg>
-      </div>
-      <div class="hf-label">Laboratório</div>
-      <div class="hf-desc">Envio + acompanhamento</div>
-    </div>
-    <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('import',null),300);mbnActive('controle')">
-      <div class="hf-num">5</div>
-      <div class="hf-icon" style="background:rgba(167,139,250,.12);color:var(--purple)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-      </div>
-      <div class="hf-label">Resultados</div>
-      <div class="hf-desc">Laudos + dosimetrias</div>
-    </div>
-    <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('indicadores');mbnActive('controle')">
-      <div class="hf-num">6</div>
-      <div class="hf-icon" style="background:rgba(251,146,60,.12);color:var(--orange)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      </div>
-      <div class="hf-label">Indicadores</div>
-      <div class="hf-desc">KPIs + conformidade</div>
-    </div>
-    <div class="hf-arrow">›</div>
-    <div class="hf-step" onclick="goToTab('pgr');mbnActive('pgr')">
-      <div class="hf-num">7</div>
-      <div class="hf-icon" style="background:rgba(16,185,129,.12);color:var(--green)">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-      </div>
-      <div class="hf-label">Relatórios</div>
-      <div class="hf-desc">PGR + laudos DOCX</div>
-    </div>
-  </div>
 
   <!-- Estatísticas ao vivo -->
   <div class="home-section-label">Painel rápido</div>
@@ -5410,6 +5563,141 @@ function hv3TimeSince(isoStr) {
 }
 
 homeLoadStats();
+
+/* ══════════════════════════════════════════════════════════════
+   HOME V4 — AntiGravityCanvas (#14) + FeatureCarousel (#16)
+══════════════════════════════════════════════════════════════ */
+(function initHomeV4(){
+  /* ── 1. ANTI-GRAVITY CANVAS ── */
+  const canvas = document.getElementById('hv4-canvas');
+  if (!canvas) return;
+  const hero = document.getElementById('hv4-hero-section');
+
+  let W, H, mouse = {x:-999, y:-999};
+  const MOUSE_RADIUS = 160, RETURN_SPEED = 0.06, DAMPING = 0.88;
+  const PC = 'rgba(42,157,157,', BC = 'rgba(126,232,232,';
+  let pts = [], bg = [];
+
+  function resize(){
+    const r = hero.getBoundingClientRect();
+    W = canvas.width  = r.width;
+    H = canvas.height = r.height;
+  }
+  function build(){
+    pts = []; bg = [];
+    const n = Math.min(Math.max(Math.floor(W * H / 7000), 40), 160);
+    for(let i = 0; i < n; i++){
+      const ox = Math.random()*W, oy = Math.random()*H;
+      pts.push({ox, oy, x:ox, y:oy, vx:0, vy:0,
+        r: 1.2 + Math.random()*2.2, alpha: 0.12 + Math.random()*0.35});
+    }
+    for(let i = 0; i < 80; i++) bg.push({
+      x: Math.random()*W, y: Math.random()*H,
+      r: 0.6 + Math.random()*1.1,
+      alpha: 0.04 + Math.random()*0.12,
+      phase: Math.random()*Math.PI*2,
+      speed: 0.008 + Math.random()*0.016
+    });
+  }
+  function tick(){
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,W,H);
+    bg.forEach(p => {
+      p.phase += p.speed;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = BC + p.alpha*(0.5+0.5*Math.sin(p.phase)) + ')'; ctx.fill();
+    });
+    pts.forEach(p => {
+      const sx=(p.ox-p.x)*RETURN_SPEED, sy=(p.oy-p.y)*RETURN_SPEED;
+      const dx=p.x-mouse.x, dy=p.y-mouse.y, d=Math.sqrt(dx*dx+dy*dy);
+      let rx=0,ry=0;
+      if(d<MOUSE_RADIUS&&d>0){const f=(MOUSE_RADIUS-d)/MOUSE_RADIUS; rx=dx/d*f*5.5; ry=dy/d*f*5.5;}
+      p.vx=(p.vx+sx+rx)*DAMPING; p.vy=(p.vy+sy+ry)*DAMPING;
+      p.x+=p.vx; p.y+=p.vy;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = PC+p.alpha+')'; ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.sqrt(dx*dx+dy*dy);
+      if(d<80){
+        ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y);
+        ctx.strokeStyle=PC+(0.06*(1-d/80))+')'; ctx.lineWidth=0.6; ctx.stroke();
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  hero.addEventListener('mousemove', e => {
+    const r=hero.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
+  });
+  hero.addEventListener('mouseleave', () => { mouse.x=-999; mouse.y=-999; });
+  resize(); build(); requestAnimationFrame(tick);
+  window.addEventListener('resize', ()=>{ resize(); build(); });
+
+  /* ── 2. FEATURE CAROUSEL — Fluxo Operacional ── */
+  const STEPS = [
+    {name:'Planner',      icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+      fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demand',null),400); }},
+    {name:'Planejamento', icon:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>',
+      fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('plan',null),400); }},
+    {name:'Campo',        icon:'<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="2.4"/>',
+      fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),400); }},
+    {name:'Assinatura',   icon:'<path d="M3 18l4-4 4 2 6-6 4 4"/><path d="M3 21h18"/>',
+      fn: ()=>{ goToTab('controle'); ctrlInit(); }},
+    {name:'Relatório', icon:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/>',
+      fn: ()=>{ goToTab('relatorios'); }},
+    {name:'Laboratório', icon:'<path d="M9 3v8.5L4 19c-.7 1 0 2 1 2h14c1 0 1.7-1 1-2l-5-7.5V3M8 3h8"/>',
+      fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400); }},
+    {name:'Resultado',    icon:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+      fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400); }},
+    {name:'Laudo',        icon:'<rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/>',
+      fn: ()=>{ goToTab('ruido'); }},
+    {name:'Analytics',    icon:'<polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/>',
+      fn: ()=>{ goToTab('indicadores'); }},
+    {name:'Histórico', icon:'<path d="M3 12a9 9 0 109 9"/><polyline points="3 7 3 12 8 12"/><path d="M12 7v5l3 3"/>',
+      fn: ()=>{ goToTab('indicadores'); }},
+  ];
+
+  const track   = document.getElementById('hv4-fluxo-track');
+  const bar     = document.getElementById('hv4-fluxo-bar');
+  const stepLbl = document.getElementById('hv4-fluxo-lbl');
+  const pctEl   = document.getElementById('hv4-fluxo-pct');
+  if (!track) return;
+
+  let activeIdx = 2, cycleMs = 0, autoTimer = null;
+  const CYCLE = 4200;
+
+  function fluxoRender(){
+    track.innerHTML = STEPS.map((s,i) => {
+      const cls = i < activeIdx ? 'done' : i === activeIdx ? 'active' : 'pend';
+      return `<div class="hv4-fluxo-step ${cls}" data-i="${i}" onclick="hv4FluxoGoto(${i})">
+        <div class="hv4-fs-ic"><svg viewBox="0 0 24 24">${s.icon}</svg></div>
+        <div class="hv4-fs-name">${s.name}</div>
+      </div>`;
+    }).join('');
+    const pct = Math.round(activeIdx/(STEPS.length-1)*100);
+    if(bar) bar.style.width = pct+'%';
+    if(stepLbl) stepLbl.textContent = STEPS[activeIdx].name + ' — etapa '+(activeIdx+1)+'/10';
+    if(pctEl) pctEl.textContent = pct+'%';
+  }
+
+  window.hv4FluxoGoto = function(i){
+    activeIdx = i; fluxoRender(); resetTimer();
+    try{ STEPS[i].fn && STEPS[i].fn(); } catch(_){}
+  };
+
+  function advance(){
+    cycleMs += 50;
+    if(cycleMs >= CYCLE){ cycleMs=0; activeIdx=(activeIdx+1)%STEPS.length; fluxoRender(); }
+    const frac=cycleMs/CYCLE;
+    const base=Math.round(activeIdx/(STEPS.length-1)*100);
+    const next=Math.round((activeIdx+1)/(STEPS.length-1)*100);
+    if(bar) bar.style.width=(base+(next-base)*frac)+'%';
+  }
+  function resetTimer(){ cycleMs=0; clearInterval(autoTimer); autoTimer=setInterval(advance,50); }
+
+  fluxoRender();
+  resetTimer();
+})();
 
 // ── Estado ───────────────────────────────────────────────────────────
 let cargos = [];
