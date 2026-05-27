@@ -1336,57 +1336,63 @@
 
   .home-spline-wrap {
     width: 100%;
-    height: 380px;
+    height: 400px;
     position: relative;
-    border-radius: 18px;
+    border-radius: 20px;
     overflow: hidden;
-    background:
-      radial-gradient(ellipse at 55% 45%, rgba(16,185,129,.20) 0%, rgba(16,185,129,.05) 45%, transparent 70%),
-      radial-gradient(ellipse at 80% 80%, rgba(16,185,129,.10) 0%, transparent 55%),
-      linear-gradient(160deg, #04140d 0%, #0d0d0f 60%, #041a10 100%);
+    background: #080c09;
+  }
+
+  /* chão com reflexo verde sutil */
+  .home-spline-wrap::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 50%;
+    background: radial-gradient(ellipse at 50% 100%, rgba(16,185,129,.13) 0%, transparent 65%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* brilho lateral esquerdo suave */
+  .home-spline-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 40%; height: 100%;
+    background: radial-gradient(ellipse at 0% 50%, rgba(16,185,129,.06) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
   }
 
   .home-spline-wrap spline-viewer {
     width: 100%;
     height: 100%;
     display: block;
-    --spline-viewer-bg: transparent;
+    position: relative;
+    z-index: 1;
   }
 
-  /* Overlay to hide "Built with Spline" badge (bottom-right corner) */
+  /* cover "Built with Spline" badge */
   .home-spline-cover {
     position: absolute;
     bottom: 0; right: 0;
-    width: 170px; height: 36px;
-    background: linear-gradient(135deg, #041a10, #04140d);
-    border-radius: 0 0 18px 0;
-    z-index: 10;
-  }
-
-  /* Spotlight SVG glow behind robot */
-  .home-spotlight {
-    pointer-events: none;
-    position: absolute;
-    top: -60px; left: -80px;
-    width: 140%; height: 140%;
-    z-index: 0;
-    animation: spotlightFade 1.2s ease forwards;
-    opacity: 0;
-  }
-
-  @keyframes spotlightFade {
-    to { opacity: 1; }
+    width: 180px; height: 40px;
+    background: #080c09;
+    border-radius: 0 0 20px 0;
+    z-index: 20;
   }
 
   /* tagline under robot */
   .home-robot-tagline {
     text-align: center;
-    margin-top: 14px;
-    font-size: .82rem;
+    margin-top: 12px;
+    font-size: .75rem;
     font-weight: 600;
-    color: var(--text3);
-    letter-spacing: .06em;
+    color: var(--green);
+    letter-spacing: .12em;
     text-transform: uppercase;
+    opacity: .7;
   }
 
   </style>
@@ -1695,28 +1701,10 @@
     <!-- Dashboard preview card -->
     <div class="home-hero-right">
       <div class="home-spline-wrap">
-        <!-- Spotlight glow -->
-        <svg class="home-spotlight" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3787 2842" fill="none" aria-hidden="true">
-          <g filter="url(#sp-filter)">
-            <ellipse cx="1924.71" cy="273.501" rx="1924.71" ry="273.501"
-              transform="matrix(-0.822377 -0.568943 -0.568943 0.822377 3631.88 2291.09)"
-              fill="rgba(16,185,129,0.18)"/>
-          </g>
-          <defs>
-            <filter id="sp-filter" x="0" y="0" width="3787" height="2842"
-              filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-              <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-              <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
-              <feGaussianBlur stdDeviation="120" result="effect1_foregroundBlur"/>
-            </filter>
-          </defs>
-        </svg>
-        <!-- Spline 3D robot -->
         <spline-viewer
-          url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-          style="position:relative;z-index:1;background:transparent;">
+          id="hero-spline"
+          url="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode">
         </spline-viewer>
-        <!-- hide "Built with Spline" badge -->
         <div class="home-spline-cover"></div>
       </div>
       <div class="home-robot-tagline">A evolu&#231;&#227;o de SST come&#231;a aqui.</div>
@@ -11991,5 +11979,21 @@ function _esc(s) {
   </div>
 </div>
 
+<script>
+// Hide "Built with Spline" badge from shadow DOM
+(function hideSplineBadge() {
+  const tryHide = () => {
+    const viewer = document.getElementById('hero-spline');
+    if (!viewer) return;
+    const root = viewer.shadowRoot;
+    if (root) {
+      const logo = root.querySelector('#logo') || root.querySelector('[class*="logo"]') || root.querySelector('a');
+      if (logo) { logo.style.display = 'none'; return; }
+    }
+    setTimeout(tryHide, 400);
+  };
+  setTimeout(tryHide, 800);
+})();
+</script>
 </body>
 </html>
