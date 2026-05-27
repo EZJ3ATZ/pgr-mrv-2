@@ -1410,9 +1410,8 @@
   #particle-tagline {
     display: block;
     width: 100%;
-    height: 72px;
+    height: 96px;
     margin-top: 6px;
-    opacity: .92;
   }
 
   </style>
@@ -12012,31 +12011,24 @@ function _esc(s) {
   const canvas = document.getElementById('particle-tagline');
   if (!canvas) return;
 
-  // Resolve canvas pixel size from layout width
   const layoutW = canvas.parentElement ? canvas.parentElement.offsetWidth : 420;
   const W = Math.max(layoutW, 300);
-  const H = 72;
+  const H = 96;
   canvas.width  = W;
   canvas.height = H;
 
   const ctx = canvas.getContext('2d');
 
-  // Words to cycle — SST vocabulary
-  const WORDS = ['MEDIÇÕES', 'SST', 'SAÚDE', 'SEGURANÇA', 'OCUPACIONAL'];
-
-  // Harmonious greens with the company palette (#10B981)
-  const GREENS = [
-    { r: 16,  g: 185, b: 129 },  // #10B981 — brand green
-    { r: 52,  g: 211, b: 153 },  // #34D399 — lighter
-    { r: 110, g: 231, b: 183 },  // #6EE7B7 — mint
-    { r: 6,   g: 148, b: 103 },  // #069467 — deeper
-    { r: 167, g: 243, b: 208 },  // #A7F3D0 — pale green
-  ];
-
-  // Page bg for motion-blur fill (matches --bg: #07090E)
-  const BG_R = 7, BG_G = 9, BG_B = 14;
+  // Exact page bg: --bg: #07090E
+  const BG = { r: 7, g: 9, b: 14 };
+  // Brand green palette
+  const GREEN = { r: 16, g: 185, b: 129 };
 
   const PIXEL_STEPS = 3;
+
+  // Fill with solid bg on init so there is no flash
+  ctx.fillStyle = 'rgb(7,9,14)';
+  ctx.fillRect(0, 0, W, H);
 
   class Particle {
     constructor() {
@@ -12047,138 +12039,100 @@ function _esc(s) {
       this.maxSpeed = Math.random() * 5 + 2;
       this.maxForce = this.maxSpeed * 0.055;
       this.isKilled = false;
-      this.startColor = { r: 16, g: 185, b: 129 };
-      this.targetColor = { r: 16, g: 185, b: 129 };
+      this.startColor = { r: GREEN.r, g: GREEN.g, b: GREEN.b };
+      this.targetColor = { r: GREEN.r, g: GREEN.g, b: GREEN.b };
       this.colorWeight = 1;
-      this.colorBlendRate = Math.random() * 0.025 + 0.004;
+      this.colorBlendRate = Math.random() * 0.025 + 0.005;
     }
 
     move() {
       const dx = this.target.x - this.pos.x;
       const dy = this.target.y - this.pos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
-      const proxMult = dist < 70 ? dist / 70 : 1;
-      const tx = (dx / dist) * this.maxSpeed * proxMult;
-      const ty = (dy / dist) * this.maxSpeed * proxMult;
-      const sx = tx - this.vel.x;
-      const sy = ty - this.vel.y;
-      const sm = Math.sqrt(sx * sx + sy * sy) || 1;
-      this.acc.x += (sx / sm) * this.maxForce;
-      this.acc.y += (sy / sm) * this.maxForce;
+      const dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
+      const prox = dist < 70 ? dist / 70 : 1;
+      const tx = (dx/dist) * this.maxSpeed * prox;
+      const ty = (dy/dist) * this.maxSpeed * prox;
+      const sx = tx - this.vel.x, sy = ty - this.vel.y;
+      const sm = Math.sqrt(sx*sx + sy*sy) || 1;
+      this.acc.x += (sx/sm) * this.maxForce;
+      this.acc.y += (sy/sm) * this.maxForce;
       this.vel.x += this.acc.x; this.vel.y += this.acc.y;
       this.pos.x += this.vel.x; this.pos.y += this.vel.y;
       this.acc.x = 0; this.acc.y = 0;
     }
 
     draw(ctx) {
-      if (this.colorWeight < 1) {
-        this.colorWeight = Math.min(this.colorWeight + this.colorBlendRate, 1);
-      }
+      if (this.colorWeight < 1) this.colorWeight = Math.min(this.colorWeight + this.colorBlendRate, 1);
       const r = Math.round(this.startColor.r + (this.targetColor.r - this.startColor.r) * this.colorWeight);
       const g = Math.round(this.startColor.g + (this.targetColor.g - this.startColor.g) * this.colorWeight);
       const b = Math.round(this.startColor.b + (this.targetColor.b - this.startColor.b) * this.colorWeight);
-      ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+      ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
       ctx.fillRect(this.pos.x, this.pos.y, 2, 2);
-    }
-
-    kill() {
-      if (!this.isKilled) {
-        this.target.x = (Math.random() - 0.5) * W * 3 + W / 2;
-        this.target.y = (Math.random() - 0.5) * H * 3 + H / 2;
-        this.startColor = {
-          r: Math.round(this.startColor.r + (this.targetColor.r - this.startColor.r) * this.colorWeight),
-          g: Math.round(this.startColor.g + (this.targetColor.g - this.startColor.g) * this.colorWeight),
-          b: Math.round(this.startColor.b + (this.targetColor.b - this.startColor.b) * this.colorWeight),
-        };
-        this.targetColor = { r: BG_R, g: BG_G, b: BG_B };
-        this.colorWeight = 0;
-        this.isKilled = true;
-      }
     }
   }
 
   let particles = [];
-  let wordIndex = 0;
-  let frame = 0;
   let animId = null;
 
-  function showWord(word, colorObj) {
+  function buildParticles() {
     const off = document.createElement('canvas');
     off.width = W; off.height = H;
     const octx = off.getContext('2d');
     octx.clearRect(0, 0, W, H);
     octx.fillStyle = 'white';
-    // Auto-size font to fit the word
-    const fontSize = Math.min(Math.floor(W / word.length * 1.35), 46);
-    octx.font = 'bold ' + fontSize + 'px Inter, Arial';
+    // Line 1: "Ocupacional" — bold, larger
+    octx.font = 'bold 36px Inter, Arial';
     octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    octx.fillText(word, W / 2, H / 2);
+    octx.textBaseline = 'alphabetic';
+    octx.fillText('Ocupacional', W/2, 40);
+    // Line 2: "o futuro da SST" — lighter weight, smaller
+    octx.font = '600 22px Inter, Arial';
+    octx.fillText('o futuro da SST', W/2, 76);
 
     const imgData = octx.getImageData(0, 0, W, H);
     const px = imgData.data;
-
     const coords = [];
     for (let i = 0; i < px.length; i += PIXEL_STEPS * 4) {
-      if (px[i + 3] > 0) coords.push(i);
+      if (px[i+3] > 0) coords.push(i);
     }
-    // Shuffle for fluid motion
-    for (let i = coords.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = coords[i]; coords[i] = coords[j]; coords[j] = tmp;
+    // Shuffle
+    for (let i = coords.length-1; i > 0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      const t = coords[i]; coords[i] = coords[j]; coords[j] = t;
     }
 
-    let pi = 0;
+    particles = [];
     for (const ci of coords) {
-      const x = (ci / 4) % W;
-      const y = Math.floor(ci / 4 / W);
-      let p;
-      if (pi < particles.length) {
-        p = particles[pi]; p.isKilled = false; pi++;
-      } else {
-        p = new Particle(); particles.push(p); pi++;
-      }
-      p.startColor = {
-        r: Math.round(p.startColor.r + (p.targetColor.r - p.startColor.r) * p.colorWeight),
-        g: Math.round(p.startColor.g + (p.targetColor.g - p.startColor.g) * p.colorWeight),
-        b: Math.round(p.startColor.b + (p.targetColor.b - p.startColor.b) * p.colorWeight),
-      };
-      p.targetColor = colorObj;
-      p.colorWeight = 0;
+      const x = (ci/4) % W;
+      const y = Math.floor(ci/4/W);
+      const p = new Particle();
+      // start scattered, move to target
+      p.pos.x = (Math.random()-0.5)*W*2 + W/2;
+      p.pos.y = (Math.random()-0.5)*H*2 + H/2;
       p.target.x = x;
       p.target.y = y;
+      // line 2 gets slightly lighter green tint
+      if (y > H/2) {
+        p.targetColor = { r: 52, g: 211, b: 153 }; // #34D399
+        p.startColor  = { r: 52, g: 211, b: 153 };
+      }
+      p.colorWeight = 0;
+      particles.push(p);
     }
-    for (let i = pi; i < particles.length; i++) { particles[i].kill(); }
   }
 
   function animate() {
-    ctx.fillStyle = 'rgba(' + BG_R + ',' + BG_G + ',' + BG_B + ',0.18)';
+    // Solid bg fill — same as page, no transparency flash
+    ctx.fillStyle = 'rgb(7,9,14)';
     ctx.fillRect(0, 0, W, H);
 
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.move(); p.draw(ctx);
-      if (p.isKilled && (p.pos.x < -30 || p.pos.x > W + 30 || p.pos.y < -30 || p.pos.y > H + 30)) {
-        particles.splice(i, 1);
-      }
-    }
-
-    frame++;
-    if (frame % 210 === 0) {
-      wordIndex = (wordIndex + 1) % WORDS.length;
-      showWord(WORDS[wordIndex], GREENS[wordIndex % GREENS.length]);
-    }
+    for (const p of particles) { p.move(); p.draw(ctx); }
 
     animId = requestAnimationFrame(animate);
   }
 
-  // Start after a small delay so layout width is calculated
-  setTimeout(() => {
-    showWord(WORDS[0], GREENS[0]);
-    animate();
-  }, 300);
+  setTimeout(() => { buildParticles(); animate(); }, 350);
 
-  // Pause when tab hidden
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { cancelAnimationFrame(animId); }
     else { animate(); }
