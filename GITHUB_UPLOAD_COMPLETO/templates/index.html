@@ -6,49 +6,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ocupacional — Portal de Controle · Setor de Medições</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      /* Brand — Ocupacional verde teal */
+      /* Brand */
+      --primary:     #1B6B6B;
+      --primary-d:   #145252;
+      --primary-l:   #2A9D9D;
+      --primary-xl:  #7ee8e8;
       --orange:      #1B6B6B;
       --orange-d:    #145252;
-      --orange-dim:  #071414;
-      --orange-glow: rgba(27,107,107,.2);
+      --orange-dim:  rgba(27,107,107,.08);
+      --orange-glow: rgba(27,107,107,.22);
 
       /* Backgrounds */
       --bg:       #07090E;
-      --surface:  #0E1118;
-      --surface2: #141925;
-      --surface3: #1A2030;
+      --surface:  #0F1117;
+      --surface2: #161922;
+      --surface3: #1C2030;
 
       /* Borders */
-      --border:   #1C2236;
-      --border2:  #273050;
-      --border3:  #334268;
+      --border:    rgba(255,255,255,0.06);
+      --border2:   rgba(255,255,255,0.10);
+      --border3:   rgba(255,255,255,0.15);
+      --bd:        rgba(255,255,255,0.06);
+      --bd2:       rgba(255,255,255,0.10);
+      --bd-teal:   rgba(27,107,107,0.22);
 
       /* Text */
-      --text:     #EDF0F7;
-      --text2:    #828DA8;
-      --text3:    #485068;
+      --text:   #E4E4E7;
+      --text2:  #A1A1AA;
+      --text3:  #52525B;
+      --text4:  #3F3F46;
 
       /* Semantic */
-      --green:     #10B981;
-      --green-bg:  #041A10;
-      --green-bd:  #065F3C;
-      --yellow:    #F59E0B;
-      --yellow-bg: #1B0F05;
-      --yellow-bd: #6B4409;
-      --red:       #EF4444;
-      --red-bg:    #160506;
-      --red-bd:    #7F1D1D;
-      --blue:      #60A5FA;
-      --blue-bg:   #030D1C;
-      --blue-bd:   #1E3A8A;
-      --purple:    #A78BFA;
-      --purple-bg: #0D0A1C;
+      --green:      #10B981;
+      --green-l:    #34D399;
+      --green-bg:   rgba(16,185,129,.08);
+      --green-bd:   rgba(16,185,129,.2);
+      --yellow:     #F59E0B;
+      --yellow-bg:  rgba(245,158,11,.08);
+      --yellow-bd:  rgba(245,158,11,.2);
+      --red:        #EF4444;
+      --red-bg:     rgba(239,68,68,.08);
+      --red-bd:     rgba(239,68,68,.2);
+      --blue:       #60A5FA;
+      --blue-bg:    rgba(96,165,250,.08);
+      --blue-bd:    rgba(96,165,250,.2);
+      --purple:     #A78BFA;
+      --purple-bg:  rgba(167,139,250,.08);
 
       /* Layout */
       --radius:    10px;
@@ -56,8 +65,11 @@
 
       /* Shadows */
       --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
-      --shadow:    0 4px 14px rgba(0,0,0,.5);
-      --shadow-lg: 0 16px 32px rgba(0,0,0,.6);
+      --shadow:    0 4px 20px rgba(0,0,0,.5);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,.6);
+
+      /* Mono */
+      --mono: 'JetBrains Mono', monospace;
     }
 
     html { scroll-behavior: smooth; }
@@ -73,11 +85,11 @@
 
     /* ═══ Header ═══════════════════════════════════════════════════ */
     header {
-      background: rgba(7,9,14,.9);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: rgba(7,9,14,.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--border);
-      padding: 0 40px;
+      padding: 0 36px;
       height: 54px;
       display: flex;
       align-items: center;
@@ -192,9 +204,9 @@
     .tab:hover { color: var(--text2); background: rgba(255,255,255,.025); }
 
     .tab.active {
-      color: var(--orange);
-      border-bottom-color: var(--orange);
-      background: rgba(244,123,42,.04);
+      color: var(--primary-l);
+      border-bottom-color: var(--primary-l);
+      background: rgba(27,107,107,.06);
     }
 
     .tab svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -238,15 +250,19 @@
 
     /* ═══ Card ══════════════════════════════════════════════════════ */
     .card {
-      background: var(--surface);
+      background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 20px 24px;
       margin-bottom: 14px;
-      transition: border-color .2s;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
     }
 
-    .card:hover { border-color: var(--border2); }
+    .card:hover {
+      border-color: var(--bd-teal);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.4), 0 0 0 1px var(--bd-teal);
+    }
 
     .card-header {
       display: flex;
@@ -350,9 +366,9 @@
     }
 
     input:focus, select:focus {
-      border-color: var(--orange);
-      background: rgba(244,123,42,.04);
-      box-shadow: 0 0 0 3px rgba(244,123,42,.12);
+      border-color: var(--primary-l);
+      background: rgba(27,107,107,.04);
+      box-shadow: 0 0 0 3px rgba(27,107,107,.15);
     }
 
     input::placeholder { color: var(--text3); }
@@ -1557,6 +1573,192 @@
   }
   /* ════════════════════════════════════════════════════════════════ */
 
+/* ═══ DESIGN SYSTEM v2 — Landing visual language ══════════════ */
+.mono { font-family: var(--mono); }
+
+/* Section headers */
+.sec-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(27,107,107,.1);
+  border: 1px solid var(--bd-teal);
+  color: var(--primary-l);
+  padding: 5px 13px; border-radius: 24px;
+  font-size: 10px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; width: fit-content;
+  margin-bottom: 12px;
+}
+.sec-eyebrow-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--green); animation: pulse-dot 2s infinite;
+}
+.sec-title {
+  font-size: 1.15rem; font-weight: 800; letter-spacing: -.025em;
+  background: linear-gradient(135deg, var(--text) 0%, var(--text2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 5px;
+}
+.sec-sub {
+  font-size: .8rem; color: var(--text2); line-height: 1.5;
+}
+
+/* Badge pills */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: .65rem; font-weight: 700; letter-spacing: .06em;
+  font-family: var(--mono); text-transform: uppercase;
+}
+.badge-green  { background: var(--green-bg);  border: 1px solid var(--green-bd);  color: var(--green);  }
+.badge-yellow { background: var(--yellow-bg); border: 1px solid var(--yellow-bd); color: var(--yellow); }
+.badge-red    { background: var(--red-bg);    border: 1px solid var(--red-bd);    color: var(--red);    }
+.badge-blue   { background: var(--blue-bg);   border: 1px solid var(--blue-bd);   color: var(--blue);   }
+.badge-teal   { background: var(--orange-dim); border: 1px solid var(--bd-teal); color: var(--primary-l); }
+.badge-purple { background: var(--purple-bg); border: 1px solid rgba(167,139,250,.2); color: var(--purple); }
+
+/* Action buttons */
+.btn-primary-v2 {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-d));
+  color: #fff; font-size: .82rem; font-weight: 700;
+  padding: 9px 18px; border-radius: 9px; border: none; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(27,107,107,.35);
+  transition: all .2s; font-family: inherit;
+}
+.btn-primary-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(27,107,107,.5);
+}
+.btn-ghost-v2 {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.03);
+  color: var(--text); font-size: .82rem; font-weight: 600;
+  padding: 9px 16px; border-radius: 9px;
+  border: 1px solid var(--border2); cursor: pointer;
+  transition: all .2s; font-family: inherit;
+}
+.btn-ghost-v2:hover {
+  background: rgba(255,255,255,.06);
+  border-color: var(--bd-teal);
+}
+
+/* Table upgrade */
+.tbl-v2 { width: 100%; border-collapse: collapse; }
+.tbl-v2 thead th {
+  padding: 10px 14px;
+  font-size: .67rem; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .08em;
+  border-bottom: 1px solid var(--border);
+  text-align: left; font-family: var(--mono);
+  background: rgba(7,9,14,.4);
+}
+.tbl-v2 tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.tbl-v2 tbody tr:hover { background: rgba(27,107,107,.04); }
+.tbl-v2 tbody td {
+  padding: 11px 14px; font-size: .8rem; color: var(--text2);
+  vertical-align: middle;
+}
+.tbl-v2 tbody td:first-child { color: var(--text); font-weight: 500; }
+
+/* Card v2 */
+.card-v2 {
+  background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  margin-bottom: 16px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.card-v2:hover {
+  border-color: var(--bd-teal);
+  box-shadow: 0 4px 24px rgba(0,0,0,.3);
+}
+.card-v2-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.card-v2-title {
+  font-size: .88rem; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 10px;
+}
+.card-v2-icon {
+  width: 32px; height: 32px;
+  background: var(--orange-dim);
+  border: 1px solid var(--bd-teal);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.card-v2-icon svg { width: 16px; height: 16px; color: var(--primary-l); }
+
+/* Stat number */
+.stat-n {
+  font-size: 1.8rem; font-weight: 900; color: var(--primary-l);
+  letter-spacing: -.04em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-l {
+  font-size: .66rem; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .1em;
+  margin-top: 4px; font-weight: 600;
+}
+
+/* Page head v2 */
+.page-head-v2 {
+  margin-bottom: 28px; padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.page-head-v2 .sec-title {
+  font-size: 1.25rem;
+}
+
+/* Upload zone v2 */
+.upload-zone-v2 {
+  border: 2px dashed var(--bd-teal);
+  border-radius: 12px;
+  padding: 36px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .25s;
+  background: var(--orange-dim);
+}
+.upload-zone-v2:hover {
+  border-color: var(--primary-l);
+  background: rgba(27,107,107,.1);
+  transform: translateY(-2px);
+}
+.upload-zone-v2 strong { display: block; font-size: .88rem; color: var(--text); margin-bottom: 4px; }
+.upload-zone-v2 p { font-size: .78rem; color: var(--text2); }
+
+/* Live badge */
+.live-badge {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .65rem; color: var(--green); font-weight: 700;
+  letter-spacing: .06em;
+}
+.live-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--green); animation: pulse-dot 2s infinite;
+}
+
+/* Separator with label */
+.sec-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 24px 0 20px; color: var(--text3);
+  font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em;
+}
+.sec-divider::before, .sec-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+
   </style>
 </head>
 <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js"></script>
@@ -2315,10 +2517,11 @@
 <!-- ══ Painel App Móvel ═══════════════════════════════════════════════ -->
 <div id="tab-app-mobile" class="tab-panel">
 <div class="page">
-  <div class="page-head">
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
     <div>
-      <h2 class="page-title">📱 App de Campo</h2>
-      <div class="page-sub">Aplicativo PWA para medições em campo — funciona offline</div>
+      <h2 class="page-title sec-title">📱 App de Campo</h2>
+      <div class="page-sub sec-sub">Aplicativo PWA para medições em campo — funciona offline</div>
     </div>
     <a href="/mobile" target="_blank" style="text-decoration:none;">
       <button class="btn btn-primary" style="gap:8px;display:flex;align-items:center;">
@@ -2423,10 +2626,11 @@
 <!-- ══ Painel CONSISTÊNCIA OPERACIONAL ══════════════════════════════════ -->
 <div id="tab-consistencia" class="tab-panel">
 <div class="page">
-  <div class="page-head">
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
     <div>
-      <h2 class="page-title">⚖️ Consistência Operacional</h2>
-      <div class="page-sub">Detecta automaticamente problemas nos dados: empresas duplicadas, OS paradas, amostradores vencendo, divergências de campo e mais. Rode a verificação para atualizar.</div>
+      <h2 class="page-title sec-title">⚖️ Consistência Operacional</h2>
+      <div class="page-sub sec-sub">Detecta automaticamente problemas nos dados: empresas duplicadas, OS paradas, amostradores vencendo, divergências de campo e mais. Rode a verificação para atualizar.</div>
     </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-secondary" onclick="consistRefresh()">🔄 Atualizar</button>
@@ -2528,9 +2732,10 @@
 <div id="tab-pgr" class="tab-panel">
 <div class="page">
 
-  <div class="page-head">
-    <div class="page-title">Programa de Gerenciamento de Riscos</div>
-    <div class="page-sub">Preencha os dados da empresa, adicione os cargos e clique em Gerar PGR.</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Programa de Gerenciamento de Riscos</div>
+    <div class="page-sub sec-sub">Preencha os dados da empresa, adicione os cargos e clique em Gerar PGR.</div>
   </div>
 
   <!-- Upload PDF -->
@@ -2684,9 +2889,10 @@
 <div id="tab-calor" class="tab-panel">
 <div class="page">
 
-  <div class="page-head">
-    <div class="page-title">Laudo de Calor — NR-15 Anexo 3</div>
-    <div class="page-sub">Preencha os dados da empresa, da avaliação e os setores medidos.</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Laudo de Calor — NR-15 Anexo 3</div>
+    <div class="page-sub sec-sub">Preencha os dados da empresa, da avaliação e os setores medidos.</div>
   </div>
 
   <!-- Dados da Empresa -->
@@ -2790,9 +2996,10 @@
 <div id="tab-ruido" class="tab-panel">
 <div class="page">
 
-  <div class="page-head">
-    <div class="page-title">Laudo de Ruído — NR-15 Anexo 1</div>
-    <div class="page-sub">Importe o PDF do dosímetro CHROMPACK SmartdB para cada avaliação e gere o laudo completo.</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Laudo de Ruído — NR-15 Anexo 1</div>
+    <div class="page-sub sec-sub">Importe o PDF do dosímetro CHROMPACK SmartdB para cada avaliação e gere o laudo completo.</div>
   </div>
 
   <!-- Empresa -->
@@ -2871,9 +3078,10 @@
 <div id="tab-quimico" class="tab-panel">
 <div class="page">
 
-  <div class="page-head">
-    <div class="page-title">Análise Química — NR-15 Agentes Químicos</div>
-    <div class="page-sub">Preencha os dados, selecione o equipamento e adicione as avaliações.</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Análise Química — NR-15 Agentes Químicos</div>
+    <div class="page-sub sec-sub">Preencha os dados, selecione o equipamento e adicione as avaliações.</div>
   </div>
 
   <!-- Equipamento -->
@@ -4200,10 +4408,11 @@
 <!-- ══ Painel EMPRESAS — removido do sidebar, mantido para compatibilidade ══ -->
 <div id="tab-empresas" class="tab-panel" style="display:none!important">
 <div class="page" style="max-width:1100px;">
-  <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;">
+  <div class="page-head page-head-v2" style="display:flex;align-items:center;justify-content:space-between;">
     <div>
-      <div class="page-title">Empresas</div>
-      <div class="page-sub">Dados cadastrais, coletas e histórico. Para OS ativas use 🏗️ Campo ou 📋 OS no painel da empresa.</div>
+      <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+      <div class="page-title sec-title">Empresas</div>
+      <div class="page-sub sec-sub">Dados cadastrais, coletas e histórico. Para OS ativas use 🏗️ Campo ou 📋 OS no painel da empresa.</div>
     </div>
     <button class="btn" onclick="goToTab('controle'); ctrlInit();" style="background:var(--orange);color:#fff;border:none;display:flex;align-items:center;gap:7px;cursor:pointer;padding:9px 18px;border-radius:8px;font-size:.82rem;font-weight:600;">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
@@ -4278,9 +4487,10 @@
 <!-- ══ Painel AGENTES ══════════════════════════════════════════════════ -->
 <div id="tab-agentes" class="tab-panel">
 <div class="page" style="max-width:900px;">
-  <div class="page-head">
-    <div class="page-title">Agentes de Risco</div>
-    <div class="page-sub">Referência de agentes físicos e químicos utilizados nas medições</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Agentes de Risco</div>
+    <div class="page-sub sec-sub">Referência de agentes físicos e químicos utilizados nas medições</div>
   </div>
 
   <!-- Filtros -->
@@ -4317,9 +4527,10 @@
 <!-- ══ Painel RELATÓRIOS ════════════════════════════════════════════════ -->
 <div id="tab-relatorios" class="tab-panel">
 <div class="page" style="max-width:900px;">
-  <div class="page-head">
-    <div class="page-title">Centro de Relatórios</div>
-    <div class="page-sub">Exporte dados e gere relatórios consolidados</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Centro de Relatórios</div>
+    <div class="page-sub sec-sub">Exporte dados e gere relatórios consolidados</div>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
@@ -4376,9 +4587,10 @@
 <!-- ══ Painel INDICADORES ══════════════════════════════════════════════ -->
 <div id="tab-indicadores" class="tab-panel">
 <div class="page" style="max-width:1000px;">
-  <div class="page-head">
-    <div class="page-title">Indicadores</div>
-    <div class="page-sub">Visão analítica da operação — atualizado em tempo real</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Indicadores</div>
+    <div class="page-sub sec-sub">Visão analítica da operação — atualizado em tempo real</div>
   </div>
 
   <!-- KPIs principais -->
@@ -4431,9 +4643,10 @@
 <!-- ══ Painel CONFIGURAÇÕES ════════════════════════════════════════════ -->
 <div id="tab-configuracoes" class="tab-panel">
 <div class="page" style="max-width:700px;">
-  <div class="page-head">
-    <div class="page-title">Configurações</div>
-    <div class="page-sub">Preferências do sistema e dados da organização</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Configurações</div>
+    <div class="page-sub sec-sub">Preferências do sistema e dados da organização</div>
   </div>
 
   <div class="card">
@@ -4482,9 +4695,10 @@
 <!-- ══ Painel AJUDA ════════════════════════════════════════════════════ -->
 <div id="tab-ajuda" class="tab-panel">
 <div class="page" style="max-width:700px;">
-  <div class="page-head">
-    <div class="page-title">Central de Ajuda</div>
-    <div class="page-sub">Guias, fluxo operacional, passo a passo e FAQ</div>
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Central de Ajuda</div>
+    <div class="page-sub sec-sub">Guias, fluxo operacional, passo a passo e FAQ</div>
   </div>
 
   <!-- Ações rápidas -->
@@ -4603,10 +4817,11 @@
      ══════════════════════════════════════════════════════════════════ -->
 <div id="tab-saude" class="tab-panel">
 <div class="page" style="max-width:1100px;">
-  <div class="page-head">
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
     <div>
-      <div class="page-title">🛡️ Saúde do Sistema</div>
-      <div class="page-sub">Observabilidade, diagnósticos e métricas operacionais em tempo real</div>
+      <div class="page-title sec-title">🛡️ Saúde do Sistema</div>
+      <div class="page-sub sec-sub">Observabilidade, diagnósticos e métricas operacionais em tempo real</div>
     </div>
     <button onclick="saudeCarregar()" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:600;cursor:pointer;">
       ↻ Atualizar
@@ -4620,10 +4835,11 @@
 
 <div id="tab-bi" class="tab-panel">
 <div class="page" style="max-width:1200px;">
-  <div class="page-head">
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
     <div>
-      <div class="page-title">Analytics Operacional</div>
-      <div class="page-sub" id="bi-sub-count">Painel anal&#237;tico — dados em tempo real</div>
+      <div class="page-title sec-title">Analytics Operacional</div>
+      <div class="page-sub sec-sub" id="bi-sub-count">Painel anal&#237;tico — dados em tempo real</div>
     </div>
     <button onclick="biLoad()" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>

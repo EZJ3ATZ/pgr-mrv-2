@@ -1046,13 +1046,29 @@ def _migrate(conn):
         except Exception as e:
             print(f'[migrate] execucao_campo nullable: {e}')
 
-    # ── Garante que admin seed seja role=admin e ativo=1 ──
+    # ── Garante que admin seed existe e é role=admin ──
     try:
         conn.execute(
             "UPDATE usuarios SET role='admin', ativo=1 WHERE email='engenharia19@ocupacional.com.br'"
         )
     except Exception:
         pass
+
+    # ── Cria admin se tabela vazia (primeiro deploy no Railway) ──
+    try:
+        from werkzeug.security import generate_password_hash
+        count = conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0]
+        if count == 0:
+            pwd = os.environ.get('ADMIN_SETUP_PASSWORD', 'Ocupacional@2026')
+            conn.execute(
+                "INSERT INTO usuarios (nome, email, senha_hash, role, ativo) "
+                "VALUES (?,?,?,?,1)",
+                ('Matheus Costa', 'engenharia19@ocupacional.com.br',
+                 generate_password_hash(pwd), 'admin')
+            )
+            print(f'[db] admin criado: engenharia19@ocupacional.com.br / {pwd}')
+    except Exception as e:
+        print(f'[db] seed admin erro: {e}')
 
 
 def _auto_seed():
