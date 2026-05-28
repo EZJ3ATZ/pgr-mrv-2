@@ -2155,7 +2155,7 @@ def criar_planejamento(data: dict) -> int:
     import json as _json
     campos = ['demanda_id', 'empresa_id', 'numero_os', 'tecnico', 'data_prevista',
               'agentes_previstos', 'qtd_dosim_prevista', 'qtd_bombas_previstas',
-              'equipamentos_json', 'observacao', 'status', 'dias_estimados']
+              'equipamentos_json', 'observacao', 'status', 'dias_estimados', 'cnpj']
     vals = {}
     for c in campos:
         v = data.get(c)

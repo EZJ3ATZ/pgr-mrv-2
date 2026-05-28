@@ -9235,6 +9235,7 @@ async function planSalvar(status) {
     observacao:       obs,
     status,
     dias_estimados:   window._planDiasEstimado || null,
+    cnpj:             document.getElementById('plan-cnpj')?.value || null,
   };
 
   try {
