@@ -4218,13 +4218,27 @@
     <!-- GENÉRICO (Calor / Vibração) -->
     <div id="nv-s3-generic" style="display:none;">
       <div class="nv-card">
-        <div class="nv-card-title">Etapa 3 — Campo</div>
-        <div class="nv-f" style="margin-bottom:12px;"><label>Acompanhante</label><input type="text" id="nv-gen-acomp" placeholder="Nome"></div>
+        <div class="nv-card-title" id="nv-s3-generic-title">Etapa 3 — Campo</div>
         <div class="nv-g2 nv-f" style="margin-bottom:12px;">
-          <div><label>Hora de Início</label><input type="time" id="nv-gen-hora-ini"></div>
-          <div><label>Término</label><input type="time" id="nv-gen-hora-fim"></div>
+          <div><label>Acompanhante</label><input type="text" id="nv-gen-acomp" placeholder="Nome"></div>
+          <div class="nv-g2">
+            <div><label>Hora de Início</label><input type="time" id="nv-gen-hora-ini"></div>
+            <div><label>Término</label><input type="time" id="nv-gen-hora-fim"></div>
+          </div>
         </div>
-        <div class="nv-f"><label>Observações de Campo</label><textarea id="nv-gen-obs" rows="4" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas, intercorrências..."></textarea></div>
+        <div class="nv-f"><label>Observações de Campo</label><textarea id="nv-gen-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas, intercorrências..."></textarea></div>
+      </div>
+
+      <!-- Medições IBUTG (só aparece quando tipo=calor) -->
+      <div id="nv-calor-ibutg-section" style="display:none;margin-top:12px;">
+        <div class="nv-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="nv-card-title" style="margin:0;">🌡️ Medições IBUTG — NR-15 Anexo 3</div>
+            <button onclick="nvCalorAddSetor()" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Setor</button>
+          </div>
+          <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada setor medido: local, TBS, TBN, TG e regime de trabalho dos colaboradores.</div>
+          <div id="nv-calor-setores"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -4444,6 +4458,19 @@
             🏷 Reclassificar OS
           </button>
           <span id="ctrl-reclass-msg" style="font-size:.8rem; margin-left:10px;"></span>
+        </div>
+
+        <div>
+          <div style="font-size:.8rem; color:var(--text3); margin-bottom:6px;">Remove demandas do Planner sem OS, sem título e sem medições vinculadas (entradas fantasma).</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button onclick="ctrlListarFantasmas()" style="background:rgba(245,158,11,.1); color:#f59e0b; border:1px solid rgba(245,158,11,.3); padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
+              👻 Listar Fantasmas (dry run)
+            </button>
+            <button onclick="ctrlLimparFantasmas()" style="background:rgba(239,68,68,.1); color:#f87171; border:1px solid rgba(239,68,68,.25); padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
+              🗑 Remover Fantasmas
+            </button>
+          </div>
+          <span id="ctrl-fantasmas-msg" style="font-size:.8rem; margin-top:6px; display:block;"></span>
         </div>
       </div>
     </div>
@@ -10348,6 +10375,26 @@ async function ctrlReclassificar() {
   } catch(e) { msg.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`; }
 }
 
+async function ctrlListarFantasmas() {
+  const msg = document.getElementById('ctrl-fantasmas-msg');
+  if (msg) msg.textContent = '⏳ Listando...';
+  try {
+    const r = await ctrlFetch('/controle/demandas/limpar-fantasmas?dry_run=1', {method:'POST'});
+    if (msg) msg.innerHTML = `<span style="color:#f59e0b;">👻 ${r.total} fantasmas encontradas (IDs: ${(r.ids||[]).slice(0,20).join(', ')}${r.total>20?'…':''}). Clique em "Remover" para apagar.</span>`;
+  } catch(e) { if(msg) msg.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`; }
+}
+
+async function ctrlLimparFantasmas() {
+  const msg = document.getElementById('ctrl-fantasmas-msg');
+  if (!confirm('Remover entradas fantasma do banco? Essa ação não pode ser desfeita.')) return;
+  if (msg) msg.textContent = '⏳ Removendo...';
+  try {
+    const r = await ctrlFetch('/controle/demandas/limpar-fantasmas', {method:'POST'});
+    if (msg) msg.innerHTML = `<span style="color:#4ade80;">✓ ${r.total} fantasmas removidas.</span>`;
+    _ctrlStatsCache = null; ctrlLoadStats();
+  } catch(e) { if(msg) msg.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`; }
+}
+
 async function ctrlMesclarDuplicatas() {
   const msg = document.getElementById('ctrl-mesclar-msg');
   msg.textContent = '⏳ Mesclando...';
@@ -12573,6 +12620,12 @@ function nvShowStep3() {
     if (_nvTipos.includes('vibracao')) labels.push('〰️ Vibração');
     if (labels.length) genTitle.textContent = labels.join(' + ');
   }
+  // Seção IBUTG: só quando tipo calor
+  const ibutgSec = document.getElementById('nv-calor-ibutg-section');
+  if (ibutgSec) {
+    ibutgSec.style.display = _nvTipos.includes('calor') ? '' : 'none';
+    if (_nvTipos.includes('calor') && !window._nvCalorSetores?.length) nvCalorAddSetor();
+  }
 
   // Inicializar agentes químicos a partir do planejamento
   if (temQuimico && !_nvCqAgentes.length) {
@@ -12788,6 +12841,93 @@ function nvCrCalcDesvio() {
   const ok = dv <= 0.5;
   badge.style.cssText = `margin-top:10px;padding:10px 14px;border-radius:8px;font-size:.82rem;background:${ok?'rgba(16,185,129,.08)':'rgba(239,68,68,.08)'};color:${ok?'var(--green)':'var(--red)'};`;
   badge.innerHTML = `Desvio: <b>${dv.toFixed(1)} dB</b> — ${ok?'✓ Dentro do tolerado (≤ 0,5 dB)':'⚠ FORA DO TOLERADO! Calibração comprometida.'}`;
+}
+
+// ── IBUTG — Calor ────────────────────────────────────────────────────
+window._nvCalorSetores = [];
+
+function nvCalorAddSetor() {
+  window._nvCalorSetores.push({
+    setor: '', tbs: '', tbn: '', tg: '', regime: 'Trabalho Moderado', M: 198,
+    ibutg_interno: '', ibutg_externo: '',
+  });
+  nvCalorRenderSetores();
+}
+
+function nvCalorRemoveSetor(i) {
+  window._nvCalorSetores.splice(i, 1);
+  nvCalorRenderSetores();
+}
+
+function nvCalorRenderSetores() {
+  const el = document.getElementById('nv-calor-setores');
+  if (!el) return;
+  if (!window._nvCalorSetores.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Clique em "+ Setor" para adicionar medições.</div>';
+    return;
+  }
+  const regimes = [
+    'Trabalho Leve','Trabalho Moderado','Trabalho Pesado',
+    'Trabalho Leve — De pé','Trabalho Moderado — De pé',
+    'Trabalho Pesado — De pé, com tronco inclinado',
+  ];
+  el.innerHTML = window._nvCalorSetores.map((s, i) => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-weight:700;font-size:.85rem;color:var(--text);">Setor ${i+1}</span>
+        <button onclick="nvCalorRemoveSetor(${i})" style="background:rgba(239,68,68,.1);border:none;color:#ef4444;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:.75rem;">✕ Remover</button>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:3px;">Local / Setor</label>
+        <input value="${_esc(s.setor)}" oninput="window._nvCalorSetores[${i}].setor=this.value"
+          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Cozinha industrial">
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TBS (°C)</label>
+          <input type="number" step="0.1" value="${s.tbs}" oninput="window._nvCalorSetores[${i}].tbs=this.value;nvCalorCalcIBUTG(${i})"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="35.0"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TBN (°C)</label>
+          <input type="number" step="0.1" value="${s.tbn}" oninput="window._nvCalorSetores[${i}].tbn=this.value;nvCalorCalcIBUTG(${i})"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="28.0"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TG (°C)</label>
+          <input type="number" step="0.1" value="${s.tg}" oninput="window._nvCalorSetores[${i}].tg=this.value;nvCalorCalcIBUTG(${i})"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="38.0"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:end;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">IBUTG Interno</label>
+          <div id="nv-cal-ibutg-i-${i}" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;font-weight:700;color:#f59e0b;">${s.ibutg_interno||'—'}</div></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">IBUTG Externo</label>
+          <div id="nv-cal-ibutg-e-${i}" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;font-weight:700;color:#fb923c;">${s.ibutg_externo||'—'}</div></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Taxa Metab. (W)</label>
+          <input type="number" value="${s.M}" oninput="window._nvCalorSetores[${i}].M=+this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;"></div>
+      </div>
+      <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Regime de Trabalho</label>
+        <select oninput="window._nvCalorSetores[${i}].regime=this.value" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;">
+          ${regimes.map(r => `<option value="${r}" ${s.regime===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  `).join('');
+}
+
+function nvCalorCalcIBUTG(i) {
+  const s = window._nvCalorSetores[i];
+  const tbs = parseFloat(s.tbs), tbn = parseFloat(s.tbn), tg = parseFloat(s.tg);
+  if (!isNaN(tbn) && !isNaN(tg)) {
+    // Interno: IBUTG = 0.7 TBN + 0.3 TG
+    const ibutg_i = (0.7 * tbn + 0.3 * tg).toFixed(1);
+    s.ibutg_interno = ibutg_i;
+    const elI = document.getElementById(`nv-cal-ibutg-i-${i}`);
+    if (elI) elI.textContent = ibutg_i + ' °C';
+    // Externo: IBUTG = 0.7 TBN + 0.2 TG + 0.1 TBS
+    if (!isNaN(tbs)) {
+      const ibutg_e = (0.7 * tbn + 0.2 * tg + 0.1 * tbs).toFixed(1);
+      s.ibutg_externo = ibutg_e;
+      const elE = document.getElementById(`nv-cal-ibutg-e-${i}`);
+      if (elE) elE.textContent = ibutg_e + ' °C';
+    }
+  }
 }
 
 // ── Trabalhadores Ruído ───────────────────────────────────────────────
@@ -13192,14 +13332,15 @@ async function nvSalvarMedicao() {
       } : null,
       campo_quimico: _nvTipo==='quimico' ? (_nvCqAgentes[0] || null) : null,
       campo_generico: (_nvTipo !== 'ruido' && _nvTipo !== 'quimico') ? {
-        acomp:    document.getElementById('nv-gen-acomp')?.value||'',
-        hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
-        hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
-        obs:      document.getElementById('nv-gen-obs')?.value||'',
-        pontos:   document.getElementById('nv-plan-pontos-calor')?.value||'',
-        regime:   document.getElementById('nv-plan-regime')?.value||'',
-        tipo_vibr:document.getElementById('nv-plan-tipo-vibr')?.value||'',
-        fonte_vibr:document.getElementById('nv-plan-fonte-vibr')?.value||'',
+        acomp:       document.getElementById('nv-gen-acomp')?.value||'',
+        hora_ini:    document.getElementById('nv-gen-hora-ini')?.value||'',
+        hora_fim:    document.getElementById('nv-gen-hora-fim')?.value||'',
+        obs:         document.getElementById('nv-gen-obs')?.value||'',
+        pontos:      document.getElementById('nv-plan-pontos-calor')?.value||'',
+        regime:      document.getElementById('nv-plan-regime')?.value||'',
+        tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
+        fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
+        ibutg_setores: _nvTipos.includes('calor') ? (window._nvCalorSetores || []) : [],
       } : null,
     };
     // Coletar agentes não medidos (do planejamento vinculado)

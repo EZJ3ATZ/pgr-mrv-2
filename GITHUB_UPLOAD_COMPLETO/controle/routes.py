@@ -1625,24 +1625,36 @@ def api_list_coletas_ruido():
 def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_id=None):
     """Atualiza status da demanda quando uma coleta é salva.
     aberta → em_andamento ao criar coleta.
-    Também fecha o planejamento se planejamento_id for fornecido e coleta concluída.
-    Não reverte status já avançado.
+    em_andamento → em_andamento (mantém) para coleta sem status.
+    Qualquer status → em_andamento quando coleta é concluída (se não era concluída).
+    Fecha planejamento quando coleta concluída.
+    Não reverte demandas já concluídas.
     """
     if not demanda_id:
         return
     try:
         with get_db() as conn:
             row = conn.execute(
-                'SELECT status FROM demandas WHERE id=?', (demanda_id,)
+                'SELECT status, origem FROM demandas WHERE id=?', (demanda_id,)
             ).fetchone()
             if not row:
                 return
-            atual = row['status'] if hasattr(row, '__getitem__') else row[0]
-            if atual == 'aberta':
-                conn.execute(
-                    "UPDATE demandas SET status='em_andamento', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
-                    (demanda_id,)
-                )
+            atual  = row['status']  if hasattr(row, '__getitem__') else row[0]
+            origem = row['origem']  if hasattr(row, '__getitem__') else (row[1] if len(row) > 1 else '')
+            # Não regredir demandas já concluídas (Planner é fonte de verdade para origem='planner')
+            if atual == 'concluida':
+                return
+            if atual in ('aberta', 'pendente'):
+                novo = 'em_andamento'
+            elif coleta_status in ('concluida', 'concluido') and origem != 'planner':
+                # Para demandas locais (não-Planner), marcar concluída ao concluir coleta
+                novo = 'concluida'
+            else:
+                novo = 'em_andamento'
+            conn.execute(
+                f"UPDATE demandas SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                (novo, demanda_id)
+            )
             # Fechar planejamento ao concluir a coleta
             if planejamento_id and coleta_status in ('concluida', 'concluido'):
                 conn.execute(
@@ -2123,8 +2135,10 @@ def api_salvar_medicao_wizard():
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico'})
 
     elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
+        import json as _json
         from .db import save_coleta_outros
         gen = d.get('campo_generico') or {}
+        ibutg_setores = gen.get('ibutg_setores') or []
         payload_out = {
             'tipo':         tipo,
             'empresa_id':   d.get('empresa_id'),
@@ -2145,6 +2159,8 @@ def api_salvar_medicao_wizard():
             'regime':       d.get('regime') or gen.get('regime', ''),
             'tipo_vibr':    d.get('tipo_vibr') or gen.get('tipo_vibr', ''),
             'fonte_vibr':   d.get('fonte_vibr') or gen.get('fonte_vibr', ''),
+            # IBUTG setores (calor)
+            'dados_json':   _json.dumps({'ibutg_setores': ibutg_setores}, ensure_ascii=False) if ibutg_setores else None,
         }
         cid = save_coleta_outros(payload_out)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
@@ -3325,6 +3341,38 @@ def debug_demandas_fantasmas():
     except Exception as e:
         import traceback
         return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:2000]}), 500
+
+
+@controle_bp.route('/demandas/limpar-fantasmas', methods=['POST'])
+def api_limpar_fantasmas():
+    """Remove demandas sem OS, sem título e sem medições (entradas fantasma do Planner).
+    Aceita ?dry_run=1 para listar sem deletar.
+    """
+    from flask_login import current_user
+    if not current_user.is_authenticated or getattr(current_user, 'role', '') != 'admin':
+        return jsonify({'erro': 'apenas admin'}), 403
+    dry_run = request.args.get('dry_run', '0') == '1'
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT d.id, d.numero_os, d.titulo, d.nome_tarefa
+            FROM demandas d
+            WHERE (d.numero_os IS NULL OR d.numero_os = '' OR d.numero_os LIKE 'AET-%')
+              AND (d.titulo IS NULL OR d.titulo = '')
+              AND NOT EXISTS (SELECT 1 FROM medicoes m WHERE m.demanda_id = d.id)
+              AND NOT EXISTS (SELECT 1 FROM coletas_ruido cr WHERE cr.demanda_id = d.id)
+              AND NOT EXISTS (SELECT 1 FROM coletas_quimico cq WHERE cq.demanda_id = d.id)
+              AND d.origem = 'planner'
+        """).fetchall()
+        ids = [r['id'] for r in rows]
+        if not dry_run and ids:
+            conn.execute(f"DELETE FROM demandas WHERE id IN ({','.join('?'*len(ids))})", ids)
+    return jsonify({
+        'ok': True,
+        'dry_run': dry_run,
+        'total': len(ids),
+        'ids': ids[:100],
+    })
 
 
 @controle_bp.route('/graph/debug_empresa_titulos')
