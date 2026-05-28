@@ -866,6 +866,9 @@ def _migrate(conn):
     ]:
         _add_col(conn, 'demandas', col, dfn)
 
+    # Coluna dias_estimados na tabela planejamentos
+    _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
+
     # Tabela de log de extração (rastreabilidade)
     # ATENÇÃO: AUTOINCREMENT é SQLite — PostgreSQL usa SERIAL
     _pk_exlog = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
@@ -2145,7 +2148,7 @@ def criar_planejamento(data: dict) -> int:
     import json as _json
     campos = ['demanda_id', 'empresa_id', 'numero_os', 'tecnico', 'data_prevista',
               'agentes_previstos', 'qtd_dosim_prevista', 'qtd_bombas_previstas',
-              'equipamentos_json', 'observacao', 'status']
+              'equipamentos_json', 'observacao', 'status', 'dias_estimados']
     vals = {}
     for c in campos:
         v = data.get(c)

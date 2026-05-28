@@ -4370,14 +4370,33 @@
 
     <!-- Manutenção de dados -->
     <div style="margin-top:20px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:8px;">
-      <div style="font-weight:600; font-size:.9rem; margin-bottom:8px;">🔧 Manutenção de Dados</div>
-      <div style="font-size:.8rem; color:var(--text3); margin-bottom:10px;">
-        Use quando perceber empresas duplicadas na tela "Por Empresa". O sistema consolida empresas com o mesmo nome em um único registro.
+      <div style="font-weight:600; font-size:.9rem; margin-bottom:12px;">🔧 Manutenção de Dados</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <div style="font-size:.8rem; color:var(--text3); margin-bottom:6px;">Consolida empresas com o mesmo nome em um único registro.</div>
+          <button onclick="ctrlMesclarDuplicatas()" style="background:#f59e0b; color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
+            🔀 Mesclar Empresas Duplicadas
+          </button>
+          <span id="ctrl-mesclar-msg" style="font-size:.8rem; margin-left:10px;"></span>
+        </div>
+
+        <div>
+          <div style="font-size:.8rem; color:var(--text3); margin-bottom:6px;">Re-associa OS do Planner que não foram vinculadas a nenhuma empresa (empresa_id=0).</div>
+          <button onclick="ctrlReassociarEmpresas()" style="background:rgba(99,102,241,.2); color:#a5b4fc; border:1px solid rgba(99,102,241,.3); padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
+            🔗 Re-associar Empresas Sem Vínculo
+          </button>
+          <span id="ctrl-reassoc-msg" style="font-size:.8rem; margin-left:10px;"></span>
+        </div>
+
+        <div>
+          <div style="font-size:.8rem; color:var(--text3); margin-bottom:6px;">Reclassifica todas as OS do Planner (operacional/PGR/treinamento) e extrai N° OS dos títulos.</div>
+          <button onclick="ctrlReclassificar()" style="background:rgba(34,197,94,.12); color:#4ade80; border:1px solid rgba(34,197,94,.2); padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
+            🏷 Reclassificar OS
+          </button>
+          <span id="ctrl-reclass-msg" style="font-size:.8rem; margin-left:10px;"></span>
+        </div>
       </div>
-      <button onclick="ctrlMesclarDuplicatas()" style="background:#f59e0b; color:#000; border:none; padding:8px 16px; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">
-        🔀 Mesclar Empresas Duplicadas
-      </button>
-      <span id="ctrl-mesclar-msg" style="font-size:.8rem; margin-left:10px;"></span>
     </div>
 
     <div style="margin-top:24px;">
@@ -9001,6 +9020,7 @@ async function planSalvar(status) {
     agentes_previstos: window._planAgentes,
     observacao:       obs,
     status,
+    dias_estimados:   window._planDiasEstimado || null,
   };
 
   try {
@@ -10088,6 +10108,29 @@ async function ctrlLoadPrevisao() {
   } catch(e) {
     tb.innerHTML = `<tr><td colspan="7" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
   }
+}
+
+async function ctrlReassociarEmpresas() {
+  const msg = document.getElementById('ctrl-reassoc-msg');
+  if (!msg) return;
+  msg.textContent = '⏳ Processando...';
+  try {
+    const r = await ctrlFetch('/controle/demandas/match-empresas', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({threshold: 0.65})});
+    const total = (r.vinculadas||0) + (r.pendentes_criados||0) + (r.sem_match||0);
+    msg.innerHTML = `<span style="color:#4ade80;">✓ ${r.vinculadas||0} vinculadas · ${r.pendentes_criados||0} pendentes criadas · ${r.sem_match||0} sem match</span>`;
+    _ctrlStatsCache = null;
+    ctrlLoadStats();
+  } catch(e) { msg.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`; }
+}
+
+async function ctrlReclassificar() {
+  const msg = document.getElementById('ctrl-reclass-msg');
+  if (!msg) return;
+  msg.textContent = '⏳ Reclassificando...';
+  try {
+    const r = await ctrlFetch('/controle/demandas/reclassificar', {method:'POST'});
+    msg.innerHTML = `<span style="color:#4ade80;">✓ ${r.atualizadas||0} OS atualizadas</span>`;
+  } catch(e) { msg.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`; }
 }
 
 async function ctrlMesclarDuplicatas() {
