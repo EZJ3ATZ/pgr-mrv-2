@@ -506,6 +506,16 @@ CREATE TABLE IF NOT EXISTS eventos (
     criado_em   TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS contatos_empresa (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id      INTEGER NOT NULL,
+    resultado       TEXT NOT NULL,
+    obs             TEXT,
+    proximo_contato TEXT,
+    feito_por       TEXT DEFAULT 'Matheus',
+    feito_em        TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS planejamentos (
     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
     demanda_id           INTEGER,
@@ -1851,6 +1861,16 @@ def list_operational_demands(filtros=None):
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
+def list_contatos_empresa(empresa_id):
+    """Retorna histórico de contatos de uma empresa, do mais recente ao mais antigo."""
+    with get_db() as conn:
+        rows = conn.execute(
+            'SELECT * FROM contatos_empresa WHERE empresa_id=? ORDER BY feito_em DESC LIMIT 50',
+            (empresa_id,)
+        ).fetchall()
+        return [row_to_dict(r) for r in rows]
+
+
 def list_operational_por_empresa(filtros=None):
     sql = f"""
         SELECT e.id AS empresa_id,
@@ -1880,7 +1900,12 @@ def list_operational_por_empresa(filtros=None):
                           AND LOWER(COALESCE(d.planner_bucket,'')) NOT LIKE '%conclu%'
                           AND d.prazo IS NOT NULL AND d.prazo != ''
                           AND {_lab_expire_cond("d.prazo", "0")}
-                   THEN 1 ELSE 0 END) AS demandas_atrasadas
+                   THEN 1 ELSE 0 END) AS demandas_atrasadas,
+               (SELECT resultado FROM contatos_empresa WHERE empresa_id=e.id ORDER BY feito_em DESC LIMIT 1) AS ultimo_contato_resultado,
+               (SELECT obs FROM contatos_empresa WHERE empresa_id=e.id ORDER BY feito_em DESC LIMIT 1) AS ultimo_contato_obs,
+               (SELECT proximo_contato FROM contatos_empresa WHERE empresa_id=e.id ORDER BY feito_em DESC LIMIT 1) AS proximo_contato,
+               (SELECT feito_em FROM contatos_empresa WHERE empresa_id=e.id ORDER BY feito_em DESC LIMIT 1) AS ultimo_contato_em,
+               (SELECT feito_por FROM contatos_empresa WHERE empresa_id=e.id ORDER BY feito_em DESC LIMIT 1) AS ultimo_contato_por
         FROM empresas e
         JOIN demandas d ON d.empresa_id = e.id
         LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id

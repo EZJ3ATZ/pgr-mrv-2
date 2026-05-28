@@ -17,7 +17,7 @@ from .db import (
     list_amostradores_vencendo, contar_vencendo,
     mesclar_empresas_duplicatas,
     list_raw_tasks, stats_raw_pipeline,
-    list_operational_demands, list_operational_por_empresa,
+    list_operational_demands, list_operational_por_empresa, list_contatos_empresa,
     # Planejamento + Visitas
     criar_planejamento, get_planejamento, list_planejamentos, update_planejamento_status,
     criar_visita, get_visita, list_visitas, concluir_visita,
@@ -464,29 +464,42 @@ def marcar_contato_empresa(eid):
     """Registra contato com empresa: resultado, observação, próximo contato."""
     init_db()
     d = request.json or {}
-    feito      = 1 if d.get('feito', True) else 0
     user       = d.get('por', 'Matheus')
-    resultado  = d.get('resultado') or None      # Agendado | Sem resposta | Reagendado | Aguardando proposta
+    resultado  = (d.get('resultado') or '').strip()
     obs        = d.get('obs') or None
     prox       = d.get('proximo_contato') or None
+    if not resultado:
+        return jsonify({'ok': False, 'erro': 'resultado obrigatorio'}), 400
     with get_db() as conn:
-        cur = conn.execute("""
+        # Insere na tabela dedicada de histórico
+        conn.execute(
+            "INSERT INTO contatos_empresa (empresa_id, resultado, obs, proximo_contato, feito_por) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (eid, resultado, obs, prox, user))
+        # Mantém atualização nas demandas ativas para compatibilidade
+        conn.execute("""
             UPDATE demandas SET
-                contato_feito=?, contato_feito_em=CURRENT_TIMESTAMP,
+                contato_feito=1, contato_feito_em=CURRENT_TIMESTAMP,
                 contato_feito_por=?, contato_resultado=?,
                 contato_obs=?, proximo_contato=?
             WHERE empresa_id=? AND status != 'concluida'""",
-            (feito, user, resultado, obs, prox, eid))
-        afetadas = cur.rowcount
-        # Log no histórico de eventos da empresa
-        if feito and resultado:
-            desc = f'Contato: {resultado}'
-            if obs: desc += f' — {obs[:120]}'
-            conn.execute(
-                "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
-                "VALUES ('contato_cliente', ?, ?, 'empresa', CURRENT_TIMESTAMP)",
-                (desc, eid))
-    return jsonify({'ok': True, 'afetadas': afetadas})
+            (user, resultado, obs, prox, eid))
+        # Log no histórico de eventos
+        desc = f'Contato: {resultado}'
+        if obs: desc += f' — {obs[:120]}'
+        conn.execute(
+            "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
+            "VALUES ('contato_cliente', ?, ?, 'empresa', CURRENT_TIMESTAMP)",
+            (desc, eid))
+    return jsonify({'ok': True})
+
+
+@controle_bp.route('/empresa/<int:eid>/contatos', methods=['GET'])
+def get_contatos_empresa(eid):
+    """Retorna histórico de contatos de uma empresa."""
+    init_db()
+    contatos = list_contatos_empresa(eid)
+    return jsonify({'ok': True, 'contatos': contatos})
 
 
 @controle_bp.route('/demandas/<int:did>')

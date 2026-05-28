@@ -8152,24 +8152,30 @@ async function ctrlLoadPorEmpresa() {
 
       // Último contato
       const nomeEsc = (e.empresa_nome||'').replace(/'/g,"\\'");
+      const emailEsc = (e.email||'').replace(/'/g,'');
       let contatoBtn = '<span style="color:var(--text3);font-size:.72rem;">—</span>';
+      const ultimoRes = e.ultimo_contato_resultado;
+      const ultimoEm  = e.ultimo_contato_em ? e.ultimo_contato_em.substring(0,10) : null;
+      const proxCont  = e.proximo_contato;
       if (pend > 0) {
-        if (e.contato_feito && e.contato_resultado) {
+        if (ultimoRes) {
           const _corRes = {
             'Agendado':'#0a7','Reagendado':'#f80',
             'Sem resposta':'#e22','Aguardando proposta':'#39f'
-          }[e.contato_resultado] || '#888';
+          }[ultimoRes] || '#888';
+          const dataStr = ultimoEm ? ` <span style="color:var(--text3);font-size:.65rem;">${ultimoEm}</span>` : '';
           let proxTxt = '';
-          if (e.proximo_contato) proxTxt = ` <span style="color:var(--text3);font-size:.68rem;">follow-up ${e.proximo_contato}</span>`;
+          if (proxCont) proxTxt = ` <span style="color:#f80;font-size:.68rem;">📅 ${proxCont}</span>`;
           contatoBtn = `<span style="display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;">
-            <span style="color:${_corRes};font-size:.74rem;font-weight:600;">${e.contato_resultado}</span>${proxTxt}
-            <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.68rem;cursor:pointer;margin-left:2px;">atualizar</button>
-            <button onclick="event.stopPropagation();ctrlAbrirEmailEmpresa(${e.empresa_id},'${nomeEsc}','${(e.email||'').replace(/'/g,'')}')" style="background:rgba(42,157,157,.12);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:3px;padding:2px 7px;font-size:.68rem;cursor:pointer;">📧</button>
+            <span style="color:${_corRes};font-size:.74rem;font-weight:600;">${ultimoRes}</span>${dataStr}${proxTxt}
+            <button onclick="event.stopPropagation();ctrlVerHistoricoContatos(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.65rem;cursor:pointer;" title="Ver histórico de contatos">📋</button>
+            <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.68rem;cursor:pointer;">atualizar</button>
+            <button onclick="event.stopPropagation();ctrlAbrirEmailEmpresa(${e.empresa_id},'${nomeEsc}','${emailEsc}')" style="background:rgba(42,157,157,.12);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:3px;padding:2px 7px;font-size:.68rem;cursor:pointer;">📧</button>
           </span>`;
         } else {
           contatoBtn = `<span style="display:inline-flex;align-items:center;gap:4px;">
             <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:#1a3a6a;color:#7bb3f0;border:1px solid #2a5599;padding:4px 10px;border-radius:4px;font-size:.72rem;cursor:pointer;">📞 Marcar contato</button>
-            <button onclick="event.stopPropagation();ctrlAbrirEmailEmpresa(${e.empresa_id},'${nomeEsc}','${(e.email||'').replace(/'/g,'')}')" style="background:rgba(42,157,157,.12);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:4px;padding:4px 10px;font-size:.72rem;cursor:pointer;">📧 E-mail</button>
+            <button onclick="event.stopPropagation();ctrlAbrirEmailEmpresa(${e.empresa_id},'${nomeEsc}','${emailEsc}')" style="background:rgba(42,157,157,.12);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:4px;padding:4px 10px;font-size:.72rem;cursor:pointer;">📧 E-mail</button>
             <span title="Registra o resultado de uma tentativa de contato com o cliente." style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text3);font-size:.6rem;cursor:help;flex-shrink:0;">?</span>
           </span>`;
         }
@@ -8261,6 +8267,45 @@ async function ctrlSalvarContato() {
 
 function ctrlFecharContato() {
   document.getElementById('ctrl-contato-overlay').style.display = 'none';
+}
+
+async function ctrlVerHistoricoContatos(empresaId, nomeEmpresa) {
+  try {
+    const r = await ctrlFetch(`/controle/empresa/${empresaId}/contatos`);
+    const contatos = r.contatos || [];
+    const corRes = {'Agendado':'#0a7','Reagendado':'#f80','Sem resposta':'#e22','Aguardando proposta':'#39f'};
+    const linhas = contatos.length === 0
+      ? '<p style="color:var(--text3);text-align:center;padding:16px;">Nenhum contato registrado ainda.</p>'
+      : contatos.map(c => {
+          const cor = corRes[c.resultado] || '#888';
+          const data = (c.feito_em||'').substring(0,10);
+          const obs = c.obs ? `<div style="color:var(--text3);font-size:.75rem;margin-top:2px;">${c.obs}</div>` : '';
+          const prox = c.proximo_contato ? `<div style="color:#f80;font-size:.73rem;">📅 Follow-up: ${c.proximo_contato}</div>` : '';
+          return `<div style="padding:10px 0;border-bottom:1px solid var(--border2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:${cor};font-weight:600;font-size:.82rem;">${c.resultado}</span>
+              <span style="color:var(--text3);font-size:.72rem;">${data} · ${c.feito_por||'—'}</span>
+            </div>${obs}${prox}
+          </div>`;
+        }).join('');
+    const nomeEsc2 = (nomeEmpresa||'').replace(/'/g,"\\'");
+    document.querySelectorAll('.ctrl-hist-modal').forEach(el => el.remove());
+    const mo = document.createElement('div');
+    mo.className = 'ctrl-hist-modal';
+    mo.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1300;display:flex;align-items:center;justify-content:center;';
+    mo.innerHTML = `<div style="background:var(--card-bg,#1a1f2e);border:1px solid var(--border2);border-radius:10px;padding:20px;width:480px;max-width:95vw;max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <b style="font-size:.95rem;">📋 Histórico — ${nomeEmpresa}</b>
+        <button onclick="this.closest('.ctrl-hist-modal').remove()" style="background:transparent;border:none;color:var(--text3);font-size:1.2rem;cursor:pointer;">✕</button>
+      </div>
+      <div>${linhas}</div>
+      <div style="margin-top:14px;text-align:right;">
+        <button onclick="this.closest('.ctrl-hist-modal').remove();ctrlMarcarContato(${empresaId},'${nomeEsc2}')" style="background:var(--accent,#2a9d9d);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:.85rem;cursor:pointer;">+ Novo contato</button>
+      </div>
+    </div>`;
+    mo.onclick = ev => { if(ev.target===mo) mo.remove(); };
+    document.body.appendChild(mo);
+  } catch(e) { _showToast('Erro ao carregar histórico', 'error'); }
 }
 
 // ── E-mail para cliente ────────────────────────────────────────────────
