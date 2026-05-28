@@ -708,6 +708,38 @@ def api_demandas_sem_empresa():
     return jsonify([row_to_dict(r) for r in rows])
 
 
+# ── Baixas — listagem ─────────────────────────────────────────────────
+@controle_bp.route('/baixas', methods=['GET'])
+def api_list_baixas():
+    """Lista baixas com filtros: os (numero_os), empresa_id, demanda_id, limit."""
+    init_db()
+    params, conds = [], ['1=1']
+    if request.args.get('os'):
+        conds.append('d.numero_os = ?'); params.append(request.args['os'])
+    if request.args.get('empresa_id'):
+        conds.append('d.empresa_id = ?'); params.append(int(request.args['empresa_id']))
+    if request.args.get('demanda_id'):
+        conds.append('m.demanda_id = ?'); params.append(int(request.args['demanda_id']))
+    limit = min(int(request.args.get('limit', 50)), 200)
+    with get_db() as conn:
+        rows = conn.execute(f'''
+            SELECT b.id, b.medicao_id, b.amostrador_id,
+                   b.avaliador, b.bomba, b.vazao_calibrada,
+                   b.volume_recomendado, b.data_medicao, b.observacao,
+                   b.tempo_calculado_min, b.tempo_calculado_max,
+                   m.agente, m.tipo_amostrador,
+                   d.numero_os, d.empresa_id,
+                   e.nome AS empresa_nome
+            FROM baixas b
+            JOIN medicoes m ON m.id = b.medicao_id
+            JOIN demandas d ON d.id = m.demanda_id
+            LEFT JOIN empresas e ON e.id = d.empresa_id
+            WHERE {" AND ".join(conds)}
+            ORDER BY b.criado_em DESC LIMIT {limit}
+        ''', params).fetchall()
+    return jsonify({'baixas': [row_to_dict(r) for r in rows], 'total': len(rows)})
+
+
 # ── Baixa de amostrador ───────────────────────────────────────────────
 @controle_bp.route('/baixa', methods=['POST'])
 def dar_baixa():

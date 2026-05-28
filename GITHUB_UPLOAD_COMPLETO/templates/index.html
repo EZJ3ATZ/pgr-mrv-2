@@ -3307,6 +3307,19 @@
     </div>
   </div>
 
+  <!-- Importar Empresa / OS -->
+  <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div style="position:relative;flex:1;min-width:220px;">
+      <input type="text" id="quim-busca-emp" placeholder="🔍 Buscar empresa cadastrada para pré-preencher..." oninput="quim_buscarEmpresa(this.value)"
+        style="width:100%;background:var(--surface2);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);padding:9px 14px;font-size:.85rem;font-family:inherit;">
+      <div id="quim-emp-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1.5px solid var(--border2);border-radius:0 0 8px 8px;z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.25);"></div>
+    </div>
+    <div style="position:relative;">
+      <input type="text" id="quim-busca-os" placeholder="Nº OS..." style="background:var(--surface2);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);padding:9px 14px;font-size:.85rem;font-family:inherit;width:140px;">
+      <button onclick="quim_importarBaixas()" style="background:rgba(59,130,246,.15);border:1.5px solid rgba(59,130,246,.3);border-radius:7px;color:#3b82f6;padding:8px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;margin-left:6px;">📥 Importar baixas</button>
+    </div>
+  </div>
+
   <!-- Empresa -->
   <div class="card">
     <div class="card-header">
@@ -7004,6 +7017,59 @@ fetch('/api/metodos').then(r=>r.json()).then(d=>{
   Object.values(d.by_cas||{}).forEach(arr => arr.forEach(e => names.add(e.nome)));
   dl.innerHTML = [...names].sort().map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
 }).catch(()=>{});
+
+// ── Busca empresa / importar baixas para Análise Química ─────────────
+let _quim_emp_timer = null;
+async function quim_buscarEmpresa(q) {
+  const box = document.getElementById('quim-emp-sugs');
+  clearTimeout(_quim_emp_timer);
+  if (!q || q.length < 2) { box.style.display = 'none'; return; }
+  _quim_emp_timer = setTimeout(async () => {
+    try {
+      const r = await ctrlFetch(`/controle/empresas?q=${encodeURIComponent(q)}&limit=10`);
+      const emps = await r.json();
+      if (!emps.length) { box.style.display = 'none'; return; }
+      box.innerHTML = emps.map(e =>
+        `<div onclick="quim_preencherEmpresa(${e.id},'${(e.nome||'').replace(/'/g,"\\'")}')" style="padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:.84rem;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${e.nome}</div>`
+      ).join('');
+      box.style.display = 'block';
+    } catch(e) { box.style.display = 'none'; }
+  }, 300);
+}
+
+async function quim_preencherEmpresa(eid, nome) {
+  document.getElementById('quim-emp-sugs').style.display = 'none';
+  document.getElementById('quim-busca-emp').value = nome;
+  try {
+    const r = await ctrlFetch(`/controle/empresa/${eid}`);
+    const e = await r.json();
+    if (!e) return;
+    document.getElementById('q-razao').value  = e.nome || '';
+    document.getElementById('q-cnpj').value   = e.cnpj || '';
+    document.getElementById('q-cidade').value = e.cidade || 'Betim';
+    if (e.uf && document.getElementById('q-uf')) document.getElementById('q-uf').value = e.uf;
+    _showToast('Empresa pré-preenchida do cadastro', 'success');
+  } catch(e) { _showToast('Erro ao buscar empresa', 'error'); }
+}
+
+async function quim_importarBaixas() {
+  const os_num = (document.getElementById('quim-busca-os')?.value || '').trim();
+  if (!os_num) { _showToast('Informe o Nº da OS', 'warning'); return; }
+  try {
+    const r = await ctrlFetch(`/controle/baixas?os=${encodeURIComponent(os_num)}`);
+    const data = await r.json();
+    const baixas = data.baixas || data;
+    if (!baixas.length) { _showToast('Nenhuma baixa encontrada para essa OS', 'warning'); return; }
+    // Pré-preenche empresa se disponível
+    if (baixas[0].empresa_nome && !document.getElementById('q-razao').value)
+      document.getElementById('q-razao').value = baixas[0].empresa_nome;
+    if (baixas[0].data_medicao && !document.getElementById('q-data-ini')?.value) {
+      const el = document.getElementById('q-data-ini');
+      if (el) el.value = baixas[0].data_medicao;
+    }
+    _showToast(`${baixas.length} baixa(s) encontrada(s) para OS ${os_num}. Verifique e ajuste os campos.`, 'success');
+  } catch(e) { _showToast('Erro ao buscar baixas', 'error'); }
+}
 
 // ── Bomba SN update ────────────────────────────────────────────────
 function qUpdateBombaSN() {
