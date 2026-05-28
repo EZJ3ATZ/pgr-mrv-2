@@ -1420,12 +1420,18 @@ def mesclar_duplicatas():
 # ── Reset (cuidado!) ──────────────────────────────────────────────────
 @controle_bp.route('/reset', methods=['POST'])
 def reset_db():
-    """Apaga todos os dados. Requer header X-Confirm: reset."""
+    """Apaga todos os dados. Requer login admin + header X-Confirm: reset."""
+    from flask_login import current_user
+    if not current_user.is_authenticated:
+        return jsonify({'erro': 'autenticação necessária'}), 401
+    if getattr(current_user, 'role', '') != 'admin':
+        return jsonify({'erro': 'apenas administradores podem resetar o banco'}), 403
     if request.headers.get('X-Confirm') != 'reset':
         return jsonify({'erro': 'requer header X-Confirm: reset'}), 400
     with get_db() as conn:
         for t in ('baixas', 'medicoes', 'demandas', 'amostradores', 'empresas'):
             conn.execute(f'DELETE FROM {t}')
+    log.warning('[reset] banco resetado por %s (%s)', current_user.email, current_user.id)
     return jsonify({'ok': True})
 
 
@@ -3536,6 +3542,28 @@ def api_fila_revisao():
         'total': len(resultado),
         'demandas': resultado,
     })
+
+
+@controle_bp.route('/demandas/revisao/stats')
+def api_revisao_stats():
+    """Resumo rápido: total de demandas needs_review + primeiros itens."""
+    init_db()
+    with get_db() as conn:
+        total_row = conn.execute(
+            "SELECT COUNT(*) FROM demandas WHERE needs_review=1 AND origem='planner'"
+        ).fetchone()
+        total = total_row[0] if total_row else 0
+        rows = conn.execute("""
+            SELECT d.id,
+                   COALESCE(d.titulo, d.nome_tarefa) AS titulo,
+                   d.numero_os, d.empresa_match_score,
+                   e.nome AS empresa_nome
+            FROM demandas d
+            LEFT JOIN empresas e ON e.id = d.empresa_id
+            WHERE d.needs_review = 1 AND d.origem = 'planner'
+            ORDER BY d.atualizado_em DESC LIMIT 20
+        """).fetchall()
+    return jsonify({'total': total, 'itens': [row_to_dict(r) for r in rows]})
 
 
 @controle_bp.route('/demandas/<int:did>/extracao')
