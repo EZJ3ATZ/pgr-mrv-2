@@ -1659,7 +1659,7 @@ def api_save_coleta_ruido():
     d = request.json or {}
     cid = save_coleta_ruido(d)
     is_new = not bool(d.get('id'))
-    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'))
+    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'), d.get('planejamento_id'))
     if is_new:
         registrar_evento('coleta_ruido_criada',
                          f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
@@ -1693,7 +1693,7 @@ def api_save_coleta_quimico():
     d = request.json or {}
     cid = save_coleta_quimico(d)
     is_new = not bool(d.get('id'))
-    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'))
+    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'), d.get('planejamento_id'))
     if is_new:
         registrar_evento('coleta_quimico_criada',
                          f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
@@ -2093,7 +2093,7 @@ def api_salvar_medicao_wizard():
             'itens':               d.get('itens', []),
         }
         cid = save_coleta_ruido(payload_ruido)
-        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento')
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido'})
 
     elif tipo == 'quimico':
@@ -2119,7 +2119,7 @@ def api_salvar_medicao_wizard():
             'amostradores':  cq.get('amostradores', []),
         }
         cid = save_coleta_quimico(payload_q)
-        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento')
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico'})
 
     elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
@@ -2147,7 +2147,7 @@ def api_salvar_medicao_wizard():
             'fonte_vibr':   d.get('fonte_vibr') or gen.get('fonte_vibr', ''),
         }
         cid = save_coleta_outros(payload_out)
-        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento')
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': tipo})
 
     return jsonify({'ok': True, 'aviso': 'tipo nao mapeado, nao salvo'})
