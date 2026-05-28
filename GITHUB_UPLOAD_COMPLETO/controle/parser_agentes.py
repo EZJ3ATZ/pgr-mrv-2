@@ -18,16 +18,16 @@ import unicodedata
 # ── Palavras que indicam que a linha NÃO é uma medição ──────────────
 _IGNORAR_LINHA = re.compile(
     r'\b(AET|treinamento|NR[-\s]?\d+|LIP\b|LTCAT|PCMSO|PPRA|PGR\b|'
-    r'laudo|faturamento|proposta|visita|'
+    r'laudo|faturamento|proposta|visita|elabora[çc][aã]o|'
     r'cargos?\b|fun[çc][oõ][ens]+|email|contato|cliente|obs\b|observa)',
     re.IGNORECASE
 )
 
 # ── Padrões de extração ──────────────────────────────────────────────
 
-# A: "04 medições de ruído" / "3 pontos de Vibração" / "2 avaliações de calor"
+# A: "04 medições de ruído" / "3 pontos de Vibração" / "2 avaliações de calor" / "2 avaliações – calor"
 _PAT_A = re.compile(
-    r'(\d+)\s+(?:medi[çc][oõ]es?|avalia[çc][oõ]es?|pontos?)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)]{1,60})',
+    r'(\d+)\s+(?:medi[çc][oõ]es?|avalia[çc][oõ]es?|pontos?)\s+(?:de\s+|[-–]\s*)([A-Za-zÀ-ÿ][^\n,;.→\(\)]{1,60})',
     re.IGNORECASE
 )
 

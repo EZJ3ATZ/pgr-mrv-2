@@ -450,6 +450,11 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
         'iniciado_em':      datetime.now(timezone.utc).isoformat(),
     }
 
+    # ── Group_id fixo: Ocupacional (evita processar 70+ grupos desnecessários) ──
+    _GRUPO_FIXO = '4c80214b-6801-414a-9fc7-27feff0b3de6'
+    if not group_filter:
+        group_filter = _GRUPO_FIXO
+
     try:
         grupos = get_teams_groups()
     except Exception as e:

@@ -4465,6 +4465,69 @@
 </div>
 
 <!-- Modal Dar Baixa -->
+<!-- ── Modal E-mail para Cliente ────────────────────────────────────── -->
+<div class="ctrl-overlay" id="ctrl-email-overlay" onclick="if(event.target===this)ctrlFecharEmail()" style="z-index:1210;">
+  <div class="ctrl-modal" style="max-width:580px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <h3>📧 Enviar E-mail para o Cliente</h3>
+      <button onclick="ctrlFecharEmail()" style="background:transparent;border:none;color:var(--text3);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <p id="ctrl-email-empresa-nome" style="font-size:.82rem;color:var(--text2);margin-bottom:14px;"></p>
+
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <div style="flex:1;">
+        <label style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Para (e-mail)</label>
+        <input type="email" id="ctrl-email-para" placeholder="contato@empresa.com.br"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.83rem;margin-top:4px;outline:none;">
+      </div>
+    </div>
+
+    <label style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Modelo de mensagem</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin:7px 0 12px;">
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('agendar')"   style="background:rgba(42,157,157,.1);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">📅<br>Agendar visita</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('confirmar')" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:var(--green);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">✅<br>Confirmar data</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('remarcar')"  style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--yellow);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">🔄<br>Remarcar</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('lembrete')"  style="background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);color:var(--blue);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">🔔<br>Lembrete</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('semresposta')" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);color:var(--red);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">📵<br>Sem resposta</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('resultado')" style="background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);color:#a78bfa;border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">📊<br>Resultado pronto</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('docpendente')" style="background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">📎<br>Doc pendente</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('urgente')"   style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--red);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">⚡<br>Prazo urgente</button>
+      <button class="ctrl-email-tpl-btn" onclick="ctrlEmailTemplate('proposta')"  style="background:rgba(42,157,157,.07);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:7px 5px;font-size:.73rem;cursor:pointer;text-align:center;line-height:1.3;">💼<br>Proposta</button>
+    </div>
+
+    <!-- Campo de agentes (para compor mensagem) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div>
+        <label style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Agentes / Riscos <span style="font-weight:400;text-transform:none;">(preenche o template)</span></label>
+        <input type="text" id="ctrl-email-agentes" placeholder="Ex: Ruído, Calor, Benzeno"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.83rem;margin-top:4px;outline:none;"
+          oninput="ctrlEmailReconstruir()">
+      </div>
+      <div>
+        <label style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Data sugerida <span style="font-weight:400;text-transform:none;">(opcional)</span></label>
+        <input type="date" id="ctrl-email-data"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.83rem;margin-top:4px;outline:none;"
+          oninput="ctrlEmailReconstruir()">
+      </div>
+    </div>
+
+    <label style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Assunto</label>
+    <input type="text" id="ctrl-email-assunto"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.83rem;margin:5px 0 10px;outline:none;">
+
+    <label style="font-size:.72rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">Mensagem <span style="font-weight:400;text-transform:none;">(editável)</span></label>
+    <textarea id="ctrl-email-corpo" rows="9"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px;color:var(--text);font-size:.82rem;font-family:inherit;resize:vertical;margin:5px 0 16px;outline:none;line-height:1.55;"></textarea>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="ctrlAbrirEmail()" style="flex:1;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:11px;font-size:.88rem;font-weight:600;cursor:pointer;">📧 Abrir no e-mail</button>
+      <button onclick="ctrlCopiarEmail()" style="background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:11px 16px;font-size:.88rem;cursor:pointer;" title="Copiar mensagem">📋 Copiar</button>
+      <button onclick="ctrlFecharEmail()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);border-radius:6px;padding:11px 16px;font-size:.88rem;cursor:pointer;">Fechar</button>
+    </div>
+    <div id="ctrl-email-copied" style="font-size:.75rem;color:var(--green);margin-top:6px;display:none;">✓ Copiado para área de transferência!</div>
+  </div>
+</div>
+
 <!-- ── Modal Marcar Contato ─────────────────────────────────────────── -->
 <div class="ctrl-overlay" id="ctrl-contato-overlay" onclick="if(event.target===this)ctrlFecharContato()" style="z-index:1200;">
   <div class="ctrl-modal" style="max-width:440px;">
@@ -7795,12 +7858,16 @@ async function ctrlLoadPorEmpresa() {
           }[e.contato_resultado] || '#888';
           let proxTxt = '';
           if (e.proximo_contato) proxTxt = ` <span style="color:var(--text3);font-size:.68rem;">follow-up ${e.proximo_contato}</span>`;
-          contatoBtn = `<span style="color:${_corRes};font-size:.74rem;font-weight:600;">${e.contato_resultado}</span>${proxTxt}
-            <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.68rem;cursor:pointer;margin-left:4px;">atualizar</button>`;
+          contatoBtn = `<span style="display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;">
+            <span style="color:${_corRes};font-size:.74rem;font-weight:600;">${e.contato_resultado}</span>${proxTxt}
+            <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:2px 6px;font-size:.68rem;cursor:pointer;margin-left:2px;">atualizar</button>
+            <button onclick="event.stopPropagation();ctrlAbrirEmailEmpresa(${e.empresa_id},'${nomeEsc}','${(e.email||'').replace(/'/g,'')}')" style="background:rgba(42,157,157,.12);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:3px;padding:2px 7px;font-size:.68rem;cursor:pointer;">📧</button>
+          </span>`;
         } else {
           contatoBtn = `<span style="display:inline-flex;align-items:center;gap:4px;">
             <button onclick="event.stopPropagation();ctrlMarcarContato(${e.empresa_id},'${nomeEsc}')" style="background:#1a3a6a;color:#7bb3f0;border:1px solid #2a5599;padding:4px 10px;border-radius:4px;font-size:.72rem;cursor:pointer;">📞 Marcar contato</button>
-            <span title="Registra o resultado de uma tentativa de contato com o cliente: agendado, sem resposta, reagendado ou aguardando proposta. Permite anotar observações e definir data de retorno (follow-up). Não conclui a OS — apenas documenta o histórico de comunicação." style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text3);font-size:.6rem;cursor:help;flex-shrink:0;">?</span>
+            <button onclick="event.stopPropagation();ctrlAbrirEmailEmpresa(${e.empresa_id},'${nomeEsc}','${(e.email||'').replace(/'/g,'')}')" style="background:rgba(42,157,157,.12);border:1px solid rgba(42,157,157,.25);color:var(--primary-l);border-radius:4px;padding:4px 10px;font-size:.72rem;cursor:pointer;">📧 E-mail</button>
+            <span title="Registra o resultado de uma tentativa de contato com o cliente." style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--border2);color:var(--text3);font-size:.6rem;cursor:help;flex-shrink:0;">?</span>
           </span>`;
         }
       }
@@ -7891,6 +7958,115 @@ async function ctrlSalvarContato() {
 
 function ctrlFecharContato() {
   document.getElementById('ctrl-contato-overlay').style.display = 'none';
+}
+
+// ── E-mail para cliente ────────────────────────────────────────────────
+let _ctrlEmailTpl = '';
+let _ctrlEmailNome = '';
+
+function ctrlAbrirEmailEmpresa(empresaId, nomeEmpresa, emailEmpresa) {
+  _ctrlEmailNome = nomeEmpresa || '';
+  document.getElementById('ctrl-email-empresa-nome').textContent = nomeEmpresa || '';
+  document.getElementById('ctrl-email-para').value = emailEmpresa || '';
+  document.getElementById('ctrl-email-agentes').value = '';
+  document.getElementById('ctrl-email-data').value = '';
+  document.getElementById('ctrl-email-assunto').value = '';
+  document.getElementById('ctrl-email-corpo').value = '';
+  document.getElementById('ctrl-email-copied').style.display = 'none';
+  _ctrlEmailTpl = '';
+  // Remove highlight de todos os botões de template
+  document.querySelectorAll('.ctrl-email-tpl-btn').forEach(b => b.style.opacity = '1');
+  document.getElementById('ctrl-email-overlay').style.display = 'flex';
+}
+
+const _EMAIL_REMETENTE = 'Equipe de Medições – Ocupacional';
+
+function ctrlEmailTemplate(tipo) {
+  _ctrlEmailTpl = tipo;
+  const nome = _ctrlEmailNome || 'prezado(a)';
+  const agentes = document.getElementById('ctrl-email-agentes').value.trim();
+  const dataRaw = document.getElementById('ctrl-email-data').value;
+  const dataFmt = dataRaw ? new Date(dataRaw + 'T12:00:00').toLocaleDateString('pt-BR') : '__/__/____';
+  const ag = agentes || '[informar agentes]';
+
+  const ASSIN = `\nAtenciosamente,\n${_EMAIL_REMETENTE}\nengenharia19@ocupacional.com.br`;
+
+  const TPLS = {
+    agendar: {
+      assunto: `Agendamento de Avaliação Ambiental — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nSomos o time de medições da Ocupacional Medicina e Segurança do Trabalho.\n\nEntramos em contato para verificar a melhor data para a realização da avaliação ambiental em sua empresa. De acordo com nossa programação, a avaliação prevista inclui os seguintes agentes:\n\n• ${ag.split(',').join('\n• ')}\n\nNossa disponibilidade inicial é para ${dataFmt}. Confirme se esta data é conveniente ou nos informe outra opção de sua preferência.\n\nPedimos que, para o dia da visita, seja disponibilizado o acesso às áreas de trabalho e, se possível, um responsável para acompanhar a equipe técnica.${ASSIN}`
+    },
+    confirmar: {
+      assunto: `Confirmação de Visita Técnica — ${nome} — ${dataFmt}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nConfirmamos a visita técnica de medição ambiental para o dia ${dataFmt}.\n\nAgentes que serão avaliados:\n• ${ag.split(',').join('\n• ')}\n\nSolicitamos que:\n• As áreas de trabalho estejam em operação normal no dia da visita.\n• Um responsável esteja disponível para acompanhar a equipe.\n• Os EPIs dos trabalhadores estejam à disposição para registro.\n\nQualquer alteração, entre em contato pelo e-mail ou telefone abaixo.${ASSIN}`
+    },
+    remarcar: {
+      assunto: `Reagendamento de Visita Técnica — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nInformamos que precisamos reagendar a visita técnica de avaliação ambiental que estava prevista para ${dataFmt}.\n\nAgentes a serem avaliados:\n• ${ag.split(',').join('\n• ')}\n\nPedimos desculpas pelo inconveniente. Favor nos indicar sua disponibilidade para nova data, para que possamos reprogramar o quanto antes.\n\nLembramos que a avaliação está prevista em nossa programação e é importante que seja realizada dentro do prazo contratado.${ASSIN}`
+    },
+    lembrete: {
+      assunto: `Lembrete: Visita Técnica Amanhã — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nPassamos para lembrar que a visita técnica de medição ambiental está agendada para amanhã, ${dataFmt}.\n\nAgentes que serão avaliados:\n• ${ag.split(',').join('\n• ')}\n\nSugerimos verificar se:\n• As áreas de trabalho estarão em operação normal.\n• Um responsável estará disponível para acompanhar a equipe.\n\nEm caso de impedimento, favor nos comunicar com antecedência para reagendamento.${ASSIN}`
+    },
+    semresposta: {
+      assunto: `Tentativa de Contato — Avaliação Ambiental — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nTentamos entrar em contato anteriormente para tratar do agendamento da avaliação ambiental de sua empresa, porém não obtivemos retorno.\n\nA avaliação prevista inclui os seguintes agentes:\n• ${ag.split(',').join('\n• ')}\n\nSolicitamos que entre em contato conosco para que possamos definir a melhor data e garantir o cumprimento do prazo contratado.\n\nCaso já tenha tomado providências, desconsidere esta mensagem.${ASSIN}`
+    },
+    resultado: {
+      assunto: `Resultados da Avaliação Ambiental Disponíveis — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nInformamos que os resultados da avaliação ambiental realizada em ${dataFmt} já estão disponíveis.\n\nAgentes avaliados:\n• ${ag.split(',').join('\n• ')}\n\nOs laudos técnicos serão encaminhados em breve conforme acordado. Caso necessite de reunião para apresentação dos resultados e discussão das medidas de controle, estamos à disposição.\n\nAgradecemos a colaboração da equipe no dia da visita.${ASSIN}`
+    },
+    docpendente: {
+      assunto: `Documentação Pendente — Avaliação Ambiental — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nPara dar prosseguimento à avaliação ambiental programada, precisamos dos seguintes documentos/informações:\n\n• Planta baixa ou croqui das áreas de trabalho\n• Relação de cargos e respectivas funções\n• Inventário de produtos químicos utilizados (FISPQ)\n• Número de trabalhadores por setor\n\nPedimos que envie as informações acima em resposta a este e-mail até ${dataFmt} para que possamos agendar a visita dentro do prazo.${ASSIN}`
+    },
+    urgente: {
+      assunto: `URGENTE — Prazo de Avaliação Ambiental Próximo — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nVenho alertar que o prazo para a realização da avaliação ambiental de sua empresa está próximo do vencimento.\n\nAgentes a serem avaliados:\n• ${ag.split(',').join('\n• ')}\n\nO prazo limite é ${dataFmt}. Após esta data, poderá haver impacto no cumprimento das obrigações legais (NR-9 / PGR).\n\nSolicitamos retorno com urgência para agendarmos a visita técnica.${ASSIN}`
+    },
+    proposta: {
+      assunto: `Proposta de Avaliação Ambiental — ${nome}`,
+      corpo: `Prezado(a) responsável pela ${nome},\n\nConforme nossa conversa, encaminhamos a proposta de serviços de avaliação ambiental para sua empresa.\n\nServiços previstos:\n• ${ag.split(',').join('\n• ')}\n\nPrazo previsto para execução: ${dataFmt}\n\nEsta proposta contempla: visita técnica, amostragem, análise laboratorial (quando aplicável), laudo técnico e AET.\n\nFicamos à disposição para esclarecer dúvidas e aguardamos confirmação para dar início ao agendamento.${ASSIN}`
+    },
+  };
+
+  const tpl = TPLS[tipo];
+  if (!tpl) return;
+  document.getElementById('ctrl-email-assunto').value = tpl.assunto;
+  document.getElementById('ctrl-email-corpo').value = tpl.corpo;
+  document.getElementById('ctrl-email-copied').style.display = 'none';
+}
+
+function ctrlEmailReconstruir() {
+  if (_ctrlEmailTpl) ctrlEmailTemplate(_ctrlEmailTpl);
+}
+
+function ctrlAbrirEmail() {
+  const para    = document.getElementById('ctrl-email-para').value.trim();
+  const assunto = document.getElementById('ctrl-email-assunto').value.trim();
+  const corpo   = document.getElementById('ctrl-email-corpo').value.trim();
+  const link = `mailto:${para}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+  window.open(link, '_blank');
+}
+
+function ctrlCopiarEmail() {
+  const corpo = document.getElementById('ctrl-email-corpo').value;
+  navigator.clipboard.writeText(corpo).then(() => {
+    const el = document.getElementById('ctrl-email-copied');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = corpo; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    const el = document.getElementById('ctrl-email-copied');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+  });
+}
+
+function ctrlFecharEmail() {
+  document.getElementById('ctrl-email-overlay').style.display = 'none';
 }
 
 async function ctrlToggleExpandEmpresa(empresaId) {
