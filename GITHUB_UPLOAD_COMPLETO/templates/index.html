@@ -2251,6 +2251,10 @@
       <span>Configura&#231;&#245;es</span>
     </div>
 
+    <div class="sidebar-item" data-name="guia" onclick="goToTab('guia')" title="Guia Completo do Sistema">
+      <svg class="sidebar-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+      <span class="sidebar-label">Guia do Sistema</span>
+    </div>
     <div class="sidebar-item" data-name="glossario" onclick="goToTab('glossario')" title="Glossário de termos">
       <svg class="sidebar-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
       <span class="sidebar-label">Glossário</span>
@@ -5098,6 +5102,305 @@
 
 </div>
 </div>
+
+<!-- ══ Painel GUIA DO SISTEMA ════════════════════════════════════════════ -->
+<div id="tab-guia" class="tab-panel">
+<div class="page" style="max-width:900px;">
+
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Guia Completo do Sistema</div>
+    <div class="page-sub sec-sub">Explicação de cada aba, sub-aba, botão e processo — do início ao fim.</div>
+  </div>
+
+  <!-- Busca -->
+  <div style="position:sticky;top:0;z-index:10;padding:6px 0 12px;background:var(--bg);">
+    <input type="text" id="guia-busca" placeholder="🔍  Buscar no guia..." oninput="guiaFiltrar(this.value)"
+      style="width:100%;background:var(--surface);border:1.5px solid var(--border2);border-radius:10px;padding:10px 16px;color:var(--text);font-size:.9rem;font-family:inherit;outline:none;"
+      onfocus="this.style.borderColor='var(--primary-l)'" onblur="this.style.borderColor='var(--border2)'">
+  </div>
+
+  <div id="guia-container"></div>
+
+</div>
+</div>
+
+<script>
+(function initGuia(){
+  const SECOES = [
+    {
+      id:'visao-geral',
+      icon:'🗺️',
+      titulo:'Visão Geral do Sistema',
+      cor:'var(--primary-l)',
+      itens:[
+        {
+          t:'O que é este sistema?',
+          d:`Sistema operacional SST da Ocupacional — gerencia o ciclo completo das medições ambientais: do recebimento da OS do Planner até a geração do laudo final. <b>Não é sistema de faturamento</b> — é o controle técnico interno do setor de medições.`
+        },
+        {
+          t:'Planilha de Campo × Coleta de Campo — qual a diferença?',
+          d:`<b>Planilha de Campo</b> (aba Medições → Campo): fluxo completo em 6 etapas — empresa, tipo, dados de campo, equipamentos, validação e geração de PDF. Produz a ficha oficial assinada que vai pro arquivo.<br><br>
+          <b>Coleta Digital</b> (aba Coleta): formulário mais rápido e simplificado, sem etapas. Ideal para registrar uma coleta já feita ou para lançar dados no mesmo dia. Salva no banco para histórico, mas não gera PDF para assinatura.<br><br>
+          <b>Regra prática</b>: use a Planilha de Campo quando o técnico está indo a campo e precisa do documento assinado. Use a Coleta Digital para lançar coletas retroativas ou dados simples.`
+        },
+        {
+          t:'Fluxo completo de uma medição',
+          d:`<b>1. Planner</b> — Bernardo ou Wesley cria a tarefa com etiqueta MEDIÇÕES.<br>
+          <b>2. Sync automático</b> — sistema importa a OS a cada 15 min. Fica em "Demandas".<br>
+          <b>3. Planejamento</b> — técnico cria planejamento: data, agentes, amostradores a levar.<br>
+          <b>4. Campo</b> — técnico usa a Planilha de Campo, preenche dados reais, equipamentos, vazões, assina.<br>
+          <b>5. Baixa dos amostradores</b> — cada amostrador usado vai pra "Laboratório" via Amostradores → Dar Baixa.<br>
+          <b>6. Laboratório</b> — aguardar resultado. Amostrador fica em status "Laboratório".<br>
+          <b>7. Resultado</b> — chega o laudo. Amostrador é marcado "Concluído".<br>
+          <b>8. Geração do laudo</b> — usar aba Análise Química (ou Ruído/Calor) para gerar o documento Word.`
+        },
+      ]
+    },
+    {
+      id:'home',
+      icon:'🏠',
+      titulo:'Início (Home)',
+      cor:'var(--primary-l)',
+      itens:[
+        {t:'Indicadores do topo', d:`Três números principais: <b>Demandas</b> (OS abertas no sistema), <b>Empresas</b> (empresas com OS ativas), <b>Amostradores em estoque</b>. Estes números são calculados em tempo real pelo banco de dados.`},
+        {t:'Painel direito — Planner Sync', d:`Mostra quando foi o último sync com o Planner e quantas tarefas foram processadas. Se estiver com erro, clique em "Sincronizar Agora" para forçar.`},
+        {t:'Demandas Recentes', d:`Lista as 6 OS mais recentes com status. Clique em uma OS para ir direto para a aba de Demandas filtrada.`},
+        {t:'Fluxo Operacional', d:`Carrossel de 10 etapas do processo. Clique em qualquer etapa para ir diretamente àquela aba/função.`},
+        {t:'Quando usar o botão "Nova OS"', d:`Cria uma OS manualmente — para casos que não vieram do Planner ou para testes. Preencha empresa, agentes e prazo.`},
+      ]
+    },
+    {
+      id:'demandas',
+      icon:'📌',
+      titulo:'Demandas / OS',
+      cor:'#60a5fa',
+      itens:[
+        {t:'O que é uma Demanda?', d:`É a OS: uma empresa + conjunto de agentes a medir + prazo. Cada demanda tem medições vinculadas (uma por agente).`},
+        {t:'Filtros disponíveis', d:`<b>Empresa</b>: filtra por nome parcial. <b>Status</b>: aberta, em andamento, concluída. <b>Prazo</b>: demandas vencidas ou próximas. <b>Agente</b>: filtra por tipo de medição.`},
+        {t:'Expandir a empresa', d:`Clique na linha da empresa para expandir e ver todas as OS daquela empresa, com prazo, progresso e responsável.`},
+        {t:'📞 Marcar contato', d:`Registra uma tentativa de agendamento: Agendado, Sem resposta, Reagendado, Aguardando proposta. Também permite definir data de follow-up.`},
+        {t:'📧 E-mail', d:`Abre o modal de e-mail com 9 templates prontos (agendar, confirmar, remarcar, lembrete etc.). Selecione o template, informe os agentes e a data — o texto é gerado automaticamente. "Abrir no e-mail" abre seu cliente de e-mail com tudo preenchido.`},
+        {t:'Quando marcar como Concluída?', d:`A OS é marcada como concluída automaticamente quando o Planner muda o bucket para "Entregue" ou "Concluído". Você também pode marcar manualmente. Ao concluir, todas as medições vinculadas são marcadas como "realizado".`},
+      ]
+    },
+    {
+      id:'planejamento',
+      icon:'📅',
+      titulo:'Planejamento de Medições',
+      cor:'#a78bfa',
+      itens:[
+        {t:'Para que serve?', d:`Organizar uma visita ANTES de ir a campo: data prevista, técnico responsável, quais agentes medir e quantos amostradores levar. Evita esquecer material.`},
+        {t:'Como criar um planejamento', d:`<b>1.</b> Digite o número da OS no campo "OS" — o sistema busca automaticamente a empresa e importa os agentes do Planner.<br><b>2.</b> Confirme a data e o técnico.<br><b>3.</b> Os agentes já vêm preenchidos. Adicione manualmente se precisar.<br><b>4.</b> Clique em "Salvar Planejamento".`},
+        {t:'Agentes no planejamento', d:`Para agentes físicos (ruído, calor, vibração): informe quantidade. Para químicos: informe o nome do agente (ex: Tolueno, Benzeno), quantidade, bomba e nº série.`},
+        {t:'Botão "Ir para Campo"', d:`Linka o planejamento à Planilha de Campo (fluxo de 6 etapas). Pré-preenche empresa, OS, técnico, data e agentes automaticamente — incluindo bomba e SN selecionados no planejamento.`},
+        {t:'Status do planejamento', d:`<b>Rascunho</b>: criado mas não confirmado. <b>Confirmado</b>: data e equipe definidas. <b>Em Execução</b>: saiu para campo. <b>Concluído</b>: visita realizada. <b>Cancelado</b>: descartado.`},
+      ]
+    },
+    {
+      id:'campo',
+      icon:'📝',
+      titulo:'Planilha de Campo — 6 Etapas',
+      cor:'var(--green)',
+      itens:[
+        {t:'Etapa 1 — Dados Gerais', d:`Informe: empresa, OS, avaliador, data da medição, tipo(s) de medição (pode ser múltiplos: ruído + calor + químico). Se veio do Planejamento, tudo já vem preenchido.`},
+        {t:'Etapa 2 — Dados de Ruído (se aplicável)', d:`Lista de trabalhadores avaliados com dosímetro: nome, cargo, setor, horas. Calibração do dosímetro (antes e depois). O sistema calcula automaticamente se o desvio está dentro do tolerado (±0,5 dB).`},
+        {t:'Etapa 3 — Dados Químicos (se aplicável)', d:`Um bloco por agente/substância. Cada bloco tem: funcionário, função, setor, bomba, ID da bomba, data de calibração, substância amostrada, EPIs. Clique "+ Adicionar Agente" para mais substâncias. Cada agente tem sua tabela de amostradores com vazão inicial/final.`},
+        {t:'Etapa 4 — Equipamentos', d:`Informe os SN dos equipamentos usados. O sistema <b>preenche automaticamente</b> a data de calibração e certificado a partir do banco interno. Digite o SN e aguarde o preenchimento automático (ícone verde ⚡). Se veio do planejamento com bomba definida, os campos já vêm preenchidos.`},
+        {t:'Etapa 5 — Validação (Revalidar)', d:`Clique em "Revalidar" para ver um checklist: empresa OK, tipos OK, data OK, avaliador OK, trabalhadores adicionados, bomba selecionada, desvio de calibração dentro do tolerado. Itens em amarelo são avisos, em vermelho são erros que impedem a geração.`},
+        {t:'Etapa 6 — Assinatura e Geração', d:`Dois campos de assinatura digital: avaliado (trabalhador) e responsável técnico. Clique na área branca e assine com o mouse/touch. Clique "Gerar Planilha de Campo" para baixar o PDF. <b>IMPORTANTE</b>: a assinatura do responsável técnico é obrigatória para gerar o documento.`},
+        {t:'Por que os dados não batem no PDF gerado?', d:`Verifique: (1) empresa e OS preenchidas corretamente na etapa 1; (2) para químico, substância preenchida no campo "Substância Amostrada"; (3) agentes adicionados na etapa 3; (4) amostradores com vazão inicial e final preenchidas.`},
+      ]
+    },
+    {
+      id:'amostradores',
+      icon:'🧪',
+      titulo:'Amostradores (Controle de Estoque)',
+      cor:'#34d399',
+      itens:[
+        {t:'Ciclo de vida do amostrador', d:`<b>Estoque</b> → <b>Reservado</b> (separado para OS) → <b>Laboratório</b> (saiu do campo) → <b>Concluído</b> (análise feita). Pode ir para <b>Devolvido</b> se não foi usado.`},
+        {t:'Dar Baixa (individual)', d:`Clique no botão "Baixa" na linha do amostrador. Preencha: empresa, avaliador, data da medição, modelo da bomba, SN, vazão. O status muda de Estoque → Laboratório.`},
+        {t:'Dar Baixa em Lote', d:`Selecione vários amostradores com as checkboxes e clique "↓ Dar Baixa". Preencha empresa, avaliador e data (sem bomba/vazão — para quando os dados já estão na planilha de campo). Útil para dar baixa em vários de uma vez.`},
+        {t:'Concluído em Lote', d:`Selecione os amostradores com resultado do laboratório e clique "✓ Concluído". Informe a empresa. Marca todos como Concluído de uma vez.`},
+        {t:'Filtros', d:`Filtrar por status (Estoque, Laboratório, Reservado, Concluído, Devolvido), por empresa, por tipo de amostrador (TCP, carvão ativado, OVM...).`},
+        {t:'Quando dar baixa vs concluir?', d:`<b>Dar Baixa</b> = campo → lab (amostrador foi coletado, está indo para análise). <b>Concluído</b> = lab → encerrado (resultado chegou).`},
+      ]
+    },
+    {
+      id:'analise-quimica',
+      icon:'⚗️',
+      titulo:'Análise Química — Geração de Laudo',
+      cor:'#f59e0b',
+      itens:[
+        {t:'Quando usar esta aba?', d:`Quando os resultados do laboratório chegaram e você quer gerar o laudo Word com todas as avaliações, concentrações, limites NR-15 e ACGIH e conclusão.`},
+        {t:'Equipamento de Coleta (bomba padrão)', d:`Define a bomba usada na coleta — aparece no laudo. Se você usou bombas diferentes por avaliação, configure individualmente em cada avaliação (campo "Bomba Gravimétrica" na seção Memória de Campo).`},
+        {t:'Importar cadeia de custódia', d:`Arquivo Excel da cadeia de custódia do laboratório. O sistema preenche automaticamente os campos de filtro, data de análise e agente.`},
+        {t:'Cada Avaliação', d:`Uma avaliação = um trabalhador/cargo. Preencha: cargo, trabalhador, setor, agente químico, filtro, datas, bomba + SN (agora por avaliação!), vazões, tempo de coleta, volume e resultados do lab.`},
+        {t:'Bomba por avaliação', d:`Selecione a bomba no seletor — os números de série aparecem automaticamente. Se usou bombas diferentes para trabalhadores diferentes, escolha a bomba certa em cada avaliação.`},
+        {t:'Conclusão automática', d:`Se deixar o campo "Conclusão" vazio, o sistema gera um texto padrão baseado nos limites. Preencha manualmente apenas quando precisar de texto específico.`},
+      ]
+    },
+    {
+      id:'coleta-digital',
+      icon:'📱',
+      titulo:'Coleta Digital (Ruído e Químico)',
+      cor:'#38bdf8',
+      itens:[
+        {t:'Diferença da Planilha de Campo', d:`A Coleta Digital é um formulário mais rápido sem o fluxo de 6 etapas. Não gera PDF para assinatura. É para <b>lançamento rápido</b> de dados no banco. A Planilha de Campo gera o documento oficial assinado.`},
+        {t:'Aba Químico', d:`Preencha: empresa, cidade, funcionário, função, substâncias, bomba, data de calibração, e os amostradores (filtros) com vazão inicial/final e hora início/fim. Os dados ficam salvos para consulta e histórico.`},
+        {t:'Aba Ruído', d:`Preencha os dados dosimétricos por trabalhador: dosímetro, LEX,8h, Laeq, dose, etc. Salva o histórico de medições de ruído.`},
+        {t:'AutoSave', d:`A coleta digital salva automaticamente enquanto você digita (ícone de sincronização no topo). Dados não se perdem ao fechar acidentalmente.`},
+      ]
+    },
+    {
+      id:'indicadores',
+      icon:'📊',
+      titulo:'Indicadores e Gráficos',
+      cor:'#e879f9',
+      itens:[
+        {t:'O que os números mostram', d:`<b>Total de Medições</b>: soma de medições realizadas + pendentes. <b>Amostradores Ativos</b>: em estoque + laboratório. <b>Laboratório</b>: em análise agora. <b>Demandas Abertas</b>: OS não concluídas. <b>Empresas Ativas</b>: com OS em aberto.`},
+        {t:'Gráfico de Agentes Mais Medidos', d:`Top 12 agentes com mais coletas. Dados de todas as coletas registradas no banco.`},
+        {t:'Tipos de Amostrador (rosca)', d:`Distribuição dos tipos de amostrador (TCP, carvão ativado, OVM...) no estoque total.`},
+        {t:'Status dos Amostradores', d:`Cards com contagem por status: Estoque / Laboratório / Reservados / Devolvidos.`},
+        {t:'Possíveis inconsistências nos gráficos', d:`Os gráficos refletem o que está no banco. Se uma OS foi marcada como concluída no Planner mas as medições não foram atualizadas (sync falhou), os números podem estar desatualizados. Use o botão "Sincronizar Agora" na home para forçar a atualização.`},
+      ]
+    },
+    {
+      id:'bi',
+      icon:'📈',
+      titulo:'BI / Analytics',
+      cor:'#fb923c',
+      itens:[
+        {t:'Evolução Mensal', d:`Gráfico de linha com o número de OS concluídas por mês. Mostra a produtividade histórica do setor.`},
+        {t:'Status dos Amostradores (barras)', d:`Gráfico horizontal mostrando quantos amostradores estão em cada status.`},
+        {t:'Top Empresas', d:`Top 10 empresas com mais demandas. Útil para identificar clientes com maior volume.`},
+      ]
+    },
+    {
+      id:'consistencia',
+      icon:'🔍',
+      titulo:'Consistência',
+      cor:'#f87171',
+      itens:[
+        {t:'O que verifica?', d:`Detecta problemas nos dados: OS sem empresa vinculada (empresa_id=0), amostradores presos em laboratório há mais de 60 dias, medições sem resultado, demandas com agentes vazios (agentes=[]).`},
+        {t:'Quando usar?', d:`Semanalmente — especialmente após um sync do Planner. Permite corrigir dados antes de gerar relatórios.`},
+        {t:'OS sem empresa', d:`Ocorre quando o Planner não consegue identificar a empresa pelo nome da tarefa. Clique na OS para vincular manualmente.`},
+      ]
+    },
+    {
+      id:'configuracoes',
+      icon:'⚙️',
+      titulo:'Configurações',
+      cor:'var(--text2)',
+      itens:[
+        {t:'Dados da empresa', d:`Razão social, CNPJ, endereço e logo da Ocupacional. Estes dados aparecem no cabeçalho dos laudos gerados.`},
+        {t:'Técnicos', d:`Lista de técnicos cadastrados com nome, MTE e assinatura. Ao selecionar um técnico na Planilha de Campo, os dados são puxados automaticamente.`},
+        {t:'Bombas', d:`Gerenciamento do parque de bombas gravimétricas — modelos e números de série. Os dados de calibração são atualizados manualmente a cada recalibração.`},
+      ]
+    },
+    {
+      id:'saude',
+      icon:'🩺',
+      titulo:'Saúde do Sistema',
+      cor:'var(--green)',
+      itens:[
+        {t:'O que mostra?', d:`Status do banco de dados (PostgreSQL Railway), último sync do Planner, erros recentes, e diagnóstico geral do sistema.`},
+        {t:'Quando usar?', d:`Se o sistema estiver lento, se o sync não estiver rodando, ou se os dados estiverem desatualizados.`},
+        {t:'Forçar sync', d:`Use o endpoint <code>POST /controle/graph/sync</code> ou o botão "Sincronizar Agora" na home. O sync normal roda a cada 15 minutos automaticamente.`},
+      ]
+    },
+    {
+      id:'processos',
+      icon:'⚡',
+      titulo:'Processos Comuns — Passo a Passo',
+      cor:'#fbbf24',
+      itens:[
+        {
+          t:'Processo: Nova medição do zero',
+          d:`<b>1.</b> Verifique se a OS já existe em Demandas (veio do Planner?).<br>
+          <b>2.</b> Se não existe, crie em "Nova OS" com a empresa e agentes.<br>
+          <b>3.</b> Vá para Planejamento → Nova Visita, informe a OS e configure tudo.<br>
+          <b>4.</b> No dia da visita, clique "Ir para Campo" no planejamento.<br>
+          <b>5.</b> Preencha as 6 etapas da Planilha de Campo.<br>
+          <b>6.</b> Assine e gere o PDF.<br>
+          <b>7.</b> Dê baixa nos amostradores em Amostradores → Dar Baixa.<br>
+          <b>8.</b> Aguardar lab → Concluir amostradores.<br>
+          <b>9.</b> Gerar laudo em Análise Química.`
+        },
+        {
+          t:'Processo: OS veio do Planner mas está sem agentes',
+          d:`<b>1.</b> Vá em Demandas e encontre a OS (status "aberta" mas agentes=[]).<br>
+          <b>2.</b> O parser não reconheceu o texto da tarefa.<br>
+          <b>3.</b> Clique na OS e edite os agentes manualmente.<br>
+          <b>4.</b> Ou crie um Planejamento e adicione os agentes lá.`
+        },
+        {
+          t:'Processo: Amostradores presos no laboratório',
+          d:`<b>1.</b> Resultado do laboratório chegou.<br>
+          <b>2.</b> Vá em Amostradores, filtre por "Laboratório".<br>
+          <b>3.</b> Selecione todos os amostradores da OS.<br>
+          <b>4.</b> Clique "✓ Concluído em Lote".<br>
+          <b>5.</b> Confirme o nome da empresa.`
+        },
+        {
+          t:'Processo: Gerar laudo de análise química',
+          d:`<b>1.</b> Vá em Análise Química.<br>
+          <b>2.</b> Preencha os dados da empresa (pode importar do banco se quiser).<br>
+          <b>3.</b> Para cada trabalhador avaliado, clique "+ Avaliação" e preencha.<br>
+          <b>4.</b> Opcional: importe a cadeia de custódia (.xlsx) para preencher automaticamente.<br>
+          <b>5.</b> Preencha os resultados do laboratório (concentração, LT NR-15, LT ACGIH).<br>
+          <b>6.</b> Clique "Gerar Análise Química" — baixa o Word.`
+        },
+        {
+          t:'Processo: Remarcar visita',
+          d:`<b>1.</b> Em Demandas, encontre a empresa.<br>
+          <b>2.</b> Clique "📧 E-mail" → template "🔄 Remarcar".<br>
+          <b>3.</b> Informe os agentes e a data antiga — o texto é gerado.<br>
+          <b>4.</b> Abra no seu e-mail e envie.<br>
+          <b>5.</b> Clique "📞 Marcar contato" → selecione "Reagendado" e anote a nova data no campo Observação.`
+        },
+      ]
+    },
+  ];
+
+  function guiaRender(filtro) {
+    const container = document.getElementById('guia-container');
+    if (!container) return;
+    const f = (filtro||'').toLowerCase().trim();
+    let html = '';
+    for (const sec of SECOES) {
+      const itensVis = sec.itens.filter(it =>
+        !f || it.t.toLowerCase().includes(f) || it.d.toLowerCase().includes(f) || sec.titulo.toLowerCase().includes(f)
+      );
+      if (!itensVis.length && f) continue;
+      html += `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);">
+            <span style="font-size:1.4rem;">${sec.icon}</span>
+            <div style="font-size:.92rem;font-weight:800;color:${sec.cor||'var(--text)'};">${sec.titulo}</div>
+          </div>
+          <div>
+            ${itensVis.map((it,idx) => `
+              <details style="border-bottom:${idx<itensVis.length-1?'1px solid rgba(255,255,255,.04)':'none'};">
+                <summary style="padding:13px 20px;cursor:pointer;font-size:.84rem;font-weight:600;color:var(--text);list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none;" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
+                  ${it.t}
+                  <span style="color:var(--text3);font-size:.8rem;flex-shrink:0;margin-left:8px;">▼</span>
+                </summary>
+                <div style="padding:10px 20px 16px;font-size:.81rem;color:var(--text2);line-height:1.65;border-top:1px solid rgba(255,255,255,.04);">${it.d}</div>
+              </details>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+    if (!html) html = `<div style="text-align:center;padding:40px;color:var(--text3);">Nada encontrado para "<b>${filtro}</b>"</div>`;
+    container.innerHTML = html;
+  }
+
+  window.guiaFiltrar = function(v) { guiaRender(v); };
+  guiaRender('');
+})();
+</script>
 
 <!-- ══ Painel GLOSSÁRIO ═════════════════════════════════════════════════ -->
 <div id="tab-glossario" class="tab-panel">
@@ -8302,8 +8605,11 @@ async function planCarregarLista() {
     lista.innerHTML = res.map(p => {
       const agentes = _planParseAgentes(p.agentes_previstos);
       const resumoAgentes = agentes.map(a => {
-        const label = {ruido:'🔊 Ruído', quimico:'🧪 Químico', calor:'🌡 Calor', vibracao:'📳 Vibração'};
-        return `${label[a.tipo]||a.tipo} ×${a.qtd}`;
+        const icon = {ruido:'🔊', quimico:'🧪', calor:'🌡', vibracao:'📳', particulado:'💨', vibracao_vci:'📳', vibracao_vbma:'📳'}[a.tipo] || '📋';
+        // Mostrar nome real do agente; para físicos sem nome específico usa label do tipo
+        const fallback = {ruido:'Ruído', quimico:'Químico', calor:'Calor', vibracao:'Vibração', particulado:'Particulado', vibracao_vci:'Vibração VCI', vibracao_vbma:'Vibração VMB'}[a.tipo] || a.tipo;
+        const nome = (a.agente && a.agente !== fallback && a.agente !== a.tipo) ? a.agente : fallback;
+        return `${icon} <b>${nome}</b> ×${a.qtd}`;
       }).join(' · ') || '—';
       return `<div class="plan-row">
         <div class="plan-row-info">
@@ -8667,6 +8973,24 @@ async function ctrlNvVincularPlanejamento(pid) {
         : (p.agentes_previstos || []);
     } catch(_) { window._nvAgentesPlano = []; }
     nvRenderAgentesPlano(window._nvAgentesPlano);
+
+    // ── Popular _ctrlNvItens a partir dos agentes do planejamento ──
+    // Garante que nvShowStep3 pré-preencha bomba, substância e função
+    if (window._nvAgentesPlano.length > 0) {
+      window._ctrlNvItens = window._nvAgentesPlano.map(a => {
+        const bombaLabel = (typeof _Q_BOMBA_LABELS !== 'undefined' && _Q_BOMBA_LABELS[a.bomba]) || a.bomba || '';
+        return {
+          agente_nome:     a.agente || a.tipo || '',
+          tipo:            a.tipo || 'quimico',
+          bomba_modelo:    bombaLabel,
+          bomba_modelo_id: a.bomba || '',
+          bomba_sn:        a.id_bomba || '',
+          vazao_calibrada: a.vazao_calibrada || null,
+          funcao:          a.funcao || '',
+          qtd:             a.qtd || 1,
+        };
+      });
+    }
 
     // ── Banner de planejamento vinculado ──
     const s1 = document.getElementById('nv-s1');
@@ -11826,6 +12150,23 @@ function nvShowStep3() {
 function nvShowStep4() {
   document.getElementById('nv-equip-ruido').style.display   = _nvTipos.includes('ruido')   ? '' : 'none';
   document.getElementById('nv-equip-quimico').style.display = _nvTipos.includes('quimico') ? '' : 'none';
+
+  // Auto-preencher calibração da bomba a partir do primeiro agente químico com SN definido
+  if (_nvTipos.includes('quimico') && _nvCqAgentes && _nvCqAgentes.length > 0) {
+    const agComBomba = _nvCqAgentes.find(ag => ag.id_bomba);
+    if (agComBomba) {
+      // Só preenche se o campo ainda estiver vazio (evita sobrescrever dado manual)
+      const certEl  = document.getElementById('nv-eq-bomba-cert');
+      const validEl = document.getElementById('nv-eq-bomba-valid');
+      if (certEl && !certEl.value)  nvEquipAutoFill('', agComBomba.id_bomba);
+      if (validEl && !validEl.value) nvEquipAutoFill('', agComBomba.id_bomba);
+    }
+  }
+  // Auto-preencher dosímetro a partir do ruído, se houver SN salvo
+  if (_nvTipos.includes('ruido')) {
+    const snRuido = document.getElementById('nv-eq-dosim-sn')?.value;
+    if (snRuido) nvEquipAutoFill('', snRuido);
+  }
 }
 
 function nvNext() {
@@ -11904,7 +12245,14 @@ const NV_EQUIP_DB = {
   '25035711': { tipo:'cal', modelo:'Inlite CalPro', cert:'42.179-2025', validade:'2026-08-28' },
 
   // ── BOMBAS INLITE VentusPro (cal. 28/08/2025, val. 28/08/2026) ──
+  '25040902602B': { tipo:'bomba', modelo:'Inlite VentusPro', cert:'42.187-2025', validade:'2026-08-28' },
   '25040903102B': { tipo:'bomba', modelo:'Inlite VentusPro', cert:'42.187-2025', validade:'2026-08-28' },
+  '25040907102B': { tipo:'bomba', modelo:'Inlite VentusPro', cert:'42.187-2025', validade:'2026-08-28' },
+
+  // ── BOMBAS FORMIS TURAM (cal. a confirmar) ──
+  '2420120549': { tipo:'bomba', modelo:'Formis Turam', cert:'—', validade:'' },
+  '2420120550': { tipo:'bomba', modelo:'Formis Turam', cert:'—', validade:'' },
+  '2420120551': { tipo:'bomba', modelo:'Formis Turam', cert:'—', validade:'' },
 
   // ── BOMBAS GILIAN BDX II (cal. 23/02/2026, val. 23/02/2027) ──
   '38356': { tipo:'bomba', modelo:'Gilian BDX II', cert:'2602A38356', validade:'2027-02-23' },
@@ -12257,15 +12605,19 @@ function nvCqRenderAgentes() {
 
 // ── Validações ────────────────────────────────────────────────────────
 function nvRunValidacoes() {
-  const tipo = _nvTipo;
+  const tipos = (_nvTipos && _nvTipos.length) ? _nvTipos : (_nvTipo ? [_nvTipo] : []);
   const res  = document.getElementById('nv-valid-results');
   if (!res) return;
   const checks = [];
   const emp = document.getElementById('ctrl-nv-empresa')?.value.trim();
   checks.push({ok:!!emp, msg: emp ? `Empresa: <b>${emp}</b>` : 'Empresa não informada'});
-  checks.push({ok:!!tipo, msg: tipo ? `Tipo: <b>${tipo.toUpperCase()}</b>` : 'Tipo de medição não selecionado'});
+  checks.push({ok:tipos.length>0, msg: tipos.length>0 ? `Tipos: <b>${tipos.map(t=>t.toUpperCase()).join(' + ')}</b>` : 'Tipo de medição não selecionado'});
+  const data = document.getElementById('ctrl-nv-data')?.value;
+  checks.push({ok:!!data, warn:!data, msg: data ? `Data: <b>${data}</b>` : 'Data da medição não informada'});
+  const av = document.getElementById('ctrl-nv-avaliador')?.value;
+  checks.push({ok:!!av, warn:!av, msg: av ? `Avaliador: <b>${av}</b>` : 'Avaliador não selecionado'});
 
-  if (tipo === 'ruido') {
+  if (tipos.includes('ruido')) {
     checks.push({ok:_nvCrTrabs.length>0, msg:_nvCrTrabs.length>0?`${_nvCrTrabs.length} trabalhador(es) cadastrado(s)`:'Nenhum trabalhador adicionado'});
     const ini=parseFloat(document.getElementById('nv-cr-cal-ini')?.value);
     const fim=parseFloat(document.getElementById('nv-cr-cal-fim')?.value);
@@ -12273,11 +12625,13 @@ function nvRunValidacoes() {
     else checks.push({warn:true,msg:'Calibração do dosímetro não informada'});
   }
 
-  if (tipo === 'quimico') {
+  if (tipos.includes('quimico')) {
     const totalAmostr = _nvCqAgentes.reduce((s, ag) => s + ag.amostradores.length, 0);
     checks.push({ok:_nvCqAgentes.length>0, msg:`${_nvCqAgentes.length} agente(s) configurado(s) · ${totalAmostr} amostrador(es)`});
     _nvCqAgentes.forEach((ag, idx) => {
+      if (ag.substancias) checks.push({ok:true, msg:`Agente ${idx+1}: <b>${ag.substancias}</b>`});
       if (!ag.bomba) checks.push({warn:true, msg:`Agente ${idx+1}: bomba não selecionada`});
+      else checks.push({ok:true, msg:`Agente ${idx+1}: bomba <b>${ag.bomba}</b> S/N <b>${ag.id_bomba||'—'}</b>`});
       ag.amostradores.forEach((am, ai) => {
         const vi=parseFloat(am.vazao_inicial)||0, vf=parseFloat(am.vazao_final)||0;
         if (vi&&vf) { const dv=Math.abs(vi-vf)/vi*100; checks.push({ok:dv<=5,warn:dv>5,msg:`Agente ${idx+1} Amostrador #${ai+1}: ΔV = <b>${dv.toFixed(2)}%</b>${dv>5?' ⚠ Ultrapassa ±5%!':' ✓'}`}); }
