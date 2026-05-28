@@ -5834,6 +5834,7 @@
   <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;">
     <button id="coleta-tab-ruido" onclick="coletaSwitchSub('ruido')" style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--orange);border-bottom:2px solid var(--orange);margin-bottom:-2px;">&#127897;&#65039; Ru&#237;do</button>
     <button id="coleta-tab-quimico" onclick="coletaSwitchSub('quimico')" style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;">&#9879;&#65039; Qu&#237;mico</button>
+    <button id="coleta-tab-calor" onclick="coletaSwitchSub('calor')" style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;">🌡️ Calor / Outros</button>
   </div>
 
   <!-- ── Sub: Ruído ── -->
@@ -6075,6 +6076,20 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Sub: Calor / Outros ── -->
+  <div id="coleta-sub-calor" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="coletaCalorLoadList()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 18px;cursor:pointer;font-family:inherit;font-size:.88rem;">🔄 Atualizar</button>
+      </div>
+      <span style="font-size:.78rem;color:var(--text3);">Coletas salvas via Planilha de Campo (tipo Calor, Vibração)</span>
+    </div>
+    <div id="coleta-calor-list">
+      <div style="text-align:center;padding:40px;color:var(--text3);">Clique em Atualizar para carregar.</div>
+    </div>
+  </div>
+
 </div>
 </main><!-- /main-content -->
 </div><!-- /layout -->
@@ -11877,13 +11892,56 @@ function coletaLoad() {
 function coletaSwitchSub(sub) {
   document.getElementById('coleta-sub-ruido').style.display   = sub === 'ruido'   ? '' : 'none';
   document.getElementById('coleta-sub-quimico').style.display = sub === 'quimico' ? '' : 'none';
+  const calEl = document.getElementById('coleta-sub-calor');
+  if (calEl) calEl.style.display = sub === 'calor' ? '' : 'none';
   const btnR = document.getElementById('coleta-tab-ruido');
   const btnQ = document.getElementById('coleta-tab-quimico');
+  const btnC = document.getElementById('coleta-tab-calor');
   const actStyle = 'padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--orange);border-bottom:2px solid var(--orange);margin-bottom:-2px;';
   const iacStyle = 'padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;';
   btnR.style.cssText = sub === 'ruido'   ? actStyle : iacStyle;
   btnQ.style.cssText = sub === 'quimico' ? actStyle : iacStyle;
+  if (btnC) btnC.style.cssText = sub === 'calor' ? actStyle : iacStyle;
   if (sub === 'quimico') coletaQuimicoLoadList();
+  if (sub === 'calor')   coletaCalorLoadList();
+}
+
+async function coletaCalorLoadList() {
+  const el = document.getElementById('coleta-calor-list');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">Carregando…</div>';
+  try {
+    const r = await ctrlFetch('/controle/coletas/outros?limit=50');
+    const rows = await r.json();
+    if (!rows.length) {
+      el.innerHTML = '<div style="color:var(--text3);padding:20px;text-align:center;">Nenhuma coleta de calor/vibração registrada ainda.</div>';
+      return;
+    }
+    const tipoIcons = { calor:'🌡️', vibracao:'〰️', vibracao_vci:'〰️', vibracao_vbma:'〰️' };
+    el.innerHTML = `<table class="table"><thead><tr><th>Tipo</th><th>Empresa</th><th>Data</th><th>Avaliador</th><th>Status</th><th>Ações</th></tr></thead><tbody>` +
+      rows.map(c => `<tr>
+        <td>${tipoIcons[c.tipo] || '📋'} ${c.tipo}</td>
+        <td>${_esc(c.empresa_nome||'—')}</td>
+        <td>${c.data_coleta||'—'}</td>
+        <td>${_esc(c.avaliador||'—')}</td>
+        <td><span style="color:${c.status==='concluida'?'#22c55e':'#f59e0b'}">${c.status||'—'}</span></td>
+        <td>${c.tipo==='calor' ? `<button onclick="coletaCalorAbrirNoLaudo(${JSON.stringify(c).replace(/"/g,'&quot;')})" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:5px;color:#22c55e;cursor:pointer;font-size:.75rem;padding:3px 9px;">🔥 Abrir no Laudo</button>` : '—'}</td>
+      </tr>`).join('') + '</tbody></table>';
+  } catch(e) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">Erro ao carregar.</div>'; }
+}
+
+function coletaCalorAbrirNoLaudo(coleta) {
+  // Vai para tab calor e pré-preenche campos
+  goToTab('calor');
+  setTimeout(() => {
+    if (coleta.empresa_nome) document.getElementById('c-nome').value = coleta.empresa_nome;
+    if (coleta.cidade) document.getElementById('c-cidade').value = coleta.cidade;
+    if (coleta.data_coleta) {
+      const parts = (coleta.data_coleta || '').split('-');
+      if (parts.length === 3) document.getElementById('c-data').value = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    _showToast('Dados pré-preenchidos no Laudo de Calor', 'success');
+  }, 100);
 }
 
 // ── Ruído: lista ──
