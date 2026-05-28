@@ -40,7 +40,17 @@ def _require_login():
 @controle_bp.route('/stats')
 def stats():
     init_db()
-    return jsonify(stats_dashboard())
+    d = stats_dashboard()
+    # Adiciona contagem de alertas ativos para badge na sidebar
+    try:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM alertas_operacionais WHERE status='ativo'"
+            ).fetchone()
+            d['alertas_ativos'] = row['c'] if row else 0
+    except Exception:
+        d['alertas_ativos'] = 0
+    return jsonify(d)
 
 
 # ── Importacao ────────────────────────────────────────────────────────
@@ -1545,12 +1555,44 @@ def api_list_coletas_ruido():
     init_db()
     return jsonify(list_coletas_ruido(request.args.to_dict()))
 
+def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_id=None):
+    """Atualiza status da demanda quando uma coleta é salva.
+    aberta → em_andamento ao criar coleta.
+    Também fecha o planejamento se planejamento_id for fornecido e coleta concluída.
+    Não reverte status já avançado.
+    """
+    if not demanda_id:
+        return
+    try:
+        with get_db() as conn:
+            row = conn.execute(
+                'SELECT status FROM demandas WHERE id=?', (demanda_id,)
+            ).fetchone()
+            if not row:
+                return
+            atual = row['status'] if hasattr(row, '__getitem__') else row[0]
+            if atual == 'aberta':
+                conn.execute(
+                    "UPDATE demandas SET status='em_andamento', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                    (demanda_id,)
+                )
+            # Fechar planejamento ao concluir a coleta
+            if planejamento_id and coleta_status in ('concluida', 'concluido'):
+                conn.execute(
+                    "UPDATE planejamentos SET status='concluido' WHERE id=? AND status != 'cancelado'",
+                    (planejamento_id,)
+                )
+    except Exception as e:
+        log.warning('[coleta] erro ao atualizar demanda %s: %s', demanda_id, e)
+
+
 @controle_bp.route('/coletas/ruido', methods=['POST'])
 def api_save_coleta_ruido():
     init_db()
     d = request.json or {}
     cid = save_coleta_ruido(d)
     is_new = not bool(d.get('id'))
+    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'))
     if is_new:
         registrar_evento('coleta_ruido_criada',
                          f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
@@ -1584,6 +1626,7 @@ def api_save_coleta_quimico():
     d = request.json or {}
     cid = save_coleta_quimico(d)
     is_new = not bool(d.get('id'))
+    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'))
     if is_new:
         registrar_evento('coleta_quimico_criada',
                          f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
@@ -1983,6 +2026,7 @@ def api_salvar_medicao_wizard():
             'itens':               d.get('itens', []),
         }
         cid = save_coleta_ruido(payload_ruido)
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento')
         return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido'})
 
     elif tipo == 'quimico':
@@ -2008,6 +2052,7 @@ def api_salvar_medicao_wizard():
             'amostradores':  cq.get('amostradores', []),
         }
         cid = save_coleta_quimico(payload_q)
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento')
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico'})
 
     elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
@@ -2035,6 +2080,7 @@ def api_salvar_medicao_wizard():
             'fonte_vibr':   d.get('fonte_vibr') or gen.get('fonte_vibr', ''),
         }
         cid = save_coleta_outros(payload_out)
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento')
         return jsonify({'ok': True, 'id': cid, 'tipo': tipo})
 
     return jsonify({'ok': True, 'aviso': 'tipo nao mapeado, nao salvo'})

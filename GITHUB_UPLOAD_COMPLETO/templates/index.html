@@ -2153,6 +2153,11 @@
   <div class="sidebar-section">
     <span class="sidebar-label">An&#225;lise</span>
 
+    <div class="sidebar-item" data-name="empresas" onclick="goToTab('empresas');empLoad()">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 7V3H2v18h20V7zm-2 12H4v-2h6zm0-4H4v-2h6zm0-4H4V9h6zm0-4H4V5h6zm10 12h-8V9h8zm-2-8h-4v2h4zm0 4h-4v2h4z"/></svg>
+      <span>Empresas</span>
+    </div>
+
     <div class="sidebar-item" data-name="relatorios" onclick="goToTab('relatorios')">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M15 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V9zM5 19V5h9v5h5v9zM9 8c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1m0 4c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1m0 4c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1"/></svg>
       <span>Relat&#243;rios</span>
@@ -2204,7 +2209,7 @@
     <span class="sidebar-label">Consistência</span>
     <div class="sidebar-item" data-name="consistencia" onclick="goToTab('consistencia'); consistInit();">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M23 11.99 20.56 9.2l.34-3.69-3.61-.82L15.4 1.5 12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 11.99l2.44 2.79-.34 3.7 3.61.82 1.89 3.2 3.4-1.47 3.4 1.46 1.89-3.19 3.61-.82-.34-3.69zm-3.95 1.48-.56.65.08.85.18 1.95-1.9.43-.84.19-.44.74-.99 1.68-1.78-.77-.8-.34-.79.34-1.78.77-.99-1.67-.44-.74-.84-.19-1.9-.43.18-1.96.08-.85-.56-.65L3.67 12l1.29-1.48.56-.65-.09-.86-.18-1.94 1.9-.43.84-.19.44-.74.99-1.68 1.78.77.8.34.79-.34 1.78-.77.99 1.68.44.74.84.19 1.9.43-.18 1.95-.08.85.56.65 1.29 1.47z"/><path d="m10.09 13.75-2.32-2.33-1.48 1.49 3.8 3.81 7.34-7.36-1.48-1.49z"/></svg>
-      <span>Consistência <span id="badge-consist" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:.7rem;margin-left:4px"></span></span>
+      <span>Consistência <span id="badge-consist" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:0 6px;font-size:.7rem;margin-left:4px"></span><span id="badge-alertas" style="display:none;background:#f59e0b;color:#000;border-radius:10px;padding:0 6px;font-size:.7rem;margin-left:2px" title="Alertas operacionais ativos"></span></span>
     </div>
   </div>
 
@@ -3713,6 +3718,14 @@
     <div style="background:rgba(96,165,250,.07);border-left:3px solid var(--blue);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--text2);">
       <b>Demandas / OS</b> — Ordens de serviço sincronizadas do Microsoft Planner. Cada empresa pode ter múltiplas OS com prazos e status distintos. Use os filtros para localizar rapidamente.
     </div>
+    <!-- Painel de revisão — OS com extração duvidosa -->
+    <div id="ctrl-revisao-banner" style="display:none;background:rgba(245,158,11,.1);border:1.5px solid rgba(245,158,11,.4);border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <span style="font-size:.82rem;color:var(--yellow);font-weight:700;">⚠ <span id="ctrl-revisao-count">0</span> OS com extração duvidosa (needs_review)</span>
+        <button onclick="ctrlRevisaoToggle()" style="background:rgba(245,158,11,.2);border:1px solid rgba(245,158,11,.4);color:var(--yellow);border-radius:5px;padding:4px 10px;font-size:.75rem;cursor:pointer;">Ver / Ocultar</button>
+      </div>
+      <div id="ctrl-revisao-lista" style="display:none;margin-top:10px;max-height:300px;overflow-y:auto;"></div>
+    </div>
     <div class="ctrl-filters">
       <input type="text" id="ctrl-fd-empresa" placeholder="Empresa..." oninput="ctrlLoadDemand()">
       <input type="text" id="ctrl-fd-os" placeholder="N° OS..." oninput="ctrlLoadDemand()" style="min-width:100px;max-width:130px;">
@@ -3812,11 +3825,15 @@
       <div id="plan-os-info" style="display:none;margin-top:6px;padding:9px 11px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:6px;font-size:.78rem;"></div>
     </div>
 
-    <div class="plan-g2">
+    <div class="plan-g3">
       <div class="plan-f">
         <label>Empresa</label>
         <input type="text" id="plan-empresa-nome" placeholder="Preenchida automaticamente pela OS" readonly style="cursor:not-allowed;opacity:.7;">
         <input type="hidden" id="plan-empresa-id">
+      </div>
+      <div class="plan-f">
+        <label>CNPJ</label>
+        <input type="text" id="plan-cnpj" placeholder="Preenchido automaticamente" readonly style="cursor:not-allowed;opacity:.7;">
       </div>
       <div class="plan-f">
         <label>Técnico Responsável</label>
@@ -4697,8 +4714,8 @@
 
 </div>
 
-<!-- ══ Painel EMPRESAS — removido do sidebar, mantido para compatibilidade ══ -->
-<div id="tab-empresas" class="tab-panel" style="display:none!important">
+<!-- ══ Painel EMPRESAS ══ -->
+<div id="tab-empresas" class="tab-panel">
 <div class="page" style="max-width:1100px;">
   <div class="page-head page-head-v2" style="display:flex;align-items:center;justify-content:space-between;">
     <div>
@@ -4955,6 +4972,15 @@
       <div><label>Cargo</label><input type="text" value="Técnico de Segurança do Trabalho" readonly style="opacity:.6;cursor:not-allowed;"></div>
     </div>
     <div style="font-size:.74rem;color:var(--text3);margin-top:8px;">&#9432; Para alterar os dados da organização, entre em contato com o suporte.</div>
+  </div>
+
+  <!-- Perfil do técnico logado -->
+  <div class="card" id="cfg-perfil-card">
+    <div class="card-header">
+      <div class="card-icon">👤</div>
+      <div><div class="card-title">Meu Perfil</div><div class="card-desc">N° de registro MTE e dados que aparecem nos relatórios</div></div>
+    </div>
+    <div id="cfg-perfil-body" style="font-size:.83rem;color:var(--text3);">Carregando...</div>
   </div>
 
   <div class="card">
@@ -6042,6 +6068,43 @@ function goToTab(name) {
   if (name === 'coleta') coletaLoad();
   if (name === 'saude') saudeCarregar();
   if (name === 'app-mobile') appMobileLoad();
+  if (name === 'configuracoes') cfgCarregarPerfil();
+}
+
+async function cfgCarregarPerfil() {
+  const body = document.getElementById('cfg-perfil-body');
+  if (!body) return;
+  try {
+    const me = await ctrlFetch('/api/me');
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label style="font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px;">Nome</label>
+          <input id="cfg-me-nome" value="${me.nome||''}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:7px 10px;font-size:.85rem;font-family:inherit;"></div>
+        <div><label style="font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px;">E-mail</label>
+          <input value="${me.email||''}" readonly style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:7px 10px;font-size:.85rem;opacity:.6;cursor:not-allowed;"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div><label style="font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px;">N° Registro MTE</label>
+          <input id="cfg-me-mte" value="${me.registro_mte||''}" placeholder="Ex: 12345678-T" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:7px 10px;font-size:.85rem;font-family:inherit;">
+          <div style="font-size:.68rem;color:var(--text3);margin-top:3px;">Aparece nos relatórios de visita e laudos técnicos</div></div>
+        <div><label style="font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px;">Função</label>
+          <input value="${me.role||'tecnico'}" readonly style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:7px 10px;font-size:.85rem;opacity:.6;cursor:not-allowed;"></div>
+      </div>
+      <button onclick="cfgSalvarPerfil()" style="background:var(--accent,#2a9d9d);color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:.85rem;font-weight:700;cursor:pointer;">💾 Salvar Perfil</button>
+      <span id="cfg-perfil-msg" style="margin-left:10px;font-size:.78rem;color:var(--green);"></span>
+    `;
+  } catch(e) {
+    body.innerHTML = '<span style="color:var(--text3);">Erro ao carregar perfil.</span>';
+  }
+}
+async function cfgSalvarPerfil() {
+  const nome = document.getElementById('cfg-me-nome')?.value.trim();
+  const mte  = document.getElementById('cfg-me-mte')?.value.trim();
+  const msg  = document.getElementById('cfg-perfil-msg');
+  try {
+    await ctrlFetch('/api/me', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nome, registro_mte: mte}) });
+    if (msg) { msg.textContent = '✓ Salvo!'; setTimeout(() => { if(msg) msg.textContent = ''; }, 3000); }
+  } catch(e) { if(msg) { msg.style.color='#ef4444'; msg.textContent = 'Erro: ' + e.message; } }
 }
 
 function appMobileLoad() {
@@ -6121,6 +6184,13 @@ async function homeLoadStats() {
     set('hv3-amostr', d.estoque);
     set('hv3-lab',    d.laboratorio);
     set('hv3-estoque',d.estoque);
+    // Badge alertas ativos na sidebar (ícone de Consistência)
+    const badgeAlerta = document.getElementById('badge-alertas');
+    if (badgeAlerta) {
+      const na = d.alertas_ativos || 0;
+      badgeAlerta.textContent = na;
+      badgeAlerta.style.display = na > 0 ? '' : 'none';
+    }
   } catch(e) { /* silencioso */ }
 
   // ── Hero V3: Demandas recentes no painel direito ──
@@ -7919,7 +7989,7 @@ function ctrlSwitchSub(name, el) {
     if (div) div.style.display = (s===name?'block':'none');
   });
   ctrlLoadStats(name);
-  if (name === 'demand') { ctrlLoadBuckets(); ctrlLoadDemand(); }
+  if (name === 'demand') { ctrlLoadBuckets(); ctrlLoadDemand(); ctrlCarregarRevisao(); }
   if (name === 'empresa') ctrlLoadPorEmpresa();
   if (name === 'amostr') { ctrlSwitchAmostrView('estoque'); }
   if (name === 'nova') ctrlNvInit();
@@ -8709,6 +8779,7 @@ async function _planBuscarOs(os) {
     // Preencher empresa
     document.getElementById('plan-empresa-id').value   = r.empresa_id || '';
     document.getElementById('plan-empresa-nome').value = r.empresa_nome || '';
+    document.getElementById('plan-cnpj').value         = r.cnpj || '';
     document.getElementById('plan-demanda-id').value   = r.id || '';
     document.getElementById('plan-demanda-info').value = r.titulo ? r.titulo.substring(0,60) : 'Demanda #' + r.id;
 
@@ -8732,6 +8803,7 @@ async function _planBuscarOs(os) {
 }
 
 function _planLimparDemanda() {
+  document.getElementById('plan-cnpj').value         = '';
   document.getElementById('plan-empresa-id').value   = '';
   document.getElementById('plan-empresa-nome').value = '';
   document.getElementById('plan-demanda-id').value   = '';
@@ -8942,7 +9014,7 @@ async function planSalvar(status) {
       _showToast(msg, 'ok');
       // Limpar form
       window._planAgentes = [];
-      ['plan-nv-os','plan-empresa-nome','plan-empresa-id','plan-demanda-id',
+      ['plan-nv-os','plan-empresa-nome','plan-cnpj','plan-empresa-id','plan-demanda-id',
        'plan-demanda-info','plan-data-prevista','plan-obs'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
@@ -9677,6 +9749,36 @@ async function ctrlLoadBuckets() {
     const buckets = await ctrlFetch('/controle/operacional/buckets');
     buckets.forEach(b => { const o=document.createElement('option'); o.value=b; o.textContent=b; sel.appendChild(o); });
   } catch(e) {}
+}
+
+let _ctrlRevisaoAberto = false;
+async function ctrlCarregarRevisao() {
+  try {
+    const r = await ctrlFetch('/controle/demandas/revisao/stats');
+    const total = r.total || 0;
+    const banner = document.getElementById('ctrl-revisao-banner');
+    if (banner) banner.style.display = total > 0 ? '' : 'none';
+    const cnt = document.getElementById('ctrl-revisao-count');
+    if (cnt) cnt.textContent = total;
+    if (total > 0 && r.itens) {
+      const lista = document.getElementById('ctrl-revisao-lista');
+      if (lista) {
+        lista.innerHTML = (r.itens || []).map(d => `
+          <div style="border-bottom:1px solid rgba(245,158,11,.2);padding:7px 0;font-size:.78rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:600;color:var(--text);">${d.titulo||'—'}</span>
+              <span style="color:var(--text3);font-size:.72rem;">OS: ${d.numero_os||'—'}</span>
+            </div>
+            <div style="color:var(--text3);margin-top:2px;">${d.empresa_nome||'—'} · Confiança: <span style="color:var(--yellow);">${Math.round((d.empresa_match_score||0)*100)}%</span></div>
+          </div>`).join('');
+      }
+    }
+  } catch(e) {}
+}
+function ctrlRevisaoToggle() {
+  _ctrlRevisaoAberto = !_ctrlRevisaoAberto;
+  const el = document.getElementById('ctrl-revisao-lista');
+  if (el) el.style.display = _ctrlRevisaoAberto ? '' : 'none';
 }
 
 async function ctrlLoadDemand() {

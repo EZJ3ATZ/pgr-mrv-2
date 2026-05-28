@@ -1773,17 +1773,35 @@ def api_tecnicos():
         return jsonify([])
 
 
-@app.route('/api/me')
+@app.route('/api/me', methods=['GET', 'PATCH'])
 def api_me():
-    """Retorna dados do usuário logado (ou null)."""
-    if current_user.is_authenticated:
-        return jsonify({
-            'id':           current_user.id,
-            'nome':         current_user.nome,
-            'registro_mte': current_user.registro_mte,
-            'role':         current_user.role,
-        })
-    return jsonify(None)
+    """Retorna dados do usuário logado (ou null). PATCH atualiza nome e registro_mte."""
+    if not current_user.is_authenticated:
+        return jsonify(None)
+    if request.method == 'PATCH':
+        d = request.json or {}
+        nome = (d.get('nome') or '').strip()
+        mte  = (d.get('registro_mte') or '').strip()
+        try:
+            from controle.db import get_db
+            with get_db() as conn:
+                conn.execute(
+                    'UPDATE usuarios SET nome=?, registro_mte=? WHERE id=?',
+                    (nome or current_user.nome, mte or None, current_user.id)
+                )
+            # Atualizar objeto em memória
+            current_user.nome = nome or current_user.nome
+            current_user.registro_mte = mte or None
+        except Exception as e:
+            return jsonify({'erro': str(e)}), 500
+        return jsonify({'ok': True})
+    return jsonify({
+        'id':           current_user.id,
+        'nome':         current_user.nome,
+        'email':        getattr(current_user, 'email', ''),
+        'registro_mte': current_user.registro_mte,
+        'role':         current_user.role,
+    })
 
 
 # ── API: Guia de Métodos lookup ──────────────────────────────────────
