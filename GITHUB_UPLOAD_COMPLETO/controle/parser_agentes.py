@@ -8,6 +8,9 @@ Extrai pares (quantidade, agente) de descrições como:
   "Ruído (1 ponto)"
   "vibração de corpo inteiro 1 ponto"
   "5 medições de Ruído, 3 de Vibração Mãos e Braços"
+  "Ruído e Calor"                       ← novo: agentes sem número
+  "avaliar ruído e calor"               ← novo: infinitivo
+  "medições de ruído e calor"           ← novo: plural sem número
 
 Retorna lista de dicts: [{tipo, qtd, texto}, ...]
 """
@@ -25,7 +28,7 @@ _IGNORAR_LINHA = re.compile(
 
 # ── Padrões de extração ──────────────────────────────────────────────
 
-# A: "04 medições de ruído" / "3 pontos de Vibração" / "2 avaliações de calor" / "2 avaliações – calor"
+# A: "04 medições de ruído" / "3 pontos de Vibração" / "2 avaliações – calor"
 _PAT_A = re.compile(
     r'(\d+)\s+(?:medi[çc][oõ]es?|avalia[çc][oõ]es?|pontos?)\s+(?:de\s+|[-–]\s*)([A-Za-zÀ-ÿ][^\n,;.→\(\)]{1,60})',
     re.IGNORECASE
@@ -55,12 +58,48 @@ _PAT_E = re.compile(
     re.IGNORECASE
 )
 
-# F: "medição/avaliação de X" sem número explícito (qtd implícita = 1)
-#    ex: "medição de ruído", "avaliação de calor", "realizar medição de silica"
+# F: "medição/medições/avaliação/avaliações de X" sem número (qtd implícita = 1)
+#    ex: "medição de ruído", "avaliações de calor e ruído", "realizar medições de silica"
 _PAT_F = re.compile(
-    r'(?:medi[çc][aã]o|avalia[çc][aã]o)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)\d]{2,60})',
+    r'(?:medi[çc][aã][oe]s?|avalia[çc][aã][oe]s?)\s+de\s+([A-Za-zÀ-ÿ][^\n,;.→\(\)\d]{2,60})',
     re.IGNORECASE
 )
+
+# G: "avaliar/medir/analisar X" — verbo infinitivo + agente
+_PAT_G = re.compile(
+    r'(?:avaliar|medir|analisar)\s+(?:o\s+|a\s+|os\s+|as\s+)?([A-Za-zÀ-ÿ][^\n,;.→\(\)\d]{2,50})',
+    re.IGNORECASE
+)
+
+# ── Palavras-chave de agentes conhecidos (último recurso) ─────────────
+# Usado quando NENHUM padrão acima encontrou algo
+_KEYWORDS_AGENTES = [
+    ('ruido',         re.compile(r'\bru[íi]do\b|\bdosimetri[ao]\b', re.IGNORECASE)),
+    ('vibracao_vci',  re.compile(r'\bcorpo inteiro\b|\bVCI\b', re.IGNORECASE)),
+    ('vibracao_vbma', re.compile(r'\bm[aã]os e bra[çc]os\b|\bVBMA\b|\bVMB\b', re.IGNORECASE)),
+    ('vibracao',      re.compile(r'\bvibra[çc][aã]o\b', re.IGNORECASE)),
+    ('calor',         re.compile(r'\bcalor\b|\bIBUTG\b|\btemperatura\b|\bestresse t[eé]rmico\b', re.IGNORECASE)),
+    ('particulado',   re.compile(r'\bs[íi]lica\b|\bpoeira\b|\bparticulado\b|\bmat[eé]ria particulada\b', re.IGNORECASE)),
+    ('quimico',       re.compile(
+        r'\bbenzeno\b|\btolueno\b|\bxileno\b|\bhexano\b|\bacetaldeído\b|\bacetona\b|\b'
+        r'queros[eê]ne\b|\bdiesel\b|\bchumbo\b|\bman[gq]an[eê]s\b|\bmon[oó]xido\b|\b'
+        r'di[oó]xido\b|\bam[oô]nia\b|\bác[íi]do\b|\bf[oó]rmio\b|\bMEK\b|\bTHF\b|\b'
+        r'cloreto\b|\bcromo\b|\bn[íi]quel\b|\bcob[ar]e?\b|\barsenico\b|\bmercúrio\b|\b'
+        r'isocianato\b|\bflu[oô]r\b|\bcloro\b|\bMDI\b|\bTDI\b|\bHCHO\b|\bformal[de]+[íi]do\b',
+        re.IGNORECASE
+    )),
+]
+
+# Nomes canônicos para o texto quando extraído por keyword
+_KEYWORD_NOMES = {
+    'ruido': 'Ruído',
+    'vibracao_vci': 'Vibração de Corpo Inteiro',
+    'vibracao_vbma': 'Vibração Mãos e Braços',
+    'vibracao': 'Vibração',
+    'calor': 'Calor / IBUTG',
+    'particulado': 'Particulado',
+    'quimico': None,  # usa o texto encontrado
+}
 
 
 def _sem_acento(txt: str) -> str:
@@ -111,11 +150,21 @@ def _adicionar(resultados: list, qtd_str: str, texto: str):
         return
 
     tipo = _normalizar_tipo(texto)
-    # evita duplicata exata
+    # evita duplicata por tipo+qtd+texto
     for r in resultados:
         if r['tipo'] == tipo and abs(r['qtd'] - qtd) == 0 and _sem_acento(r['texto']) == _sem_acento(texto):
             return
     resultados.append({'tipo': tipo, 'qtd': qtd, 'texto': texto.strip()})
+
+
+def _adicionar_keyword(resultados: list, tipo: str, texto_match: str):
+    """Adiciona agente encontrado por keyword, evitando duplicata de tipo."""
+    # por keyword, deduplica só por tipo
+    for r in resultados:
+        if r['tipo'] == tipo:
+            return
+    nome = _KEYWORD_NOMES.get(tipo) or texto_match.strip().title()
+    resultados.append({'tipo': tipo, 'qtd': 1, 'texto': nome})
 
 
 def extrair_agentes(descricao: str) -> list:
@@ -153,18 +202,32 @@ def extrair_agentes(descricao: str) -> list:
         if not _linha_ignoravel(texto):
             _adicionar(resultados, m.group(2), texto)
 
-    # Padrão F — "medição/avaliação de X" sem número (qtd=1 implícita)
+    # Padrão F — "medição/medições/avaliação/avaliações de X" sem número
     for m in _PAT_F.finditer(descricao):
         texto = m.group(1)
         if not _linha_ignoravel(texto):
             _adicionar(resultados, '1', texto)
 
-    # Padrão B — "N X" no início de linha (só se ainda não extraiu nada por A/E/F)
+    # Padrão G — "avaliar/medir/analisar X" — verbo infinitivo
+    for m in _PAT_G.finditer(descricao):
+        texto = m.group(1)
+        if not _linha_ignoravel(texto):
+            _adicionar(resultados, '1', texto)
+
+    # Padrão B — "N X" no início de linha (só se ainda não extraiu nada)
     if not resultados:
         for m in _PAT_B.finditer(descricao):
             texto = m.group(2)
             if not _linha_ignoravel(texto):
                 _adicionar(resultados, m.group(1), texto)
+
+    # Último recurso: keywords de agentes conhecidos
+    # Só ativa se AINDA não encontrou nada
+    if not resultados:
+        for tipo, pat in _KEYWORDS_AGENTES:
+            m = pat.search(descricao)
+            if m:
+                _adicionar_keyword(resultados, tipo, m.group(0))
 
     return resultados
 

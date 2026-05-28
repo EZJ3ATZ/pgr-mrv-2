@@ -239,12 +239,18 @@ def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> d
     titulo = task.get('title', 'Sem título')
     bucket = bucket_map.get(task.get('bucketId', ''), '')
 
-    # Bucket "Entregue / Concluído" é o sinal operacional real de conclusão.
-    # percentComplete == 100 é sinal secundário (pode estar incompleto no bucket ativo).
-    is_done_bucket = _bucket_is_concluido(bucket)
-    completed      = task.get('percentComplete', 0) == 100
-    status_raw = 'concluida' if (is_done_bucket or completed) else (
-        'em_andamento' if task.get('percentComplete', 0) > 0 else 'aberta'
+    # Cast seguro — API pode retornar string em edge cases
+    pct = int(task.get('percentComplete') or 0)
+
+    # Três sinais de conclusão (qualquer um é suficiente):
+    # 1. Bucket de entrega ("Entregue / Concluído", "Concluído ✅" etc.)
+    # 2. percentComplete == 100
+    # 3. completedDateTime preenchido (task marcada como done no Planner)
+    is_done_bucket    = _bucket_is_concluido(bucket)
+    is_done_pct       = pct == 100
+    is_done_completed = bool(task.get('completedDateTime'))
+    status_raw = 'concluida' if (is_done_bucket or is_done_pct or is_done_completed) else (
+        'em_andamento' if pct > 0 else 'aberta'
     )
 
     return {
@@ -258,7 +264,7 @@ def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> d
         'titulo':             titulo,
         'prioridade':         PRIORITY_MAP.get(task.get('priority', 5), 'media'),
         'status':             status_raw,
-        'percent_complete':   int(task.get('percentComplete') or 0),
+        'percent_complete':   pct,
         'prazo':              _parse_date(task.get('dueDateTime')),
         'criado_em_ms':       _parse_date(task.get('createdDateTime')),
         'concluido_em_ms':    _parse_date(task.get('completedDateTime')),
