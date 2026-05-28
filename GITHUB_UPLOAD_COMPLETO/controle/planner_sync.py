@@ -305,7 +305,17 @@ def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int,
             d.get('needs_review', 0), d.get('extracao_json', ''),
             d['planner_task_id'],
         ))
-        return existing['id'], 'updated'
+        demanda_id = existing['id']
+        # ── Propagar conclusão para medições filhas ─────────────────────
+        # Quando a OS é concluída no Planner, marca todas as medições
+        # pendentes/parciais dessa demanda como realizadas.
+        if d['status'] == 'concluida' and existing['status'] != 'concluida':
+            conn.execute(
+                """UPDATE medicoes SET status='realizado'
+                   WHERE demanda_id=? AND status IN ('pendente','parcial')""",
+                (demanda_id,)
+            )
+        return demanda_id, 'updated'
     else:
         # empresa_id do pipeline (ou 0 como sentinela quando ainda não resolvido)
         emp_id = d.get('empresa_id', 0) or 0

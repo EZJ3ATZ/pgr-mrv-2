@@ -3241,7 +3241,7 @@
   <div class="card">
     <div class="card-header">
       <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></div>
-      <div><div class="card-title">Equipamento de Coleta</div><div class="card-desc">Bomba gravimétrica e calibrador utilizados</div></div>
+      <div><div class="card-title">Equipamento de Coleta</div><div class="card-desc">Calibrador e bomba padrão (pode definir bomba individual por avaliação abaixo)</div></div>
     </div>
     <div class="grid2 field">
       <div>
@@ -6402,17 +6402,44 @@ function qFotoUpload(i, inp) {
 }
 
 // ── Avaliações ─────────────────────────────────────────────────────
+// Mapa estático de bombas e números de série
+const _Q_BOMBA_SNS = {
+  'bdx':     ['38356', '38357', '38358', '38359'],
+  'airlite': ['A060502', 'A061553', 'A061585', 'A062462', 'A63555'],
+  'turam':   ['2420120549', '2420120550', '2420120551'],
+  'inlite':  ['25040902602B', '25040903102B', '25040907102B']
+};
+const _Q_BOMBA_LABELS = {
+  'bdx':'BDX II – GILLIAN', 'airlite':'AIRLITE – SKC',
+  'turam':'FORMIS – TURAM', 'inlite':'INLITE VENTUSPRO'
+};
+
 function qNewAval() {
   return {
     cargo:'', trabalhador:'', setor:'',
     jornada:'09:00H', dataColeta:'', dataAnalise:'',
     agente:'', fonte:'', filtroNumero:'',
+    bomba:'', bombaSN:'',
     vazaoInicial:'0,2000', vazaoFinal:'0,1910',
     tempoColeta:'15', volume:'2,933',
     tempoExposicao:'18 Min', acessorios:'Redutor de vazão',
     ltNR15:'', naNR15:'', concentracao:'',
     ltTWA:'', naTWA:'', ltSTEL:'', conclusao:''
   };
+}
+
+function qUpdateAvalBombaSN(i, model) {
+  qAvals[i].bomba   = model;
+  qAvals[i].bombaSN = '';
+  const sel = document.getElementById(`q-aval-sn-${i}`);
+  if (!sel) return;
+  const sns = _Q_BOMBA_SNS[model] || [];
+  if (!sns.length) {
+    sel.innerHTML = '<option value="">— Selecione a bomba primeiro —</option>';
+  } else {
+    sel.innerHTML = '<option value="">— Selecione o S/N —</option>' +
+      sns.map(sn => `<option value="${sn}">${sn}</option>`).join('');
+  }
 }
 
 function qAddAval() { qAvals.push(qNewAval()); qRenderAvals(); }
@@ -6489,6 +6516,27 @@ function qRenderAvals() {
         <input type="text" value="${qEsc(av.fonte)}" placeholder="Ex: Limpeza de peças cirúrgicas" onchange="qAvals[${i}].fonte=this.value">
       </div>
       <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">MEMÓRIA DE CAMPO</div>
+      <div class="grid2 field">
+        <div>
+          <label>Bomba Gravimétrica</label>
+          <select onchange="qUpdateAvalBombaSN(${i},this.value)" style="width:100%;">
+            <option value="" ${!av.bomba?'selected':''}>— Selecionar —</option>
+            <option value="bdx"     ${av.bomba==='bdx'    ?'selected':''}>BDX II – GILLIAN (S/N: 38356 / 38357 / 38358 / 38359)</option>
+            <option value="airlite" ${av.bomba==='airlite'?'selected':''}>AIRLITE – SKC (S/N: A060502 / A061553 / A061585 / A062462 / A63555)</option>
+            <option value="turam"   ${av.bomba==='turam'  ?'selected':''}>FORMIS – TURAM (S/N: 2420120549 / 2420120550 / 2420120551)</option>
+            <option value="inlite"  ${av.bomba==='inlite' ?'selected':''}>INLITE VENTUSPRO (S/N: 25040902602B / 25040903102B / 25040907102B)</option>
+          </select>
+        </div>
+        <div>
+          <label>Número de Série da Bomba</label>
+          <select id="q-aval-sn-${i}" onchange="qAvals[${i}].bombaSN=this.value" style="width:100%;">
+            ${av.bomba && _Q_BOMBA_SNS[av.bomba]
+              ? '<option value="">— Selecione o S/N —</option>' + _Q_BOMBA_SNS[av.bomba].map(sn=>`<option value="${sn}" ${av.bombaSN===sn?'selected':''}>${sn}</option>`).join('')
+              : '<option value="">— Selecione a bomba primeiro —</option>'
+            }
+          </select>
+        </div>
+      </div>
       <div class="grid3 field">
         <div><label>Vazão Inicial (L/min)</label><input type="text" value="${qEsc(av.vazaoInicial)}" onchange="qAvals[${i}].vazaoInicial=this.value"></div>
         <div><label>Vazão Final (L/min)</label><input type="text" value="${qEsc(av.vazaoFinal)}" onchange="qAvals[${i}].vazaoFinal=this.value"></div>
@@ -6554,7 +6602,11 @@ async function gerarQuimico() {
       cnae:         document.getElementById('q-cnae').value,
       descricaoCnae:document.getElementById('q-cnae-desc').value,
     },
-    avaliacoes: qAvals.map(av => ({...av})),
+    avaliacoes: qAvals.map(av => ({
+      ...av,
+      // resolve nome completo do modelo para o backend
+      bombaLabel: _Q_BOMBA_LABELS[av.bomba] || av.bomba || '',
+    })),
     config: {
       bomba:      document.getElementById('q-bomba').value,
       bombaSN:    document.getElementById('q-bomba-sn').value,
