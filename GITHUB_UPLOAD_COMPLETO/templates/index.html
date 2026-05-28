@@ -8996,6 +8996,23 @@ function planUsarDias() {
     if (dow !== 0 && dow !== 6) adicionados++;
   }
   const fim = d.toISOString().slice(0, 10);
+  // Mostrar data de término calculada na interface
+  const calcBody = document.getElementById('plan-calc-body');
+  if (calcBody) {
+    const fimFmt = fim.split('-').reverse().join('/');
+    const baseFmt = base.split('-').reverse().join('/');
+    const existing = calcBody.innerHTML;
+    if (!calcBody.querySelector('.plan-calc-termino')) {
+      calcBody.insertAdjacentHTML('beforeend',
+        `<div class="plan-calc-termino" style="margin-top:8px;padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:6px;font-size:.82rem;">
+          📅 <b>Início:</b> ${baseFmt} → <b>Término estimado:</b> ${fimFmt} (${dias} dia${dias>1?'s':''} úteis)
+        </div>`
+      );
+    } else {
+      calcBody.querySelector('.plan-calc-termino').innerHTML =
+        `📅 <b>Início:</b> ${baseFmt} → <b>Término estimado:</b> ${fimFmt} (${dias} dia${dias>1?'s':''} úteis)`;
+    }
+  }
   _showToast(`${dias} dia${dias>1?'s':''} úteis · Término: ${fim.split('-').reverse().join('/')}`, 'success');
 }
 
