@@ -1117,6 +1117,13 @@ def _migrate(conn):
         except Exception as e:
             print(f'[migrate] execucao_campo nullable: {e}')
 
+    # ── usuarios: registro_mte ──
+    _add_col(conn, 'usuarios', 'registro_mte', 'TEXT')
+
+    # ── planejamentos: dias_estimados e cnpj ──
+    _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
+    _add_col(conn, 'planejamentos', 'cnpj', 'TEXT')
+
     # ── Garante que admin seed existe e é role=admin ──
     try:
         conn.execute(

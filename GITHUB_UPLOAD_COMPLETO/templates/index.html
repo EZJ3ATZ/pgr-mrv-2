@@ -13139,6 +13139,8 @@ async function nvGerarRelatorioCampo() {
       trabalhadores:_nvCrTrabs,
       termos:       _nvCrTermos,
       itens:        window._ctrlNvItens||[],
+      sig_avaliado: nvSigGetData('nv-sig-avaliado'),
+      sig_empresa:  nvSigGetData('nv-sig-empresa'),
     };
     fname = `relatorio_campo_ruido_${(empresa_nome||'empresa').replace(/\s/g,'_')}.pdf`;
   } else {
