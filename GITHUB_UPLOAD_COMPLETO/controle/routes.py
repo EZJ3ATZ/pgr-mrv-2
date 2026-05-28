@@ -821,14 +821,43 @@ def get_empresas():
     """Lista/busca empresas. Param ?q= filtra por nome ou CNPJ."""
     init_db()
     q = request.args.get('q', '').strip()
-    sql = "SELECT id, nome, cnpj, contato, telefone, email, cidade, uf FROM empresas WHERE 1=1"
+    limit = min(int(request.args.get('limit', 100)), 200)
+    sql = "SELECT * FROM empresas WHERE 1=1"
     params = []
     if q:
         sql += " AND (nome LIKE ? OR cnpj LIKE ?)"
         params.extend([f'%{q}%', f'%{q}%'])
-    sql += " ORDER BY nome LIMIT 100"
+    sql += f" ORDER BY nome LIMIT {limit}"
     with get_db() as conn:
         return jsonify([row_to_dict(r) for r in conn.execute(sql, params).fetchall()])
+
+
+@controle_bp.route('/empresa/<int:eid>')
+def get_empresa_by_id(eid):
+    """Retorna dados completos de uma empresa pelo ID."""
+    init_db()
+    with get_db() as conn:
+        row = conn.execute('SELECT * FROM empresas WHERE id=?', (eid,)).fetchone()
+    if not row:
+        return jsonify({'erro': 'nao encontrada'}), 404
+    return jsonify(row_to_dict(row))
+
+
+@controle_bp.route('/coletas/outros')
+def get_coletas_outros_route():
+    """Lista coletas_outros com filtros: tipo, empresa_id, limit."""
+    init_db()
+    from .db import list_coletas_outros
+    filtros = {}
+    if request.args.get('tipo'):
+        filtros['tipo'] = request.args['tipo']
+    if request.args.get('empresa_id'):
+        filtros['empresa_id'] = int(request.args['empresa_id'])
+    if request.args.get('demanda_id'):
+        filtros['demanda_id'] = int(request.args['demanda_id'])
+    limit = int(request.args.get('limit', 50))
+    rows = list_coletas_outros(filtros)
+    return jsonify(rows[:limit])
 
 
 @controle_bp.route('/empresas/<int:empresa_id>/painel')
@@ -4008,6 +4037,158 @@ def api_get_visita(vid):
     if not v:
         return jsonify({'erro': 'não encontrado'}), 404
     return jsonify(v)
+
+
+@controle_bp.route('/relatorio_visita/<int:vid>')
+def relatorio_visita_html(vid):
+    """Gera relatório HTML de visita técnica — otimizado para mobile."""
+    init_db()
+    with get_db() as conn:
+        row = conn.execute('''
+            SELECT vt.*,
+                   e.nome AS empresa_nome, e.cnpj AS empresa_cnpj,
+                   e.cidade AS empresa_cidade, e.endereco AS empresa_endereco,
+                   d.numero_os, d.agentes AS demanda_agentes
+            FROM visitas_tecnicas vt
+            LEFT JOIN empresas e ON e.id = vt.empresa_id
+            LEFT JOIN demandas d ON d.id = vt.demanda_id
+            WHERE vt.id = ?
+        ''', (vid,)).fetchone()
+        if not row:
+            return '<h3 style="font-family:sans-serif;padding:24px">Visita não encontrada</h3>', 404
+        v = row_to_dict(row)
+        exec_row = conn.execute(
+            'SELECT * FROM execucao_campo WHERE visita_id=? ORDER BY criado_em DESC LIMIT 1', (vid,)
+        ).fetchone()
+        exec_data = row_to_dict(exec_row) if exec_row else {}
+        coletas_r = conn.execute(
+            'SELECT tipo, data_coleta, avaliador, status FROM coletas_ruido WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
+            (v.get('demanda_id') or 0,)
+        ).fetchall()
+        coletas_q = conn.execute(
+            'SELECT tipo_avaliacao, data_coleta, avaliador, status FROM coletas_quimico WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
+            (v.get('demanda_id') or 0,)
+        ).fetchall()
+        coletas_o = conn.execute(
+            'SELECT tipo, data_coleta, avaliador, status FROM coletas_outros WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
+            (v.get('demanda_id') or 0,)
+        ).fetchall()
+
+    import json as _json
+    def _fmt_date(s):
+        if not s: return '—'
+        try:
+            from datetime import datetime
+            return datetime.fromisoformat(s[:10]).strftime('%d/%m/%Y')
+        except: return s[:10]
+
+    resultado_cores = {'concluido': '#22c55e', 'parcial': '#f59e0b', 'cancelado': '#ef4444', 'pendente': '#6b7280'}
+    resultado_cor = resultado_cores.get(v.get('resultado', ''), '#6b7280')
+
+    agentes_exec = exec_data.get('agentes_executados', '')
+    agentes_nao  = exec_data.get('agentes_nao_executados', '')
+    try: agentes_nao = _json.loads(agentes_nao) if isinstance(agentes_nao, str) and agentes_nao.startswith('[') else agentes_nao
+    except: pass
+
+    coletas_rows = ''
+    for c in list(coletas_r) + list(coletas_q) + list(coletas_o):
+        cols = dict(c) if hasattr(c, 'keys') else {}
+        tipo = cols.get('tipo') or cols.get('tipo_avaliacao') or '—'
+        coletas_rows += f'<tr><td>{tipo}</td><td>{_fmt_date(cols.get("data_coleta"))}</td><td>{cols.get("avaliador","—")}</td><td><span style="color:{resultado_cores.get(cols.get("status",""),"#6b7280")}">{cols.get("status","—")}</span></td></tr>'
+
+    html = f'''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório de Visita #{vid}</title>
+<style>
+  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e2e8f0;margin:0;padding:16px;font-size:14px}}
+  .card{{background:#1a1d2e;border:1px solid #2a2d3e;border-radius:12px;padding:16px;margin-bottom:14px}}
+  h1{{font-size:1.15rem;margin:0 0 4px;color:#fff}}
+  h2{{font-size:.9rem;color:#94a3b8;margin:0 0 12px;font-weight:500}}
+  .badge{{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600;color:#fff;background:{resultado_cor}}}
+  .row{{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}}
+  .lbl{{color:#64748b;font-size:.78rem;min-width:100px}}
+  .val{{color:#e2e8f0;font-size:.84rem}}
+  table{{width:100%;border-collapse:collapse;font-size:.82rem}}
+  th{{text-align:left;color:#64748b;font-weight:500;padding:6px 0;border-bottom:1px solid #2a2d3e}}
+  td{{padding:6px 0;border-bottom:1px solid #1e2130;color:#e2e8f0}}
+  .tag{{background:#1e293b;border:1px solid #334155;border-radius:4px;padding:2px 7px;font-size:.75rem;margin:2px;display:inline-block}}
+  .logo{{color:#3b82f6;font-size:.75rem;text-align:center;margin-top:20px;opacity:.5}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <h1>Visita #{vid}</h1>
+      <h2>{v.get("empresa_nome","—")}</h2>
+    </div>
+    <span class="badge">{(v.get("resultado") or "pendente").upper()}</span>
+  </div>
+  <div class="row"><span class="lbl">Data</span><span class="val">{_fmt_date(v.get("data_visita"))}</span></div>
+  <div class="row"><span class="lbl">Técnico</span><span class="val">{v.get("tecnico","—")}</span></div>
+  <div class="row"><span class="lbl">OS</span><span class="val">{v.get("numero_os","—")}</span></div>
+  <div class="row"><span class="lbl">Tipo</span><span class="val">{v.get("tipo_visita","—")}</span></div>
+  {"<div class='row'><span class='lbl'>Horário</span><span class='val'>" + v.get("hora_inicio","") + " – " + v.get("hora_termino","") + "</span></div>" if v.get("hora_inicio") else ""}
+</div>
+
+{"<div class='card'><h2>Execução de Campo</h2><div class='row'><span class='lbl'>Executados</span><span class='val'>" + str(agentes_exec or "—") + "</span></div>" + ("<div class='row'><span class='lbl'>Não feitos</span><span class='val' style='color:#f59e0b'>" + ("; ".join(a.get("agente","?") for a in agentes_nao) if isinstance(agentes_nao, list) else str(agentes_nao)) + "</span></div>" if agentes_nao else "") + ("</div>" ) if exec_data else ""}
+
+{("<div class='card'><h2>Coletas Registradas</h2><table><tr><th>Tipo</th><th>Data</th><th>Avaliador</th><th>Status</th></tr>" + coletas_rows + "</table></div>") if coletas_rows else ""}
+
+{"<div class='card'><h2>Observações</h2><p style='color:#cbd5e1;line-height:1.6'>" + v.get("observacao_geral","—") + "</p></div>" if v.get("observacao_geral") else ""}
+
+<div class="logo">Ocupacional Medicina e Segurança do Trabalho · Sistema SST</div>
+</body>
+</html>'''
+    from flask import Response
+    return Response(html, mimetype='text/html')
+
+
+@controle_bp.route('/execucao/nao-executados')
+def api_execucao_nao_executados():
+    """Lista OS com agentes não executados em campo."""
+    init_db()
+    import json as _json
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT ec.agentes_nao_executados, ec.justificativa_causa,
+                   vt.data_visita,
+                   e.nome AS empresa_nome,
+                   d.numero_os
+            FROM execucao_campo ec
+            LEFT JOIN visitas_tecnicas vt ON vt.id = ec.visita_id
+            LEFT JOIN demandas d ON d.id = vt.demanda_id
+            LEFT JOIN empresas e ON e.id = vt.empresa_id
+            WHERE ec.agentes_nao_executados IS NOT NULL
+              AND ec.agentes_nao_executados != ''
+              AND ec.agentes_nao_executados != '[]'
+            ORDER BY ec.criado_em DESC LIMIT 100
+        ''').fetchall()
+    result = []
+    for row in rows:
+        r = row_to_dict(row)
+        nao_raw = r.get('agentes_nao_executados', '')
+        try:
+            nao = _json.loads(nao_raw) if isinstance(nao_raw, str) and nao_raw.startswith('[') else []
+            if isinstance(nao, list):
+                nao_str = '; '.join(
+                    (a.get('agente') or a.get('nome') or str(a)) for a in nao if isinstance(a, dict)
+                ) or nao_raw
+            else:
+                nao_str = str(nao_raw)
+        except Exception:
+            nao_str = str(nao_raw)
+        result.append({
+            'numero_os':    r.get('numero_os') or '—',
+            'empresa_nome': r.get('empresa_nome') or '—',
+            'data_visita':  r.get('data_visita') or '—',
+            'agentes_nao':  nao_str,
+            'causa':        r.get('justificativa_causa') or '—',
+        })
+    return jsonify(result)
 
 
 @controle_bp.route('/planejamentos/<int:pid>/execucao', methods=['POST'])
