@@ -2251,6 +2251,10 @@
       <span>Configura&#231;&#245;es</span>
     </div>
 
+    <div class="sidebar-item" data-name="glossario" onclick="goToTab('glossario')" title="Glossário de termos">
+      <svg class="sidebar-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      <span class="sidebar-label">Glossário</span>
+    </div>
     <div class="sidebar-item" data-name="ajuda" onclick="goToTab('ajuda')">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M11 18h2v-2h-2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8m0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4"/></svg>
       <span>Ajuda</span>
@@ -5031,6 +5035,194 @@
 
 </div>
 </div>
+
+<!-- ══ Painel GLOSSÁRIO ═════════════════════════════════════════════════ -->
+<div id="tab-glossario" class="tab-panel">
+<div class="page" style="max-width:820px;">
+
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
+    <div class="page-title sec-title">Glossário de Termos</div>
+    <div class="page-sub sec-sub">O que significa cada palavra, aba, status e processo do sistema.</div>
+  </div>
+
+  <!-- Busca -->
+  <div style="position:sticky;top:0;z-index:10;padding:8px 0 12px;background:var(--bg);">
+    <input type="text" id="gloss-busca" placeholder="🔍  Buscar termo..." oninput="glossFiltrar(this.value)"
+      style="width:100%;background:var(--surface);border:1.5px solid var(--border2);border-radius:10px;padding:10px 16px;color:var(--text);font-size:.9rem;font-family:inherit;outline:none;transition:all .2s;"
+      onfocus="this.style.borderColor='var(--primary-l)'" onblur="this.style.borderColor='var(--border2)'">
+  </div>
+
+  <div id="gloss-container"></div>
+
+</div>
+</div>
+
+<script>
+(function initGlossario(){
+  const CATS = [
+    {
+      id:'status',
+      icon:'🔵',
+      titulo:'Status de Amostradores',
+      desc:'Cada amostrador passa por um ciclo de vida. Estes são os status possíveis.',
+      termos:[
+        { t:'Estoque',       desc:'O amostrador está disponível na empresa, guardado, pronto para ser usado em campo. Nenhuma medição associada.' },
+        { t:'Reservado',     desc:'O amostrador foi separado para uma OS específica mas ainda não foi para campo. Fica reservado para aquela empresa/data.' },
+        { t:'Dar Baixa',     desc:'Ação: registrar que o amostrador saiu do campo e foi enviado ao laboratório. Você informa empresa, avaliador, data da medição e a vazão. Status passa de <b>Estoque → Laboratório</b>.' },
+        { t:'Laboratório',   desc:'O amostrador já foi usado em campo e está no laboratório sendo analisado. Aguardando resultado.' },
+        { t:'Concluído',     desc:'Ação: registrar que a análise laboratorial chegou e a OS foi encerrada. Você só confirma a empresa. Status passa para <b>Concluído</b>. Ciclo encerrado.' },
+        { t:'Devolvido',     desc:'O amostrador foi devolvido sem uso — coleta cancelada ou reagendada.' },
+      ]
+    },
+    {
+      id:'os',
+      icon:'📋',
+      titulo:'Demandas e OS',
+      desc:'O fluxo de trabalho começa aqui.',
+      termos:[
+        { t:'OS (Ordem de Serviço)', desc:'Uma solicitação de medição para uma empresa. Vem do Planner (Microsoft Teams) com a etiqueta <b>MEDIÇÕES</b>. Contém prazo, empresa, e quais agentes serão medidos.' },
+        { t:'Demanda',              desc:'Sinônimo de OS dentro do sistema. A demanda é a unidade de trabalho: 1 empresa = 1 demanda, com seus agentes.' },
+        { t:'Agente',               desc:'O agente de risco a ser medido: Ruído, Calor, Químico, Vibração, Iluminamento etc.' },
+        { t:'Medição',              desc:'Um registro de medição vinculado a uma demanda. Cada agente da OS tem sua própria medição.' },
+        { t:'Status da Demanda',    desc:'<b>Aberta</b>: OS em andamento. <b>Em Execução</b>: campo em progresso. <b>Concluída</b>: encerrada. <b>Cancelada</b>: descartada.' },
+        { t:'Pré-planejamento',     desc:'Etapa antes de ir a campo: você define a data, equipe, quais amostradores levar e faz a planilha de campo.' },
+      ]
+    },
+    {
+      id:'fluxo',
+      icon:'🔄',
+      titulo:'Fluxo Operacional Completo',
+      desc:'Do Planner até o laudo — passo a passo.',
+      termos:[
+        { t:'1. Planner → Demanda',    desc:'O Bernardo ou Wesley cria uma tarefa no Planner com a etiqueta MEDIÇÕES. O sistema sincroniza automaticamente a cada 15 minutos e cria a OS.' },
+        { t:'2. Planejamento',         desc:'Na aba Planejamento você define data, técnico responsável, quais agentes medir e quantos amostradores levar.' },
+        { t:'3. Campo (Em Execução)', desc:'Na aba Campo você preenche os dados reais da medição: hora início/fim, bomba usada, vazão inicial e final, número do filtro.' },
+        { t:'4. Dar Baixa',            desc:'Após a medição, cada amostrador é dado baixa: registra a saída do campo para o laboratório com a vazão medida.' },
+        { t:'5. Laboratório',          desc:'Os amostradores estão em análise. Aguardar resultado.' },
+        { t:'6. Resultado + Concluído', desc:'O laudo chega, você marca os amostradores como Concluído e a OS é encerrada automaticamente se todos os agentes estiverem concluídos.' },
+        { t:'7. Geração de documento', desc:'Com os dados preenchidos, você vai à aba Análise Química (ou Ruído/Calor) e clica em Gerar para baixar o laudo em Word.' },
+      ]
+    },
+    {
+      id:'abas',
+      icon:'📂',
+      titulo:'O que cada aba faz',
+      desc:'Descrição rápida de cada seção do menu lateral.',
+      termos:[
+        { t:'Início / Home',          desc:'Painel principal. Mostra demandas recentes, status geral, alertas de amostradores e fluxo operacional.' },
+        { t:'Demandas / OS',          desc:'Lista todas as OS vindas do Planner. Filtre por empresa, status, data.' },
+        { t:'Planejamento',           desc:'Monte a visita antes de ir a campo: data, equipe, agentes, amostradores.' },
+        { t:'Campo',                  desc:'Registro em tempo real da medição: vazões, filtros, horários. Gera planilha de campo (PDF).' },
+        { t:'Coleta Digital',         desc:'Versão digital da ficha de campo para ruído (dosimetria) e químico. Substitui papel.' },
+        { t:'Análise Química',        desc:'Preencha os dados do laudo químico (agente, vazões, resultados do lab) e gere o documento Word.' },
+        { t:'Laudo de Ruído',         desc:'Preencha os dados dosimétricos e gere o laudo de ruído em Word.' },
+        { t:'Amostradores',           desc:'Controle do estoque de amostradores: ver quem está em campo, no lab, disponível. Dar baixa e concluir em lote.' },
+        { t:'Planejamento PGR',       desc:'Monte o PGR com os GHEs, cargos e resultados de medição.' },
+        { t:'Indicadores',            desc:'Gráficos de performance: demandas por mês, prazo médio, agentes mais frequentes.' },
+        { t:'Consistência',           desc:'Verifica inconsistências nos dados: OS sem empresa, medições sem resultado, amostradores presos.' },
+        { t:'Glossário',              desc:'Esta tela. Explicação de termos, status e processos.' },
+        { t:'Ajuda',                  desc:'Tour guiado, FAQ e fluxo visual para novos usuários.' },
+        { t:'Configurações',          desc:'Dados da empresa, técnicos, preferências do sistema.' },
+        { t:'Saúde do Sistema',       desc:'Diagnóstico técnico: banco de dados, sync Planner, erros recentes.' },
+      ]
+    },
+    {
+      id:'bombas',
+      icon:'💨',
+      titulo:'Bombas e Amostradores',
+      desc:'Equipamentos de coleta química — modelos e números de série cadastrados.',
+      termos:[
+        { t:'Bomba Gravimétrica',     desc:'Equipamento que succiona ar pelo filtro/amostrador durante a medição química. A vazão (L/min) calibrada define o volume amostrado.' },
+        { t:'Vazão Inicial',          desc:'Medida antes da coleta — quanto de ar a bomba está puxando por minuto. Ex: 0,200 L/min.' },
+        { t:'Vazão Final',            desc:'Medida após a coleta — verifica se houve desvio durante a amostragem. Diferença máxima aceitável: 5%.' },
+        { t:'BDX II – GILLIAN',      desc:'Modelo de bomba gravimétrica. S/N disponíveis: <b>38356, 38357, 38358, 38359</b>.' },
+        { t:'AIRLITE – SKC',         desc:'Modelo de bomba gravimétrica leve. S/N disponíveis: <b>A060502, A061553, A061585, A062462, A63555</b>.' },
+        { t:'FORMIS – TURAM',        desc:'Modelo de bomba gravimétrica. S/N disponíveis: <b>2420120549, 2420120550, 2420120551</b>.' },
+        { t:'INLITE VENTUSPRO',      desc:'Modelo de bomba de alto desempenho. S/N disponíveis: <b>25040902602B, 25040903102B, 25040907102B</b>.' },
+        { t:'Calibrador de Fluxo',   desc:'Instrumento que mede a vazão da bomba antes e depois. Modelos usados: DEFENDER 510M (S/N: 126958) e TSI 4143F.' },
+        { t:'TCP (Filtro)',           desc:'Filtro de membrana de policarbonato. Número gravado no filtro = número de identificação da amostra.' },
+        { t:'Carvão Ativado',        desc:'Amostrador para compostos orgânicos (ex: Benzeno, Tolueno). Tubo SKC 226-01.' },
+      ]
+    },
+    {
+      id:'normas',
+      icon:'📐',
+      titulo:'Normas e Siglas Técnicas',
+      desc:'Siglas que aparecem nos laudos e no sistema.',
+      termos:[
+        { t:'NR-15',    desc:'Norma Regulamentadora 15 — Atividades e Operações Insalubres. Define limites de tolerância para ruído, calor, químicos, vibração etc.' },
+        { t:'NR-9',     desc:'Programa de Prevenção de Riscos Ambientais. Obriga o mapeamento dos riscos no ambiente de trabalho.' },
+        { t:'NR-6',     desc:'Equipamentos de Proteção Individual. Define obrigatoriedade e CA dos EPIs.' },
+        { t:'PGR',      desc:'Programa de Gerenciamento de Riscos — sucedeu o PPRA (NR-1). Documenta riscos e medidas de controle.' },
+        { t:'LTCAT',    desc:'Laudo Técnico das Condições Ambientais do Trabalho. Documenta os agentes nocivos para fins previdenciários.' },
+        { t:'LT',       desc:'Limite de Tolerância — concentração máxima permitida pelo agente (NR-15 ou ACGIH).' },
+        { t:'NA',       desc:'Nível de Ação — 50% do LT. Quando atingido, medidas de controle são recomendadas mesmo sem insalubridade.' },
+        { t:'TWA',      desc:'Time-Weighted Average — média ponderada pelo tempo. Concentração média em 8h de trabalho (ACGIH).' },
+        { t:'STEL',     desc:'Short-Term Exposure Limit — limite para exposição de curta duração (15 min) sem dano imediato.' },
+        { t:'IBUTG',    desc:'Índice de Bulbo Úmido e Termômetro de Globo — medida de estresse térmico (NR-15 Anexo 3).' },
+        { t:'GHE',      desc:'Grupo Homogêneo de Exposição — grupo de trabalhadores com exposição similar ao mesmo agente.' },
+        { t:'VCI / VMB', desc:'Vibração de Corpo Inteiro (cadeira, veículo) e Vibração de Mãos-Braços (ferramentas). NR-15 Anexo 8 + ISO 2631.' },
+        { t:'CAS',       desc:'Chemical Abstracts Service — número único que identifica cada substância química. Usado para localizar o método de análise.' },
+        { t:'NHO',       desc:'Norma de Higiene Ocupacional da FUNDACENTRO. Define métodos para medição de agentes.' },
+      ]
+    },
+    {
+      id:'planner',
+      icon:'📅',
+      titulo:'Planner e Sincronização',
+      desc:'Como o sistema se conecta ao Microsoft Planner.',
+      termos:[
+        { t:'Sync Planner',          desc:'A cada 15 minutos o sistema lê as tarefas do Planner com etiqueta MEDIÇÕES e atualiza as demandas automaticamente.' },
+        { t:'Etiqueta MEDIÇÕES',     desc:'Toda tarefa do Planner marcada com a categoria "MEDIÇÕES" (category10) é importada como OS.' },
+        { t:'Bucket',                desc:'Coluna do Planner onde a tarefa está. O bucket determina o status da OS: "A Fazer" = aberta, "Entregue" = concluída etc.' },
+        { t:'percentComplete',       desc:'Campo do Planner que indica 0%, 50% ou 100% de conclusão da tarefa. 100% = concluída.' },
+        { t:'graph/sync',            desc:'Endpoint manual de sincronização: POST /controle/graph/sync. Útil quando precisa forçar atualização imediata.' },
+        { t:'graph/status',          desc:'Mostra o timestamp do último sync e quantas tarefas foram processadas.' },
+      ]
+    },
+  ];
+
+  function glossRender(filtro) {
+    const container = document.getElementById('gloss-container');
+    if (!container) return;
+    const f = (filtro||'').toLowerCase().trim();
+    let html = '';
+    for (const cat of CATS) {
+      const termosVis = cat.termos.filter(t =>
+        !f || t.t.toLowerCase().includes(f) || t.desc.toLowerCase().includes(f)
+      );
+      if (!termosVis.length && f) continue;
+      html += `
+        <div class="gloss-cat" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02);">
+            <span style="font-size:1.2rem;">${cat.icon}</span>
+            <div>
+              <div style="font-size:.88rem;font-weight:700;color:var(--text);">${cat.titulo}</div>
+              <div style="font-size:.73rem;color:var(--text3);margin-top:1px;">${cat.desc}</div>
+            </div>
+          </div>
+          <div>
+            ${termosVis.map((t,idx) => `
+              <div style="display:flex;gap:14px;padding:11px 18px;${idx<termosVis.length-1?'border-bottom:1px solid rgba(255,255,255,.04)':''};">
+                <div style="flex:0 0 200px;font-weight:700;font-size:.82rem;color:var(--primary-l);line-height:1.4;">${t.t}</div>
+                <div style="font-size:.8rem;color:var(--text2);line-height:1.55;">${t.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+    if (!html) {
+      html = `<div style="text-align:center;padding:40px;color:var(--text3);font-size:.9rem;">Nenhum termo encontrado para "<b>${filtro}</b>"</div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  window.glossFiltrar = function(v) { glossRender(v); };
+  glossRender('');
+})();
+</script>
 
 <!-- ══ Painel ANALYTICS BI ══════════════════════════════════════════════ -->
 <!-- ══════════════════════════════════════════════════════════════════
