@@ -3844,7 +3844,21 @@
 
   <!-- Lista de planejamentos existentes -->
   <div class="plan-card">
-    <div class="plan-card-title">Planejamentos Recentes</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="plan-card-title" style="margin:0">Planejamentos Recentes</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2);cursor:pointer;">
+          <input type="checkbox" id="plan-filtro-meu" onchange="planCarregarLista()" style="accent-color:var(--green);">
+          <span>Apenas meus</span>
+        </label>
+        <select id="plan-filtro-status" onchange="planCarregarLista()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:.78rem;font-family:inherit;">
+          <option value="">Todos status</option>
+          <option value="planejada">Planejada</option>
+          <option value="concluido">Concluída</option>
+          <option value="cancelado">Cancelada</option>
+        </select>
+      </div>
+    </div>
     <div id="plan-lista-loading" style="color:var(--text3);font-size:.83rem;">Carregando...</div>
     <div id="plan-lista"></div>
   </div>
@@ -6130,6 +6144,8 @@ async function cfgCarregarPerfil() {
   if (!body) return;
   try {
     const me = await ctrlFetch('/api/me');
+    // Guardar nome globalmente para filtros
+    if (me && me.nome) window._currentUserNome = me.nome;
     body.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
         <div><label style="font-size:.72rem;color:var(--text3);font-weight:700;text-transform:uppercase;display:block;margin-bottom:4px;">Nome</label>
@@ -8059,6 +8075,10 @@ async function loadTecnicos() {
 
 window.addEventListener('DOMContentLoaded', () => {
   loadTecnicos();
+  // Inicializa nome do usuário logado para filtros
+  fetch('/api/me').then(r => r.json()).then(me => {
+    if (me && me.nome) window._currentUserNome = me.nome;
+  }).catch(() => {});
   setTimeout(() => {
     _hookCNPJs();
     _injetarCacheDropdowns();
@@ -8885,7 +8905,12 @@ async function planCarregarLista() {
   if (loading) loading.style.display = 'block';
   if (lista)   lista.innerHTML = '';
   try {
-    const res = await ctrlFetch('/controle/planejamentos?limit=20');
+    const filtroMeu    = document.getElementById('plan-filtro-meu')?.checked;
+    const filtroStatus = document.getElementById('plan-filtro-status')?.value || '';
+    let url = '/controle/planejamentos?limit=50';
+    if (filtroMeu && window._currentUserNome) url += `&tecnico=${encodeURIComponent(window._currentUserNome)}`;
+    if (filtroStatus) url += `&status=${filtroStatus}`;
+    const res = await ctrlFetch(url);
     if (loading) loading.style.display = 'none';
     if (!res || res.length === 0) {
       if (lista) lista.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Nenhum planejamento criado ainda.</div>';
