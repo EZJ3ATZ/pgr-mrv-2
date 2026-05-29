@@ -646,7 +646,7 @@ def get_demanda_por_os(os_num):
         # Buscar empresa vinculada
         with get_db() as conn:
             dem_full = conn.execute(
-                '''SELECT d.empresa_id, e.nome AS empresa_nome
+                '''SELECT d.empresa_id, e.nome AS empresa_nome, e.cnpj
                    FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id
                    WHERE d.id=?''', (d['id'],)
             ).fetchone()
@@ -656,6 +656,7 @@ def get_demanda_por_os(os_num):
             'titulo':       d['titulo'],
             'empresa_id':   dem_full['empresa_id'] if dem_full else None,
             'empresa_nome': dem_full['empresa_nome'] if dem_full else '',
+            'cnpj':         dem_full['cnpj'] if dem_full else '',
             'agentes':      agentes,
             'resumo':       resumo_agentes(agentes),
         })
