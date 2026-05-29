@@ -1728,6 +1728,11 @@ def mark_raw_task(conn, raw_id: int, status: str, ignored_reason: str = None):
 def list_amostradores_vencendo(dias_alerta=7):
     lab = 'a.data_envio_lab'
     val = 'COALESCE(a.dias_validade,45)'
+    # Filtro de data válida: PostgreSQL exige formato YYYY-MM-DD
+    if USE_PG:
+        date_filter = "AND a.data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'"
+    else:
+        date_filter = "AND a.data_envio_lab GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'"
     sql = f"""
         SELECT a.*, e.nome AS empresa_nome,
                {_lab_days_left(lab, val)} AS dias_para_vencer,
@@ -1736,6 +1741,7 @@ def list_amostradores_vencendo(dias_alerta=7):
         LEFT JOIN empresas e ON e.id = a.empresa_id
         WHERE a.data_envio_lab IS NOT NULL
           AND a.data_envio_lab != ''
+          {date_filter}
           AND a.status != 'Devolvido'
         ORDER BY dias_para_vencer ASC
         LIMIT 500
@@ -1758,6 +1764,7 @@ def contar_vencendo():
               COUNT(*) AS total_no_lab
             FROM amostradores
             WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
+              AND data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
               AND status != 'Devolvido'
         """
     else:
