@@ -2503,6 +2503,53 @@ def gerar_ruido_bytes(d):
             cert_imgs_xml += _r_img_para(crid, next_rid[0], 4800000, 6900000)
             cert_imgs_xml += _r_page_break()
 
+    # ── Seção de assinaturas ──────────────────────────────────────────
+    sig_avaliado = d.get('sig_avaliado')
+    sig_empresa  = d.get('sig_empresa')
+    sig_xml = ''
+    if sig_avaliado or sig_empresa:
+        def _sig_cell(b64, label, tec_nome=''):
+            inner = ''
+            if b64:
+                rid = _add_img_b64(b64)
+                inner += _r_img_para(rid, next_rid[0], 2400000, 675000)
+            # linha separadora + nome
+            inner += ('<w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+                      f'<w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+                      f'<w:t>{"_" * 36}</w:t></w:r></w:p>')
+            if tec_nome:
+                inner += ('<w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+                          f'<w:r><w:rPr><w:b/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+                          f'<w:t xml:space="preserve">{_r_esc(tec_nome)}</w:t></w:r></w:p>')
+            inner += ('<w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+                      f'<w:r><w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>'
+                      f'<w:t xml:space="preserve">{_r_esc(label)}</w:t></w:r></w:p>')
+            tcp = ('<w:tcPr><w:tcW w:w="4676" w:type="dxa"/>'
+                   '<w:tcBorders><w:top w:val="none"/><w:left w:val="none"/>'
+                   '<w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>'
+                   '<w:vAlign w:val="bottom"/></w:tcPr>')
+            return f'<w:tc>{tcp}{inner}</w:tc>'
+
+        tec_nome = tec['nome'].title() if tec.get('nome') else ''
+        left_cell  = _sig_cell(sig_avaliado, 'Avaliado')
+        right_cell = _sig_cell(sig_empresa, 'Responsável Técnico', tec_nome)
+
+        # Parágrafo de título
+        title_p = ('<w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+                   '<w:r><w:rPr><w:b/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
+                   '<w:t>ASSINATURAS</w:t></w:r></w:p>')
+        sig_tbl = (
+            '<w:tbl>'
+            '<w:tblPr><w:tblW w:w="9353" w:type="dxa"/>'
+            '<w:tblBorders><w:top w:val="none"/><w:left w:val="none"/>'
+            '<w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/>'
+            '<w:insideV w:val="none"/></w:tblBorders></w:tblPr>'
+            '<w:tblGrid><w:gridCol w:w="4676"/><w:gridCol w:w="4677"/></w:tblGrid>'
+            f'<w:tr>{left_cell}{right_cell}</w:tr>'
+            '</w:tbl>'
+        )
+        sig_xml = _r_page_break() + title_p + sig_tbl
+
     # ── Localiza seções no template XML e substitui ────────────────────
     res_ts,  res_te  = _find_section_tbl(doc_xml, 'RESULTADOS')
     cert_ts, cert_te = _find_section_tbl(doc_xml, 'CERTIFICADO DE CALIBRA')
@@ -2514,10 +2561,11 @@ def gerar_ruido_bytes(d):
                    aval_xml +
                    doc_xml[cert_ts:cert_te] +
                    cert_imgs_xml +
+                   sig_xml +
                    doc_xml[cert_te:])
     else:
         # Fallback: appende antes do </w:body>
-        doc_xml = doc_xml.replace('</w:body>', aval_xml + cert_imgs_xml + '</w:body>')
+        doc_xml = doc_xml.replace('</w:body>', aval_xml + cert_imgs_xml + sig_xml + '</w:body>')
 
     # ── Adiciona relacionamentos das imagens geradas ───────────────────
     for rid, target in extra_rels.items():

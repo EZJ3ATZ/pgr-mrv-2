@@ -3253,6 +3253,30 @@
     <div id="r-avals-list"></div>
   </div>
 
+  <!-- Assinaturas -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">✍️</div>
+      <div><div class="card-title">Assinaturas</div><div class="card-desc">Opcional — aparecerão no final do laudo</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="field">
+      <div>
+        <div style="font-size:.76rem;color:var(--text2);margin-bottom:4px;">Avaliado <span style="color:var(--text3);font-size:.7rem;">(opcional)</span></div>
+        <canvas id="r-sig-avaliado" width="320" height="90"
+          style="border:1.5px solid var(--border);border-radius:6px;background:#fff;touch-action:none;width:100%;cursor:crosshair;display:block;max-height:90px;"></canvas>
+        <button type="button" onclick="nvSigClear('r-sig-avaliado')"
+          style="margin-top:4px;font-size:.7rem;background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 0;">🗑 Limpar</button>
+      </div>
+      <div>
+        <div style="font-size:.76rem;color:var(--text2);margin-bottom:4px;">Técnico Responsável</div>
+        <canvas id="r-sig-empresa" width="320" height="90"
+          style="border:1.5px solid var(--border);border-radius:6px;background:#fff;touch-action:none;width:100%;cursor:crosshair;display:block;max-height:90px;"></canvas>
+        <button type="button" onclick="nvSigClear('r-sig-empresa')"
+          style="margin-top:4px;font-size:.7rem;background:none;border:none;color:var(--text3);cursor:pointer;padding:2px 0;">🗑 Limpar</button>
+      </div>
+    </div>
+  </div>
+
   <button class="btn-gerar" id="btn-ruido" onclick="gerarRuido()">
     <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
     Gerar Laudo de Ruído
@@ -6179,6 +6203,7 @@ function goToTab(name) {
   if (name === 'saude') saudeCarregar();
   if (name === 'app-mobile') appMobileLoad();
   if (name === 'configuracoes') cfgCarregarPerfil();
+  if (name === 'ruido') { nvSigInit('r-sig-avaliado'); nvSigInit('r-sig-empresa'); }
 }
 
 async function cfgCarregarPerfil() {
@@ -7730,6 +7755,8 @@ async function gerarRuido() {
     tecnico:    (()=>{ try{ return JSON.parse(document.getElementById('r-tecnico').value); } catch(e){ return document.getElementById('r-tecnico').value; } })(),
     dataLaudo:  document.getElementById('r-data-laudo').value,
     avaliacoes: rAvals.map(av => ({...av})),
+    sig_avaliado: nvSigGetData('r-sig-avaliado'),
+    sig_empresa:  nvSigGetData('r-sig-empresa'),
   };
 
   try {
