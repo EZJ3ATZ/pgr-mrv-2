@@ -3986,6 +3986,28 @@ def api_criar_planejamento():
         equip.append({'tipo': 'acelerometro', 'qtd': 1, 'obs': 'ISO 2631 / NR-9'})
     d['equipamentos_json'] = equip
 
+    # ── Checklist e divergencias: aceitar do payload ──
+    import json as _j
+    for _fld in ('checklist_prevista', 'divergencias_json'):
+        _v = d.get(_fld)
+        if isinstance(_v, (list, dict)):
+            d[_fld] = _j.dumps(_v, ensure_ascii=False)
+
+    # ── Verificar conflito de data (aviso, não bloqueia) ──
+    _warnings = []
+    if d.get('data_prevista') and d.get('status') == 'confirmado':
+        try:
+            with get_db() as _conn:
+                _conflitos = _conn.execute(
+                    "SELECT id, tecnico, numero_os FROM planejamentos "
+                    "WHERE data_prevista=? AND status='confirmado' AND empresa_id!=?",
+                    (d['data_prevista'], d.get('empresa_id', 0))
+                ).fetchall()
+            if _conflitos:
+                _warnings.append(f"⚠️ {len(_conflitos)} outro(s) planejamento(s) confirmado(s) nessa data — verifique disponibilidade de equipamentos.")
+        except Exception:
+            pass
+
     try:
         pid = criar_planejamento(d)
         registrar_evento('planejamento_criado',
@@ -3993,7 +4015,7 @@ def api_criar_planejamento():
                          pid, 'planejamento',
                          current_user.nome if current_user.is_authenticated else 'sistema',
                          request.remote_addr)
-        return jsonify({'ok': True, 'id': pid})
+        return jsonify({'ok': True, 'id': pid, 'warnings': _warnings})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 

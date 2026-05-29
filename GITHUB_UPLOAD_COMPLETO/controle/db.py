@@ -882,7 +882,9 @@ def _migrate(conn):
         _add_col(conn, 'demandas', col, dfn)
 
     # Coluna dias_estimados na tabela planejamentos
-    _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
+    _add_col(conn, 'planejamentos', 'dias_estimados',     'INTEGER DEFAULT NULL')
+    _add_col(conn, 'planejamentos', 'checklist_prevista', 'TEXT DEFAULT NULL')
+    _add_col(conn, 'planejamentos', 'divergencias_json',  'TEXT DEFAULT NULL')
 
     # Tabela de inventário de equipamentos (Phase 1 — Jun 2026)
     _pk_equip = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
@@ -2222,7 +2224,8 @@ def criar_planejamento(data: dict) -> int:
     import json as _json
     campos = ['demanda_id', 'empresa_id', 'numero_os', 'tecnico', 'data_prevista',
               'agentes_previstos', 'qtd_dosim_prevista', 'qtd_bombas_previstas',
-              'equipamentos_json', 'observacao', 'status', 'dias_estimados', 'cnpj']
+              'equipamentos_json', 'observacao', 'status', 'dias_estimados', 'cnpj',
+              'checklist_prevista', 'divergencias_json']
     vals = {}
     for c in campos:
         v = data.get(c)

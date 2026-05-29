@@ -3887,6 +3887,18 @@
     <div id="plan-lista"></div>
   </div>
 
+  <!-- Inventário de Equipamentos -->
+  <div class="plan-card" id="plan-inv-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0;">
+      <div class="plan-card-title" style="margin:0;">🔧 Inventário de Equipamentos</div>
+      <button onclick="planInvToggle()" id="plan-inv-toggle" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem;padding:4px 8px;">▼</button>
+    </div>
+    <div id="plan-inv-body" style="display:none;margin-top:14px;">
+      <div id="plan-inv-loading" style="color:var(--text3);font-size:.82rem;">Carregando...</div>
+      <div id="plan-inv-list"></div>
+    </div>
+  </div>
+
   <!-- Formulário: novo planejamento -->
   <div class="plan-card">
     <div class="plan-card-title">➕ Novo Planejamento</div>
@@ -3965,7 +3977,13 @@
       <textarea id="plan-obs" rows="2" placeholder="Pontos prioritários, restrições de acesso, contato na empresa..." style="resize:vertical;"></textarea>
     </div>
 
-    <div style="display:flex;gap:10px;margin-top:4px;">
+    <!-- Checklist pré-visita -->
+    <div id="plan-checklist-wrap" style="display:none;margin-top:4px;">
+      <div style="font-size:.78rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">✅ Checklist Pré-Visita</div>
+      <div id="plan-checklist-items" style="display:flex;flex-direction:column;gap:5px;"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:10px;">
       <button onclick="planSalvar('rascunho')" style="flex:1;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:11px;border-radius:8px;font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;">💾 Salvar Rascunho</button>
       <button onclick="planSalvar('confirmado')" style="flex:1;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:8px;font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;">✅ Confirmar Planejamento</button>
     </div>
@@ -9392,6 +9410,95 @@ function planRemoverAgente(idx) {
   _planRenderizarAgentes();
 }
 
+// ── Checklist pré-visita ──────────────────────────────────────────────
+const _CHECKLIST_FIXOS = [
+  {id:'addr',  label:'Endereço e ponto de contato na empresa confirmados'},
+  {id:'hora',  label:'Horário de início confirmado com o responsável'},
+  {id:'os',    label:'Número de OS validado no sistema'},
+];
+const _CHECKLIST_POR_TIPO = {
+  ruido:    [{id:'dosim_sep', label:'Dosímetros separados e identificados'},
+             {id:'cal_ruido', label:'Calibrador de ruído testado'}],
+  quimico:  [{id:'bombas_cal', label:'Bombas calibradas (vazão verificada)'},
+             {id:'amostr_sep', label:'Amostradores separados por agente'},
+             {id:'cal_vazao',  label:'Calibrador de vazão disponível'}],
+  calor:    [{id:'term_ok',   label:'Termômetro IBUTG testado e com carga'}],
+  vibracao: [{id:'vibr_ok',  label:'Acelerômetro + acessórios separados (kit VCI/VBMA)'}],
+};
+window._planChecklistState = {};
+
+function _planRenderChecklist() {
+  const wrap  = document.getElementById('plan-checklist-wrap');
+  const items = document.getElementById('plan-checklist-items');
+  if (!wrap || !items) return;
+  const agentes = window._planAgentes || [];
+  if (!agentes.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const tiposPresentes = [...new Set(agentes.map(a => a.tipo))];
+  const todos = [..._CHECKLIST_FIXOS];
+  tiposPresentes.forEach(t => { if (_CHECKLIST_POR_TIPO[t]) todos.push(..._CHECKLIST_POR_TIPO[t]); });
+  items.innerHTML = todos.map(it => {
+    const checked = window._planChecklistState[it.id] ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.82rem;color:var(--text2);padding:5px 8px;background:var(--surface2);border-radius:6px;">
+      <input type="checkbox" ${checked} onchange="window._planChecklistState['${it.id}']=this.checked" style="accent-color:var(--green);width:15px;height:15px;flex-shrink:0;">
+      ${it.label}
+    </label>`;
+  }).join('');
+}
+
+// ── Inventário de equipamentos ────────────────────────────────────────
+let _planInvOpen = false;
+const _TIPO_LABELS = {
+  calibrador_ruido:'🎵 Calibrador Ruído', bomba:'🔬 Bomba', vibrador:'📳 Vibrador', termometro:'🌡️ Termômetro'
+};
+
+async function planInvToggle() {
+  _planInvOpen = !_planInvOpen;
+  const body = document.getElementById('plan-inv-body');
+  const btn  = document.getElementById('plan-inv-toggle');
+  if (!body) return;
+  body.style.display = _planInvOpen ? 'block' : 'none';
+  if (btn) btn.textContent = _planInvOpen ? '▲' : '▼';
+  if (_planInvOpen) await planInvCarregar();
+}
+
+async function planInvCarregar() {
+  const loading = document.getElementById('plan-inv-loading');
+  const list    = document.getElementById('plan-inv-list');
+  if (!list) return;
+  try {
+    if (loading) loading.style.display = 'block';
+    const equips = await ctrlFetch('/controle/equipamentos');
+    if (loading) loading.style.display = 'none';
+    if (!equips || !equips.length) { list.innerHTML = '<div style="color:var(--text3);font-size:.82rem;">Nenhum equipamento cadastrado.</div>'; return; }
+    const grupos = {};
+    equips.forEach(e => { if (!grupos[e.tipo]) grupos[e.tipo] = []; grupos[e.tipo].push(e); });
+    const inp = 'background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 7px;font-size:.77rem;font-family:inherit;';
+    list.innerHTML = Object.entries(grupos).map(([tipo, items]) => `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px;">${_TIPO_LABELS[tipo]||tipo}</div>
+        ${items.map(e => `
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--border);font-size:.79rem;">
+            <span style="min-width:120px;color:var(--text2);font-weight:600;">${e.observacao||e.modelo||'—'}</span>
+            ${e.compatibilidade ? `<span style="font-size:.68rem;background:rgba(57,153,255,.1);color:#39f;padding:1px 6px;border-radius:3px;">${e.compatibilidade}</span>` : ''}
+            <input type="text" placeholder="N° Série" value="${e.numero_serie||''}" style="${inp}width:95px;" title="Número de série" onchange="planInvSalvar(${e.id},{numero_serie:this.value})">
+            <input type="text" placeholder="Cert." value="${e.cert_numero||''}" style="${inp}width:75px;" title="Número do certificado" onchange="planInvSalvar(${e.id},{cert_numero:this.value})">
+            <input type="date" value="${e.cert_validade||''}" style="${inp}width:125px;" title="Validade do certificado" onchange="planInvSalvar(${e.id},{cert_validade:this.value})">
+            <select style="${inp}width:auto;" onchange="planInvSalvar(${e.id},{status:this.value})">
+              ${['disponivel','em_uso','manutencao','reservado'].map(s=>`<option value="${s}" ${e.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>`).join('')}
+      </div>`).join('');
+  } catch(e) { if (loading) loading.style.display = 'none'; list.innerHTML = `<div style="color:var(--red);font-size:.82rem;">Erro: ${e.message}</div>`; }
+}
+
+async function planInvSalvar(id, campos) {
+  try {
+    await ctrlFetch('/controle/equipamentos/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(campos)});
+    _showToast('Equipamento atualizado', 'ok');
+  } catch(e) { _showToast('Erro ao salvar: ' + e.message, 'err'); }
+}
+
 function _planAtualizarEquipamentos() {
   const agentes = window._planAgentes || [];
   const dosim  = agentes.filter(a => a.tipo === 'ruido').reduce((s,a) => s + (a.qtd||1), 0);
@@ -9414,6 +9521,7 @@ function _planAtualizarEquipamentos() {
     preview.style.display = 'none';
   }
   _planCalcularDias();
+  _planRenderChecklist();
 }
 
 // ── Calculadora de Dias — mesma lógica da planilha Excel ──────────────
@@ -9516,17 +9624,22 @@ async function planSalvar(status) {
   if (!tecnico)    { _showToast('Selecione o técnico.', 'err'); return; }
   if ((window._planAgentes || []).length === 0) { _showToast('Adicione pelo menos um agente previsto.', 'err'); return; }
 
+  // Checklist: quais itens foram marcados
+  const checklistItens = Object.entries(window._planChecklistState || {})
+    .filter(([,v]) => v).map(([k]) => k);
+
   const payload = {
     empresa_id,
     tecnico,
-    numero_os:        os,
-    data_prevista:    data_prev,
-    demanda_id:       demanda_id,
-    agentes_previstos: window._planAgentes,
-    observacao:       obs,
+    numero_os:           os,
+    data_prevista:       data_prev,
+    demanda_id:          demanda_id,
+    agentes_previstos:   window._planAgentes,
+    observacao:          obs,
     status,
-    dias_estimados:   window._planDiasEstimado || null,
-    cnpj:             document.getElementById('plan-cnpj')?.value || null,
+    dias_estimados:      window._planDiasEstimado || null,
+    cnpj:                document.getElementById('plan-cnpj')?.value || null,
+    checklist_prevista:  checklistItens,
   };
 
   try {
@@ -9538,6 +9651,10 @@ async function planSalvar(status) {
     if (r.ok) {
       const msg = status === 'confirmado' ? '✅ Planejamento confirmado!' : '💾 Rascunho salvo.';
       _showToast(msg, 'ok');
+      // Mostrar warnings de conflito
+      if (r.warnings && r.warnings.length) {
+        setTimeout(() => r.warnings.forEach(w => _showToast(w, 'warn')), 600);
+      }
       // Limpar form
       window._planAgentes = [];
       ['plan-nv-os','plan-empresa-nome','plan-cnpj','plan-empresa-id','plan-demanda-id',
@@ -13507,7 +13624,53 @@ function nvRunValidacoes() {
     const color=c.ok?'var(--green)':(c.warn?'var(--yellow)':'var(--red)');
     return `<div class="${cls}"><span style="color:${color};font-weight:700;font-size:1rem;flex-shrink:0;">${icon}</span><div style="font-size:.82rem;color:var(--text2);">${c.msg}</div></div>`;
   }).join('');
+
+  // ── Divergências campo vs planejamento ────────────────────────────
+  const divContainer = document.getElementById('nv-divergencias-block');
+  if (!divContainer) {
+    const db = document.createElement('div');
+    db.id = 'nv-divergencias-block';
+    res.parentNode.appendChild(db);
+  }
+  const divBlock = document.getElementById('nv-divergencias-block');
+  if (!divBlock) return;
+  if (!window._nvPlanejamentoId || !window._ctrlNvItens || !window._ctrlNvItens.length) {
+    divBlock.innerHTML = ''; return;
+  }
+  const divs = [];
+  if (tipos.includes('quimico') && _nvCqAgentes && _nvCqAgentes.length) {
+    _nvCqAgentes.forEach((ag, idx) => {
+      const plan = window._ctrlNvItens[idx];
+      if (!plan) return;
+      if (plan.bomba_modelo_id && ag.bomba && plan.bomba_modelo_id !== ag.bomba)
+        divs.push({idx:idx+1, campo:'Bomba', plano:plan.bomba_modelo_id, real:ag.bomba});
+      if (plan.bomba_sn && ag.id_bomba && plan.bomba_sn !== ag.id_bomba)
+        divs.push({idx:idx+1, campo:'SN Bomba', plano:plan.bomba_sn, real:ag.id_bomba});
+      if (plan.amostrador_codigo && ag.amostrador_codigo && plan.amostrador_codigo !== ag.amostrador_codigo)
+        divs.push({idx:idx+1, campo:'Amostrador', plano:plan.amostrador_codigo, real:ag.amostrador_codigo});
+    });
+  }
+  if (tipos.includes('ruido') && window._ctrlNvItens[0]) {
+    const plan0 = window._ctrlNvItens[0];
+    const snEl = document.getElementById('nv-eq-dosim-sn');
+    if (plan0.series_dosim && snEl && snEl.value && plan0.series_dosim !== snEl.value)
+      divs.push({idx:0, campo:'Série Dosímetro', plano:plan0.series_dosim, real:snEl.value});
+  }
+  if (!divs.length) { divBlock.innerHTML = ''; return; }
+  window._nvDivergencias = divs;
+  divBlock.innerHTML = `
+    <div style="margin-top:14px;padding:13px 15px;background:rgba(245,158,11,.08);border:1.5px solid rgba(245,158,11,.3);border-radius:10px;">
+      <div style="font-weight:700;font-size:.85rem;color:var(--yellow);margin-bottom:8px;">⚠️ Divergências em relação ao planejamento</div>
+      <div style="font-size:.8rem;color:var(--text2);margin-bottom:10px;">Os campos abaixo diferem do planejamento original. Informe a justificativa:</div>
+      ${divs.map(d=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:.79rem;">
+        <span style="background:rgba(245,158,11,.15);color:var(--yellow);padding:1px 7px;border-radius:4px;font-weight:700;white-space:nowrap;">Agente ${d.idx} — ${d.campo}</span>
+        <span style="color:var(--text3);">Plano: <b>${d.plano}</b> → Campo: <b>${d.real}</b></span>
+      </div>`).join('')}
+      <textarea id="nv-div-justificativa" rows="2" placeholder="Ex: Bomba planejada estava em manutenção — substituída pela BDX-002"
+        style="width:100%;margin-top:8px;background:var(--surface2);border:1.5px solid rgba(245,158,11,.4);border-radius:7px;color:var(--text);padding:8px 10px;font-size:.83rem;font-family:inherit;resize:vertical;box-sizing:border-box;outline:none;"></textarea>
+    </div>`;
 }
+
 
 // ── Assinaturas Canvas ────────────────────────────────────────────────
 const _nvSigState = {};
@@ -13586,7 +13749,10 @@ async function nvSalvarMedicao() {
       empresa_id:      window._ctrlNvEmpresa?.id || null,
       empresa_nome:    document.getElementById('ctrl-nv-empresa')?.value || '',
       demanda_id:      window._nvDemandaId || null,
-      planejamento_id: window._nvPlanejamentoId || null,
+      planejamento_id:  window._nvPlanejamentoId || null,
+      divergencias:     (window._nvDivergencias && window._nvDivergencias.length)
+        ? { itens: window._nvDivergencias, justificativa: document.getElementById('nv-div-justificativa')?.value || '' }
+        : null,
       os:              document.getElementById('ctrl-nv-os')?.value || '',
       data:         document.getElementById('ctrl-nv-data')?.value || '',
       prazo:        document.getElementById('nv-prazo')?.value || '',
