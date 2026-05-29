@@ -4070,6 +4070,13 @@
 
   <!-- ─── ETAPA 1: EMPRESA / OS ─── -->
   <div id="nv-s1" class="nv-step">
+    <div class="nv-card" id="nv-plan-selector-card" style="border-left:3px solid var(--blue);background:rgba(57,153,255,.04);">
+      <div class="nv-card-title">📋 Gerar a partir de um Planejamento</div>
+      <div style="font-size:.8rem;color:var(--text3);margin-bottom:10px;">Selecione um planejamento confirmado — empresa, OS, agentes e equipamentos são herdados automaticamente (sem redigitar).</div>
+      <select id="nv-plan-selector" onmousedown="nvCarregarPlanejamentosSelect()" onchange="nvSelecionarPlanejamento(this.value)" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-size:.86rem;font-family:inherit;">
+        <option value="">— Começar em branco (preenchimento manual) —</option>
+      </select>
+    </div>
     <div class="nv-card">
       <div class="nv-card-title">Etapa 1 — Dados da Empresa / OS</div>
       <div class="nv-f" style="margin-bottom:12px;">
@@ -8270,7 +8277,7 @@ function ctrlSwitchSub(name, el) {
   if (name === 'demand') { ctrlLoadBuckets(); ctrlLoadDemand(); ctrlCarregarRevisao(); }
   if (name === 'empresa') ctrlLoadPorEmpresa();
   if (name === 'amostr') { ctrlSwitchAmostrView('estoque'); }
-  if (name === 'nova') ctrlNvInit();
+  if (name === 'nova') { ctrlNvInit(); nvCarregarPlanejamentosSelect(); }
   if (name === 'import') ctrlLoadSyncLog();
   if (name === 'prev') ctrlLoadPrevisao();
   if (name === 'plan') planInit();
@@ -9727,6 +9734,23 @@ async function planSalvar(status) {
   } catch(e) {
     _showToast('Erro: ' + e.message, 'err');
   }
+}
+
+async function nvCarregarPlanejamentosSelect() {
+  const sel = document.getElementById('nv-plan-selector');
+  if (!sel) return;
+  try {
+    const lista = await ctrlFetch('/controle/planejamentos?limit=50');
+    const conf = (lista || []).filter(p => ['confirmado','em_execucao'].includes(p.status));
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">— Começar em branco (preenchimento manual) —</option>' +
+      conf.map(p => `<option value="${p.id}" ${String(p.id)===atual?'selected':''}>OS ${p.numero_os||'—'} · ${(p.empresa_nome||'empresa?').slice(0,40)} · ${p.data_prevista||'sem data'}</option>`).join('');
+  } catch(e) { /* silencioso */ }
+}
+
+function nvSelecionarPlanejamento(pid) {
+  if (!pid) return;
+  ctrlNvVincularPlanejamento(parseInt(pid));
 }
 
 function planIrParaCampo(planejamento_id) {
@@ -13067,13 +13091,29 @@ function nvShowStep3() {
 
   // Inicializar agentes químicos a partir do planejamento
   if (temQuimico && !_nvCqAgentes.length) {
-    const itens = window._ctrlNvItens || [];
+    // Só itens químicos viram agente químico (evita criar fichas vazias p/ ruído/calor/vibração)
+    const itens = (window._ctrlNvItens || []).filter(it => (it.tipo || 'quimico') === 'quimico');
     if (itens.length > 0) {
       itens.forEach(item => {
         const ag = nvCqNewAgente();
-        ag.substancias = item.agente || '';
+        ag.substancias = item.agente_nome || item.agente || '';
         ag.bomba       = item.bomba_modelo_id || '';
         ag.id_bomba    = item.bomba_sn || '';
+        // Herdar dados de calibração/vazão/amostrador do planejamento
+        if (item.calibrador_nome) ag.calibrador = item.calibrador_nome;
+        if (item.data_calibracao) ag.cal_bomba  = item.data_calibracao;
+        ag.amostrador_codigo = item.amostrador_codigo || '';
+        ag.vazao_calibrada   = item.vazao_calibrada || '';
+        ag.tipo_coleta       = item.tipo_coleta || 'pessoal';
+        // Pré-criar 1 amostrador com código e vazão planejados
+        if (item.amostrador_codigo || item.vazao_calibrada) {
+          ag.amostradores.push({
+            id_amostrador: item.amostrador_codigo || '',
+            tipo_amostrador: 'TCP',
+            vazao_inicial: parseFloat(item.vazao_calibrada) || 0,
+            vazao_final: 0, hora_inicio:'', hora_final:'', intervalos:''
+          });
+        }
         if (item.funcao) {
           const parts = item.funcao.split('/');
           ag.func_funcao = parts[0].trim();
@@ -13103,7 +13143,13 @@ function nvShowStep4() {
   }
   // Auto-preencher dosímetro a partir do ruído, se houver SN salvo
   if (_nvTipos.includes('ruido')) {
-    const snRuido = document.getElementById('nv-eq-dosim-sn')?.value;
+    const snEl = document.getElementById('nv-eq-dosim-sn');
+    // Herdar série(s) do dosímetro do planejamento, se o campo estiver vazio
+    if (snEl && !snEl.value) {
+      const itemRuido = (window._ctrlNvItens || []).find(it => it.tipo === 'ruido' && it.series_dosim);
+      if (itemRuido) snEl.value = itemRuido.series_dosim;
+    }
+    const snRuido = snEl?.value;
     if (snRuido) nvEquipAutoFill('', snRuido);
   }
 }
@@ -13412,6 +13458,7 @@ function nvCqNewAgente() {
     func_nome:'', func_jornada:'', func_funcao:'', func_setor:'', func_local:'', func_atv:'',
     ventilacao:'', ambiente:'', meteo:'', temperatura:'', umidade:'', outras_cond:'',
     bomba:'', id_bomba:'', cal_bomba:'', calibrador:'DEFENDER 510M S/N:126958',
+    amostrador_codigo:'', vazao_calibrada:'', tipo_coleta:'pessoal',
     ac_ciclone_al:false, ac_ciclone_ny:false, ac_redutor:false, ac_iom:false, ac_termo:false, ac_supcass:false,
     substancias:'', fracao:'', tempo_exp:'',
     amostradores:[],
