@@ -8733,7 +8733,33 @@ window._planAgentes = [];   // [{tipo, agente, qtd}]
 let _planOsDebounce = null;
 
 async function planInit() {
+  // Carrega o banco real de bombas (modelos + nº de série) 1x
+  if (!window._planBombas) {
+    try { window._planBombas = await ctrlFetch('/controle/bombas'); }
+    catch(e) { window._planBombas = {modelos:[]}; }
+  }
   await planCarregarLista();
+}
+
+// ── Banco real de bombas: modelo → série (sem digitação manual) ───────
+function _planBombaModeloOpts(selId) {
+  const mods = (window._planBombas && window._planBombas.modelos) || [];
+  let opts = `<option value="">— bomba —</option>`;
+  mods.forEach(m => { opts += `<option value="${m.id}" ${selId===m.id?'selected':''}>${m.nome}</option>`; });
+  return opts;
+}
+function _planBombaSerieOpts(modId, selSerie) {
+  const mods = (window._planBombas && window._planBombas.modelos) || [];
+  const m = mods.find(x => x.id === modId);
+  if (!m || !m.sns || !m.sns.length) return `<option value="">— série —</option>`;
+  let opts = `<option value="">— série —</option>`;
+  m.sns.forEach(sn => { opts += `<option value="${sn}" ${selSerie===sn?'selected':''}>${sn}</option>`; });
+  return opts;
+}
+function _planSetBombaModelo(i, modId) {
+  window._planAgentes[i].bomba_sn = modId;   // id do modelo (bdx/airlite/...)
+  window._planAgentes[i].id_bomba = '';      // zera a série ao trocar de modelo
+  _planRenderizarAgentes();
 }
 
 async function planCarregarLista() {
@@ -9104,18 +9130,18 @@ function _planRenderizarAgentes() {
     return;
   }
   const inp = 'background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;';
-  const bombas_opts = ['','BDX-II GILLIAN','AIRLITE SKC','FORMIS TURAM','INLITE VENTUSPRO'].map(b =>
-    `<option value="${b}">${b||'— bomba —'}</option>`).join('');
 
   lista.innerHTML = window._planAgentes.map((a, i) => {
     const metaHtml = a.metodo ? `<span style="font-size:.7rem;color:var(--text3);">${a.metodo}${a.vazao?' · '+a.vazao:''}</span>` : '';
     let extraFields = '';
 
     if (a.tipo === 'quimico') {
-      const selBomba = bombas_opts.replace(`value="${a.bomba_sn||''}"`,`value="${a.bomba_sn||''}" selected`);
+      const modOpts = _planBombaModeloOpts(a.bomba_sn||'');
+      const serieOpts = _planBombaSerieOpts(a.bomba_sn||'', a.id_bomba||'');
       extraFields = `
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;align-items:center;">
-          <select onchange="window._planAgentes[${i}].bomba_sn=this.value" style="${inp}width:auto;">${selBomba}</select>
+          <select onchange="_planSetBombaModelo(${i}, this.value)" style="${inp}width:auto;" title="Modelo da bomba">${modOpts}</select>
+          <select onchange="window._planAgentes[${i}].id_bomba=this.value" style="${inp}width:auto;" title="Nº de série (do banco)">${serieOpts}</select>
           <input type="text" value="${a.vazao_real||a.vazao||''}" placeholder="Vazão L/min" onchange="window._planAgentes[${i}].vazao_real=this.value" style="${inp}width:85px;">
           <select onchange="window._planAgentes[${i}].valor_tipo=this.value" style="${inp}width:auto;">
             <option value="medio" ${(a.valor_tipo||'medio')==='medio'?'selected':''}>Valor Médio</option>
