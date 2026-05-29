@@ -3893,8 +3893,9 @@
 
     <!-- OS / busca automática -->
     <div class="plan-f" style="position:relative;">
-      <label>N° da OS</label>
-      <input type="text" id="plan-nv-os" placeholder="Digite a OS para buscar empresa e agentes automaticamente..." oninput="planOsChange(this.value)" autocomplete="off">
+      <label>N° da OS <span style="font-weight:400;color:var(--text3);font-size:.75rem;">— ou busque por nome de empresa</span></label>
+      <input type="text" id="plan-nv-os" placeholder="Ex: 6077430, 2A Engenharia, BRAHMA..." oninput="planOsChange(this.value)" autocomplete="off">
+      <div id="plan-os-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:200;max-height:220px;overflow-y:auto;margin-top:2px;"></div>
       <div id="plan-os-info" style="display:none;margin-top:6px;padding:9px 11px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:6px;font-size:.78rem;"></div>
     </div>
 
@@ -9024,9 +9025,48 @@ function _planParseAgentes(raw) {
 
 function planOsChange(val) {
   clearTimeout(_planOsDebounce);
-  if (!val || val.length < 4) { _planLimparDemanda(); return; }
-  _planOsDebounce = setTimeout(() => _planBuscarOs(val), 400);
+  const sugs = document.getElementById('plan-os-sugs');
+  if (!val || val.length < 2) {
+    _planLimparDemanda();
+    if (sugs) sugs.style.display = 'none';
+    return;
+  }
+  _planOsDebounce = setTimeout(() => _planBuscarOsSugestoes(val), 300);
 }
+
+async function _planBuscarOsSugestoes(q) {
+  const sugs = document.getElementById('plan-os-sugs');
+  if (!sugs) return;
+  try {
+    const lista = await ctrlFetch('/controle/demandas/busca?q=' + encodeURIComponent(q) + '&limit=8');
+    if (!lista.length) { sugs.style.display = 'none'; return; }
+    sugs.innerHTML = lista.map(d => {
+      const os    = d.numero_os || '—';
+      const emp   = d.empresa_nome ? `<span style="color:var(--text3);font-size:.76rem;"> · ${d.empresa_nome}</span>` : '';
+      const title = d.titulo ? `<div style="font-size:.72rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.titulo.slice(0,60)}</div>` : '';
+      return `<div onclick="planOsSelecionarSugestao('${os.replace(/'/g,"\\'")}','${d.id}')"
+        style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);"
+        onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <b>${os}</b>${emp}${title}
+      </div>`;
+    }).join('');
+    sugs.style.display = 'block';
+  } catch(e) { sugs.style.display = 'none'; }
+}
+
+async function planOsSelecionarSugestao(os, demandaId) {
+  const input = document.getElementById('plan-nv-os');
+  const sugs  = document.getElementById('plan-os-sugs');
+  if (input) input.value = os;
+  if (sugs)  sugs.style.display = 'none';
+  await _planBuscarOs(os);
+}
+
+// Fechar sugestões ao clicar fora
+document.addEventListener('click', e => {
+  const sugs = document.getElementById('plan-os-sugs');
+  if (sugs && !sugs.contains(e.target) && e.target.id !== 'plan-nv-os') sugs.style.display = 'none';
+}, true);
 
 async function _planBuscarOs(os) {
   const info = document.getElementById('plan-os-info');
@@ -9082,20 +9122,22 @@ function planAddAgente(tipo) {
   const old = document.getElementById('plan-add-modal');
   if (old) old.remove();
 
+  const cor = {ruido:'var(--green)',quimico:'#39f',calor:'var(--yellow)',vibracao:'var(--purple)'}[tipo]||'var(--blue)';
+
   const nomeField = tipo === 'quimico'
-    ? `<div class="plan-f" style="margin-bottom:8px;">
+    ? `<div class="plan-f" style="margin-bottom:8px;position:relative;">
         <label>Nome do agente</label>
-        <input type="text" id="plan-modal-agente" placeholder="Ex: Tolueno, Poeira Respirável..." autocomplete="off" style="width:100%;">
+        <input type="text" id="plan-modal-agente" placeholder="Buscar: Tolueno, Benzeno, Sílica..." autocomplete="off" style="width:100%;" oninput="planModalBuscarAgente(this.value)">
+        <div id="plan-modal-agente-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:300;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+        <div id="plan-modal-agente-info" style="display:none;margin-top:5px;padding:7px 10px;background:rgba(57,153,255,.07);border-radius:6px;font-size:.72rem;color:var(--text2);line-height:1.5;"></div>
        </div>`
     : `<input type="hidden" id="plan-modal-agente" value="${labels[tipo]}">`;
-
-  const cor = {ruido:'var(--green)',quimico:'#39f',calor:'var(--yellow)',vibracao:'var(--purple)'}[tipo]||'var(--blue)';
 
   const modal = document.createElement('div');
   modal.id = 'plan-add-modal';
   modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;`;
   modal.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;width:340px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;width:380px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.4);">
       <div style="font-weight:800;font-size:.95rem;margin-bottom:14px;color:${cor};">${labels[tipo]}</div>
       ${nomeField}
       <div class="plan-f" style="margin-bottom:16px;">
@@ -9117,13 +9159,76 @@ function planAddAgente(tipo) {
   }, 50);
 }
 
+let _planAgenteCache = null;
+let _planAgenteDebounce = null;
+async function planModalBuscarAgente(q) {
+  clearTimeout(_planAgenteDebounce);
+  const sugs = document.getElementById('plan-modal-agente-sugs');
+  const info = document.getElementById('plan-modal-agente-info');
+  if (!sugs) return;
+  if (!q || q.length < 2) { sugs.style.display = 'none'; return; }
+  _planAgenteDebounce = setTimeout(async () => {
+    try {
+      if (!_planAgenteCache) _planAgenteCache = await ctrlFetch('/controle/agentes');
+      const qq = q.toLowerCase();
+      const matches = (_planAgenteCache || []).filter(a => a.nome.toLowerCase().includes(qq)).slice(0, 10);
+      if (!matches.length) { sugs.style.display = 'none'; return; }
+      sugs.innerHTML = matches.map(a =>
+        `<div onclick="planModalSelecionarAgente(${JSON.stringify(JSON.stringify(a))})"
+          style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);"
+          onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          <b style="font-size:.82rem;">${a.nome}</b>
+          <span style="font-size:.71rem;color:var(--text3);margin-left:6px;">${a.metodo||''} ${a.vazao ? '· '+a.vazao : ''}</span>
+        </div>`
+      ).join('');
+      sugs.style.display = 'block';
+    } catch(e) { sugs.style.display = 'none'; }
+  }, 200);
+}
+
+function planModalSelecionarAgente(jsonStr) {
+  const a = JSON.parse(jsonStr);
+  const input = document.getElementById('plan-modal-agente');
+  const sugs  = document.getElementById('plan-modal-agente-sugs');
+  const info  = document.getElementById('plan-modal-agente-info');
+  if (input) input.value = a.nome;
+  if (sugs)  sugs.style.display = 'none';
+  if (info) {
+    const parts = [];
+    if (a.metodo)    parts.push(`📋 Método: <b>${a.metodo}</b>`);
+    if (a.vazao)     parts.push(`💨 Vazão: <b>${a.vazao}</b>`);
+    if (a.volume)    parts.push(`🧪 Volume: <b>${a.volume}</b>`);
+    if (a.amostrador) parts.push(`📦 Amostrador: <b>${a.amostrador}</b>`);
+    if (a.unidade)   parts.push(`📏 Unidade: <b>${a.unidade}</b>`);
+    info.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+    info.style.display = parts.length ? 'block' : 'none';
+    // Salvar dados no modal para uso no payload
+    info.dataset.agenteJson = JSON.stringify(a);
+  }
+}
+
 function planConfirmarAgente(tipo) {
   const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
   const agente = (document.getElementById('plan-modal-agente')?.value || '').trim() || labels[tipo];
   const qtd    = parseInt(document.getElementById('plan-modal-qtd')?.value || '1');
+  // Recupera dados do guia de métodos se disponíveis
+  const infoEl = document.getElementById('plan-modal-agente-info');
+  let metadados = {};
+  if (infoEl && infoEl.dataset.agenteJson) {
+    try { metadados = JSON.parse(infoEl.dataset.agenteJson); } catch(e) {}
+  }
   document.getElementById('plan-add-modal')?.remove();
   if (isNaN(qtd) || qtd < 1) return;
-  window._planAgentes.push({tipo, agente, qtd});
+  window._planAgentes.push({
+    tipo, agente, qtd,
+    metodo:    metadados.metodo    || '',
+    vazao:     metadados.vazao     || '',
+    volume:    metadados.volume    || '',
+    amostrador: metadados.amostrador || '',
+    unidade:   metadados.unidade   || '',
+    bomba_sn:  '',
+    valor_tipo: 'medio',  // 'medio' ou 'teto'
+  });
   _planRenderizarAgentes();
 }
 
@@ -9135,12 +9240,35 @@ function _planRenderizarAgentes() {
     document.getElementById('plan-equipamentos-preview').style.display = 'none';
     return;
   }
-  lista.innerHTML = window._planAgentes.map((a, i) =>
-    `<div class="plan-agente-item">
-      <span>${tipos[a.tipo]||''} <b>${a.agente}</b> ×${a.qtd}</span>
-      <button type="button" onclick="planRemoverAgente(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 4px;">✕</button>
-    </div>`
-  ).join('');
+  const bombas_opts = ['','BDX-II GILLIAN','AIRLITE SKC','FORMIS TURAM','INLITE VENTUSPRO'].map(b =>
+    `<option value="${b}">${b || '— bomba —'}</option>`).join('');
+
+  lista.innerHTML = window._planAgentes.map((a, i) => {
+    const metaHtml = a.metodo ? `<span style="font-size:.7rem;color:var(--text3);">${a.metodo}${a.vazao?' · '+a.vazao:''}</span>` : '';
+    const isQuim = a.tipo === 'quimico';
+    const extraFields = isQuim ? `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
+        <select onchange="window._planAgentes[${i}].bomba_sn=this.value"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;">
+          ${bombas_opts.replace(`value="${a.bomba_sn||''}"`, `value="${a.bomba_sn||''}" selected`)}
+        </select>
+        <input type="text" value="${a.vazao_real||a.vazao||''}" placeholder="Vazão L/min"
+          onchange="window._planAgentes[${i}].vazao_real=this.value"
+          style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;">
+        <select onchange="window._planAgentes[${i}].valor_tipo=this.value"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;">
+          <option value="medio" ${(a.valor_tipo||'medio')==='medio'?'selected':''}>Valor Médio</option>
+          <option value="teto"  ${a.valor_tipo==='teto'?'selected':''}>Valor Teto</option>
+        </select>
+      </div>` : '';
+    return `<div class="plan-agente-item" style="flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+        <span>${tipos[a.tipo]||'📋'} <b>${a.agente}</b> ×${a.qtd} ${metaHtml}</span>
+        <button type="button" onclick="planRemoverAgente(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 4px;flex-shrink:0;">✕</button>
+      </div>
+      ${extraFields}
+    </div>`;
+  }).join('');
   _planAtualizarEquipamentos();
 }
 

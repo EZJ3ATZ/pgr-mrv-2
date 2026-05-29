@@ -611,6 +611,27 @@ def get_demanda_agentes(did):
         return jsonify({'erro': str(e), 'trace': traceback.format_exc()}), 500
 
 
+@controle_bp.route('/demandas/busca')
+def busca_demandas():
+    """Busca demandas por OS ou nome de empresa para autocomplete. ?q=texto&limit=8"""
+    init_db()
+    q = (request.args.get('q') or '').strip()
+    limit = int(request.args.get('limit') or 8)
+    if not q or len(q) < 2:
+        return jsonify([])
+    with get_db() as conn:
+        rows = conn.execute(
+            '''SELECT d.numero_os, d.titulo, e.nome AS empresa_nome, d.id
+               FROM demandas d LEFT JOIN empresas e ON e.id = d.empresa_id
+               WHERE (d.numero_os LIKE ? OR d.titulo LIKE ? OR e.nome LIKE ?)
+                 AND d.numero_os IS NOT NULL AND d.numero_os != ''
+               ORDER BY d.criado_em DESC
+               LIMIT ?''',
+            (f'%{q}%', f'%{q}%', f'%{q}%', limit)
+        ).fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
 @controle_bp.route('/demandas/por_os/<os_num>')
 def get_demanda_por_os(os_num):
     """Busca demanda pelo número de OS e retorna id, título e agentes extraídos."""
