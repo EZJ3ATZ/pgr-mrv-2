@@ -8738,17 +8738,24 @@ async function planInit() {
     try { window._planBombas = await ctrlFetch('/controle/bombas'); }
     catch(e) { window._planBombas = {modelos:[]}; }
   }
-  // Carrega o banco real de calibradores de ruído (Chrompack) 1x
+  // Carrega o banco real de calibradores de ruído (Chrompack + Inlite) 1x
   if (!window._planCalibRuido) {
     try { window._planCalibRuido = await ctrlFetch('/controle/calibradores-ruido'); }
     catch(e) { window._planCalibRuido = {calibradores:[]}; }
+  }
+  // Carrega o banco real de dosímetros de ruído (Chrompack + Inlite) 1x
+  if (!window._planDosimRuido) {
+    try { window._planDosimRuido = await ctrlFetch('/controle/dosimetros-ruido'); }
+    catch(e) { window._planDosimRuido = {dosimetros:[]}; }
   }
   await planCarregarLista();
 }
 
 // ── Banco real de calibradores de ruído: série + cert + validade ──────
-function _planCalibRuidoOpts(selId) {
-  const cals = (window._planCalibRuido && window._planCalibRuido.calibradores) || [];
+// Filtra por marca (chrompack/inlite) — regra: cada marca só calibra seus dosímetros.
+function _planCalibRuidoOpts(selId, marca) {
+  let cals = (window._planCalibRuido && window._planCalibRuido.calibradores) || [];
+  if (marca) cals = cals.filter(c => (c.marca||'').toUpperCase() === marca.toUpperCase());
   let opts = `<option value="">— calibrador —</option>`;
   cals.forEach(c => {
     const venc = c.vencido ? ' ⚠️ VENCIDO' : '';
@@ -8763,6 +8770,36 @@ function _planSetCalibRuido(i, calId) {
   window._planAgentes[i].calibrador_ruido_serie = c ? c.serie : '';
   window._planAgentes[i].calibrador_ruido_cert = c ? c.cert : '';
   window._planAgentes[i].calibrador_ruido_validade = c ? c.validade : '';
+  _planRenderizarAgentes();
+}
+
+// ── Banco real de dosímetros de ruído: seleção por série (sem digitação) ─
+function _planDosimRuidoOpts(selSerie, marca) {
+  let dos = (window._planDosimRuido && window._planDosimRuido.dosimetros) || [];
+  if (marca) dos = dos.filter(d => (d.marca||'').toUpperCase() === marca.toUpperCase());
+  let opts = `<option value="">— dosímetro —</option>`;
+  dos.forEach(d => {
+    const venc = d.vencido ? ' ⚠️ VENCIDO' : '';
+    opts += `<option value="${d.serie}" ${selSerie===d.serie?'selected':''}>${d.serie} · cert ${d.cert}${venc}</option>`;
+  });
+  return opts;
+}
+function _planSetDosimRuido(i, serie) {
+  const dos = (window._planDosimRuido && window._planDosimRuido.dosimetros) || [];
+  const d = dos.find(x => x.serie === serie);
+  const ag = window._planAgentes[i];
+  // multi-seleção acumulada: lista de séries escolhidas
+  ag.dosim_ruido = ag.dosim_ruido || [];
+  if (serie && !ag.dosim_ruido.find(x => x.serie === serie) && d) {
+    ag.dosim_ruido.push({serie: d.serie, cert: d.cert, validade: d.validade});
+  }
+  ag.series_dosim = ag.dosim_ruido.map(x => x.serie).join(', ');
+  _planRenderizarAgentes();
+}
+function _planRemoveDosimRuido(i, serie) {
+  const ag = window._planAgentes[i];
+  ag.dosim_ruido = (ag.dosim_ruido || []).filter(x => x.serie !== serie);
+  ag.series_dosim = ag.dosim_ruido.map(x => x.serie).join(', ');
   _planRenderizarAgentes();
 }
 
@@ -9180,27 +9217,34 @@ function _planRenderizarAgentes() {
         </div>`;
     } else if (a.tipo === 'ruido') {
       const isInlite = a.marca_dosimetro==='inlite';
+      const marca = isInlite ? 'INLITE' : 'CHROMPACK';
       const marcaLabel = isInlite ? '🎧 Inlite' : '🎧 Chrompack';
-      let calibHtml;
-      if (isInlite) {
-        calibHtml = `<div style="margin-top:5px;font-size:.72rem;color:var(--yellow);">⚠️ Dosímetro Inlite → usar o calibrador Inlite (1 unidade).</div>`;
-      } else {
-        const calOpts = _planCalibRuidoOpts(a.calibrador_ruido_id||'');
-        const valTxt = a.calibrador_ruido_validade
-          ? `<span style="font-size:.68rem;color:${a.calibrador_ruido_validade < new Date().toISOString().slice(0,10) ? 'var(--red,#ef4444)' : 'var(--text3)'};">val. ${a.calibrador_ruido_validade.split('-').reverse().join('/')}</span>`
-          : '';
-        calibHtml = `
+      const hojeISO = new Date().toISOString().slice(0,10);
+      // Calibrador filtrado pela marca do dosímetro (cada marca só calibra os seus)
+      const calOpts = _planCalibRuidoOpts(a.calibrador_ruido_id||'', marca);
+      const valTxt = a.calibrador_ruido_validade
+        ? `<span style="font-size:.68rem;color:${a.calibrador_ruido_validade < hojeISO ? 'var(--red,#ef4444)' : 'var(--text3)'};">val. ${a.calibrador_ruido_validade.split('-').reverse().join('/')}</span>`
+        : '';
+      const calibHtml = `
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
-          <select onchange="_planSetCalibRuido(${i}, this.value)" style="${inp}width:auto;" title="Calibrador de nível sonoro (banco real)">${calOpts}</select>
+          <select onchange="_planSetCalibRuido(${i}, this.value)" style="${inp}width:auto;" title="Calibrador ${marcaLabel} (banco real)">${calOpts}</select>
           ${valTxt}
         </div>`;
-      }
+      // Dosímetros: seleção do banco real (sem digitação) — chips dos escolhidos
+      const dosOpts = _planDosimRuidoOpts('', marca);
+      const dosChips = (a.dosim_ruido||[]).map(d => {
+        const v = d.validade && d.validade < hojeISO ? '⚠️' : '';
+        return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg2,#1e293b);border:1px solid var(--border,#334);border-radius:10px;padding:1px 7px;font-size:.7rem;">${v}${d.serie}<button type="button" onclick="_planRemoveDosimRuido(${i},'${d.serie}')" style="background:none;border:none;color:#ef4444;cursor:pointer;padding:0;font-size:.8rem;">✕</button></span>`;
+      }).join(' ');
       extraFields = `
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:5px;align-items:center;font-size:.75rem;">
           <span style="color:var(--text2);">${marcaLabel} · ${a.qtd_pessoas||a.qtd} pessoa(s)</span>
         </div>
         ${calibHtml}
-        <input type="text" value="${a.series_dosim||''}" placeholder="Nº série dosímetro(s) — ex: CR-001, CR-002" onchange="window._planAgentes[${i}].series_dosim=this.value" style="${inp}width:100%;margin-top:4px;" title="Série(s) dos dosímetros que serão usados">`;
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
+          <select onchange="_planSetDosimRuido(${i}, this.value)" style="${inp}width:auto;" title="Adicionar dosímetro ${marcaLabel} (banco real)">${dosOpts}</select>
+          ${dosChips}
+        </div>`;
     } else if (a.tipo === 'vibracao') {
       const subOpts = [{v:'vci',l:'Corpo Inteiro (VCI)'},{v:'vbma',l:'Mãos e Braços (VBMA)'},{v:'ambos',l:'VCI + VBMA'}]
         .map(o=>`<option value="${o.v}" ${(a.subtipo||'vci')===o.v?'selected':''}>${o.l}</option>`).join('');

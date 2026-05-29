@@ -1084,12 +1084,49 @@ _CALIB_NAMES = {'defender510m': 'DEFENDER 510M', 'tsi4143f': 'TSI 4143F'}
 _CALIB_RUIDO_MARCA = 'CHROMPACK'
 _CALIB_RUIDO_MODELO = 'SMARTCAL'
 _CALIB_RUIDO = {
-    '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14'},
-    '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20'},
-    '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18'},
-    '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08'},
-    '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08'},
+    '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14', 'marca': 'CHROMPACK'},
+    '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20', 'marca': 'CHROMPACK'},
+    '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18', 'marca': 'CHROMPACK'},
+    '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08', 'marca': 'CHROMPACK'},
+    '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08', 'marca': 'CHROMPACK'},
+    # Calibrador Inlite (CalPro) — atende SÓ dosimetros Inlite. Serie conforme certificado (25035711).
+    '25035711': {'serie': '25035711', 'cert': '42.179-2025', 'data_calib': '2025-08-28', 'marca': 'INLITE', 'modelo': 'CalPro'},
 }
+
+# Dosimetros de ruido — frota do grupo (Chrompack SmartdB + Inlite DoseMax V2).
+# Chrompack dosim. usam calibrador Chrompack; Inlite usam o calibrador Inlite.
+# OBS: serie 1153 nao incluida — o PDF "1153" contem cert da serie 1154 (duplicado). Verificar com fornecedor.
+_DOSIM_RUIDO = {
+    'chrompack': {
+        # 2025 (cal 19/08/2025) — modelo SmartdB LITE
+        '1149': {'serie': '0000001149', 'cert': '172.887', 'data_calib': '2025-08-19'},
+        '1150': {'serie': '0000001150', 'cert': '172.889', 'data_calib': '2025-08-19'},
+        '1151': {'serie': '0000001151', 'cert': '172.890', 'data_calib': '2025-08-19'},
+        '1152': {'serie': '0000001152', 'cert': '172.888', 'data_calib': '2025-08-19'},
+        '1154': {'serie': '0000001154', 'cert': '172.886', 'data_calib': '2025-08-19'},
+        '5309': {'serie': '0000005309', 'cert': '2503A35508', 'data_calib': '2025-03-20'},
+        # 2026 (cal 09/04/2026) — modelo SmartdB
+        '1085': {'serie': '0000001085', 'cert': '181.280', 'data_calib': '2026-04-09'},
+        '1086': {'serie': '0000001086', 'cert': '181.272', 'data_calib': '2026-04-09'},
+        '1088': {'serie': '0000001088', 'cert': '181.273', 'data_calib': '2026-04-09'},
+        '5062': {'serie': '0000005062', 'cert': '181.281', 'data_calib': '2026-04-09'},
+        '5063': {'serie': '0000005063', 'cert': '181.277', 'data_calib': '2026-04-09'},
+        '5064': {'serie': '0000005064', 'cert': '181.275', 'data_calib': '2026-04-09'},
+        '5065': {'serie': '0000005065', 'cert': '181.279', 'data_calib': '2026-04-09'},
+        '5066': {'serie': '0000005066', 'cert': '181.271', 'data_calib': '2026-04-09'},
+        '5308': {'serie': '0000005308', 'cert': '181.274', 'data_calib': '2026-04-09'},
+        '5311': {'serie': '0000005311', 'cert': '181.278', 'data_calib': '2026-04-09'},
+    },
+    'inlite': {
+        # DoseMax V2 (cal 28/08/2025)
+        '2507050490AA': {'serie': '2507050490AA', 'cert': '42.191-2025', 'data_calib': '2025-08-28'},
+        '2507050520AA': {'serie': '2507050520AA', 'cert': '42.189-2025', 'data_calib': '2025-08-28'},
+        '2507050710AA': {'serie': '2507050710AA', 'cert': '42.180-2025', 'data_calib': '2025-08-28'},
+        '2507050750AA': {'serie': '2507050750AA', 'cert': '42.190-2025', 'data_calib': '2025-08-28'},
+        '2507050810AA': {'serie': '2507050810AA', 'cert': '42.192-2025', 'data_calib': '2025-08-28'},
+    },
+}
+_DOSIM_RUIDO_MODELO = {'chrompack': 'SmartdB', 'inlite': 'DoseMax V2'}
 
 
 def _q_img_para(rid, iid, cx=6858000, cy=9693700):

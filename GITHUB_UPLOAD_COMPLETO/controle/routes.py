@@ -1321,11 +1321,12 @@ def get_calibradores_ruido():
         except Exception:
             return ''
     _fallback = {
-        '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14'},
-        '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20'},
-        '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18'},
-        '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08'},
-        '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08'},
+        '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14', 'marca': 'CHROMPACK'},
+        '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20', 'marca': 'CHROMPACK'},
+        '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18', 'marca': 'CHROMPACK'},
+        '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08', 'marca': 'CHROMPACK'},
+        '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08', 'marca': 'CHROMPACK'},
+        '25035711': {'serie': '25035711', 'cert': '42.179-2025', 'data_calib': '2025-08-28', 'marca': 'INLITE', 'modelo': 'CalPro'},
     }
     marca, modelo, dados = 'CHROMPACK', 'SMARTCAL', _fallback
     try:
@@ -1342,12 +1343,50 @@ def get_calibradores_ruido():
     for k, v in dados.items():
         val = _validade(v.get('data_calib', ''))
         itens.append({
-            'id': k, 'serie': v.get('serie', k), 'marca': marca, 'modelo': modelo,
+            'id': k, 'serie': v.get('serie', k),
+            'marca': v.get('marca', marca), 'modelo': v.get('modelo', modelo),
             'cert': v.get('cert', ''), 'data_calib': v.get('data_calib', ''),
             'validade': val, 'vencido': bool(val and val < hoje),
         })
-    itens.sort(key=lambda x: x['serie'])
+    itens.sort(key=lambda x: (x['marca'], x['serie']))
     return jsonify({'marca': marca, 'modelo': modelo, 'calibradores': itens})
+
+
+@controle_bp.route('/dosimetros-ruido')
+def get_dosimetros_ruido():
+    """Retorna dosimetros de ruido ativos com serie/cert/validade, por marca.
+    Fonte: _DOSIM_RUIDO em app.py (estrutura {chrompack:{...}, inlite:{...}}).
+    Validade = calibracao + 365 dias (IEC 60942 anual).
+    """
+    from datetime import datetime, timedelta
+    def _validade(dc):
+        try:
+            return (datetime.strptime(dc, '%Y-%m-%d') + timedelta(days=365)).strftime('%Y-%m-%d')
+        except Exception:
+            return ''
+    dados, modelos = {}, {'chrompack': 'SmartdB', 'inlite': 'DoseMax V2'}
+    try:
+        import sys
+        app_mod = sys.modules.get('app')
+        if app_mod and hasattr(app_mod, '_DOSIM_RUIDO'):
+            dados = app_mod._DOSIM_RUIDO
+            modelos = getattr(app_mod, '_DOSIM_RUIDO_MODELO', modelos)
+    except Exception as e:
+        print(f'[controle] /dosimetros-ruido erro: {e}')
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    itens = []
+    for marca_key, grupo in dados.items():
+        modelo = modelos.get(marca_key, '')
+        for k, v in grupo.items():
+            val = _validade(v.get('data_calib', ''))
+            itens.append({
+                'id': k, 'serie': v.get('serie', k),
+                'marca': marca_key.upper(), 'modelo': modelo,
+                'cert': v.get('cert', ''), 'data_calib': v.get('data_calib', ''),
+                'validade': val, 'vencido': bool(val and val < hoje),
+            })
+    itens.sort(key=lambda x: (x['marca'], x['serie']))
+    return jsonify({'dosimetros': itens})
 
 
 # ── Previsão de estoque baseada em demandas pendentes ────────────────
