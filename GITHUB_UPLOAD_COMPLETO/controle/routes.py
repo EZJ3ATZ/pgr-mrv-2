@@ -1309,6 +1309,47 @@ def get_bombas():
     })
 
 
+@controle_bp.route('/calibradores-ruido')
+def get_calibradores_ruido():
+    """Retorna calibradores de nivel sonoro (ruido) ativos com serie/cert/validade.
+    Fonte: _CALIB_RUIDO em app.py (certificado vigente = calibracao mais recente).
+    """
+    from datetime import datetime, timedelta
+    def _validade(dc):
+        try:
+            return (datetime.strptime(dc, '%Y-%m-%d') + timedelta(days=365)).strftime('%Y-%m-%d')
+        except Exception:
+            return ''
+    _fallback = {
+        '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14'},
+        '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20'},
+        '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18'},
+        '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08'},
+        '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08'},
+    }
+    marca, modelo, dados = 'CHROMPACK', 'SMARTCAL', _fallback
+    try:
+        import sys
+        app_mod = sys.modules.get('app')
+        if app_mod and hasattr(app_mod, '_CALIB_RUIDO'):
+            dados = app_mod._CALIB_RUIDO
+            marca = getattr(app_mod, '_CALIB_RUIDO_MARCA', marca)
+            modelo = getattr(app_mod, '_CALIB_RUIDO_MODELO', modelo)
+    except Exception as e:
+        print(f'[controle] /calibradores-ruido erro: {e}')
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    itens = []
+    for k, v in dados.items():
+        val = _validade(v.get('data_calib', ''))
+        itens.append({
+            'id': k, 'serie': v.get('serie', k), 'marca': marca, 'modelo': modelo,
+            'cert': v.get('cert', ''), 'data_calib': v.get('data_calib', ''),
+            'validade': val, 'vencido': bool(val and val < hoje),
+        })
+    itens.sort(key=lambda x: x['serie'])
+    return jsonify({'marca': marca, 'modelo': modelo, 'calibradores': itens})
+
+
 # ── Previsão de estoque baseada em demandas pendentes ────────────────
 @controle_bp.route('/previsao_estoque')
 def previsao_estoque():

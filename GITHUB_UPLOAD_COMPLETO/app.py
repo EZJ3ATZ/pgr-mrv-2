@@ -1078,6 +1078,19 @@ _PUMP_NAMES = {
 _CALIB_CERT_PAGES = {'defender510m': 2, 'tsi4143f': 2}
 _CALIB_NAMES = {'defender510m': 'DEFENDER 510M', 'tsi4143f': 'TSI 4143F'}
 
+# Calibradores de nivel sonoro (ruido) — Chrompack SmartCal, frota do grupo (Ocupacional/Assiste).
+# Quando ha 2 certificados p/ mesma serie, vale a calibracao mais recente (ja consolidado abaixo).
+# Calibracao acustica IEC 60942 e anual → validade = data_calib + 1 ano.
+_CALIB_RUIDO_MARCA = 'CHROMPACK'
+_CALIB_RUIDO_MODELO = 'SMARTCAL'
+_CALIB_RUIDO = {
+    '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14'},
+    '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20'},
+    '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18'},
+    '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08'},
+    '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08'},
+}
+
 
 def _q_img_para(rid, iid, cx=6858000, cy=9693700):
     """Inline image paragraph — full-page sized by default."""

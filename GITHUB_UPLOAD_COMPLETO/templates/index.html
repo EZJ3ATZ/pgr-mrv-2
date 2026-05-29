@@ -8738,7 +8738,32 @@ async function planInit() {
     try { window._planBombas = await ctrlFetch('/controle/bombas'); }
     catch(e) { window._planBombas = {modelos:[]}; }
   }
+  // Carrega o banco real de calibradores de ruído (Chrompack) 1x
+  if (!window._planCalibRuido) {
+    try { window._planCalibRuido = await ctrlFetch('/controle/calibradores-ruido'); }
+    catch(e) { window._planCalibRuido = {calibradores:[]}; }
+  }
   await planCarregarLista();
+}
+
+// ── Banco real de calibradores de ruído: série + cert + validade ──────
+function _planCalibRuidoOpts(selId) {
+  const cals = (window._planCalibRuido && window._planCalibRuido.calibradores) || [];
+  let opts = `<option value="">— calibrador —</option>`;
+  cals.forEach(c => {
+    const venc = c.vencido ? ' ⚠️ VENCIDO' : '';
+    opts += `<option value="${c.id}" ${selId===c.id?'selected':''}>${c.serie} · cert ${c.cert}${venc}</option>`;
+  });
+  return opts;
+}
+function _planSetCalibRuido(i, calId) {
+  const cals = (window._planCalibRuido && window._planCalibRuido.calibradores) || [];
+  const c = cals.find(x => x.id === calId);
+  window._planAgentes[i].calibrador_ruido_id = calId;
+  window._planAgentes[i].calibrador_ruido_serie = c ? c.serie : '';
+  window._planAgentes[i].calibrador_ruido_cert = c ? c.cert : '';
+  window._planAgentes[i].calibrador_ruido_validade = c ? c.validade : '';
+  _planRenderizarAgentes();
 }
 
 // ── Banco real de bombas: modelo → série (sem digitação manual) ───────
@@ -9154,14 +9179,27 @@ function _planRenderizarAgentes() {
           <input type="date" value="${a.data_calibracao||''}" title="Data da calibração da bomba" onchange="window._planAgentes[${i}].data_calibracao=this.value" style="${inp}width:130px;">
         </div>`;
     } else if (a.tipo === 'ruido') {
-      const marcaLabel = a.marca_dosimetro==='inlite' ? '🎧 Inlite' : '🎧 Chrompack';
-      const calibTag = a.marca_dosimetro==='inlite'
-        ? '<span style="color:var(--yellow);font-size:.69rem;padding:1px 5px;background:rgba(245,158,11,.1);border-radius:3px;">⚠️ 1 cal. Inlite</span>'
-        : '<span style="color:var(--green);font-size:.69rem;padding:1px 5px;background:rgba(34,197,94,.1);border-radius:3px;">✅ 4 cal. Chrompack</span>';
+      const isInlite = a.marca_dosimetro==='inlite';
+      const marcaLabel = isInlite ? '🎧 Inlite' : '🎧 Chrompack';
+      let calibHtml;
+      if (isInlite) {
+        calibHtml = `<div style="margin-top:5px;font-size:.72rem;color:var(--yellow);">⚠️ Dosímetro Inlite → usar o calibrador Inlite (1 unidade).</div>`;
+      } else {
+        const calOpts = _planCalibRuidoOpts(a.calibrador_ruido_id||'');
+        const valTxt = a.calibrador_ruido_validade
+          ? `<span style="font-size:.68rem;color:${a.calibrador_ruido_validade < new Date().toISOString().slice(0,10) ? 'var(--red,#ef4444)' : 'var(--text3)'};">val. ${a.calibrador_ruido_validade.split('-').reverse().join('/')}</span>`
+          : '';
+        calibHtml = `
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
+          <select onchange="_planSetCalibRuido(${i}, this.value)" style="${inp}width:auto;" title="Calibrador de nível sonoro (banco real)">${calOpts}</select>
+          ${valTxt}
+        </div>`;
+      }
       extraFields = `
         <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:5px;align-items:center;font-size:.75rem;">
-          <span style="color:var(--text2);">${marcaLabel} · ${a.qtd_pessoas||a.qtd} pessoa(s)</span>${calibTag}
+          <span style="color:var(--text2);">${marcaLabel} · ${a.qtd_pessoas||a.qtd} pessoa(s)</span>
         </div>
+        ${calibHtml}
         <input type="text" value="${a.series_dosim||''}" placeholder="Nº série dosímetro(s) — ex: CR-001, CR-002" onchange="window._planAgentes[${i}].series_dosim=this.value" style="${inp}width:100%;margin-top:4px;" title="Série(s) dos dosímetros que serão usados">`;
     } else if (a.tipo === 'vibracao') {
       const subOpts = [{v:'vci',l:'Corpo Inteiro (VCI)'},{v:'vbma',l:'Mãos e Braços (VBMA)'},{v:'ambos',l:'VCI + VBMA'}]
