@@ -50,6 +50,55 @@ except Exception as _me:
     print(f'[mobile] erro ao carregar blueprint: {_me}')
     traceback.print_exc()
 
+# ── Rede de segurança global: handlers de erro 404/500 ────────────────
+# Sem isto, qualquer erro não-tratado ou URL inválida devolve HTML padrão
+# do Flask — e o frontend (ctrlFetch) espera JSON, quebrando a tela.
+import logging as _logging
+_err_log = _logging.getLogger('app.errors')
+
+def _quer_json():
+    """True se a requisição é de uma rota de API (deve responder JSON)."""
+    try:
+        p = request.path or ''
+        if p.startswith('/controle') or p.startswith('/mobile') or p.startswith('/api'):
+            return True
+        if request.is_json:
+            return True
+        accept = request.headers.get('Accept', '')
+        if 'application/json' in accept:
+            return True
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return True
+    except Exception:
+        pass
+    return False
+
+@app.errorhandler(404)
+def _handle_404(e):
+    if _quer_json():
+        return jsonify({'erro': 'Recurso não encontrado', 'status': 404,
+                        'path': request.path}), 404
+    return e  # navegação normal: deixa o Flask renderizar a página padrão
+
+@app.errorhandler(500)
+def _handle_500(e):
+    _err_log.error(f'[500] {request.method} {request.path}', exc_info=True)
+    if _quer_json():
+        return jsonify({'erro': 'Erro interno do servidor. Tente novamente.',
+                        'status': 500, 'path': request.path}), 500
+    return e
+
+@app.errorhandler(Exception)
+def _handle_uncaught(e):
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e  # 404/redirect/etc. — Flask trata
+    _err_log.error(f'[EXC] {request.method} {request.path}: {e}', exc_info=True)
+    if _quer_json():
+        return jsonify({'erro': 'Erro interno do servidor. Tente novamente.',
+                        'status': 500, 'detalhe': str(e), 'path': request.path}), 500
+    return e
+
 # ── Scheduler: sync automático Microsoft Planner ──────────────────────
 _scheduler_started = False
 def _start_planner_scheduler():
