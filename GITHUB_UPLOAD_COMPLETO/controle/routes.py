@@ -28,6 +28,17 @@ from .import_xlsx import importar_amostradores, importar_medicoes, importar_dema
 controle_bp = Blueprint('controle', __name__, url_prefix='/controle')
 
 
+def _int_arg(nome, default=None):
+    """Lê um query-param como int, sem quebrar em valor inválido."""
+    v = request.args.get(nome)
+    if v is None or v == '':
+        return default
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        return default
+
+
 @controle_bp.before_request
 def _require_login():
     # Só exige login para ações que alteram dados
@@ -774,11 +785,11 @@ def api_list_baixas():
     params, conds = [], ['1=1']
     if request.args.get('os'):
         conds.append('d.numero_os = ?'); params.append(request.args['os'])
-    if request.args.get('empresa_id'):
-        conds.append('d.empresa_id = ?'); params.append(int(request.args['empresa_id']))
-    if request.args.get('demanda_id'):
-        conds.append('m.demanda_id = ?'); params.append(int(request.args['demanda_id']))
-    limit = min(int(request.args.get('limit', 50)), 200)
+    if _int_arg('empresa_id') is not None:
+        conds.append('d.empresa_id = ?'); params.append(_int_arg('empresa_id'))
+    if _int_arg('demanda_id') is not None:
+        conds.append('m.demanda_id = ?'); params.append(_int_arg('demanda_id'))
+    limit = min(_int_arg('limit', 50), 200)
     with get_db() as conn:
         rows = conn.execute(f'''
             SELECT b.id, b.medicao_id, b.amostrador_id,
@@ -941,11 +952,11 @@ def get_coletas_outros_route():
     filtros = {}
     if request.args.get('tipo'):
         filtros['tipo'] = request.args['tipo']
-    if request.args.get('empresa_id'):
-        filtros['empresa_id'] = int(request.args['empresa_id'])
-    if request.args.get('demanda_id'):
-        filtros['demanda_id'] = int(request.args['demanda_id'])
-    limit = int(request.args.get('limit', 50))
+    if _int_arg('empresa_id') is not None:
+        filtros['empresa_id'] = _int_arg('empresa_id')
+    if _int_arg('demanda_id') is not None:
+        filtros['demanda_id'] = _int_arg('demanda_id')
+    limit = _int_arg('limit', 50)
     rows = list_coletas_outros(filtros)
     return jsonify(rows[:limit])
 
@@ -3596,7 +3607,10 @@ def api_vincular_empresa_pendente(pend_id):
             conn.execute('DELETE FROM empresas WHERE id=? AND pendente=1', (pend_id,))
             return jsonify({'ok': True, 'acao': 'excluida'})
         elif 'empresa_id' in d:
-            destino = int(d['empresa_id'])
+            try:
+                destino = int(d['empresa_id'])
+            except (ValueError, TypeError):
+                return jsonify({'erro': 'empresa_id inválido'}), 400
             # Remapear demandas da pendente para a real
             conn.execute('UPDATE demandas SET empresa_id=? WHERE empresa_id=?', (destino, pend_id))
             conn.execute('DELETE FROM empresas WHERE id=?', (pend_id,))
