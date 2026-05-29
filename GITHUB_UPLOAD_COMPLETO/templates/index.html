@@ -9169,9 +9169,12 @@ async function planModalBuscarAgente(q) {
   if (!q || q.length < 2) { sugs.style.display = 'none'; return; }
   _planAgenteDebounce = setTimeout(async () => {
     try {
-      if (!_planAgenteCache) _planAgenteCache = await ctrlFetch('/controle/agentes');
+      if (!_planAgenteCache) {
+        const resp = await ctrlFetch('/controle/agentes');
+        _planAgenteCache = (resp && resp.agentes) ? resp.agentes : (Array.isArray(resp) ? resp : []);
+      }
       const qq = q.toLowerCase();
-      const matches = (_planAgenteCache || []).filter(a => a.nome.toLowerCase().includes(qq)).slice(0, 10);
+      const matches = (_planAgenteCache || []).filter(a => a.nome && a.nome.toLowerCase().includes(qq)).slice(0, 10);
       if (!matches.length) { sugs.style.display = 'none'; return; }
       sugs.innerHTML = matches.map(a =>
         `<div onclick="planModalSelecionarAgente(${JSON.stringify(JSON.stringify(a))})"

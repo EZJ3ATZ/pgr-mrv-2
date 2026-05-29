@@ -21,7 +21,7 @@ import unicodedata
 # ── Palavras que indicam que a linha NÃO é uma medição ──────────────
 _IGNORAR_LINHA = re.compile(
     r'\b(AET|treinamento|NR[-\s]?\d+|LIP\b|LTCAT|PCMSO|PPRA|PGR\b|'
-    r'laudo|faturamento|proposta|visita|elabora[çc][aã]o|'
+    r'laudo|faturamento|proposta|visita|'
     r'cargos?\b|fun[çc][oõ][ens]+|email|contato|cliente|obs\b|observa)',
     re.IGNORECASE
 )
