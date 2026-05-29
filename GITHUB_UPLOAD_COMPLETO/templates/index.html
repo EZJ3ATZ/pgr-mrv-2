@@ -9118,33 +9118,89 @@ function _planLimparDemanda() {
 
 function planAddAgente(tipo) {
   const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
-  // Remove modal anterior se existir
   const old = document.getElementById('plan-add-modal');
   if (old) old.remove();
-
   const cor = {ruido:'var(--green)',quimico:'#39f',calor:'var(--yellow)',vibracao:'var(--purple)'}[tipo]||'var(--blue)';
-
-  const nomeField = tipo === 'quimico'
-    ? `<div class="plan-f" style="margin-bottom:8px;position:relative;">
+  const fStyle = 'background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:7px 10px;font-size:.84rem;font-family:inherit;outline:none;width:100%;';
+  let specificFields = '';
+  if (tipo === 'quimico') {
+    specificFields = `
+      <div class="plan-f" style="margin-bottom:8px;position:relative;">
         <label>Nome do agente</label>
-        <input type="text" id="plan-modal-agente" placeholder="Buscar: Tolueno, Benzeno, Sílica..." autocomplete="off" style="width:100%;" oninput="planModalBuscarAgente(this.value)">
+        <input type="text" id="plan-modal-agente" placeholder="Buscar: Tolueno, Benzeno, Sílica..." autocomplete="off" style="${fStyle}" oninput="planModalBuscarAgente(this.value)">
         <div id="plan-modal-agente-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:300;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
         <div id="plan-modal-agente-info" style="display:none;margin-top:5px;padding:7px 10px;background:rgba(57,153,255,.07);border-radius:6px;font-size:.72rem;color:var(--text2);line-height:1.5;"></div>
-       </div>`
-    : `<input type="hidden" id="plan-modal-agente" value="${labels[tipo]}">`;
-
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="plan-f" style="margin:0;">
+          <label>Tipo de coleta</label>
+          <select id="plan-modal-tipo-coleta" style="${fStyle}">
+            <option value="pessoal">Pessoal (respiração)</option>
+            <option value="area">Área (ponto fixo)</option>
+          </select>
+        </div>
+        <div class="plan-f" style="margin:0;">
+          <label>Qtd amostras</label>
+          <input type="number" id="plan-modal-qtd" value="1" min="1" max="20" style="${fStyle}">
+        </div>
+      </div>`;
+  } else if (tipo === 'ruido') {
+    specificFields = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="plan-f" style="margin:0;">
+          <label>Nº de pessoas</label>
+          <input type="number" id="plan-modal-qtd" value="1" min="1" max="50" style="${fStyle}">
+        </div>
+        <div class="plan-f" style="margin:0;">
+          <label>Marca do dosímetro</label>
+          <select id="plan-modal-marca-dos" style="${fStyle}" onchange="planModalDosimChange(this.value)">
+            <option value="chrompack">Chrompack</option>
+            <option value="inlite">Inlite</option>
+          </select>
+        </div>
+      </div>
+      <div id="plan-modal-calib-hint" style="padding:8px 10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:6px;font-size:.75rem;color:var(--green);margin-bottom:8px;">
+        ✅ 4 calibradores Chrompack disponíveis — compatíveis com dosímetros Chrompack
+      </div>
+      <input type="hidden" id="plan-modal-agente" value="Ruído (dosimetria)">`;
+  } else if (tipo === 'vibracao') {
+    specificFields = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div class="plan-f" style="margin:0;">
+          <label>Subtipo</label>
+          <select id="plan-modal-vib-subtipo" style="${fStyle}">
+            <option value="vci">Corpo Inteiro (VCI)</option>
+            <option value="vbma">Mãos e Braços (VBMA)</option>
+            <option value="ambos">Ambos (VCI + VBMA)</option>
+          </select>
+        </div>
+        <div class="plan-f" style="margin:0;">
+          <label>Aparelho</label>
+          <select id="plan-modal-vib-aparelho" style="${fStyle}">
+            <option value="chrompack_1">Chrompack — Aparelho 1</option>
+            <option value="chrompack_2">Chrompack — Aparelho 2</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="plan-modal-agente" value="Vibração">
+      <input type="hidden" id="plan-modal-qtd" value="1">`;
+  } else if (tipo === 'calor') {
+    specificFields = `
+      <div style="padding:10px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;font-size:.82rem;margin-bottom:10px;">
+        🌡️ <b>Chrompack IBUTG</b> — único termômetro operacional<br>
+        <span style="font-size:.73rem;color:var(--text3);">Verificar disponibilidade antes de agendar medições simultâneas.</span>
+      </div>
+      <input type="hidden" id="plan-modal-agente" value="Calor (IBUTG)">
+      <input type="hidden" id="plan-modal-qtd" value="1">`;
+  }
   const modal = document.createElement('div');
   modal.id = 'plan-add-modal';
-  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;`;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;';
   modal.innerHTML = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;width:380px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.4);">
-      <div style="font-weight:800;font-size:.95rem;margin-bottom:14px;color:${cor};">${labels[tipo]}</div>
-      ${nomeField}
-      <div class="plan-f" style="margin-bottom:16px;">
-        <label>Quantidade</label>
-        <input type="number" id="plan-modal-qtd" value="1" min="1" max="20" style="width:100%;">
-      </div>
-      <div style="display:flex;gap:8px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto;">
+      <div style="font-weight:800;font-size:.95rem;margin-bottom:16px;color:${cor};">${labels[tipo]}</div>
+      ${specificFields}
+      <div style="display:flex;gap:8px;margin-top:4px;">
         <button onclick="document.getElementById('plan-add-modal').remove()"
           style="flex:1;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:9px;border-radius:7px;cursor:pointer;font-family:inherit;">Cancelar</button>
         <button onclick="planConfirmarAgente('${tipo}')"
@@ -9152,11 +9208,26 @@ function planAddAgente(tipo) {
       </div>
     </div>`;
   document.body.appendChild(modal);
-  // Focar no campo correto
   setTimeout(() => {
-    const el = document.getElementById(tipo === 'quimico' ? 'plan-modal-agente' : 'plan-modal-qtd');
+    const el = document.getElementById(tipo === 'quimico' ? 'plan-modal-agente' : (tipo === 'ruido' ? 'plan-modal-qtd' : null));
     if (el) el.focus();
   }, 50);
+}
+
+function planModalDosimChange(marca) {
+  const hint = document.getElementById('plan-modal-calib-hint');
+  if (!hint) return;
+  if (marca === 'inlite') {
+    hint.style.background = 'rgba(245,158,11,.08)';
+    hint.style.borderColor = 'rgba(245,158,11,.25)';
+    hint.style.color = 'var(--yellow)';
+    hint.innerHTML = '⚠️ 1 calibrador Inlite disponível — verifique disponibilidade antes de agendar';
+  } else {
+    hint.style.background = 'rgba(34,197,94,.08)';
+    hint.style.borderColor = 'rgba(34,197,94,.2)';
+    hint.style.color = 'var(--green)';
+    hint.innerHTML = '✅ 4 calibradores Chrompack disponíveis — compatíveis com dosímetros Chrompack';
+  }
 }
 
 let _planAgenteCache = null;
@@ -9213,25 +9284,39 @@ function planModalSelecionarAgente(jsonStr) {
 function planConfirmarAgente(tipo) {
   const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
   const agente = (document.getElementById('plan-modal-agente')?.value || '').trim() || labels[tipo];
-  const qtd    = parseInt(document.getElementById('plan-modal-qtd')?.value || '1');
-  // Recupera dados do guia de métodos se disponíveis
+  const qtd    = parseInt(document.getElementById('plan-modal-qtd')?.value || '1') || 1;
   const infoEl = document.getElementById('plan-modal-agente-info');
   let metadados = {};
   if (infoEl && infoEl.dataset.agenteJson) {
     try { metadados = JSON.parse(infoEl.dataset.agenteJson); } catch(e) {}
   }
   document.getElementById('plan-add-modal')?.remove();
-  if (isNaN(qtd) || qtd < 1) return;
-  window._planAgentes.push({
-    tipo, agente, qtd,
+  const obj = {
+    tipo, agente,
+    qtd: tipo === 'calor' ? 1 : (isNaN(qtd) || qtd < 1 ? 1 : qtd),
     metodo:    metadados.metodo    || '',
     vazao:     metadados.vazao     || '',
     volume:    metadados.volume    || '',
     amostrador: metadados.amostrador || '',
     unidade:   metadados.unidade   || '',
     bomba_sn:  '',
-    valor_tipo: 'medio',  // 'medio' ou 'teto'
-  });
+    valor_tipo: 'medio',
+  };
+  if (tipo === 'ruido') {
+    obj.marca_dosimetro = document.getElementById('plan-modal-marca-dos')?.value || 'chrompack';
+    obj.qtd_pessoas = obj.qtd;
+  }
+  if (tipo === 'quimico') {
+    obj.tipo_coleta = document.getElementById('plan-modal-tipo-coleta')?.value || 'pessoal';
+  }
+  if (tipo === 'vibracao') {
+    obj.subtipo  = document.getElementById('plan-modal-vib-subtipo')?.value  || 'vci';
+    obj.aparelho = document.getElementById('plan-modal-vib-aparelho')?.value || 'chrompack_1';
+  }
+  if (tipo === 'calor') {
+    obj.aparelho = 'chrompack_ibutg';
+  }
+  window._planAgentes.push(obj);
   _planRenderizarAgentes();
 }
 
@@ -9243,27 +9328,54 @@ function _planRenderizarAgentes() {
     document.getElementById('plan-equipamentos-preview').style.display = 'none';
     return;
   }
+  const inp = 'background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;';
   const bombas_opts = ['','BDX-II GILLIAN','AIRLITE SKC','FORMIS TURAM','INLITE VENTUSPRO'].map(b =>
-    `<option value="${b}">${b || '— bomba —'}</option>`).join('');
+    `<option value="${b}">${b||'— bomba —'}</option>`).join('');
 
   lista.innerHTML = window._planAgentes.map((a, i) => {
     const metaHtml = a.metodo ? `<span style="font-size:.7rem;color:var(--text3);">${a.metodo}${a.vazao?' · '+a.vazao:''}</span>` : '';
-    const isQuim = a.tipo === 'quimico';
-    const extraFields = isQuim ? `
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
-        <select onchange="window._planAgentes[${i}].bomba_sn=this.value"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;">
-          ${bombas_opts.replace(`value="${a.bomba_sn||''}"`, `value="${a.bomba_sn||''}" selected`)}
-        </select>
-        <input type="text" value="${a.vazao_real||a.vazao||''}" placeholder="Vazão L/min"
-          onchange="window._planAgentes[${i}].vazao_real=this.value"
-          style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;">
-        <select onchange="window._planAgentes[${i}].valor_tipo=this.value"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.73rem;font-family:inherit;">
-          <option value="medio" ${(a.valor_tipo||'medio')==='medio'?'selected':''}>Valor Médio</option>
-          <option value="teto"  ${a.valor_tipo==='teto'?'selected':''}>Valor Teto</option>
-        </select>
-      </div>` : '';
+    let extraFields = '';
+
+    if (a.tipo === 'quimico') {
+      const selBomba = bombas_opts.replace(`value="${a.bomba_sn||''}"`,`value="${a.bomba_sn||''}" selected`);
+      extraFields = `
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;align-items:center;">
+          <select onchange="window._planAgentes[${i}].bomba_sn=this.value" style="${inp}width:auto;">${selBomba}</select>
+          <input type="text" value="${a.vazao_real||a.vazao||''}" placeholder="Vazão L/min" onchange="window._planAgentes[${i}].vazao_real=this.value" style="${inp}width:85px;">
+          <select onchange="window._planAgentes[${i}].valor_tipo=this.value" style="${inp}width:auto;">
+            <option value="medio" ${(a.valor_tipo||'medio')==='medio'?'selected':''}>Valor Médio</option>
+            <option value="teto"  ${a.valor_tipo==='teto'?'selected':''}>Valor Teto</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;align-items:center;">
+          <input type="text" value="${a.amostrador_codigo||''}" placeholder="Amostrador (cód.)" onchange="window._planAgentes[${i}].amostrador_codigo=this.value" style="${inp}width:115px;" title="Código do amostrador">
+          <input type="text" value="${a.calibrador_nome||''}" placeholder="Calibrador vazão" onchange="window._planAgentes[${i}].calibrador_nome=this.value" style="${inp}width:115px;" title="Calibrador utilizado na calibração da bomba">
+          <input type="date" value="${a.data_calibracao||''}" title="Data da calibração da bomba" onchange="window._planAgentes[${i}].data_calibracao=this.value" style="${inp}width:130px;">
+        </div>`;
+    } else if (a.tipo === 'ruido') {
+      const marcaLabel = a.marca_dosimetro==='inlite' ? '🎧 Inlite' : '🎧 Chrompack';
+      const calibTag = a.marca_dosimetro==='inlite'
+        ? '<span style="color:var(--yellow);font-size:.69rem;padding:1px 5px;background:rgba(245,158,11,.1);border-radius:3px;">⚠️ 1 cal. Inlite</span>'
+        : '<span style="color:var(--green);font-size:.69rem;padding:1px 5px;background:rgba(34,197,94,.1);border-radius:3px;">✅ 4 cal. Chrompack</span>';
+      extraFields = `
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:5px;align-items:center;font-size:.75rem;">
+          <span style="color:var(--text2);">${marcaLabel} · ${a.qtd_pessoas||a.qtd} pessoa(s)</span>${calibTag}
+        </div>
+        <input type="text" value="${a.series_dosim||''}" placeholder="Nº série dosímetro(s) — ex: CR-001, CR-002" onchange="window._planAgentes[${i}].series_dosim=this.value" style="${inp}width:100%;margin-top:4px;" title="Série(s) dos dosímetros que serão usados">`;
+    } else if (a.tipo === 'vibracao') {
+      const subOpts = [{v:'vci',l:'Corpo Inteiro (VCI)'},{v:'vbma',l:'Mãos e Braços (VBMA)'},{v:'ambos',l:'VCI + VBMA'}]
+        .map(o=>`<option value="${o.v}" ${(a.subtipo||'vci')===o.v?'selected':''}>${o.l}</option>`).join('');
+      const aprOpts = [{v:'chrompack_1',l:'Chrompack — Ap. 1'},{v:'chrompack_2',l:'Chrompack — Ap. 2'}]
+        .map(o=>`<option value="${o.v}" ${(a.aparelho||'chrompack_1')===o.v?'selected':''}>${o.l}</option>`).join('');
+      extraFields = `
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
+          <select onchange="window._planAgentes[${i}].subtipo=this.value" style="${inp}width:auto;">${subOpts}</select>
+          <select onchange="window._planAgentes[${i}].aparelho=this.value" style="${inp}width:auto;">${aprOpts}</select>
+        </div>`;
+    } else if (a.tipo === 'calor') {
+      extraFields = `<div style="margin-top:4px;font-size:.73rem;color:var(--yellow);">🌡️ Chrompack IBUTG — único operacional</div>`;
+    }
+
     return `<div class="plan-agente-item" style="flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
         <span>${tipos[a.tipo]||'📋'} <b>${a.agente}</b> ×${a.qtd} ${metaHtml}</span>
@@ -9509,16 +9621,25 @@ async function ctrlNvVincularPlanejamento(pid) {
     // Garante que nvShowStep3 pré-preencha bomba, substância e função
     if (window._nvAgentesPlano.length > 0) {
       window._ctrlNvItens = window._nvAgentesPlano.map(a => {
-        const bombaLabel = (typeof _Q_BOMBA_LABELS !== 'undefined' && _Q_BOMBA_LABELS[a.bomba]) || a.bomba || '';
+        const bombaLabel = (typeof _Q_BOMBA_LABELS !== 'undefined' && _Q_BOMBA_LABELS[a.bomba_sn]) || a.bomba_sn || '';
         return {
-          agente_nome:     a.agente || a.tipo || '',
-          tipo:            a.tipo || 'quimico',
-          bomba_modelo:    bombaLabel,
-          bomba_modelo_id: a.bomba || '',
-          bomba_sn:        a.id_bomba || '',
-          vazao_calibrada: a.vazao_calibrada || null,
-          funcao:          a.funcao || '',
-          qtd:             a.qtd || 1,
+          agente_nome:      a.agente || a.tipo || '',
+          tipo:             a.tipo || 'quimico',
+          bomba_modelo:     bombaLabel,
+          bomba_modelo_id:  a.bomba_sn || '',
+          bomba_sn:         a.id_bomba || a.bomba_sn || '',
+          vazao_calibrada:  a.vazao_real || a.vazao_calibrada || null,
+          funcao:           a.funcao || '',
+          qtd:              a.qtd || 1,
+          // Novos campos Phase 1
+          tipo_coleta:      a.tipo_coleta || 'pessoal',
+          amostrador_codigo:a.amostrador_codigo || '',
+          calibrador_nome:  a.calibrador_nome || '',
+          data_calibracao:  a.data_calibracao || '',
+          marca_dosimetro:  a.marca_dosimetro || 'chrompack',
+          series_dosim:     a.series_dosim || '',
+          subtipo:          a.subtipo || 'vci',
+          aparelho:         a.aparelho || 'chrompack_1',
         };
       });
     }
@@ -9533,14 +9654,16 @@ async function ctrlNvVincularPlanejamento(pid) {
       s1.insertBefore(banner, s1.firstChild);
     }
 
-    // ── Auto-selecionar tipo se agentes têm tipo único ──
+    // ── Marcar checkboxes de tipo com base nos agentes do planejamento ──
     const agentes = window._nvAgentesPlano;
     if (agentes.length > 0) {
-      const tipos = [...new Set(agentes.map(a => a.tipo))];
-      if (tipos.length === 1) {
-        const tipoEl = document.getElementById('nv-tipo');
-        if (tipoEl && !tipoEl.value) { tipoEl.value = tipos[0]; tipoEl.dispatchEvent(new Event('change')); }
-      }
+      const tipoMap = {ruido:'nv-tipo-ruido', quimico:'nv-tipo-quimico', calor:'nv-tipo-calor',
+                       vibracao:'nv-tipo-vibracao', vibracao_vci:'nv-tipo-vibracao', vibracao_vbma:'nv-tipo-vibracao'};
+      agentes.forEach(a => {
+        const elId = tipoMap[a.tipo];
+        if (elId) { const el = document.getElementById(elId); if (el) el.checked = true; }
+      });
+      if (typeof nvTipoChange === 'function') nvTipoChange();
     }
 
     _showToast(`📋 Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');

@@ -571,6 +571,21 @@ CREATE TABLE IF NOT EXISTS execucao_campo (
     FOREIGN KEY (planejamento_id) REFERENCES planejamentos(id)
 );
 
+CREATE TABLE IF NOT EXISTS equipamentos_inventario (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo            TEXT NOT NULL,
+    marca           TEXT,
+    modelo          TEXT,
+    numero_serie    TEXT,
+    compatibilidade TEXT DEFAULT '',
+    status          TEXT DEFAULT 'disponivel',
+    cert_numero     TEXT,
+    cert_validade   TEXT,
+    observacao      TEXT,
+    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS metricas_operacionais (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     demanda_id      INTEGER,
@@ -868,6 +883,51 @@ def _migrate(conn):
 
     # Coluna dias_estimados na tabela planejamentos
     _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
+
+    # Tabela de inventário de equipamentos (Phase 1 — Jun 2026)
+    _pk_equip = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS equipamentos_inventario (
+            id              {_pk_equip},
+            tipo            TEXT NOT NULL,
+            marca           TEXT,
+            modelo          TEXT,
+            numero_serie    TEXT,
+            compatibilidade TEXT DEFAULT \'\',
+            status          TEXT DEFAULT \'disponivel\',
+            cert_numero     TEXT,
+            cert_validade   TEXT,
+            observacao      TEXT,
+            criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+            atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    # Seed inicial (só insere se vazio)
+    try:
+        _eq_cnt = conn.execute('SELECT COUNT(*) AS c FROM equipamentos_inventario').fetchone()
+        _eq_cnt_val = _eq_cnt['c'] if hasattr(_eq_cnt, '__getitem__') else _eq_cnt[0]
+        if _eq_cnt_val == 0:
+            _EQUIP_SEED = [
+                ('calibrador_ruido', 'Chrompack', 'Calibrador Sonoro', None, 'chrompack', 'disponivel', None, None, 'Calibrador Chrompack 1'),
+                ('calibrador_ruido', 'Chrompack', 'Calibrador Sonoro', None, 'chrompack', 'disponivel', None, None, 'Calibrador Chrompack 2'),
+                ('calibrador_ruido', 'Chrompack', 'Calibrador Sonoro', None, 'chrompack', 'disponivel', None, None, 'Calibrador Chrompack 3'),
+                ('calibrador_ruido', 'Chrompack', 'Calibrador Sonoro', None, 'chrompack', 'disponivel', None, None, 'Calibrador Chrompack 4'),
+                ('calibrador_ruido', 'Inlite',    'Calibrador Sonoro', None, 'inlite',    'disponivel', None, None, 'Calibrador Inlite'),
+                ('bomba',  'BDX',    'BDX-II GILLIAN',   None, '', 'disponivel', None, None, None),
+                ('bomba',  'SKC',    'AIRLITE SKC',       None, '', 'disponivel', None, None, None),
+                ('bomba',  'TURAM',  'FORMIS TURAM',      None, '', 'disponivel', None, None, None),
+                ('bomba',  'Inlite', 'INLITE VENTUSPRO',  None, '', 'disponivel', None, None, None),
+                ('vibrador',   'Chrompack', 'Vibrador', None, '', 'disponivel', None, None, 'Aparelho 1'),
+                ('vibrador',   'Chrompack', 'Vibrador', None, '', 'disponivel', None, None, 'Aparelho 2'),
+                ('termometro', 'Chrompack', 'Termômetro IBUTG', None, '', 'disponivel', None, None, 'Único operacional'),
+            ]
+            for _s in _EQUIP_SEED:
+                conn.execute(
+                    'INSERT INTO equipamentos_inventario (tipo, marca, modelo, numero_serie, compatibilidade, status, cert_numero, cert_validade, observacao) VALUES (?,?,?,?,?,?,?,?,?)',
+                    _s
+                )
+    except Exception as _e:
+        print(f'[migrate] equipamentos seed: {_e}')
 
     # Tabela de log de extração (rastreabilidade)
     # ATENÇÃO: AUTOINCREMENT é SQLite — PostgreSQL usa SERIAL

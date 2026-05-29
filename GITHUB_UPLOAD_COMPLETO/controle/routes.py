@@ -368,6 +368,42 @@ def get_demandas():
     return jsonify(list_demandas(request.args.to_dict()))
 
 
+@controle_bp.route('/equipamentos')
+def get_equipamentos():
+    """Lista inventário de equipamentos. ?tipo=X&status=Y"""
+    init_db()
+    tipo   = request.args.get('tipo', '').strip()
+    status = request.args.get('status', '').strip()
+    with get_db() as conn:
+        q      = 'SELECT * FROM equipamentos_inventario WHERE 1=1'
+        params = []
+        if tipo:   q += ' AND tipo=?';   params.append(tipo)
+        if status: q += ' AND status=?'; params.append(status)
+        q += ' ORDER BY tipo, marca, observacao'
+        rows = conn.execute(q, params).fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
+@controle_bp.route('/equipamentos/<int:eid>', methods=['PUT'])
+def update_equipamento(eid):
+    """Atualiza campos de um equipamento (SN, cert, validade, status)."""
+    init_db()
+    d = request.get_json(force=True) or {}
+    allowed = {'numero_serie', 'cert_numero', 'cert_validade', 'status', 'observacao', 'modelo'}
+    sets, vals = [], []
+    for k, v in d.items():
+        if k in allowed:
+            sets.append(f'{k}=?')
+            vals.append(v)
+    if not sets:
+        return jsonify({'erro': 'Nenhum campo válido'}), 400
+    sets.append('atualizado_em=CURRENT_TIMESTAMP')
+    vals.append(eid)
+    with get_db() as conn:
+        conn.execute(f'UPDATE equipamentos_inventario SET {", ".join(sets)} WHERE id=?', vals)
+    return jsonify({'ok': True})
+
+
 @controle_bp.route('/agentes')
 def get_agentes():
     """Retorna todos os agentes do guia_metodos.json."""
