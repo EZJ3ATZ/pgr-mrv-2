@@ -2472,6 +2472,8 @@ def _fotos_pdf_flowables(fotos, W=None):
 
     cap_sty = _PS('fcap', fontName='Helvetica', fontSize=7, leading=9,
                   textColor=_col.HexColor('#555555'))
+    crg_sty = _PS('fcrg', fontName='Helvetica-Bold', fontSize=7.5, leading=10,
+                  textColor=_col.HexColor('#1E3A8A'))
     hdr_sty = _PS('fhdr', fontName='Helvetica-Bold', fontSize=9, leading=12)
 
     col_w = W / 2.0
@@ -2481,9 +2483,11 @@ def _fotos_pdf_flowables(fotos, W=None):
         if isinstance(f, dict):
             src = f.get('data') or f.get('src') or ''
             leg = (f.get('legenda') or f.get('caption') or '').strip()
+            crg = (f.get('cargo') or f.get('funcao') or '').strip()
         else:
             src = f or ''
             leg = ''
+            crg = ''
         if not src:
             continue
         try:
@@ -2491,10 +2495,12 @@ def _fotos_pdf_flowables(fotos, W=None):
             im = _RLImg(_BIO(raw), width=img_w, height=6.0 * _cm, kind='proportional')
         except Exception:
             continue
+        parts = [im]
+        if crg:
+            parts += [_Sp(1, 2), _P(crg, crg_sty)]
         if leg:
-            cells.append([im, _Sp(1, 2), _P(leg, cap_sty)])
-        else:
-            cells.append(im)
+            parts += [_Sp(1, 2), _P(leg, cap_sty)]
+        cells.append(parts if (crg or leg) else im)
 
     if not cells:
         return out
