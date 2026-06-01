@@ -1921,24 +1921,29 @@ def mark_raw_task(conn, raw_id: int, status: str, ignored_reason: str = None):
 # ── Estatísticas ───────────────────────────────────────────────────────
 
 def list_amostradores_vencendo(dias_alerta=7):
-    lab = 'a.data_envio_lab'
+    """Lista TODOS os amostradores no laboratório.
+    Os que têm data de envio válida recebem dias_para_vencer; os que estão
+    no lab SEM data de envio aparecem com sem_data_envio=1 (precisam que o
+    técnico registre a data). Antes esses sumiam da tela (bug do '0')."""
     val = 'COALESCE(a.dias_validade,45)'
-    # Filtro de data válida: PostgreSQL exige formato YYYY-MM-DD
     if USE_PG:
-        date_filter = "AND a.data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'"
+        valid = "a.data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'"
+        dias_left = f"CASE WHEN {valid} THEN ((a.data_envio_lab)::date + {val} - CURRENT_DATE) ELSE NULL END"
+        dias_in   = f"CASE WHEN {valid} THEN (CURRENT_DATE - (a.data_envio_lab)::date) ELSE NULL END"
     else:
-        date_filter = "AND a.data_envio_lab GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'"
+        valid = "a.data_envio_lab GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'"
+        dias_left = f"CASE WHEN {valid} THEN CAST(julianday(a.data_envio_lab) + {val} - julianday('now') AS INTEGER) ELSE NULL END"
+        dias_in   = f"CASE WHEN {valid} THEN CAST(julianday('now') - julianday(a.data_envio_lab) AS INTEGER) ELSE NULL END"
+    sem_data = f"CASE WHEN {valid} THEN 0 ELSE 1 END"
     sql = f"""
         SELECT a.*, e.nome AS empresa_nome,
-               {_lab_days_left(lab, val)} AS dias_para_vencer,
-               {_lab_days_in(lab)} AS dias_no_lab
+               {dias_left} AS dias_para_vencer,
+               {dias_in} AS dias_no_lab,
+               {sem_data} AS sem_data_envio
         FROM amostradores a
         LEFT JOIN empresas e ON e.id = a.empresa_id
-        WHERE a.data_envio_lab IS NOT NULL
-          AND a.data_envio_lab != ''
-          {date_filter}
-          AND a.status = 'laboratorio' AND COALESCE(a.arquivado,0)=0
-        ORDER BY dias_para_vencer ASC
+        WHERE a.status = 'laboratorio' AND COALESCE(a.arquivado,0)=0
+        ORDER BY (dias_para_vencer IS NULL), dias_para_vencer ASC
         LIMIT 500
     """
     with get_db() as conn:
@@ -1946,41 +1951,38 @@ def list_amostradores_vencendo(dias_alerta=7):
 
 
 def contar_vencendo():
-    lab = 'data_envio_lab'
+    """Conta amostradores no lab por faixa de vencimento.
+    total_no_lab = TODOS no lab (com ou sem data). sem_data = no lab sem
+    data de envio registrada."""
     val = 'COALESCE(dias_validade,45)'
     if USE_PG:
-        sql = f"""
-            SELECT
-              SUM(CASE WHEN CURRENT_DATE > ({lab})::date + {val} THEN 1 ELSE 0 END) AS vencidos,
-              SUM(CASE WHEN CURRENT_DATE BETWEEN ({lab})::date + {val} - 3
-                                            AND ({lab})::date + {val} THEN 1 ELSE 0 END) AS urgente,
-              SUM(CASE WHEN CURRENT_DATE BETWEEN ({lab})::date + {val} - 7
-                                            AND ({lab})::date + {val} - 4 THEN 1 ELSE 0 END) AS alerta,
-              COUNT(*) AS total_no_lab
-            FROM amostradores
-            WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
-              AND data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
-              AND status = 'laboratorio' AND COALESCE(arquivado,0)=0
-        """
+        valid = "data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'"
+        venc = f"CASE WHEN {valid} THEN (CASE WHEN CURRENT_DATE > (data_envio_lab)::date + {val} THEN 1 ELSE 0 END) ELSE 0 END"
+        urg  = f"CASE WHEN {valid} THEN (CASE WHEN CURRENT_DATE BETWEEN (data_envio_lab)::date + {val} - 3 AND (data_envio_lab)::date + {val} THEN 1 ELSE 0 END) ELSE 0 END"
+        aler = f"CASE WHEN {valid} THEN (CASE WHEN CURRENT_DATE BETWEEN (data_envio_lab)::date + {val} - 7 AND (data_envio_lab)::date + {val} - 4 THEN 1 ELSE 0 END) ELSE 0 END"
     else:
-        sql = f"""
-            SELECT
-              SUM(CASE WHEN julianday('now') > julianday({lab}) + {val} THEN 1 ELSE 0 END) AS vencidos,
-              SUM(CASE WHEN julianday('now') BETWEEN julianday({lab}) + {val} - 3
-                                               AND julianday({lab}) + {val} THEN 1 ELSE 0 END) AS urgente,
-              SUM(CASE WHEN julianday('now') BETWEEN julianday({lab}) + {val} - 7
-                                               AND julianday({lab}) + {val} - 4 THEN 1 ELSE 0 END) AS alerta,
-              COUNT(*) AS total_no_lab
-            FROM amostradores
-            WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
-              AND status = 'laboratorio' AND COALESCE(arquivado,0)=0
-        """
+        valid = "data_envio_lab GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'"
+        venc = f"CASE WHEN {valid} THEN (CASE WHEN julianday('now') > julianday(data_envio_lab) + {val} THEN 1 ELSE 0 END) ELSE 0 END"
+        urg  = f"CASE WHEN {valid} THEN (CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + {val} - 3 AND julianday(data_envio_lab) + {val} THEN 1 ELSE 0 END) ELSE 0 END"
+        aler = f"CASE WHEN {valid} THEN (CASE WHEN julianday('now') BETWEEN julianday(data_envio_lab) + {val} - 7 AND julianday(data_envio_lab) + {val} - 4 THEN 1 ELSE 0 END) ELSE 0 END"
+    sem = f"CASE WHEN {valid} THEN 0 ELSE 1 END"
+    sql = f"""
+        SELECT
+          SUM({venc}) AS vencidos,
+          SUM({urg})  AS urgente,
+          SUM({aler}) AS alerta,
+          SUM({sem})  AS sem_data,
+          COUNT(*) AS total_no_lab
+        FROM amostradores
+        WHERE status = 'laboratorio' AND COALESCE(arquivado,0)=0
+    """
     with get_db() as conn:
         r = conn.execute(sql).fetchone()
         return {
             'vencidos':     int(r['vencidos'] or 0),
             'urgente':      int(r['urgente']  or 0),
             'alerta':       int(r['alerta']   or 0),
+            'sem_data':     int(r['sem_data'] or 0),
             'total_no_lab': int(r['total_no_lab'] or 0),
         }
 

@@ -3699,6 +3699,7 @@
           <option value="vencidos">🔴 Vencidos</option>
           <option value="urgente">🟠 Urgente (≤3d)</option>
           <option value="alerta">🟡 Alerta (≤7d)</option>
+          <option value="sem_data">⚠️ Sem data de envio</option>
         </select>
         <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
       </div>
@@ -8189,28 +8190,44 @@ async function ctrlLoadVencendo() {
   tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Carregando...</td></tr>';
   try {
     const data = await ctrlFetch('/controle/amostradores_vencendo');
-    const badge = document.getElementById('badge-vencendo');
-    if (badge && data && data.amostradores && data.amostradores.length > 0) {
-      badge.textContent = data.amostradores.length;
-      badge.style.display = 'inline';
-    }
     const s = data.stats || {};
+    const badge = document.getElementById('badge-vencendo');
+    const urgTotal = (s.vencidos||0) + (s.urgente||0) + (s.alerta||0);
+    if (badge) {
+      if (urgTotal > 0) { badge.textContent = urgTotal; badge.style.display = 'inline'; }
+      else { badge.style.display = 'none'; }
+    }
     stEl.innerHTML = `
       <div class="ctrl-stat red"><div class="ctrl-stat-label">🔴 Vencidos</div><div class="ctrl-stat-value">${s.vencidos||0}</div></div>
       <div class="ctrl-stat yellow"><div class="ctrl-stat-label">🟠 Urgente ≤3d</div><div class="ctrl-stat-value">${s.urgente||0}</div></div>
       <div class="ctrl-stat"><div class="ctrl-stat-label" style="color:#fc6;">🟡 Alerta ≤7d</div><div class="ctrl-stat-value" style="color:#fc6;">${s.alerta||0}</div></div>
+      ${s.sem_data ? `<div class="ctrl-stat" style="cursor:pointer;" onclick="document.getElementById('ctrl-fv-faixa').value='sem_data';ctrlLoadVencendo();" title="No lab sem data de envio — clique para listar"><div class="ctrl-stat-label" style="color:#f80;">⚠️ Sem data de envio</div><div class="ctrl-stat-value" style="color:#f80;">${s.sem_data}</div></div>` : ''}
       <div class="ctrl-stat blue"><div class="ctrl-stat-label">📦 Total no lab</div><div class="ctrl-stat-value">${s.total_no_lab||0}</div></div>
     `;
     const faixa = document.getElementById('ctrl-fv-faixa').value;
     let lista = data.amostradores || [];
-    if (faixa === 'vencidos') lista = lista.filter(a => a.dias_para_vencer < 0);
-    else if (faixa === 'urgente') lista = lista.filter(a => a.dias_para_vencer >= 0 && a.dias_para_vencer <= 3);
-    else if (faixa === 'alerta') lista = lista.filter(a => a.dias_para_vencer > 3 && a.dias_para_vencer <= 7);
+    if (faixa === 'vencidos') lista = lista.filter(a => a.dias_para_vencer != null && a.dias_para_vencer < 0);
+    else if (faixa === 'urgente') lista = lista.filter(a => a.dias_para_vencer != null && a.dias_para_vencer >= 0 && a.dias_para_vencer <= 3);
+    else if (faixa === 'alerta') lista = lista.filter(a => a.dias_para_vencer != null && a.dias_para_vencer > 3 && a.dias_para_vencer <= 7);
+    else if (faixa === 'sem_data') lista = lista.filter(a => a.sem_data_envio);
     if (!lista.length) {
       tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhum amostrador nessa faixa. Use "+ Registrar envio" para começar.</td></tr>';
       return;
     }
     tb.innerHTML = lista.map(a => {
+      if (a.sem_data_envio) {
+        return `<tr style="background:rgba(255,136,0,.05);">
+          <td><span class="ctrl-badge laboratorio">no lab</span></td>
+          <td><b>${a.tipo||'—'}</b></td>
+          <td>${a.codigo||'—'}</td>
+          <td>${a.empresa_nome||'—'}</td>
+          <td style="color:var(--text3);">—</td>
+          <td>${a.dias_validade||45}d</td>
+          <td style="color:var(--text3);">—</td>
+          <td><span style="color:#f80; font-weight:600; font-size:.78rem;">⚠️ Sem data de envio</span></td>
+          <td><button onclick="ctrlEditarEnvioLab(${a.id})" style="background:#f80; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:.7rem; cursor:pointer; font-weight:600;">Registrar data</button></td>
+        </tr>`;
+      }
       const dv = a.dias_para_vencer;
       let cor, lbl;
       if (dv < 0) { cor = '#e22'; lbl = `🔴 VENCIDO há ${Math.abs(dv)}d`; }
