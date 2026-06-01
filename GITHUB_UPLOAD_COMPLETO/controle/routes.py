@@ -226,6 +226,51 @@ def cria_amostrador():
     return jsonify({'ok': True, 'id': novo_id})
 
 
+@controle_bp.route('/amostradores/lote', methods=['POST'])
+def cria_amostradores_lote():
+    """Cria vários amostradores de uma vez (cadastro em série).
+    Ignora códigos que já existem. Body: {tipo, codigos:[...], status,
+    data_entrada, observacao}."""
+    init_db()
+    d = request.json or {}
+    tipo = (d.get('tipo') or '').strip().upper()
+    codigos = d.get('codigos') or []
+    if not tipo:
+        return jsonify({'erro': 'tipo obrigatorio'}), 400
+    # normaliza, tira vazios e duplicados mantendo ordem
+    vistos, limpos = set(), []
+    for c in codigos:
+        c = (str(c) or '').strip().upper()
+        if c and c not in vistos:
+            vistos.add(c); limpos.append(c)
+    if not limpos:
+        return jsonify({'erro': 'nenhum codigo valido'}), 400
+    status = normalizar_status_amostrador(d.get('status', 'disponivel'))
+    data_entrada = d.get('data_entrada') or datetime.now().strftime('%Y-%m-%d')
+    obs = d.get('observacao', '')
+    criados, ignorados = 0, 0
+    with get_db() as conn:
+        # códigos já existentes (qualquer status)
+        existentes = {r['codigo'] for r in conn.execute(
+            'SELECT codigo FROM amostradores').fetchall() if r['codigo']}
+        for c in limpos:
+            if c in existentes:
+                ignorados += 1
+                continue
+            conn.execute("""
+                INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
+                VALUES (?, ?, ?, ?, ?)""",
+                (c, tipo, status, data_entrada, obs))
+            existentes.add(c)
+            criados += 1
+    if criados:
+        registrar_evento('amostrador_criado',
+                         f'{criados} em série ({tipo})', None, 'amostrador',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
+    return jsonify({'ok': True, 'criados': criados, 'ignorados': ignorados})
+
+
 @controle_bp.route('/amostradores/<int:aid>', methods=['PUT'])
 def update_amostrador(aid):
     init_db()

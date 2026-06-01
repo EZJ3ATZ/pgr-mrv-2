@@ -3664,6 +3664,7 @@
         <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
         <button class="ctrl-import-btn" id="btn-fix-data-entrada" onclick="ctrlFixDataEntrada()" style="background:#555;display:none;" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</button>
         <button class="ctrl-import-btn" onclick="ctrlAbrirNovoAmostrador()" style="background:var(--brand);">+ Adicionar</button>
+        <button class="ctrl-import-btn" onclick="ctrlAbrirSerie()" style="background:#6d4aff;">➕ Adicionar em série</button>
       </div>
       <!-- Barra de ações em lote (aparece ao selecionar) -->
       <div id="ctrl-amostr-bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:rgba(42,157,157,.08);border:1px solid var(--bd-teal);border-radius:8px;">
@@ -4642,6 +4643,59 @@
     <div style="display:flex;gap:10px;margin-top:16px;">
       <button onclick="ctrlFecharNovoAmostrador()" style="flex:1;padding:10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-family:inherit;">Cancelar</button>
       <button onclick="ctrlSalvarNovoAmostrador()" style="flex:2;padding:10px;background:var(--brand);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Adicionar Amostradores em Série -->
+<div class="ctrl-overlay" id="ctrl-serie-overlay" style="display:none;" onclick="if(event.target===this) ctrlFecharSerie()">
+  <div class="ctrl-modal" style="max-width:560px;">
+    <h3>➕ Adicionar amostradores em série</h3>
+    <p style="font-size:.8rem;color:var(--text2);margin:2px 0 14px;">Cadastre vários de uma vez. Gere uma sequência automática ou cole uma lista de códigos.</p>
+
+    <label>Tipo <span style="color:var(--red)">*</span></label>
+    <input type="text" id="ctrl-se-tipo" placeholder="Ex: FV, TCP, FL, QZ, IOL..." style="text-transform:uppercase;">
+
+    <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin:14px 0 12px;">
+      <button id="ctrl-se-tab-seq" onclick="ctrlSerieModo('seq')" style="background:var(--brand);color:#fff;border:none;border-radius:4px 4px 0 0;padding:6px 14px;font-size:.78rem;cursor:pointer;">🔢 Sequência</button>
+      <button id="ctrl-se-tab-lista" onclick="ctrlSerieModo('lista')" style="background:transparent;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;padding:6px 14px;font-size:.78rem;color:var(--text3);cursor:pointer;">📋 Colar lista</button>
+    </div>
+
+    <div id="ctrl-se-panel-seq">
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;">
+        <div><label>Prefixo</label><input type="text" id="ctrl-se-prefixo" placeholder="Ex: FV" oninput="ctrlSeriePreview()" style="text-transform:uppercase;"></div>
+        <div><label>Nº inicial</label><input type="number" id="ctrl-se-inicio" value="1" min="0" oninput="ctrlSeriePreview()"></div>
+        <div><label>Quantidade</label><input type="number" id="ctrl-se-qtd" value="10" min="1" max="500" oninput="ctrlSeriePreview()"></div>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:.78rem;color:var(--text2);cursor:pointer;font-weight:400;">
+        <input type="checkbox" id="ctrl-se-zero" onchange="ctrlSeriePreview()"> Manter zeros à esquerda (ex: 001, 002)
+      </label>
+    </div>
+
+    <div id="ctrl-se-panel-lista" style="display:none;">
+      <label>Códigos (um por linha, ou separados por vírgula/espaço)</label>
+      <textarea id="ctrl-se-lista" rows="5" placeholder="FV3131&#10;FV3132&#10;FV3133" oninput="ctrlSeriePreview()" style="width:100%;text-transform:uppercase;font-family:inherit;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px;color:var(--text);"></textarea>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+      <div><label>Data de entrada</label><input type="date" id="ctrl-se-data"></div>
+      <div><label>Status inicial</label>
+        <select id="ctrl-se-status">
+          <option value="disponivel">Disponível</option>
+          <option value="laboratorio">No laboratório</option>
+          <option value="reservado">Reservado</option>
+        </select>
+      </div>
+    </div>
+    <label>Observação (aplicada a todos)</label>
+    <input type="text" id="ctrl-se-obs" placeholder="Opcional">
+
+    <div id="ctrl-se-preview" style="margin-top:12px;font-size:.8rem;color:var(--text2);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:10px;"></div>
+    <div id="ctrl-se-erro" style="color:var(--red);font-size:.8rem;margin-top:8px;display:none;"></div>
+
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button onclick="ctrlFecharSerie()" style="flex:1;padding:10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-family:inherit;">Cancelar</button>
+      <button id="ctrl-se-btn" onclick="ctrlSalvarSerie()" style="flex:2;padding:10px;background:var(--brand);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit;">Adicionar</button>
     </div>
   </div>
 </div>
@@ -8156,6 +8210,89 @@ function ctrlAbrirNovoAmostrador() {
 }
 function ctrlFecharNovoAmostrador() {
   document.getElementById('ctrl-novo-amostr-overlay').style.display = 'none';
+}
+
+// ── Adicionar amostradores em série ────────────────────────────────────
+let _serieModo = 'seq';
+function ctrlAbrirSerie() {
+  document.getElementById('ctrl-se-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-se-erro').style.display = 'none';
+  const ft = document.getElementById('ctrl-f-tipo');
+  if (ft && ft.value) {
+    document.getElementById('ctrl-se-tipo').value = ft.value;
+    document.getElementById('ctrl-se-prefixo').value = ft.value;
+  }
+  document.getElementById('ctrl-serie-overlay').style.display = 'flex';
+  ctrlSerieModo('seq');
+  setTimeout(() => document.getElementById('ctrl-se-tipo').focus(), 50);
+}
+function ctrlFecharSerie() {
+  document.getElementById('ctrl-serie-overlay').style.display = 'none';
+}
+function ctrlSerieModo(m) {
+  _serieModo = m;
+  document.getElementById('ctrl-se-panel-seq').style.display   = m === 'seq'   ? '' : 'none';
+  document.getElementById('ctrl-se-panel-lista').style.display = m === 'lista' ? '' : 'none';
+  const on  = 'background:var(--brand);color:#fff;border:none;border-radius:4px 4px 0 0;padding:6px 14px;font-size:.78rem;cursor:pointer;';
+  const off = 'background:transparent;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;padding:6px 14px;font-size:.78rem;color:var(--text3);cursor:pointer;';
+  document.getElementById('ctrl-se-tab-seq').style.cssText   = m === 'seq'   ? on : off;
+  document.getElementById('ctrl-se-tab-lista').style.cssText = m === 'lista' ? on : off;
+  ctrlSeriePreview();
+}
+function _serieCodigos() {
+  if (_serieModo === 'lista') {
+    return (document.getElementById('ctrl-se-lista').value || '')
+      .split(/[\n,;\s]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+  const pre = (document.getElementById('ctrl-se-prefixo').value || '').trim().toUpperCase();
+  const ini = parseInt(document.getElementById('ctrl-se-inicio').value || '0', 10);
+  const qtd = Math.min(Math.max(parseInt(document.getElementById('ctrl-se-qtd').value || '0', 10), 0), 500);
+  const zero = document.getElementById('ctrl-se-zero').checked;
+  const width = String(ini + Math.max(qtd - 1, 0)).length;
+  const out = [];
+  for (let i = 0; i < qtd; i++) {
+    let n = String(ini + i);
+    if (zero) n = n.padStart(width, '0');
+    out.push(pre + n);
+  }
+  return out;
+}
+function ctrlSeriePreview() {
+  const cods = _serieCodigos();
+  const el = document.getElementById('ctrl-se-preview');
+  if (!cods.length) { el.innerHTML = 'Nenhum código gerado ainda.'; return; }
+  const dup = [...new Set(cods.filter((c, i) => cods.indexOf(c) !== i))];
+  const amostra = cods.slice(0, 6).join(', ') + (cods.length > 6 ? ` … (+${cods.length - 6})` : '');
+  el.innerHTML = `<b style="color:var(--brand);">${cods.length}</b> amostrador(es): ${amostra}` +
+    (dup.length ? `<div style="color:var(--yellow);margin-top:4px;">⚠ ${dup.length} código(s) repetido(s) na lista — serão ignorados.</div>` : '');
+}
+async function ctrlSalvarSerie() {
+  const tipo = (document.getElementById('ctrl-se-tipo').value || '').trim().toUpperCase();
+  const erro = document.getElementById('ctrl-se-erro');
+  erro.style.display = 'none';
+  const cods = [...new Set(_serieCodigos())];
+  if (!tipo) { erro.textContent = 'Informe o tipo.'; erro.style.display = 'block'; return; }
+  if (!cods.length) { erro.textContent = 'Nenhum código para adicionar.'; erro.style.display = 'block'; return; }
+  const btn = document.getElementById('ctrl-se-btn');
+  btn.disabled = true; btn.textContent = 'Adicionando...';
+  try {
+    const r = await ctrlFetch('/controle/amostradores/lote', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo, codigos: cods,
+        status: document.getElementById('ctrl-se-status').value,
+        data_entrada: document.getElementById('ctrl-se-data').value,
+        observacao: document.getElementById('ctrl-se-obs').value
+      })
+    });
+    _showToast(`✓ ${r.criados} adicionado(s)${r.ignorados ? `, ${r.ignorados} já existiam` : ''}`, 'success');
+    ctrlFecharSerie();
+    ctrlLoadAmostr();
+  } catch (e) {
+    erro.textContent = 'Erro: ' + e.message; erro.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Adicionar';
+  }
 }
 async function ctrlSalvarNovoAmostrador() {
   const codigo = document.getElementById('ctrl-na-codigo').value.trim().toUpperCase();
