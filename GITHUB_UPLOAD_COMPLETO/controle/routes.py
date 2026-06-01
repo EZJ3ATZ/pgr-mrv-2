@@ -3924,43 +3924,6 @@ def api_revisar_demanda(did):
     return jsonify({'ok': True, 'demanda_id': did})
 
 
-@controle_bp.route('/demandas/revisao/stats')
-def api_revisao_stats():
-    """Estatísticas da fila de revisão."""
-    init_db()
-    with get_db() as conn:
-        total_review = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE needs_review=1 AND origem='planner'"
-        ).fetchone()['c']
-        total_sem_os = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE (numero_os IS NULL OR numero_os='') AND origem='planner'"
-        ).fetchone()['c']
-        total_sem_empresa = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE (empresa_id IS NULL OR empresa_id=0) AND origem='planner'"
-        ).fetchone()['c']
-        # Score médio (de extracao_json)
-        score_rows = conn.execute(
-            "SELECT extracao_json FROM demandas WHERE extracao_json IS NOT NULL AND extracao_json != '' LIMIT 500"
-        ).fetchall()
-    scores = []
-    for r in score_rows:
-        try:
-            import json as _j
-            ex = _j.loads(r['extracao_json'] if isinstance(r, dict) else r[0])
-            s = ex.get('score_geral', 0)
-            if s:
-                scores.append(s)
-        except Exception:
-            pass
-    return jsonify({
-        'necessitam_revisao': total_review,
-        'sem_numero_os':      total_sem_os,
-        'sem_empresa':        total_sem_empresa,
-        'score_medio':        round(sum(scores) / len(scores), 3) if scores else None,
-        'demandas_analisadas': len(scores),
-    })
-
-
 @controle_bp.route('/demandas/re-extrair', methods=['POST'])
 def api_re_extrair_demandas():
     """
