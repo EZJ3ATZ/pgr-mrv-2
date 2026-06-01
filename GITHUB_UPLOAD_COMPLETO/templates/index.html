@@ -4082,9 +4082,8 @@
     <div class="nv-prog-item active" data-s="1"><div class="nv-prog-circle">1</div><div class="nv-prog-label">Empresa</div></div>
     <div class="nv-prog-item" data-s="2"><div class="nv-prog-circle">2</div><div class="nv-prog-label">Planejamento</div></div>
     <div class="nv-prog-item" data-s="3"><div class="nv-prog-circle">3</div><div class="nv-prog-label">Campo</div></div>
-    <div class="nv-prog-item" data-s="4"><div class="nv-prog-circle">4</div><div class="nv-prog-label">Equipamentos</div></div>
-    <div class="nv-prog-item" data-s="5"><div class="nv-prog-circle">5</div><div class="nv-prog-label">Validações</div></div>
-    <div class="nv-prog-item" data-s="6"><div class="nv-prog-circle">6</div><div class="nv-prog-label">Finalizar</div></div>
+    <div class="nv-prog-item" data-s="4"><div class="nv-prog-circle">4</div><div class="nv-prog-label">Validações</div></div>
+    <div class="nv-prog-item" data-s="5"><div class="nv-prog-circle">5</div><div class="nv-prog-label">Finalizar</div></div>
   </div>
 
   <!-- ─── ETAPA 1: EMPRESA / OS ─── -->
@@ -4313,47 +4312,19 @@
     </div>
   </div>
 
-  <!-- ─── ETAPA 4: EQUIPAMENTOS ─── -->
+  <!-- ─── ETAPA 4: VALIDAÇÕES ─── -->
   <div id="nv-s4" class="nv-step" style="display:none;">
     <div class="nv-card">
-      <div class="nv-card-title">Etapa 4 — Equipamentos Utilizados</div>
-      <div id="nv-equip-ruido" style="display:none;">
-        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
-          <div><label>Dosímetro — Modelo</label><input type="text" id="nv-eq-dosim-modelo" placeholder="Ex: Larson Davis SoundTrack LxT"></div>
-          <div><label>N° Série Dosímetro</label><input type="text" id="nv-eq-dosim-sn" placeholder="SN" oninput="nvEquipAutoFill('dosim',this.value)"></div>
-        </div>
-        <div class="nv-g4 nv-f" style="margin-bottom:12px;">
-          <div><label>Calibrador — Modelo</label><input type="text" id="nv-eq-cal-modelo" placeholder="Ex: Cel-282"></div>
-          <div><label>N° Série Calibrador</label><input type="text" id="nv-eq-cal-sn" placeholder="SN" oninput="nvEquipAutoFill('cal',this.value)"></div>
-          <div><label>Cert. Calibração</label><input type="text" id="nv-eq-dosim-cert" placeholder="N°"></div>
-          <div><label>Validade</label><input type="date" id="nv-eq-dosim-valid"></div>
-        </div>
-      </div>
-      <div id="nv-equip-quimico" style="display:none;">
-        <div class="nv-g4 nv-f" style="margin-bottom:12px;">
-          <div><label>Cert. Bomba</label><input type="text" id="nv-eq-bomba-cert" placeholder="N°"></div>
-          <div><label>Validade Bomba</label><input type="date" id="nv-eq-bomba-valid"></div>
-          <div><label>Cert. Calibrador</label><input type="text" id="nv-eq-calibrador-cert" placeholder="N°"></div>
-          <div><label>Validade Calibrador</label><input type="date" id="nv-eq-calibrador-valid"></div>
-        </div>
-      </div>
-      <div class="nv-f"><label>Observações sobre Equipamentos</label><textarea id="nv-eq-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Intercorrências, estado dos equipamentos..."></textarea></div>
-    </div>
-  </div>
-
-  <!-- ─── ETAPA 5: VALIDAÇÕES ─── -->
-  <div id="nv-s5" class="nv-step" style="display:none;">
-    <div class="nv-card">
-      <div class="nv-card-title">Etapa 5 — Validações Automáticas</div>
+      <div class="nv-card-title">Etapa 4 — Validações Automáticas</div>
       <div id="nv-valid-results" style="min-height:80px;"><div style="text-align:center;padding:28px;color:var(--text3);font-size:.84rem;">Verificando dados preenchidos...</div></div>
       <button onclick="nvRunValidacoes()" style="margin-top:14px;width:100%;background:#1E3A8A;color:#fff;border:none;padding:11px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">🔍 Revalidar</button>
     </div>
   </div>
 
   <!-- ─── ETAPA 6: FINALIZAÇÃO ─── -->
-  <div id="nv-s6" class="nv-step" style="display:none;">
+  <div id="nv-s5" class="nv-step" style="display:none;">
     <div class="nv-card">
-      <div class="nv-card-title">Etapa 6 — Finalização</div>
+      <div class="nv-card-title">Etapa 5 — Finalização</div>
 
       <!-- ── Agentes do Planejamento (só aparece quando vinculado) ── -->
       <div id="nv-agentes-plano" style="display:none;margin-bottom:16px;">
@@ -4422,7 +4393,7 @@
   <!-- Navigation -->
   <div class="nv-nav">
     <button class="nv-btn-bk" id="nv-btn-back" onclick="nvBack()" style="visibility:hidden;">← Voltar</button>
-    <div style="font-size:.72rem;color:var(--text3);" id="nv-step-label">Etapa 1 de 6</div>
+    <div style="font-size:.72rem;color:var(--text3);" id="nv-step-label">Etapa 1 de 5</div>
     <button class="nv-btn-nx" id="nv-btn-next" onclick="nvNext()">Próximo →</button>
   </div>
   </div>
@@ -5415,22 +5386,21 @@
         {t:'Para que serve?', d:`Organizar uma visita ANTES de ir a campo: data prevista, técnico responsável, quais agentes medir e quantos amostradores levar. Evita esquecer material.`},
         {t:'Como criar um planejamento', d:`<b>1.</b> Digite o número da OS no campo "OS" — o sistema busca automaticamente a empresa e importa os agentes do Planner.<br><b>2.</b> Confirme a data e o técnico.<br><b>3.</b> Os agentes já vêm preenchidos. Adicione manualmente se precisar.<br><b>4.</b> Clique em "Salvar Planejamento".`},
         {t:'Agentes no planejamento', d:`Para agentes físicos (ruído, calor, vibração): informe quantidade. Para químicos: informe o nome do agente (ex: Tolueno, Benzeno), quantidade, bomba e nº série.`},
-        {t:'Botão "Ir para Campo"', d:`Linka o planejamento à Planilha de Campo (fluxo de 6 etapas). Pré-preenche empresa, OS, técnico, data e agentes automaticamente — incluindo bomba e SN selecionados no planejamento.`},
+        {t:'Botão "Ir para Campo"', d:`Linka o planejamento à Planilha de Campo (fluxo de 5 etapas). Pré-preenche empresa, OS, técnico, data e agentes automaticamente — incluindo bomba e SN selecionados no planejamento.`},
         {t:'Status do planejamento', d:`<b>Rascunho</b>: criado mas não confirmado. <b>Confirmado</b>: data e equipe definidas. <b>Em Execução</b>: saiu para campo. <b>Concluído</b>: visita realizada. <b>Cancelado</b>: descartado.`},
       ]
     },
     {
       id:'campo',
       icon:'📝',
-      titulo:'Planilha de Campo — 6 Etapas',
+      titulo:'Planilha de Campo — 5 Etapas',
       cor:'var(--green)',
       itens:[
         {t:'Etapa 1 — Dados Gerais', d:`Informe: empresa, OS, avaliador, data da medição, tipo(s) de medição (pode ser múltiplos: ruído + calor + químico). Se veio do Planejamento, tudo já vem preenchido.`},
         {t:'Etapa 2 — Dados de Ruído (se aplicável)', d:`Lista de trabalhadores avaliados com dosímetro: nome, cargo, setor, horas. Calibração do dosímetro (antes e depois). O sistema calcula automaticamente se o desvio está dentro do tolerado (±0,5 dB).`},
         {t:'Etapa 3 — Dados Químicos (se aplicável)', d:`Um bloco por agente/substância. Cada bloco tem: funcionário, função, setor, bomba, ID da bomba, data de calibração, substância amostrada, EPIs. Clique "+ Adicionar Agente" para mais substâncias. Cada agente tem sua tabela de amostradores com vazão inicial/final.`},
-        {t:'Etapa 4 — Equipamentos', d:`Informe os SN dos equipamentos usados. O sistema <b>preenche automaticamente</b> a data de calibração e certificado a partir do banco interno. Digite o SN e aguarde o preenchimento automático (ícone verde ⚡). Se veio do planejamento com bomba definida, os campos já vêm preenchidos.`},
-        {t:'Etapa 5 — Validação (Revalidar)', d:`Clique em "Revalidar" para ver um checklist: empresa OK, tipos OK, data OK, avaliador OK, trabalhadores adicionados, bomba selecionada, desvio de calibração dentro do tolerado. Itens em amarelo são avisos, em vermelho são erros que impedem a geração.`},
-        {t:'Etapa 6 — Assinatura e Geração', d:`Dois campos de assinatura digital: avaliado (trabalhador) e responsável técnico. Clique na área branca e assine com o mouse/touch. Clique "Gerar Planilha de Campo" para baixar o PDF. <b>IMPORTANTE</b>: a assinatura do responsável técnico é obrigatória para gerar o documento.`},
+        {t:'Etapa 4 — Validação (Revalidar)', d:`Clique em "Revalidar" para ver um checklist: empresa OK, tipos OK, data OK, avaliador OK, trabalhadores adicionados, bomba selecionada, desvio de calibração dentro do tolerado. Itens em amarelo são avisos, em vermelho são erros que impedem a geração.`},
+        {t:'Etapa 5 — Assinatura e Geração', d:`Dois campos de assinatura digital: <b>Técnico da Ocupacional</b> (quem mediu) e <b>Responsável da Empresa / Acompanhante</b>. Clique na área branca e assine com o mouse/touch. Clique "Gerar Planilha de Campo" para baixar o PDF. <b>IMPORTANTE</b>: a assinatura do Técnico da Ocupacional é obrigatória para gerar o documento.`},
         {t:'Por que os dados não batem no PDF gerado?', d:`Verifique: (1) empresa e OS preenchidas corretamente na etapa 1; (2) para químico, substância preenchida no campo "Substância Amostrada"; (3) agentes adicionados na etapa 3; (4) amostradores com vazão inicial e final preenchidas.`},
       ]
     },
@@ -5468,7 +5438,7 @@
       titulo:'Coleta Digital (Ruído e Químico)',
       cor:'#38bdf8',
       itens:[
-        {t:'Diferença da Planilha de Campo', d:`A Coleta Digital é um formulário mais rápido sem o fluxo de 6 etapas. Não gera PDF para assinatura. É para <b>lançamento rápido</b> de dados no banco. A Planilha de Campo gera o documento oficial assinado.`},
+        {t:'Diferença da Planilha de Campo', d:`A Coleta Digital é um formulário mais rápido sem o fluxo de 5 etapas. Não gera PDF para assinatura. É para <b>lançamento rápido</b> de dados no banco. A Planilha de Campo gera o documento oficial assinado.`},
         {t:'Aba Químico', d:`Preencha: empresa, cidade, funcionário, função, substâncias, bomba, data de calibração, e os amostradores (filtros) com vazão inicial/final e hora início/fim. Os dados ficam salvos para consulta e histórico.`},
         {t:'Aba Ruído', d:`Preencha os dados dosimétricos por trabalhador: dosímetro, LEX,8h, Laeq, dose, etc. Salva o histórico de medições de ruído.`},
         {t:'AutoSave', d:`A coleta digital salva automaticamente enquanto você digita (ícone de sincronização no topo). Dados não se perdem ao fechar acidentalmente.`},
@@ -12708,7 +12678,7 @@ function nvTipoChange() {
 
 function nvGotoStep(n) {
   _nvStep = n;
-  for (let i = 1; i <= 6; i++) {
+  for (let i = 1; i <= 5; i++) {
     const el = document.getElementById('nv-s' + i);
     if (el) el.style.display = (i === n) ? '' : 'none';
   }
@@ -12724,13 +12694,12 @@ function nvGotoStep(n) {
   const nx   = document.getElementById('nv-btn-next');
   const lbl  = document.getElementById('nv-step-label');
   if (bk)  bk.style.visibility  = n > 1 ? 'visible' : 'hidden';
-  if (nx)  { nx.textContent = n === 5 ? 'Próximo →' : (n === 6 ? '' : 'Próximo →'); nx.style.display = n === 6 ? 'none' : ''; }
-  if (lbl) lbl.textContent = `Etapa ${n} de 6`;
+  if (nx)  { nx.textContent = 'Próximo →'; nx.style.display = n === 5 ? 'none' : ''; }
+  if (lbl) lbl.textContent = `Etapa ${n} de 5`;
 
   if (n === 3) nvShowStep3();
-  if (n === 4) nvShowStep4();
-  if (n === 5) { nvRunValidacoes(); }
-  if (n === 6) { nvGerarResumo(); nvSigShowSection(); }
+  if (n === 4) { nvRunValidacoes(); }
+  if (n === 5) { nvGerarResumo(); nvSigShowSection(); }
 }
 
 function nvShowStep3() {
@@ -12815,37 +12784,9 @@ function nvShowStep3() {
   } else if (temQuimico) { nvCqRenderAgentes(); }
 }
 
-function nvShowStep4() {
-  document.getElementById('nv-equip-ruido').style.display   = _nvTipos.includes('ruido')   ? '' : 'none';
-  document.getElementById('nv-equip-quimico').style.display = _nvTipos.includes('quimico') ? '' : 'none';
-
-  // Auto-preencher calibração da bomba a partir do primeiro agente químico com SN definido
-  if (_nvTipos.includes('quimico') && _nvCqAgentes && _nvCqAgentes.length > 0) {
-    const agComBomba = _nvCqAgentes.find(ag => ag.id_bomba);
-    if (agComBomba) {
-      // Só preenche se o campo ainda estiver vazio (evita sobrescrever dado manual)
-      const certEl  = document.getElementById('nv-eq-bomba-cert');
-      const validEl = document.getElementById('nv-eq-bomba-valid');
-      if (certEl && !certEl.value)  nvEquipAutoFill('', agComBomba.id_bomba);
-      if (validEl && !validEl.value) nvEquipAutoFill('', agComBomba.id_bomba);
-    }
-  }
-  // Auto-preencher dosímetro a partir do ruído, se houver SN salvo
-  if (_nvTipos.includes('ruido')) {
-    const snEl = document.getElementById('nv-eq-dosim-sn');
-    // Herdar série(s) do dosímetro do planejamento, se o campo estiver vazio
-    if (snEl && !snEl.value) {
-      const itemRuido = (window._ctrlNvItens || []).find(it => it.tipo === 'ruido' && it.series_dosim);
-      if (itemRuido) snEl.value = itemRuido.series_dosim;
-    }
-    const snRuido = snEl?.value;
-    if (snRuido) nvEquipAutoFill('', snRuido);
-  }
-}
-
 function nvNext() {
   if (!nvValidateStep(_nvStep)) return;
-  if (_nvStep < 6) nvGotoStep(_nvStep + 1);
+  if (_nvStep < 5) nvGotoStep(_nvStep + 1);
 }
 
 function nvBack() {
