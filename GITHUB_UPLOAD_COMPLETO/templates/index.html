@@ -10918,16 +10918,15 @@ async function ctrlCadCNPJLookup(raw) {
       const nome = r.razao_social || r.nome || '';
       const cidade = r.municipio || r.cidade || (r.endereco && r.endereco.municipio) || '';
       const uf = r.uf || r.estado || (r.endereco && r.endereco.uf) || '';
-      const email = r.email || '';
       if (nome) {
         const campoNome = document.getElementById('ctrl-nv-cad-nome');
         if (campoNome && !campoNome.value) campoNome.value = nome;
       }
       if (cidade) { const c = document.getElementById('ctrl-nv-cad-cidade'); if(c) c.value = cidade; }
       if (uf) { const c = document.getElementById('ctrl-nv-cad-uf'); if(c) c.value = uf; }
-      if (email) { const c = document.getElementById('ctrl-nv-cad-email'); if(c) c.value = email; }
+      // E-mail NÃO é preenchido pela Receita: o contato é sempre diferente da base e deve ser digitado à mão.
       const sit = r.situacao_cadastral || r.situacao || '';
-      st.innerHTML = `<span style="color:#0a7;">✓ Dados carregados automaticamente conforme Receita Federal.</span>
+      st.innerHTML = `<span style="color:#0a7;">✓ Dados carregados (Receita Federal). Digite o e-mail de contato à mão.</span>
         ${sit ? `<span style="color:var(--text3); margin-left:8px;">Situação: ${sit}</span>` : ''}`;
     } catch(e) {
       st.innerHTML = '<span style="color:#e22;">Erro ao consultar CNPJ.</span>';
