@@ -162,6 +162,22 @@ def get_amostradores():
     return jsonify(list_amostradores(request.args.to_dict()))
 
 
+@controle_bp.route('/amostradores/arquivar', methods=['POST'])
+def amostradores_arquivar():
+    """Arquiva amostradores concluídos há >=30 dias (TASK D).
+    Roda automaticamente ao listar; este endpoint força a passada e
+    retorna quantos foram arquivados. Histórico: GET /amostradores?arquivados=1"""
+    init_db()
+    from .db import arquivar_amostradores_concluidos
+    try:
+        d = request.json or {}
+        dias = int(d.get('dias', 30))
+        n = arquivar_amostradores_concluidos(dias)
+        return jsonify({'ok': True, 'arquivados': n, 'dias': dias})
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
 @controle_bp.route('/amostradores', methods=['POST'])
 def cria_amostrador():
     init_db()

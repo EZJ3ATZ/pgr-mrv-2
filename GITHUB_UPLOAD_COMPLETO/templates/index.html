@@ -3639,6 +3639,9 @@
           <option value="">— Tipo —</option>
         </select>
         <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
+        <label style="display:inline-flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text2);cursor:pointer;" title="Concluídos há +30 dias são arquivados automaticamente (mantidos para auditoria)">
+          <input type="checkbox" id="ctrl-f-arquivados" onchange="ctrlLoadAmostr()"> 🗄 Arquivados
+        </label>
         <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
           <option value="entrada_asc">📅 Entrada: mais antiga</option>
           <option value="entrada_desc">📅 Entrada: mais nova</option>
@@ -10299,10 +10302,12 @@ async function ctrlLoadAmostr() {
   const status = document.getElementById('ctrl-f-status').value;
   const tipo   = document.getElementById('ctrl-f-tipo').value;
   const empresa = document.getElementById('ctrl-f-empresa').value;
+  const arquivados = document.getElementById('ctrl-f-arquivados')?.checked;
   if (codigo) q.set('codigo', codigo);
   if (status) q.set('status', status);
   if (tipo)   q.set('tipo', tipo);
   if (empresa) q.set('empresa', empresa);
+  if (arquivados) q.set('arquivados', '1');
 
   const tb = document.getElementById('ctrl-tb-amostr');
   tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr>';

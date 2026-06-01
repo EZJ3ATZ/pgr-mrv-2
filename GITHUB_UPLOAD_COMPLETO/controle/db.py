@@ -1341,7 +1341,35 @@ def row_to_dict(row):
 
 # ── Amostradores ───────────────────────────────────────────────────────
 
+def arquivar_amostradores_concluidos(dias=30):
+    """Arquiva (não deleta) amostradores concluídos há >= `dias` dias.
+    Mantém auditoria/rastreabilidade — só saem da visão principal (TASK D).
+    Retorna quantos foram arquivados nesta passada."""
+    if USE_PG:
+        cond = (f"status='concluido' AND COALESCE(arquivado,0)=0 "
+                f"AND data_conclusao ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}' "
+                f"AND (CURRENT_DATE - data_conclusao::date) >= {int(dias)}")
+    else:
+        cond = (f"status='concluido' AND COALESCE(arquivado,0)=0 "
+                f"AND data_conclusao GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*' "
+                f"AND CAST(julianday('now') - julianday(data_conclusao) AS INTEGER) >= {int(dias)}")
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with get_db() as conn:
+        n = conn.execute(f"SELECT COUNT(*) c FROM amostradores WHERE {cond}").fetchone()['c']
+        if n:
+            conn.execute(
+                f"UPDATE amostradores SET arquivado=1, arquivado_em=? WHERE {cond}", (now,))
+            conn.commit()
+    return n
+
+
 def list_amostradores(filtros=None):
+    f = filtros or {}
+    # Arquivamento automático ao listar (lazy) — independe de scheduler
+    try:
+        arquivar_amostradores_concluidos(30)
+    except Exception as e:
+        print(f'[controle] arquivamento auto falhou: {e}')
     sql = f"""
         SELECT a.*, e.nome AS empresa_nome,
                {_ds("COALESCE(NULLIF(a.data_medicao,''), NULLIF(a.data_entrada,''), a.atualizado_em)")} AS tempo_parado
@@ -1350,7 +1378,11 @@ def list_amostradores(filtros=None):
         WHERE 1=1
     """
     params = []
-    f = filtros or {}
+    # Por padrão esconde arquivados; arquivados=1 mostra só o histórico
+    if str(f.get('arquivados', '')) in ('1', 'true', 'True'):
+        sql += ' AND COALESCE(a.arquivado,0)=1'
+    else:
+        sql += ' AND COALESCE(a.arquivado,0)=0'
     if f.get('status'):
         sql += ' AND a.status = ?'; params.append(f['status'])
     if f.get('tipo'):
