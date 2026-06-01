@@ -1720,6 +1720,39 @@ def get_empresa_painel(empresa_id):
             GROUP BY m.agente ORDER BY qtd DESC LIMIT 20
         """, ids_iguais).fetchall()]
 
+        # Fallback: a tabela `medicoes` só é populada por import XLSX manual.
+        # Demandas vindas do Planner guardam os agentes em extracao_json.
+        # Se não houver medições, agregamos os agentes a partir do JSON.
+        if not emp['agentes']:
+            _ag_count = {}
+            for _r in conn.execute(f"""
+                SELECT d.status, d.extracao_json
+                FROM demandas d
+                WHERE d.empresa_id IN ({ph})
+                  AND d.extracao_json IS NOT NULL AND d.extracao_json != ''
+                  AND UPPER(COALESCE(d.titulo,'')) NOT LIKE '%PROCESSO ANTIGO%'
+            """, ids_iguais).fetchall():
+                _r = row_to_dict(_r)
+                try:
+                    _ext = _json.loads(_r.get('extracao_json') or '{}')
+                except Exception:
+                    continue
+                _concl = _r.get('status') == 'concluida'
+                for _a in (_ext.get('agentes') or []):
+                    _can = _a.get('canonical')
+                    if (not _can or _can in _DOC_CANONICALS
+                            or _a.get('tipo', '') == 'documento'
+                            or float(_a.get('confianca', 1)) < 0.55):
+                        continue
+                    _e = _ag_count.setdefault(_can, {'qtd': 0, 'realizados': 0})
+                    _e['qtd'] += 1
+                    if _concl:
+                        _e['realizados'] += 1
+            emp['agentes'] = sorted(
+                [{'agente': k, 'qtd': v['qtd'], 'realizados': v['realizados']}
+                 for k, v in _ag_count.items()],
+                key=lambda x: -x['qtd'])[:20]
+
         # ─ Técnicos que atenderam ─────────────────────────────────────────
         tecnicos = {}
         for r in conn.execute(f"""
