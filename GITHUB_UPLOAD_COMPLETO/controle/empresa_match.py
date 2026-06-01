@@ -250,6 +250,7 @@ def obter_ou_criar_pendente(conn, titulo: str, campos: dict) -> int:
             (nome_raw, cnpj_raw or None)
         )
         log.info('[match] Empresa pendente criada: "%s"', nome_raw)
+        _evento_empresa_nova(conn, cur.lastrowid, nome_raw)
         return cur.lastrowid
     except Exception:
         # CNPJ duplicado ou outra constraint — reutiliza existente por nome
@@ -263,7 +264,20 @@ def obter_ou_criar_pendente(conn, titulo: str, campos: dict) -> int:
             'INSERT INTO empresas (nome, pendente, criado_em) VALUES (?, 1, CURRENT_TIMESTAMP)',
             (nome_raw,)
         )
+        _evento_empresa_nova(conn, cur.lastrowid, nome_raw)
         return cur.lastrowid
+
+
+def _evento_empresa_nova(conn, empresa_id, nome):
+    """Registra um evento de notificação quando uma empresa nova entra pelo Planner."""
+    try:
+        conn.execute(
+            '''INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em)
+               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)''',
+            ('empresa_nova_planner', f'Nova empresa: {nome}', empresa_id, 'empresa')
+        )
+    except Exception:
+        pass  # nunca quebra o sync por causa de notificação
 
 
 # ── Matching em lote ──────────────────────────────────────────────────
