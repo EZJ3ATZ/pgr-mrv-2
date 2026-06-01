@@ -9899,11 +9899,12 @@ function _planAtualizarEquipamentos() {
 //   Poeira          4:00       6
 //   Metais          1:20       6
 //   Gases/Vapores   1:00       6
-// LÓGICA CORRETA (resumo da planilha):
-//   • Ruído = DIAS INTEIROS — cada batch de 15 dosímetros ocupa 1 dia de 8h.
-//   • Demais agentes (calor, vibração, químicos): HORAS SOMADAS JUNTAS e só então ÷ 8h.
-//     (ex.: calor 1h + vibração 40min = 1h40 → 1 dia, não 2)
-//   horas_agente = ceil(qtd / equip) × duração_h
+// LÓGICA (igual planilha tradicional — arredonda CADA agente separado):
+//   • horas_agente = ceil(qtd / equip) × duração_h
+//   • dias_agente  = ceil(horas_agente / 8)   ← cada agente vira dia(s) inteiro(s)
+//   • Total = soma dos dias de cada agente.
+//     (ex.: calor 1h → 1 dia + vibração 40min → 1 dia = 2 dias)
+//   • Ruído: ceil(qtd/15) batches × 8h ÷ 8 = ceil(qtd/15) dias inteiros.
 const _CALC_PARAMS = {
   ruido:         { duracao_h: 8.0,    equip: 15, label: '🔊 Ruído',          cor: 'var(--green)'  },
   quimico:       { duracao_h: 4.0,    equip: 6,  label: '⚗️ Químico (poeira)',cor: '#39f'          },
@@ -9939,24 +9940,20 @@ function _planCalcularDias() {
   });
 
   let linhas = [];
-  let ruidoDias = 0;
-  let outrasHoras = 0;
+  let total = 0;
   for (const [tipo, qtd] of Object.entries(por_tipo)) {
     const p = _CALC_PARAMS[tipo];
     if (!p) continue;
     const batches = Math.ceil(qtd / p.equip);
     const horas   = batches * p.duracao_h;
-    if (tipo === 'ruido') {
-      ruidoDias = batches;  // cada batch = 1 dia inteiro de dosimetria
-      linhas.push({ label: p.label, cor: p.cor, qtd, equip: p.equip, duracao_h: p.duracao_h, info: `${batches} dia${batches!==1?'s':''} (dosimetria 8h)` });
-    } else {
-      outrasHoras += horas;
-      linhas.push({ label: p.label, cor: p.cor, qtd, equip: p.equip, duracao_h: p.duracao_h, info: `${_fmtDur(horas)} de campo` });
-    }
+    const dias    = Math.ceil(horas / 8);   // planilha: cada agente arredonda p/ dia inteiro
+    total += dias;
+    const info = tipo === 'ruido'
+      ? `${dias} dia${dias!==1?'s':''} (dosimetria 8h)`
+      : `${_fmtDur(horas)} → ${dias} dia${dias!==1?'s':''}`;
+    linhas.push({ label: p.label, cor: p.cor, qtd, equip: p.equip, duracao_h: p.duracao_h, info });
   }
 
-  const outrasDias = outrasHoras > 0 ? Math.ceil(outrasHoras / 8) : 0;
-  const total = ruidoDias + outrasDias;
   window._planDiasEstimado = total;
 
   let html = linhas.map(l =>
@@ -9966,16 +9963,8 @@ function _planCalcularDias() {
     </div>`
   ).join('');
 
-  // Linha de consolidação das medições não-ruído
-  if (outrasHoras > 0) {
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(57,153,255,.07);border-radius:6px;margin-bottom:4px;font-size:.79rem;">
-      <span style="color:var(--text3);">↳ Calor + Vibração + Químicos somados: <b>${_fmtDur(outrasHoras)}</b> ÷ 8h</span>
-      <span style="font-weight:700;color:#39f;">${outrasDias} dia${outrasDias!==1?'s':''}</span>
-    </div>`;
-  }
-
   html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:8px;margin-top:8px;">
-    <span style="font-weight:700;color:var(--text);">Total estimado${ruidoDias>0 && outrasDias>0 ? ` (${ruidoDias} ruído + ${outrasDias} demais)` : ''}</span>
+    <span style="font-weight:700;color:var(--text);">Total estimado (soma dos dias por agente)</span>
     <span style="font-weight:800;font-size:1.1rem;color:#93c5fd;">${total} dia${total !== 1 ? 's' : ''}</span>
   </div>`;
 
