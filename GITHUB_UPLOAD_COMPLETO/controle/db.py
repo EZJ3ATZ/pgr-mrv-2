@@ -1264,7 +1264,8 @@ def _migrate(conn):
     # ── Cria admin se tabela vazia (primeiro deploy no Railway) ──
     try:
         from werkzeug.security import generate_password_hash
-        count = conn.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0]
+        _crow = conn.execute('SELECT COUNT(*) AS c FROM usuarios').fetchone()
+        count = (_crow.get('c', 0) if isinstance(_crow, dict) else _crow[0]) if _crow else 0
         if count == 0:
             pwd = os.environ.get('ADMIN_SETUP_PASSWORD', 'Ocupacional@2026')
             conn.execute(

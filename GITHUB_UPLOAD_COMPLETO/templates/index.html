@@ -13021,9 +13021,20 @@ function nvCqRenderAgentes() {
 
 // ── Validações ────────────────────────────────────────────────────────
 function nvRunValidacoes() {
-  const tipos = (_nvTipos && _nvTipos.length) ? _nvTipos : (_nvTipo ? [_nvTipo] : []);
   const res  = document.getElementById('nv-valid-results');
   if (!res) return;
+  try {
+    _nvRunValidacoesCore(res);
+  } catch (e) {
+    // Nunca falhar em silêncio — mostra o erro em vez de "botão não faz nada"
+    res.innerHTML = `<div class="nv-verr"><span style="color:var(--red);font-weight:700;">✗</span>
+      <div style="font-size:.82rem;color:var(--text2);">Erro ao validar: ${(e&&e.message)||e}. Avise o suporte.</div></div>`;
+    console.error('nvRunValidacoes', e);
+  }
+}
+
+function _nvRunValidacoesCore(res) {
+  const tipos = (_nvTipos && _nvTipos.length) ? _nvTipos : (_nvTipo ? [_nvTipo] : []);
   const checks = [];
   const emp = document.getElementById('ctrl-nv-empresa')?.value.trim();
   checks.push({ok:!!emp, msg: emp ? `Empresa: <b>${emp}</b>` : 'Empresa não informada'});
@@ -13054,6 +13065,36 @@ function nvRunValidacoes() {
       });
     });
   }
+
+  if (tipos.includes('vibracao')) {
+    const itensVib = (window._ctrlNvItens || []).filter(it => it.tipo === 'vibracao');
+    if (itensVib.length) {
+      itensVib.forEach((it, i) => {
+        const sub = it.subtipo || it.vib_subtipo || '—';
+        const apa = it.aparelho || it.vib_aparelho || '—';
+        checks.push({ok:true, msg:`Vibração ${i+1}: <b>${sub}</b> · aparelho <b>${apa}</b>`});
+      });
+    } else {
+      checks.push({ok:true, msg:'Vibração selecionada'});
+    }
+    const hIni = document.getElementById('nv-gen-hora-ini')?.value;
+    const hFim = document.getElementById('nv-gen-hora-fim')?.value;
+    checks.push({ok:!!(hIni&&hFim), warn:!(hIni&&hFim), msg:(hIni&&hFim)?`Horário de campo: <b>${hIni}–${hFim}</b>`:'Horário de início/término não informado'});
+  }
+
+  if (tipos.includes('calor')) {
+    const setores = (window._nvCalorSetores || []);
+    checks.push({ok:setores.length>0, warn:setores.length===0, msg:setores.length>0?`${setores.length} setor(es) IBUTG medido(s)`:'Nenhum setor IBUTG adicionado'});
+    setores.forEach((s, i) => {
+      const tg=parseFloat(s.tg), tbn=parseFloat(s.tbn), tbs=parseFloat(s.tbs);
+      const completo = !isNaN(tg) && !isNaN(tbn) && !isNaN(tbs);
+      checks.push({ok:completo, warn:!completo, msg:`Setor ${i+1} (${s.setor||'sem nome'}): ${completo?`TG <b>${tg}</b> · TBN <b>${tbn}</b> · TBS <b>${tbs}</b>`:'temperaturas incompletas (TG/TBN/TBS)'}`});
+    });
+  }
+
+  // Carimbo: confirma visualmente que a revalidação rodou
+  const _hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  checks.push({ok:true, msg:`<span style="color:var(--text3);">Revalidado às <b>${_hora}</b></span>`});
 
   res.innerHTML = checks.map(c=>{
     const cls=c.ok?'nv-vok':(c.warn?'nv-vwarn':'nv-verr');

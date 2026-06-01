@@ -3087,20 +3087,51 @@ def gerar_relatorio_quimico():
             Paragraph('Vol\n(L)', bold), Paragraph('ΔV%', bold),
         ]]
         if amostr:
+            def _hhmm_to_min(s):
+                try:
+                    h, m = str(s).split(':')[:2]
+                    return int(h) * 60 + int(m)
+                except Exception:
+                    return None
             for ai, am in enumerate(amostr):
+                # Lê com fallback: front (nova visita) envia id_amostrador/vazao_inicial/...
+                id_am  = am.get('id_amostr')  or am.get('id_amostrador') or ''
+                tipo_a = am.get('tipo')       or am.get('tipo_amostrador') or ''
+                inicio = am.get('inicio')     or am.get('hora_inicio') or ''
+                fim    = am.get('fim')        or am.get('hora_final') or ''
+                try:    vi = float(am.get('vi') if am.get('vi') not in (None,'') else am.get('vazao_inicial') or 0)
+                except Exception: vi = 0
+                try:    vf = float(am.get('vf') if am.get('vf') not in (None,'') else am.get('vazao_final') or 0)
+                except Exception: vf = 0
+                # Colunas derivadas: calcula se o front não mandou
+                t_min = am.get('t')
+                if t_min in (None, ''):
+                    a, b = _hhmm_to_min(inicio), _hhmm_to_min(fim)
+                    t_min = (b - a) if (a is not None and b is not None and b >= a) else ''
+                vm = am.get('vm')
+                if vm in (None, ''):
+                    vm = round((vi + vf) / 2, 3) if (vi or vf) else ''
+                vol = am.get('vol')
+                if vol in (None, '') and vm not in (None, '') and t_min not in (None, ''):
+                    try: vol = round(float(vm) * float(t_min), 1)
+                    except Exception: vol = ''
+                dv = am.get('dv')
+                if dv in (None, '') and vi:
+                    dv = f'{abs(vi - vf) / vi * 100:.1f}'
+                _fmt = lambda x: ('' if x in (None, '') else str(x))
                 tbl_rows.append([
                     Paragraph(str(ai+1), norm),
-                    Paragraph(str(am.get('id_amostr','') or ''), norm),
-                    Paragraph(str(am.get('tipo','') or ''), norm),
-                    Paragraph(str(am.get('vi','') or ''), norm),
-                    Paragraph(str(am.get('vf','') or ''), norm),
-                    Paragraph(str(am.get('inicio','') or ''), norm),
-                    Paragraph(str(am.get('fim','') or ''), norm),
-                    Paragraph(str(am.get('intervalos','') or ''), norm),
-                    Paragraph(str(am.get('t','') or ''), norm),
-                    Paragraph(str(am.get('vm','') or ''), norm),
-                    Paragraph(str(am.get('vol','') or ''), norm),
-                    Paragraph(str(am.get('dv','') or ''), norm),
+                    Paragraph(_fmt(id_am), norm),
+                    Paragraph(_fmt(tipo_a), norm),
+                    Paragraph(_fmt(am.get('vi') if am.get('vi') not in (None,'') else (vi or '')), norm),
+                    Paragraph(_fmt(am.get('vf') if am.get('vf') not in (None,'') else (vf or '')), norm),
+                    Paragraph(_fmt(inicio), norm),
+                    Paragraph(_fmt(fim), norm),
+                    Paragraph(_fmt(am.get('intervalos','')), norm),
+                    Paragraph(_fmt(t_min), norm),
+                    Paragraph(_fmt(vm), norm),
+                    Paragraph(_fmt(vol), norm),
+                    Paragraph(_fmt(dv), norm),
                 ])
         else:
             tbl_rows.append([Paragraph('—', ctr)]*12)
