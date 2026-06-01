@@ -2614,11 +2614,11 @@ def gerar_relatorio_ruido():
     for i, tr in enumerate(trabs_fill, 1):
         trab_rows.append([
             Paragraph(str(i), cell_reg),
-            Paragraph(tr.get('serie_dosimetro','') or '', cell_reg),
+            Paragraph(tr.get('sn','') or tr.get('serie_dosimetro','') or '', cell_reg),
             Paragraph(tr.get('nome','') or '', cell_reg),
             Paragraph(tr.get('cargo','') or '', cell_sml),
             Paragraph(tr.get('setor','') or '', cell_sml),
-            Paragraph(tr.get('almoco','') or '', cell_reg),
+            Paragraph(tr.get('pausa','') or tr.get('almoco','') or '', cell_reg),
         ])
 
     # Linha GHE (agentes do planejamento)
