@@ -6132,33 +6132,40 @@ async function homeLoadStats() {
   } catch(e) { /* silencioso */ }
 
   // ── Hero V3: Demandas recentes no painel direito ──
-  try {
-    const rd = await fetch('/controle/operacional/por_empresa?ordem=empresa&limit=6');
-    if (rd.ok) {
-      const rows = await rd.json();
-      const list = document.getElementById('hv3-os-list');
-      // Filtrar apenas empresas com nome válido (excluir pendentes sem nome)
-      const valid = (rows || []).filter(e => e.empresa && e.empresa !== '—' && e.empresa !== 'Pendente' && !(e.empresa||'').startsWith('OS-'));
-      if (list && valid.length) {
-        list.innerHTML = valid.slice(0, 5).map(e => {
-          const pend = e.demandas_pendentes || 0;
-          const concl = e.demandas_concluidas || 0;
-          const total = e.total_demandas || 0;
-          const st = pend > 0 ? 'hv3-s-p' : (concl === total && total > 0 ? 'hv3-s-o' : 'hv3-s-p');
-          const stLabel = pend > 0 ? `${pend} pend.` : 'ok';
-          return `<div class="hv3-os-row" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
-            <div>
-              <div class="hv3-os-empresa">${e.empresa}</div>
-              <div class="hv3-os-sub">${total} OS · ${concl} concluída${concl!==1?'s':''}</div>
-            </div>
-            <div class="hv3-status ${st}">${stLabel}</div>
-          </div>`;
-        }).join('');
+  {
+    const list = document.getElementById('hv3-os-list');
+    try {
+      const rd = await fetch('/controle/operacional/por_empresa?ordem=empresa&limit=6');
+      if (rd.ok) {
+        const rows = await rd.json();
+        // Filtrar apenas empresas com nome válido (excluir pendentes sem nome)
+        const valid = (rows || []).filter(e => e.empresa && e.empresa !== '—' && e.empresa !== 'Pendente' && !(e.empresa||'').startsWith('OS-'));
+        if (list && valid.length) {
+          list.innerHTML = valid.slice(0, 5).map(e => {
+            const pend = e.demandas_pendentes || 0;
+            const concl = e.demandas_concluidas || 0;
+            const total = e.total_demandas || 0;
+            const st = pend > 0 ? 'hv3-s-p' : (concl === total && total > 0 ? 'hv3-s-o' : 'hv3-s-p');
+            const stLabel = pend > 0 ? `${pend} pend.` : 'ok';
+            return `<div class="hv3-os-row" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
+              <div>
+                <div class="hv3-os-empresa">${e.empresa}</div>
+                <div class="hv3-os-sub">${total} OS · ${concl} concluída${concl!==1?'s':''}</div>
+              </div>
+              <div class="hv3-status ${st}">${stLabel}</div>
+            </div>`;
+          }).join('');
+        } else if (list) {
+          list.innerHTML = '<div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Nenhuma demanda recente.</div>';
+        }
       } else if (list) {
-        list.innerHTML = '<div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Sincronizando demandas...</div>';
+        // Falha HTTP (ex: sessão expirada) — não deixar travado em "Carregando..."
+        list.innerHTML = '<div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Não foi possível carregar.</div>';
       }
+    } catch(_) {
+      if (list) list.innerHTML = '<div style="font-size:.7rem;color:var(--text3);padding:8px 0;">Não foi possível carregar.</div>';
     }
-  } catch(_) {}
+  }
 
   // ── Hero V3: Sync status ──
   try {

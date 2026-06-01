@@ -4,8 +4,16 @@ import io
 import os
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify, send_file, redirect, url_for, render_template_string
+
+# Fuso horário oficial do Brasil (sem horário de verão desde 2019) = UTC-3.
+# O servidor (Railway) roda em UTC; isto converte para horário de Brasília.
+_BRT = timezone(timedelta(hours=-3))
+
+def agora_brt():
+    """datetime atual no fuso de Brasília (UTC-3), naive (sem tzinfo)."""
+    return datetime.now(timezone.utc).astimezone(_BRT).replace(tzinfo=None)
 from flask_login import login_required, current_user
 
 from .db import (
@@ -2886,7 +2894,7 @@ def gerar_relatorio_ruido():
     elements.append(Paragraph(
         'Normas: NR-15 Anexo 1 (Portaria 3214/78) — NHO-01 FUNDACENTRO '
         '— ABNT NBR 10151 — Portaria MTb 1.297/2017 | '
-        f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
         footer_sty))
 
     doc.build(elements)
@@ -3067,7 +3075,7 @@ def gerar_relatorio_vibracao():
     elements.append(Paragraph(
         'Normas: NR-15 Anexo 8 — NHO-09 (Corpo Inteiro) / NHO-10 (Mãos e Braços) FUNDACENTRO '
         '— ISO 2631 / ISO 5349 | '
-        f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
         footer_sty))
 
     doc.build(elements)
