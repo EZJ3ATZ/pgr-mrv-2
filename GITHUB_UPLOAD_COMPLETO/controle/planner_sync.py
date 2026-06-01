@@ -224,6 +224,15 @@ def _parse_date(s) -> str | None:
         return None
 
 
+def _safe_pct(v) -> int:
+    """percentComplete à prova de lixo — o Planner às vezes manda string não-numérica ('M' etc).
+    int('M') quebraria o sync inteiro; aqui devolve 0 nesses casos."""
+    try:
+        return int(float(v))
+    except (ValueError, TypeError):
+        return 0
+
+
 def _bucket_is_concluido(bucket_name: str) -> bool:
     """Retorna True se o bucket indica que a demanda foi finalizada operacionalmente."""
     b = (bucket_name or '').lower()
@@ -239,8 +248,8 @@ def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> d
     titulo = task.get('title', 'Sem título')
     bucket = bucket_map.get(task.get('bucketId', ''), '')
 
-    # Cast seguro — API pode retornar string em edge cases
-    pct = int(task.get('percentComplete') or 0)
+    # Cast seguro — API pode retornar string não-numérica ('M' etc) em edge cases
+    pct = _safe_pct(task.get('percentComplete'))
 
     # Três sinais de conclusão (qualquer um é suficiente):
     # 1. Bucket de entrega ("Entregue / Concluído", "Concluído ✅" etc.)
@@ -564,7 +573,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                             'descricao':          '',
                             'checklist_json':     '[]',
                             'raw_json':           json.dumps(tarefa, ensure_ascii=False) if tem_label else '',
-                            'percent_complete':   int(tarefa.get('percentComplete') or 0),
+                            'percent_complete':   _safe_pct(tarefa.get('percentComplete')),
                             'prazo':              _parse_date(tarefa.get('dueDateTime')),
                             'criado_em_ms':       _parse_date(tarefa.get('createdDateTime')),
                             'concluido_em_ms':    _parse_date(tarefa.get('completedDateTime')),
