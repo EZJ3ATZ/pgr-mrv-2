@@ -6148,7 +6148,7 @@ async function homeLoadStats() {
       if (rd.ok) {
         const rows = await rd.json();
         // Filtrar apenas empresas com nome válido (excluir pendentes sem nome)
-        const valid = (rows || []).filter(e => e.empresa && e.empresa !== '—' && e.empresa !== 'Pendente' && !(e.empresa||'').startsWith('OS-'));
+        const valid = (rows || []).filter(e => e.empresa_nome && e.empresa_nome !== '—' && e.empresa_nome !== 'Pendente' && !(e.empresa_nome||'').startsWith('OS-'));
         if (list && valid.length) {
           list.innerHTML = valid.slice(0, 5).map(e => {
             const pend = e.demandas_pendentes || 0;
@@ -6158,7 +6158,7 @@ async function homeLoadStats() {
             const stLabel = pend > 0 ? `${pend} pend.` : 'ok';
             return `<div class="hv3-os-row" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
               <div>
-                <div class="hv3-os-empresa">${e.empresa}</div>
+                <div class="hv3-os-empresa">${e.empresa_nome}</div>
                 <div class="hv3-os-sub">${total} OS · ${concl} concluída${concl!==1?'s':''}</div>
               </div>
               <div class="hv3-status ${st}">${stLabel}</div>
@@ -8609,7 +8609,7 @@ const _NOTIF_ICON = {
   login:'🔑', logout:'🚪', amostrador_criado:'➕', amostrador_atualizado:'✏️',
   sync_planner:'🔄', importacao:'📥', coleta_ruido_criada:'🔊', coleta_quimico_criada:'🧪',
   planejamento_criado:'📋', os_concluida:'✅', laudo_gerado:'📄', medicao_salva:'📊',
-  demanda_baixa_manual:'✅', limpeza_demandas:'🧹', erro_sync:'❌',
+  demanda_baixa_manual:'✅', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
 };
 const _NOTIF_LABEL = {
   login:'Login', logout:'Logout', amostrador_criado:'Amostrador criado',
@@ -8618,6 +8618,7 @@ const _NOTIF_LABEL = {
   coleta_quimico_criada:'Coleta Químico', planejamento_criado:'Planejamento',
   os_concluida:'OS Concluída', laudo_gerado:'Laudo gerado', medicao_salva:'Medição salva',
   demanda_baixa_manual:'Baixa de OS', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
+  demanda_criada_planner:'Nova OS',
 };
 let _notifUltimoVisto = parseInt(localStorage.getItem('notif_ultimo_visto') || '0', 10);
 
@@ -8733,9 +8734,28 @@ async function notifCheck() {
   } catch(_) {}
 }
 
+// Pede permissão de notificação ao acessar o site.
+// O Chrome só mostra o prompt mediante gesto do usuário, então, se ainda
+// estiver 'default', disparamos no PRIMEIRO clique/tecla em qualquer lugar.
+function notifSolicitarPermissaoInicial() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'default') return; // já concedida ou bloqueada
+  // Tenta direto (funciona em alguns navegadores)
+  try { Notification.requestPermission().catch(()=>{}); } catch(_) {}
+  // Fallback: primeiro gesto do usuário
+  const pedir = () => {
+    if (Notification.permission === 'default') { try { Notification.requestPermission(); } catch(_) {} }
+    document.removeEventListener('click', pedir);
+    document.removeEventListener('keydown', pedir);
+  };
+  document.addEventListener('click', pedir, { once:true });
+  document.addEventListener('keydown', pedir, { once:true });
+}
+
 // Inicializa o polling de notificações (a cada 60s)
 (function notifInit() {
   if (document.body.getAttribute('data-user') === 'anon') return;
+  notifSolicitarPermissaoInicial();
   setTimeout(notifCheck, 4000);
   setInterval(notifCheck, 60000);
 })();
