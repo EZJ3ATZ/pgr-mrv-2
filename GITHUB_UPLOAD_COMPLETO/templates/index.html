@@ -2605,7 +2605,7 @@
       <div class="home-stat-value" id="hs-emp" style="color:var(--green);">—</div>
       <div class="home-stat-sub">com OS registradas</div>
     </div>
-    <div class="home-stat" onclick="trocarAba('empresas');" style="cursor:pointer" title="Empresas aguardando validação">
+    <div class="home-stat" onclick="goToTab('empresas');" style="cursor:pointer" title="Empresas aguardando validação">
       <div class="home-stat-label">Empresas pendentes</div>
       <div class="home-stat-value" id="hs-emp-pendentes" style="color:#f59e0b">0</div>
       <div class="home-stat-sub">aguardando validação</div>
@@ -7246,6 +7246,21 @@ function qRenderAvals() {
       </div>
     </div>
   `).join('');
+}
+
+// Feedback visual ao escolher o logo da empresa (o arquivo é lido no envio).
+function qLogoUpdate() {
+  const inp = document.getElementById('q-logo');
+  const lbl = document.getElementById('q-logo-label');
+  if (!inp || !lbl) return;
+  const f = inp.files && inp.files[0];
+  if (f) {
+    lbl.textContent = '✅ ' + f.name;
+    lbl.style.color = 'var(--green)';
+  } else {
+    lbl.textContent = '📎 Clique para selecionar logo (PNG / JPG)';
+    lbl.style.color = '';
+  }
 }
 
 // ── Gerar ──────────────────────────────────────────────────────────
