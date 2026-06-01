@@ -3619,6 +3619,8 @@
            style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--orange); color:#fff; transition:all .15s;">📦 Estoque</div>
       <div id="ctrl-amostr-mtab-venc" onclick="ctrlSwitchAmostrView('venc')"
            style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--surface2); color:var(--text3); transition:all .15s;">⏱ Vencimento</div>
+      <div id="ctrl-amostr-mtab-concluido" onclick="ctrlSwitchAmostrView('concluido')"
+           style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--surface2); color:var(--text3); transition:all .15s;">✓ Concluídos</div>
     </div>
 
     <!-- View: Estoque -->
@@ -4300,23 +4302,6 @@
         </div>
       </div>
     </div>
-
-    <!-- FOTOS DA ATIVIDADE (comum a todos os tipos) -->
-    <div class="nv-card" style="margin-top:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div>
-          <div class="nv-card-title" style="margin:0;">📷 Fotos da Atividade</div>
-          <div style="font-size:.74rem;color:var(--text3);margin-top:3px;">Registre fotos da medição sendo realizada — vão para o PDF do relatório de campo.</div>
-        </div>
-        <label style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:.83rem;font-weight:600;flex-shrink:0;margin-left:12px;">
-          + Adicionar fotos
-          <input type="file" id="nv-fotos-input" accept="image/*" capture="environment" multiple style="display:none;" onchange="nvFotosAdd(this.files)">
-        </label>
-      </div>
-      <div id="nv-fotos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
-        <div id="nv-fotos-vazio" style="grid-column:1/-1;color:var(--text3);font-size:.8rem;text-align:center;padding:14px;">Nenhuma foto adicionada.</div>
-      </div>
-    </div>
   </div>
 
   <!-- ─── ETAPA 4: EQUIPAMENTOS ─── -->
@@ -4368,6 +4353,29 @@
       </div>
 
       <div id="nv-final-resumo" style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:16px;font-size:.84rem;color:var(--text2);">Resumo da coleta aparecerá aqui.</div>
+
+      <!-- ── Fotos da Atividade ───────────────────────────────────── -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);">📷 Fotos da Atividade</div>
+            <div style="font-size:.74rem;color:var(--text3);margin-top:3px;">Fotos da medição sendo realizada — vão para o PDF do relatório de campo.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <label style="background:var(--blue);color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:.81rem;font-weight:600;">
+              📸 Tirar foto
+              <input type="file" id="nv-fotos-cam" accept="image/*" capture="environment" multiple style="display:none;" onchange="nvFotosAdd(this.files)">
+            </label>
+            <label style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:8px 14px;cursor:pointer;font-size:.81rem;font-weight:600;">
+              🖼️ Da galeria
+              <input type="file" id="nv-fotos-galeria" accept="image/*" multiple style="display:none;" onchange="nvFotosAdd(this.files)">
+            </label>
+          </div>
+        </div>
+        <div id="nv-fotos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+          <div id="nv-fotos-vazio" style="grid-column:1/-1;color:var(--text3);font-size:.8rem;text-align:center;padding:14px;">Nenhuma foto adicionada.</div>
+        </div>
+      </div>
 
       <!-- ── Assinaturas ──────────────────────────────────────────── -->
       <div id="nv-sig-section" style="display:none;margin-bottom:16px;">
@@ -8077,13 +8085,24 @@ function ctrlSwitchAmostrView(view) {
   const venc    = document.getElementById('ctrl-amostr-view-venc');
   const tabEst  = document.getElementById('ctrl-amostr-mtab-estoque');
   const tabVenc = document.getElementById('ctrl-amostr-mtab-venc');
+  const tabConc = document.getElementById('ctrl-amostr-mtab-concluido');
   if (!estoque || !venc) return;
-  estoque.style.display = view === 'estoque' ? 'block' : 'none';
-  venc.style.display    = view === 'venc'    ? 'block' : 'none';
-  if (tabEst)  { tabEst.style.background  = view==='estoque' ? 'var(--orange)' : 'var(--surface2)'; tabEst.style.color  = view==='estoque' ? '#fff' : 'var(--text3)'; }
-  if (tabVenc) { tabVenc.style.background = view==='venc'    ? 'var(--orange)' : 'var(--surface2)'; tabVenc.style.color = view==='venc'    ? '#fff' : 'var(--text3)'; }
+  // "estoque" e "concluido" compartilham a mesma tabela; "venc" é separada
+  const usaEstoque = (view === 'estoque' || view === 'concluido');
+  estoque.style.display = usaEstoque   ? 'block' : 'none';
+  venc.style.display    = view==='venc'? 'block' : 'none';
+  const _hl = (el, on) => { if (el) { el.style.background = on ? 'var(--orange)' : 'var(--surface2)'; el.style.color = on ? '#fff' : 'var(--text3)'; } };
+  _hl(tabEst,  view==='estoque');
+  _hl(tabVenc, view==='venc');
+  _hl(tabConc, view==='concluido');
+  // Ajusta o filtro de status conforme a view
+  const fStatus = document.getElementById('ctrl-f-status');
+  if (fStatus) {
+    if (view === 'concluido') fStatus.value = 'concluido';
+    else if (view === 'estoque' && fStatus.value === 'concluido') fStatus.value = '';
+  }
   if (view === 'venc') ctrlLoadVencendo();
-  if (view === 'estoque') ctrlLoadAmostr();
+  else ctrlLoadAmostr();
 }
 
 function ctrlAbrirNovoAmostrador() {
@@ -13383,8 +13402,9 @@ async function nvFotosAdd(fileList) {
     const data = await _nvComprimirImg(f);
     if (data) window._nvFotos.push({ data, legenda: '' });
   }
-  const inp = document.getElementById('nv-fotos-input');
-  if (inp) inp.value = '';
+  ['nv-fotos-cam','nv-fotos-galeria','nv-fotos-input'].forEach(id => {
+    const inp = document.getElementById(id); if (inp) inp.value = '';
+  });
   nvFotosRender();
 }
 
