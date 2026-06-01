@@ -65,6 +65,19 @@ def stats():
     return jsonify(d)
 
 
+@controle_bp.route('/amostradores/analytics')
+def amostradores_analytics():
+    """Analytics operacional dos amostradores por status (TASK C).
+    Contagem por status, tempos médios (coleta→lab, lab→concluído) e gargalos.
+    Derivado dos timestamps reais → reflete cada mudança de status."""
+    init_db()
+    from .db import stats_amostradores_fluxo
+    try:
+        return jsonify(stats_amostradores_fluxo())
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
 # ── Importacao ────────────────────────────────────────────────────────
 @controle_bp.route('/import/amostradores', methods=['POST'])
 def import_amostr():

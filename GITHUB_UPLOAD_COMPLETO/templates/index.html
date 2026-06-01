@@ -5092,6 +5092,14 @@
       <div style="color:var(--text3);font-size:.8rem;">Carregando...</div>
     </div>
   </div>
+
+  <!-- Fluxo operacional: tempos médios + gargalos (TASK C) -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-top:16px;">
+    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:16px;">Fluxo Operacional dos Amostradores</div>
+    <div id="ind-fluxo-amostr" style="display:flex;flex-wrap:wrap;gap:12px;">
+      <div style="color:var(--text3);font-size:.8rem;">Carregando...</div>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -11725,6 +11733,31 @@ async function indLoad() {
           <div style="font-size:.72rem;color:var(--text3);margin-top:3px;">${s.label}</div>
         </div>
       `).join('');
+    }
+
+    // Fluxo operacional: tempos médios + gargalos (TASK C)
+    const fa = document.getElementById('ind-fluxo-amostr');
+    if (fa) {
+      const fx = await ctrlFetch('/controle/amostradores/analytics').catch(()=>null);
+      if (fx && !fx.erro) {
+        const tcl = fx.tempo_coleta_lab, tlc = fx.tempo_lab_concluido, g = fx.gargalos || {};
+        const card = (val, label, cor, sub) => `
+          <div style="background:var(--surface3);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px 20px;min-width:150px;">
+            <div style="font-size:1.5rem;font-weight:800;color:${cor};">${val}</div>
+            <div style="font-size:.72rem;color:var(--text3);margin-top:3px;">${label}</div>
+            ${sub?`<div style="font-size:.64rem;color:var(--text3);margin-top:2px;">${sub}</div>`:''}
+          </div>`;
+        const cards = [
+          card(tcl?`${tcl.media_dias}d`:'—', 'Médio coleta → lab', 'var(--blue)', tcl?`${tcl.amostra} amostras`:'sem dados'),
+          card(tlc?`${tlc.media_dias}d`:'—', 'Médio lab → concluído', '#4ade80', tlc?`${tlc.amostra} amostras`:'sem dados'),
+          card(g.presos_lab?.qtd ?? 0, `Presos no lab (>${g.presos_lab?.limite_dias??15}d)`, (g.presos_lab?.qtd>0?'var(--red)':'var(--text2)')),
+          card(g.reservados_parados?.qtd ?? 0, `Reservados parados (>${g.reservados_parados?.limite_dias??7}d)`, (g.reservados_parados?.qtd>0?'var(--yellow)':'var(--text2)')),
+          card(g.concluidos_para_arquivar?.qtd ?? 0, 'A arquivar (≥30d)', 'var(--text3)'),
+        ];
+        fa.innerHTML = cards.join('');
+      } else {
+        fa.innerHTML = '<div style="color:var(--text3);font-size:.8rem;">Sem dados de fluxo ainda.</div>';
+      }
     }
   } catch(e) { console.error('indLoad:', e); }
 }

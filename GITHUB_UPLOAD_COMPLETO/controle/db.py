@@ -1956,6 +1956,79 @@ def stats_dashboard():
         return row_to_dict(conn.execute(sql).fetchone())
 
 
+def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
+    """Analytics operacional de amostradores (TASK C) — derivado dos
+    timestamps reais, por isso reflete automaticamente cada mudança de status.
+
+    Retorna:
+      - por_status:    contagem por status canônico (não arquivados)
+      - tempo_coleta_lab:   média de dias entre data_medicao e data_envio_lab
+      - tempo_lab_concluido: média de dias entre data_envio_lab e data_conclusao
+      - gargalos: presos_lab (no lab há > N dias), reservados_parados
+                  (reservado há > N dias), concluidos_pendentes_arquivo
+    """
+    if USE_PG:
+        def _iso(c):  return f"{c} ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}'"
+        def _diff(a, b): return f"({b}::date - {a}::date)"
+        def _since(c): return f"(CURRENT_DATE - ({c})::date)"
+    else:
+        def _iso(c):  return f"{c} GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'"
+        def _diff(a, b): return f"CAST(julianday({b}) - julianday({a}) AS INTEGER)"
+        def _since(c): return f"CAST(julianday('now') - julianday({c}) AS INTEGER)"
+
+    res = {'por_status': {}, 'tempo_coleta_lab': None,
+           'tempo_lab_concluido': None, 'gargalos': {}}
+    with get_db() as conn:
+        # contagem por status (não arquivados)
+        for st in STATUS_AMOSTRADOR:
+            r = conn.execute(
+                "SELECT COUNT(*) c FROM amostradores WHERE status=? AND COALESCE(arquivado,0)=0",
+                (st,)).fetchone()
+            res['por_status'][st] = (r['c'] if r else 0)
+
+        # tempo médio coleta → laboratório
+        cond1 = (f"{_iso('data_medicao')} AND {_iso('data_envio_lab')} "
+                 f"AND {_diff('data_medicao', 'data_envio_lab')} >= 0")
+        r = conn.execute(
+            f"SELECT AVG({_diff('data_medicao','data_envio_lab')}) m, COUNT(*) n "
+            f"FROM amostradores WHERE {cond1}").fetchone()
+        if r and r['n']:
+            res['tempo_coleta_lab'] = {'media_dias': round(float(r['m']), 1), 'amostra': r['n']}
+
+        # tempo médio laboratório → concluído
+        cond2 = (f"status='concluido' AND {_iso('data_envio_lab')} AND {_iso('data_conclusao')} "
+                 f"AND {_diff('data_envio_lab', 'data_conclusao')} >= 0")
+        r = conn.execute(
+            f"SELECT AVG({_diff('data_envio_lab','data_conclusao')}) m, COUNT(*) n "
+            f"FROM amostradores WHERE {cond2}").fetchone()
+        if r and r['n']:
+            res['tempo_lab_concluido'] = {'media_dias': round(float(r['m']), 1), 'amostra': r['n']}
+
+        # GARGALOS
+        # presos no laboratório há mais de N dias
+        r = conn.execute(
+            f"SELECT COUNT(*) c FROM amostradores WHERE status='laboratorio' "
+            f"AND COALESCE(arquivado,0)=0 AND {_iso('data_envio_lab')} "
+            f"AND {_since('data_envio_lab')} > ?", (presos_lab_dias,)).fetchone()
+        res['gargalos']['presos_lab'] = {'qtd': (r['c'] if r else 0), 'limite_dias': presos_lab_dias}
+
+        # reservados parados (sem baixa) há mais de N dias
+        r = conn.execute(
+            f"SELECT COUNT(*) c FROM amostradores WHERE status='reservado' "
+            f"AND COALESCE(arquivado,0)=0 AND {_iso('atualizado_em')} "
+            f"AND {_since('atualizado_em')} > ?", (reserv_parado_dias,)).fetchone()
+        res['gargalos']['reservados_parados'] = {'qtd': (r['c'] if r else 0), 'limite_dias': reserv_parado_dias}
+
+        # concluídos aguardando arquivamento (≥30 dias) — alimenta TASK D
+        r = conn.execute(
+            f"SELECT COUNT(*) c FROM amostradores WHERE status='concluido' "
+            f"AND COALESCE(arquivado,0)=0 AND {_iso('data_conclusao')} "
+            f"AND {_since('data_conclusao')} >= 30").fetchone()
+        res['gargalos']['concluidos_para_arquivar'] = {'qtd': (r['c'] if r else 0)}
+
+    return res
+
+
 # ── Operational Demands ────────────────────────────────────────────────
 
 def list_operational_demands(filtros=None):
