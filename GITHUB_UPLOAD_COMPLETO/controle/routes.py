@@ -71,6 +71,24 @@ def stats():
             d['alertas_ativos'] = row['c'] if row else 0
     except Exception:
         d['alertas_ativos'] = 0
+    # Medições realizadas por tipo de agente (NR-15) — contagem absoluta das coletas
+    # feitas pelo sistema. Alimenta a tabela "Agentes · NR-15" da home.
+    try:
+        with get_db() as conn:
+            def _cnt(sql):
+                try:
+                    r = conn.execute(sql).fetchone()
+                    return (row_to_dict(r).get('c', 0) if r else 0) or 0
+                except Exception:
+                    return 0
+            d['agentes_medidos'] = {
+                'ruido':    _cnt("SELECT COUNT(*) AS c FROM coletas_ruido"),
+                'quimico':  _cnt("SELECT COUNT(*) AS c FROM coletas_quimico"),
+                'calor':    _cnt("SELECT COUNT(*) AS c FROM coletas_outros WHERE tipo='calor'"),
+                'vibracao': _cnt("SELECT COUNT(*) AS c FROM coletas_outros WHERE tipo LIKE 'vibracao%'"),
+            }
+    except Exception:
+        d['agentes_medidos'] = {'ruido': 0, 'quimico': 0, 'calor': 0, 'vibracao': 0}
     return jsonify(d)
 
 

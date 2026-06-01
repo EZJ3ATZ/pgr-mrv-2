@@ -2407,20 +2407,20 @@
         </div>
         <div class="hv4-agentes">
           <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Ru&#237;do Cont&#237;nuo</span><span class="hv4-ag-meta">An.1 · 85 dB</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:92%"></div></div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Ru&#237;do Cont&#237;nuo</span><span class="hv4-ag-meta" id="ag-ruido-meta">An.1 · 85 dB</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-ruido-bar" style="width:0%"></div></div>
           </div>
           <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Agentes Qu&#237;micos</span><span class="hv4-ag-meta">An.11/13 · NHO</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:76%;animation-delay:.1s"></div></div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Agentes Qu&#237;micos</span><span class="hv4-ag-meta" id="ag-quimico-meta">An.11/13 · NHO</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-quimico-bar" style="width:0%;animation-delay:.1s"></div></div>
           </div>
           <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Calor · IBUTG</span><span class="hv4-ag-meta">An.3 · IBUTG</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:64%;animation-delay:.2s"></div></div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Calor · IBUTG</span><span class="hv4-ag-meta" id="ag-calor-meta">An.3 · IBUTG</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-calor-bar" style="width:0%;animation-delay:.2s"></div></div>
           </div>
           <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Vibra&#231;&#227;o</span><span class="hv4-ag-meta">An.8 · ISO 5349</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" style="width:48%;animation-delay:.3s"></div></div>
+            <div class="hv4-ag-head"><span class="hv4-ag-name">Vibra&#231;&#227;o</span><span class="hv4-ag-meta" id="ag-vibracao-meta">An.8 · ISO 5349</span></div>
+            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-vibracao-bar" style="width:0%;animation-delay:.3s"></div></div>
           </div>
         </div>
       </div>
@@ -6131,6 +6131,22 @@ async function homeLoadStats() {
     set('hv3-amostr', d.estoque);
     set('hv3-lab',    d.laboratorio);
     set('hv3-estoque',d.estoque);
+    // ── Tabela "Agentes · NR-15": medições reais feitas por tipo ──
+    if (d.agentes_medidos) {
+      const am = d.agentes_medidos;
+      const maxAg = Math.max(am.ruido||0, am.quimico||0, am.calor||0, am.vibracao||0, 1);
+      const _setAg = (key, anexo) => {
+        const n = am[key] || 0;
+        const bar = document.getElementById('ag-'+key+'-bar');
+        const meta = document.getElementById('ag-'+key+'-meta');
+        if (bar) bar.style.width = Math.round((n / maxAg) * 100) + '%';
+        if (meta) meta.textContent = `${n} medi${n===1?'ção':'ções'} · ${anexo}`;
+      };
+      _setAg('ruido',    'An.1');
+      _setAg('quimico',  'An.11/13');
+      _setAg('calor',    'An.3');
+      _setAg('vibracao', 'An.8');
+    }
     // Badge alertas ativos na sidebar (ícone de Consistência)
     const badgeAlerta = document.getElementById('badge-alertas');
     if (badgeAlerta) {
