@@ -7623,6 +7623,26 @@ function _formatCEP(c) {
   return c.replace(/^(\d{5})(\d{3})$/, '$1-$2');
 }
 
+// ── Formata timestamp SEMPRE no horário de Brasília (America/Sao_Paulo) ──
+// Servidor (Railway) roda em UTC; se o timestamp vier sem fuso, assume UTC.
+function _fmtBR(raw, opts) {
+  if (raw === null || raw === undefined || raw === '') return '—';
+  let d;
+  if (typeof raw === 'number') {
+    d = new Date(raw);
+  } else {
+    let s = String(raw).trim().replace(' ', 'T').replace(/\+00(:00)?$/, 'Z');
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s) && !/[zZ]|[+\-]\d{2}:?\d{2}$/.test(s)) s += 'Z';
+    d = new Date(s);
+  }
+  if (isNaN(d)) return String(raw);
+  return d.toLocaleString('pt-BR', Object.assign({
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }, opts || {}));
+}
+
 function _preencherEmpresa(prefix, data) {
   const F = EMPRESA_FIELDS[prefix];
   if (!F || !data) return;
@@ -8027,7 +8047,7 @@ async function ctrlLoadGraphStatus() {
       el.innerHTML = `<span style="color:var(--orange);">⚠ Microsoft Graph não configurado — adicione AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID no Railway.</span>`;
       return;
     }
-    const last = d.last_sync ? new Date(d.last_sync).toLocaleString('pt-BR') : 'nunca';
+    const last = d.last_sync ? _fmtBR(d.last_sync) : 'nunca';
     const st   = d.last_stats || {};
     el.innerHTML = `
       <span style="color:var(--green);font-weight:600;">● Planner conectado</span>
@@ -8872,7 +8892,7 @@ async function ctrlLoadSyncLog() {
       const horas = Math.round((Date.now() - dt.getTime()) / 3600000);
       const quando = horas < 1 ? 'agora há pouco' : (horas < 24 ? `${horas}h atrás` : `${Math.round(horas/24)}d atrás`);
       return `<tr>
-        <td><span style="color:var(--text); font-weight:500;">${dt.toLocaleString('pt-BR')}</span><div style="color:var(--text3); font-size:.7rem;">${quando}</div></td>
+        <td><span style="color:var(--text); font-weight:500;">${_fmtBR(l.criado_em)}</span><div style="color:var(--text3); font-size:.7rem;">${quando}</div></td>
         <td><span style="color:${tipoCor[l.tipo]||'#999'}; font-weight:600;">${tipoLabel[l.tipo]||l.tipo}</span></td>
         <td style="color:var(--text3); font-size:.75rem;">${(l.arquivo_nome||'').slice(0,40)}</td>
         <td style="text-align:center;"><b style="color:#0a7;">${l.registros_novos||0}</b></td>
@@ -8937,7 +8957,7 @@ async function ctrlLoadAudit() {
       const label = tipoLabel[ev.tipo] || ev.tipo;
       return `<tr>
         <td style="white-space:nowrap;">
-          <span style="color:var(--text);font-weight:500;font-size:.78rem;">${isNaN(dt)?'—':dt.toLocaleString('pt-BR')}</span>
+          <span style="color:var(--text);font-weight:500;font-size:.78rem;">${_fmtBR(ev.criado_em)}</span>
           <div style="color:var(--text3);font-size:.68rem;">${quando}</div>
         </td>
         <td><span style="display:inline-flex;align-items:center;gap:5px;background:${cor}22;color:${cor};border:1px solid ${cor}44;border-radius:12px;padding:2px 9px;font-size:.73rem;font-weight:700;white-space:nowrap;">${icon} ${label}</span></td>
@@ -13385,7 +13405,7 @@ function _nvRunValidacoesCore(res) {
   }
 
   // Carimbo: confirma visualmente que a revalidação rodou
-  const _hora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const _hora = new Date().toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit'});
   checks.push({ok:true, msg:`<span style="color:var(--text3);">Revalidado às <b>${_hora}</b></span>`});
 
   res.innerHTML = checks.map(c=>{
@@ -14014,7 +14034,7 @@ function saudeRenderizar(d) {
   const labelScore = score >= 80 ? 'Saudável' : score >= 50 ? 'Atenção' : 'Crítico';
 
   // Último sync
-  const lastSync = sy.last_sync ? new Date(sy.last_sync).toLocaleString('pt-BR') : '—';
+  const lastSync = sy.last_sync ? _fmtBR(sy.last_sync) : '—';
   const syncStats = sy.stats || {};
 
   // Distribuição tipos
@@ -14191,7 +14211,7 @@ function saudeRenderizar(d) {
     `)}
 
     <div style="font-size:.65rem;color:var(--text3);margin-top:16px;">
-      Dados obtidos em: ${new Date(d.timestamp||Date.now()).toLocaleString('pt-BR')} ·
+      Dados obtidos em: ${_fmtBR(d.timestamp||Date.now())} ·
       Ambiente: <span style="color:var(--text2);">${d.env||'—'}</span> ·
       Release: <span style="color:var(--text2);">${d.release||'—'}</span>
     </div>
