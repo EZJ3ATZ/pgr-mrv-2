@@ -2192,6 +2192,11 @@ def list_operational_por_empresa(filtros=None):
         sql += ' GROUP BY e.id, e.nome ORDER BY prazo_mais_proximo ASC NULLS LAST LIMIT 500'
     elif ordem == 'atrasadas':
         sql += ' GROUP BY e.id, e.nome ORDER BY demandas_atrasadas DESC LIMIT 500'
+    elif ordem == 'recente':
+        # Empresas com a demanda (OS) mais nova primeiro — prioriza data de criação no Planner
+        sql += (" GROUP BY e.id, e.nome"
+                " ORDER BY MAX(COALESCE(NULLIF(d.criado_em_ms,''), d.criado_em)) DESC NULLS LAST"
+                " LIMIT 500")
     else:
         sql += ' GROUP BY e.id, e.nome ORDER BY empresa_nome ASC LIMIT 500'
     with get_db() as conn:

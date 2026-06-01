@@ -6160,7 +6160,7 @@ async function homeLoadStats() {
   {
     const list = document.getElementById('hv3-os-list');
     try {
-      const rd = await fetch('/controle/operacional/por_empresa?ordem=empresa&limit=6');
+      const rd = await fetch('/controle/operacional/por_empresa?ordem=recente&limit=6');
       if (rd.ok) {
         const rows = await rd.json();
         // Filtrar apenas empresas com nome válido (excluir pendentes sem nome)
