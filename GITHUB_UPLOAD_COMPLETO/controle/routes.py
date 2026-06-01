@@ -2882,14 +2882,17 @@ def gerar_relatorio_ruido():
         except Exception:
             return None
 
-    img_tec = _sig_img_ruido(sig_empresa)
-    col_tec = (img_tec if img_tec else
-               Paragraph('_________________________________', assin_sty))
+    img_tec  = _sig_img_ruido(sig_empresa)    # Técnico da Ocupacional (obrigatória no app)
+    img_resp = _sig_img_ruido(sig_avaliado)   # Responsável / acompanhante da empresa cliente
+    col_tec  = (img_tec  if img_tec  else
+                Paragraph('_________________________________', assin_sty))
+    col_resp = (img_resp if img_resp else
+                Paragraph('_________________________________', assin_sty))
     assin_rows = [
-        [col_tec, '', ''],
-        [Paragraph('<font size="7">Profissional Técnico (Responsável)</font><br/>'
+        [col_tec, col_resp, ''],
+        [Paragraph('<font size="7">Técnico da Ocupacional (Responsável pela medição)</font><br/>'
                    f'<font size="7">{tecnico}</font>', assin_sty),
-         Paragraph('_________________________________<br/><font size="7">Responsável da Empresa / Acompanhante</font><br/>'
+         Paragraph('<font size="7">Responsável da Empresa / Acompanhante</font><br/>'
                    f'<font size="7">{acomp}</font>', assin_sty),
          Paragraph(f'_________________________________<br/><font size="7">Data: {data_fmt}</font>',
                    assin_sty)],
@@ -2956,6 +2959,7 @@ def gerar_relatorio_vibracao():
     acomp        = d.get('acomp', d.get('acompanhante', ''))
     obs          = d.get('obs', d.get('observacoes', ''))
     sig_empresa  = d.get('sig_empresa')
+    sig_avaliado = d.get('sig_avaliado')
     pontos       = d.get('pontos', d.get('trabalhadores', []))
 
     # subtipo/aparelho podem vir como lista de itens (do planejamento) ou direto
@@ -3070,13 +3074,15 @@ def gerar_relatorio_vibracao():
             return _RLImg(_BIO(raw), width=w, height=h)
         except Exception:
             return None
-    img_tec = _sig_img_vib(sig_empresa)
-    col_tec = (img_tec if img_tec else Paragraph('_________________________________', assin_sty))
+    img_tec  = _sig_img_vib(sig_empresa)    # Técnico da Ocupacional (obrigatória no app)
+    img_resp = _sig_img_vib(sig_avaliado)   # Responsável / acompanhante da empresa cliente
+    col_tec  = (img_tec  if img_tec  else Paragraph('_________________________________', assin_sty))
+    col_resp = (img_resp if img_resp else Paragraph('_________________________________', assin_sty))
     assin_rows = [
-        [col_tec, '', ''],
-        [Paragraph('<font size="7">Profissional Técnico (Responsável)</font><br/>'
+        [col_tec, col_resp, ''],
+        [Paragraph('<font size="7">Técnico da Ocupacional (Responsável pela medição)</font><br/>'
                    f'<font size="7">{tecnico}</font>', assin_sty),
-         Paragraph('_________________________________<br/><font size="7">Responsável da Empresa / Acompanhante</font><br/>'
+         Paragraph('<font size="7">Responsável da Empresa / Acompanhante</font><br/>'
                    f'<font size="7">{acomp}</font>', assin_sty),
          Paragraph(f'_________________________________<br/><font size="7">Data: {data_fmt}</font>', assin_sty)],
     ]
@@ -3492,9 +3498,9 @@ def gerar_relatorio_quimico():
     ])
     story.append(Spacer(1, 16))
     story.append(Table([
-        [img_av or '', img_em or ''],
-        [Paragraph('Assinatura do Avaliado<br/><font size="6">(opcional)</font>', small),
-         Paragraph('Assinatura do Técnico da Empresa', small)],
+        [img_em or '', img_av or ''],
+        [Paragraph('Técnico da Ocupacional<br/><font size="6">(Responsável pela medição)</font>', small),
+         Paragraph('Responsável da Empresa / Acompanhante', small)],
     ], colWidths=[8.5*cm, 8.5*cm], style=sig_style2))
 
     # ─── Registro fotográfico ─────────────────────────────────────────
