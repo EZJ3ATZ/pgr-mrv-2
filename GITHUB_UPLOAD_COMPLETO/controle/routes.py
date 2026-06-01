@@ -2818,6 +2818,184 @@ def gerar_relatorio_ruido():
         mimetype='application/pdf')
 
 
+# ── Relatório PDF de Campo — Vibração ─────────────────────────────────
+@controle_bp.route('/relatorio/vibracao', methods=['POST'])
+def gerar_relatorio_vibracao():
+    """Gera PDF da planilha de campo de Vibração (VCI / VBMA).
+    Mesma estrutura da planilha de ruído: cabeçalho, dados, tabela de
+    medições (linhas em branco p/ campo) e assinatura do responsável técnico.
+    """
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    except ImportError:
+        return jsonify({'erro': 'reportlab nao instalado'}), 500
+
+    d = request.json or {}
+    empresa_nome = d.get('empresa_nome', d.get('empresa', {}).get('nome', '—') if isinstance(d.get('empresa'), dict) else '—')
+    cnpj         = d.get('cnpj', '')
+    unidade      = d.get('unidade', '')
+    cidade       = d.get('cidade', '')
+    resp_empresa = d.get('resp_empresa', '')
+    os_num       = d.get('os', '')
+    data_coleta  = d.get('data_coleta', d.get('data', ''))
+    hora_ini     = d.get('hora_ini', d.get('hora_inicio', ''))
+    hora_fim     = d.get('hora_fim', d.get('hora_termino', ''))
+    tecnico      = d.get('tecnico', '')
+    acomp        = d.get('acomp', d.get('acompanhante', ''))
+    obs          = d.get('obs', d.get('observacoes', ''))
+    sig_empresa  = d.get('sig_empresa')
+    pontos       = d.get('pontos', d.get('trabalhadores', []))
+
+    # subtipo/aparelho podem vir como lista de itens (do planejamento) ou direto
+    itens = d.get('itens', [])
+    def _label_subtipo(s):
+        return {'vci':'Corpo Inteiro (VCI)','vbma':'Mãos e Braços (VBMA)',
+                'ambos':'VCI + VBMA'}.get((s or '').lower(), s or '—')
+    def _label_aparelho(a):
+        return {'chrompack_1':'Chrompack — Aparelho 1','chrompack_2':'Chrompack — Aparelho 2'}.get((a or '').lower(), a or '—')
+    subtipo  = d.get('subtipo')  or (itens[0].get('subtipo')  if itens else '') or ''
+    aparelho = d.get('aparelho') or (itens[0].get('aparelho') if itens else '') or ''
+
+    if data_coleta and '-' in str(data_coleta):
+        try:
+            from datetime import datetime as _dt
+            data_fmt = _dt.strptime(data_coleta, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except Exception:
+            data_fmt = data_coleta
+    else:
+        data_fmt = data_coleta or '___/___/______'
+
+    AZUL     = colors.HexColor('#1E3A8A')
+    AZUL_CLR = colors.HexColor('#DBEAFE')
+    CINZA    = colors.HexColor('#F3F4F6')
+    BORDA    = colors.HexColor('#CBD5E1')
+    PRETO    = colors.black
+    BRANCO   = colors.white
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+        leftMargin=1.8*cm, rightMargin=1.8*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+        title=f'Planilha de Campo Vibração — {empresa_nome}')
+
+    styles = getSampleStyleSheet()
+    def sty(name, **kw):
+        base = styles.get(name, styles['Normal'])
+        return ParagraphStyle(f'_vib_{name}_{id(kw)}', parent=base, **kw)
+
+    cell_bold = sty('Normal', fontSize=8, fontName='Helvetica-Bold', textColor=PRETO)
+    cell_reg  = sty('Normal', fontSize=8, fontName='Helvetica', textColor=PRETO)
+    assin_sty = sty('Normal', fontSize=8, fontName='Helvetica', textColor=PRETO)
+    footer_sty= sty('Normal', fontSize=6.5, textColor=colors.HexColor('#64748B'), alignment=TA_CENTER)
+
+    W = A4[0] - 3.6*cm
+    elements = []
+
+    # Cabeçalho
+    hdr = Table([[
+        Paragraph('<b>OCUPACIONAL ENGENHARIA</b><br/><font size="7" color="#64748B">Higiene Ocupacional e Segurança do Trabalho</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL)),
+        Paragraph('<b>PLANILHA DE CAMPO — VIBRAÇÃO</b><br/><font size="7">NR-15 Anexo 8 | NHO-09 (VCI) / NHO-10 (VBMA) FUNDACENTRO</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_RIGHT)),
+    ]], colWidths=[W*0.55, W*0.45])
+    hdr.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('LINEBELOW',(0,0),(-1,-1),1.5,AZUL),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
+    elements.append(hdr); elements.append(Spacer(1, 8))
+
+    # Bloco de dados
+    def _info(lbl, val):
+        return Paragraph(f'<font size="7" color="#64748B">{lbl}</font><br/><b>{val or "—"}</b>', cell_reg)
+    info_rows = [
+        [_info('EMPRESA', empresa_nome), _info('CNPJ', cnpj), _info('OS', os_num)],
+        [_info('UNIDADE', unidade), _info('CIDADE', cidade), _info('DATA', data_fmt)],
+        [_info('TÉCNICO', tecnico), _info('ACOMPANHANTE', acomp), _info('HORÁRIO', f'{hora_ini}–{hora_fim}' if (hora_ini or hora_fim) else '—')],
+        [_info('TIPO DE VIBRAÇÃO', _label_subtipo(subtipo)), _info('APARELHO', _label_aparelho(aparelho)), _info('RESP. EMPRESA', resp_empresa)],
+    ]
+    info_tbl = Table(info_rows, colWidths=[W/3, W/3, W/3])
+    info_tbl.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.4,BORDA),
+        ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4),
+        ('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),5)]))
+    elements.append(info_tbl); elements.append(Spacer(1, 10))
+
+    # Tabela de medições (linhas em branco p/ preencher em campo)
+    med_head = [Paragraph('#', cell_bold), Paragraph('Trabalhador', cell_bold),
+                Paragraph('Função', cell_bold), Paragraph('Setor', cell_bold),
+                Paragraph('Eixo', cell_bold), Paragraph('aren (m/s²)', cell_bold),
+                Paragraph('VDVexp (m/s¹·⁷⁵)', cell_bold), Paragraph('T. exp. (h)', cell_bold)]
+    med_rows = [med_head]
+    pts = list(pontos) if pontos else []
+    while len(pts) < 6:
+        pts.append({})
+    for i, p in enumerate(pts, 1):
+        med_rows.append([
+            Paragraph(str(i), cell_reg),
+            Paragraph(p.get('nome','') or '', cell_reg),
+            Paragraph(p.get('funcao','') or p.get('cargo','') or '', cell_reg),
+            Paragraph(p.get('setor','') or '', cell_reg),
+            Paragraph(p.get('eixo','') or '', cell_reg),
+            Paragraph(p.get('aren','') or '', cell_reg),
+            Paragraph(p.get('vdv','') or '', cell_reg),
+            Paragraph(p.get('tempo','') or '', cell_reg),
+        ])
+    med_tbl = Table(med_rows, colWidths=[W*0.04, W*0.22, W*0.17, W*0.15, W*0.08, W*0.12, W*0.14, W*0.08], repeatRows=1)
+    med_tbl.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
+        ('GRID',(0,0),(-1,-1),0.4,BORDA),('FONTSIZE',(0,0),(-1,-1),8),
+        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
+        ('LEFTPADDING',(0,0),(-1,-1),4),('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA])]))
+    elements.append(med_tbl); elements.append(Spacer(1, 8))
+
+    if obs:
+        elements.append(Paragraph(f'<font size="7" color="#64748B">OBSERVAÇÕES DE CAMPO</font><br/>{obs}', cell_reg))
+        elements.append(Spacer(1, 10))
+
+    # Assinaturas — responsável técnico (imagem) na 1ª coluna
+    def _sig_img_vib(b64_str, w=4.6*cm, h=1.2*cm):
+        if not b64_str:
+            return None
+        try:
+            import base64 as _b64
+            from io import BytesIO as _BIO
+            from reportlab.platypus import Image as _RLImg
+            raw = _b64.b64decode(b64_str.split(',')[-1])
+            return _RLImg(_BIO(raw), width=w, height=h)
+        except Exception:
+            return None
+    img_tec = _sig_img_vib(sig_empresa)
+    col_tec = (img_tec if img_tec else Paragraph('_________________________________', assin_sty))
+    assin_rows = [
+        [col_tec, '', ''],
+        [Paragraph('<font size="7">Profissional Técnico (Responsável)</font><br/>'
+                   f'<font size="7">{tecnico}</font>', assin_sty),
+         Paragraph('_________________________________<br/><font size="7">Responsável da Empresa / Acompanhante</font><br/>'
+                   f'<font size="7">{acomp}</font>', assin_sty),
+         Paragraph(f'_________________________________<br/><font size="7">Data: {data_fmt}</font>', assin_sty)],
+    ]
+    assin_tbl = Table(assin_rows, colWidths=[W/3, W/3, W/3])
+    assin_tbl.setStyle(TableStyle([('ALIGN',(0,0),(-1,-1),'CENTER'),
+        ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4)]))
+    elements.append(assin_tbl); elements.append(Spacer(1, 10))
+
+    elements.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
+    elements.append(Spacer(1, 3))
+    elements.append(Paragraph(
+        'Normas: NR-15 Anexo 8 — NHO-09 (Corpo Inteiro) / NHO-10 (Mãos e Braços) FUNDACENTRO '
+        '— ISO 2631 / ISO 5349 | '
+        f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        footer_sty))
+
+    doc.build(elements)
+    buf.seek(0)
+    nome_safe = re.sub(r'[^\w-]', '_', empresa_nome)[:40]
+    data_safe = data_fmt.replace('/', '-')
+    return send_file(buf, as_attachment=True,
+        download_name=f'planilha_vibracao_{nome_safe}_{data_safe}.pdf',
+        mimetype='application/pdf')
+
+
 # ── Relatório PDF de Campo — Agentes Químicos ─────────────────────────
 @controle_bp.route('/relatorio/quimico', methods=['POST'])
 def gerar_relatorio_quimico():

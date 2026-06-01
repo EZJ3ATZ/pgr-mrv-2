@@ -4273,6 +4273,7 @@
     <div id="nv-s3-generic" style="display:none;">
       <div class="nv-card">
         <div class="nv-card-title" id="nv-s3-generic-title">Etapa 3 — Campo</div>
+        <div id="nv-gen-plano-hint" style="display:none;background:rgba(34,197,94,.07);border-left:3px solid var(--green);padding:9px 12px;border-radius:6px;margin-bottom:12px;font-size:.78rem;color:var(--text2);"></div>
         <div class="nv-g2 nv-f" style="margin-bottom:12px;">
           <div><label>Acompanhante</label><input type="text" id="nv-gen-acomp" placeholder="Nome"></div>
           <div class="nv-g2">
@@ -12425,6 +12426,26 @@ function nvShowStep3() {
     if (_nvTipos.includes('vibracao')) labels.push('〰️ Vibração');
     if (labels.length) genTitle.textContent = labels.join(' + ');
   }
+
+  // Herança do planejamento: mostra o que já foi definido (evita redigitar)
+  const genHint = document.getElementById('nv-gen-plano-hint');
+  if (genHint) {
+    const subLbl = {vci:'Corpo Inteiro (VCI)', vbma:'Mãos e Braços (VBMA)', ambos:'VCI + VBMA'};
+    const apaLbl = {chrompack_1:'Chrompack — Aparelho 1', chrompack_2:'Chrompack — Aparelho 2', chrompack_ibutg:'Chrompack IBUTG'};
+    const linhas = [];
+    if (_nvTipos.includes('vibracao')) {
+      const it = (window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {};
+      const sub = it.subtipo || it.vib_subtipo;
+      const apa = it.aparelho || it.vib_aparelho;
+      if (sub || apa) linhas.push(`〰️ <b>Vibração planejada:</b> ${subLbl[sub]||sub||'—'} · aparelho ${apaLbl[apa]||apa||'—'}`);
+    }
+    if (_nvTipos.includes('calor')) {
+      const it = (window._ctrlNvItens||[]).find(x => x.tipo === 'calor') || {};
+      linhas.push(`🌡️ <b>Calor planejado:</b> ${apaLbl[it.aparelho]||it.aparelho||'Chrompack IBUTG'}`);
+    }
+    if (linhas.length) { genHint.innerHTML = '✅ Vindo do planejamento — ' + linhas.join('<br>'); genHint.style.display = ''; }
+    else genHint.style.display = 'none';
+  }
   // Seção IBUTG: só quando tipo calor
   const ibutgSec = document.getElementById('nv-calor-ibutg-section');
   if (ibutgSec) {
@@ -13352,8 +13373,25 @@ async function nvGerarRelatorioCampo() {
       sig_empresa:  nvSigGetData('nv-sig-empresa'),
     };
     fname = `relatorio_campo_ruido_${(empresa_nome||'empresa').replace(/\s/g,'_')}.pdf`;
+  } else if (_nvTipo === 'vibracao') {
+    endpoint = '/controle/relatorio/vibracao';
+    // Herda subtipo/aparelho do planejamento (window._ctrlNvItens)
+    const itemVib = (window._ctrlNvItens||[]).find(it => it.tipo === 'vibracao') || {};
+    payload = {
+      ...base,
+      acomp:    document.getElementById('nv-gen-acomp')?.value||'',
+      hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
+      hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
+      obs:      document.getElementById('nv-gen-obs')?.value||'',
+      subtipo:  itemVib.subtipo  || itemVib.vib_subtipo  || '',
+      aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
+      itens:    window._ctrlNvItens||[],
+      sig_empresa:  nvSigGetData('nv-sig-empresa'),
+      sig_avaliado: nvSigGetData('nv-sig-avaliado'),
+    };
+    fname = `planilha_vibracao_${(empresa_nome||'empresa').replace(/\s/g,'_')}.pdf`;
   } else {
-    if (st) st.innerHTML = '<span style="color:var(--text3);">Relatório de Campo disponível para Ruído e Químico.</span>';
+    if (st) st.innerHTML = '<span style="color:var(--text3);">Relatório de Campo disponível para Ruído, Químico e Vibração.</span>';
     return;
   }
 
