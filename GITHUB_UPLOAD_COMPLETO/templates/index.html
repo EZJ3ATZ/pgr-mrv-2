@@ -9513,8 +9513,7 @@ function planAddAgente(tipo) {
         <div class="plan-f" style="margin:0;">
           <label>Aparelho</label>
           <select id="plan-modal-vib-aparelho" style="${fStyle}">
-            <option value="chrompack_1">Chrompack — Aparelho 1</option>
-            <option value="chrompack_2">Chrompack — Aparelho 2</option>
+            <option value="chrompack_1">Acelerômetro — S/N 1241 (SmartVib)</option>
           </select>
         </div>
       </div>
@@ -9736,7 +9735,7 @@ function _planRenderizarAgentes() {
     } else if (a.tipo === 'vibracao') {
       const subOpts = [{v:'vci',l:'Corpo Inteiro (VCI)'},{v:'vbma',l:'Mãos e Braços (VBMA)'},{v:'ambos',l:'VCI + VBMA'}]
         .map(o=>`<option value="${o.v}" ${(a.subtipo||'vci')===o.v?'selected':''}>${o.l}</option>`).join('');
-      const aprOpts = [{v:'chrompack_1',l:'Chrompack — Ap. 1'},{v:'chrompack_2',l:'Chrompack — Ap. 2'}]
+      const aprOpts = [{v:'chrompack_1',l:'Acelerômetro — S/N 1241'}]
         .map(o=>`<option value="${o.v}" ${(a.aparelho||'chrompack_1')===o.v?'selected':''}>${o.l}</option>`).join('');
       extraFields = `
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
@@ -12922,7 +12921,7 @@ function nvShowStep3() {
   const genHint = document.getElementById('nv-gen-plano-hint');
   if (genHint) {
     const subLbl = {vci:'Corpo Inteiro (VCI)', vbma:'Mãos e Braços (VBMA)', ambos:'VCI + VBMA'};
-    const apaLbl = {chrompack_1:'Chrompack — Aparelho 1', chrompack_2:'Chrompack — Aparelho 2', chrompack_ibutg:'Chrompack IBUTG'};
+    const apaLbl = {chrompack_1:'Acelerômetro — S/N 1241', chrompack_2:'Acelerômetro — S/N 1241', chrompack_ibutg:'Chrompack IBUTG'};
     const linhas = [];
     if (_nvTipos.includes('vibracao')) {
       const it = (window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {};
