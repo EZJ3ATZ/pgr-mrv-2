@@ -3897,9 +3897,9 @@ def api_revisao_stats():
     init_db()
     with get_db() as conn:
         total_row = conn.execute(
-            "SELECT COUNT(*) FROM demandas WHERE needs_review=1 AND origem='planner'"
+            "SELECT COUNT(*) AS c FROM demandas WHERE needs_review=1 AND origem='planner'"
         ).fetchone()
-        total = total_row[0] if total_row else 0
+        total = (row_to_dict(total_row).get('c', 0) if total_row else 0) or 0
         rows = conn.execute("""
             SELECT d.id,
                    COALESCE(d.titulo, d.nome_tarefa) AS titulo,
