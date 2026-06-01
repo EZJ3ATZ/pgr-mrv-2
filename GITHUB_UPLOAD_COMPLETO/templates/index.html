@@ -12465,24 +12465,30 @@ async function biLoad() {
     if (slaLeg && concl.length) slaLeg.innerHTML = `<span style="color:#4ade80;">&#9632; No prazo: ${pctOk}%</span><span style="color:#f87171;">&#9632; Em atraso: ${pctLate}%</span><span style="color:var(--text3);">&#9632; Sem dados: ${slaSemDados.length}</span>`;
 
     // ── S5: Produtividade por Técnico ────────────────────────────
-    // Split concluídas entre Wesley e Helbert (temporário — sem atribuição real no Planner)
-    const _tecMap = {};
-    concl.forEach((d, i) => { _tecMap[d.id || d.numero_os || i] = i % 2 === 0 ? 'Wesley' : 'Helbert'; });
+    // MARCO ZERO (go-live): a produtividade só conta CONCLUSÕES a partir desta data,
+    // usando o responsável REAL da demanda. O histórico do Planner (legado, sem
+    // atribuição confiável) fica fora — assim as métricas começam do zero hoje.
+    const _PROD_MARCO_ZERO = '2026-06-01';
     const prodMap = {};
     const mesAtual = new Date().toISOString().slice(0,7);
+    const _hojeISO = new Date().toISOString().slice(0,10);
+    const _prodTec = d => (d.responsavel_efetivo || d.responsavel || 'Sem responsável').trim();
+    const _prodInit = tec => { if (!prodMap[tec]) prodMap[tec] = { total:0, concluidas:0, abertas:0, atrasadas:0, mes:0, items:[] }; };
     demandas.forEach(d => {
-      const st0 = (d.status||'').toLowerCase();
-      const isConcl = st0==='concluida'||st0==='concluída';
-      const tec = isConcl ? (_tecMap[d.id || d.numero_os] || 'Wesley') : (d.responsavel_efetivo || d.responsavel || 'Sem responsável').trim();
-      if (!prodMap[tec]) prodMap[tec] = { total:0, concluidas:0, abertas:0, atrasadas:0, mes:0, items:[] };
-      prodMap[tec].total++;
-      prodMap[tec].items.push(d);
       const st = (d.status||'').toLowerCase();
-      if (st === 'concluida' || st === 'concluída') prodMap[tec].concluidas++;
-      else prodMap[tec].abertas++;
-      if (d.prazo && d.prazo < new Date().toISOString().slice(0,10) && st !== 'concluida' && st !== 'concluída') prodMap[tec].atrasadas++;
-      if (st === 'concluida' || st === 'concluída') {
-        if (d.prazo && d.prazo.slice(0,7) === mesAtual) prodMap[tec].mes++;
+      const isConcl = st==='concluida'||st==='concluída';
+      if (isConcl) {
+        // Só conta conclusões a partir do marco zero (data real de conclusão).
+        const dataConcl = (d.concluido_em_ms || '').slice(0,10);
+        if (!dataConcl || dataConcl < _PROD_MARCO_ZERO) return; // legado → fora
+        const tec = _prodTec(d); _prodInit(tec);
+        prodMap[tec].total++; prodMap[tec].concluidas++; prodMap[tec].items.push(d);
+        if (dataConcl.slice(0,7) === mesAtual) prodMap[tec].mes++;
+      } else {
+        // Demandas abertas = carga de trabalho atual do responsável.
+        const tec = _prodTec(d); _prodInit(tec);
+        prodMap[tec].total++; prodMap[tec].abertas++; prodMap[tec].items.push(d);
+        if (d.prazo && d.prazo < _hojeISO) prodMap[tec].atrasadas++;
       }
     });
     const prodEntries = Object.entries(prodMap).sort((a,b) => b[1].total - a[1].total);
