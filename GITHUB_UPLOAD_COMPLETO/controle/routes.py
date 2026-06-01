@@ -2419,6 +2419,82 @@ def _safe_float(v):
     except: return None
 
 
+def _fotos_pdf_flowables(fotos, W=None):
+    """Seção 'Registro Fotográfico da Atividade' a partir de uma lista de
+    fotos (data-URLs base64 ou dicts {data, legenda}). Retorna flowables
+    reportlab prontos para .append/.extend. Lista vazia => [] (não desenha)."""
+    out = []
+    if not fotos:
+        return out
+    try:
+        import base64 as _b64
+        from io import BytesIO as _BIO
+        from reportlab.platypus import (Image as _RLImg, Table as _Tbl,
+                                         TableStyle as _TS, Paragraph as _P, Spacer as _Sp)
+        from reportlab.lib.units import cm as _cm
+        from reportlab.lib.styles import ParagraphStyle as _PS
+        from reportlab.lib import colors as _col
+    except Exception:
+        return out
+
+    if W is None:
+        try:
+            from reportlab.lib.pagesizes import A4 as _A4
+            W = _A4[0] - 3.6 * _cm
+        except Exception:
+            W = 17.4 * _cm
+
+    cap_sty = _PS('fcap', fontName='Helvetica', fontSize=7, leading=9,
+                  textColor=_col.HexColor('#555555'))
+    hdr_sty = _PS('fhdr', fontName='Helvetica-Bold', fontSize=9, leading=12)
+
+    col_w = W / 2.0
+    img_w = col_w - 0.5 * _cm
+    cells = []
+    for f in fotos:
+        if isinstance(f, dict):
+            src = f.get('data') or f.get('src') or ''
+            leg = (f.get('legenda') or f.get('caption') or '').strip()
+        else:
+            src = f or ''
+            leg = ''
+        if not src:
+            continue
+        try:
+            raw = _b64.b64decode(str(src).split(',')[-1])
+            im = _RLImg(_BIO(raw), width=img_w, height=6.0 * _cm, kind='proportional')
+        except Exception:
+            continue
+        if leg:
+            cells.append([im, _Sp(1, 2), _P(leg, cap_sty)])
+        else:
+            cells.append(im)
+
+    if not cells:
+        return out
+
+    rows = []
+    for i in range(0, len(cells), 2):
+        pair = cells[i:i + 2]
+        if len(pair) == 1:
+            pair.append('')
+        rows.append(pair)
+
+    tbl = _Tbl(rows, colWidths=[col_w, col_w])
+    tbl.setStyle(_TS([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+
+    out.append(_Sp(1, 10))
+    out.append(_P('REGISTRO FOTOGRÁFICO DA ATIVIDADE', hdr_sty))
+    out.append(_Sp(1, 4))
+    out.append(tbl)
+    return out
+
+
 # ── Relatório PDF de Ruído ────────────────────────────────────────────
 @controle_bp.route('/relatorio/ruido', methods=['POST'])
 def gerar_relatorio_ruido():
@@ -2801,6 +2877,9 @@ def gerar_relatorio_ruido():
     elements.append(assin_tbl)
     elements.append(Spacer(1, 10))
 
+    # ─── Registro fotográfico ────────────────────────────────────────
+    elements.extend(_fotos_pdf_flowables(d.get('fotos') or [], W))
+
     # ─── Rodapé ──────────────────────────────────────────────────────
     elements.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
     elements.append(Spacer(1, 3))
@@ -2979,6 +3058,9 @@ def gerar_relatorio_vibracao():
     assin_tbl.setStyle(TableStyle([('ALIGN',(0,0),(-1,-1),'CENTER'),
         ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4)]))
     elements.append(assin_tbl); elements.append(Spacer(1, 10))
+
+    # ─── Registro fotográfico ────────────────────────────────────────
+    elements.extend(_fotos_pdf_flowables(d.get('fotos') or [], W))
 
     elements.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
     elements.append(Spacer(1, 3))
@@ -3388,6 +3470,9 @@ def gerar_relatorio_quimico():
         [Paragraph('Assinatura do Avaliado<br/><font size="6">(opcional)</font>', small),
          Paragraph('Assinatura do Técnico da Empresa', small)],
     ], colWidths=[8.5*cm, 8.5*cm], style=sig_style2))
+
+    # ─── Registro fotográfico ─────────────────────────────────────────
+    story.extend(_fotos_pdf_flowables(d.get('fotos') or [], 17*cm))
 
     # ─── Gerar PDF ────────────────────────────────────────────────────
     doc.build(story)
