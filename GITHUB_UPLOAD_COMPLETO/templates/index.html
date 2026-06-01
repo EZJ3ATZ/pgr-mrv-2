@@ -8617,7 +8617,7 @@ const _NOTIF_ICON = {
   sync_planner:'🔄', importacao:'📥', coleta_ruido_criada:'🔊', coleta_quimico_criada:'🧪',
   planejamento_criado:'📋', os_concluida:'✅', laudo_gerado:'📄', medicao_salva:'📊',
   demanda_baixa_manual:'✅', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
-  empresa_nova_planner:'🏢',
+  empresa_nova_planner:'🏢', aviso_atualizacao:'📢',
 };
 const _NOTIF_LABEL = {
   login:'Login', logout:'Logout', amostrador_criado:'Amostrador criado',
@@ -8627,8 +8627,28 @@ const _NOTIF_LABEL = {
   os_concluida:'OS Concluída', laudo_gerado:'Laudo gerado', medicao_salva:'Medição salva',
   demanda_baixa_manual:'Baixa de OS', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
   demanda_criada_planner:'Nova OS', empresa_nova_planner:'Nova empresa',
+  aviso_atualizacao:'Atualização',
 };
+
+// ── Avisos de atualização (mantidos no código) ─────────────────────────
+// Cada mudança que impacta o uso do site entra aqui como um aviso no sino.
+// criado_em em UTC ('Z'); BRT = UTC-3 (ex.: 10h BRT → 13:00Z).
+const AVISOS_ATUALIZACAO = [
+  {
+    tipo: 'aviso_atualizacao', _aviso: true,
+    criado_em: '2026-06-01T13:00:00Z',
+    titulo: 'CNPJ e e-mail de contato no cadastro',
+    descricao: 'Ao cadastrar empresa, o CNPJ puxa os dados da Receita automaticamente. O e-mail de contato do Maestro/SOC deve ser digitado à mão — ele é diferente do e-mail base da Receita.',
+  },
+];
+
 let _notifUltimoVisto = parseInt(localStorage.getItem('notif_ultimo_visto') || '0', 10);
+
+// Junta avisos de atualização com os eventos do backend, ordenado do mais novo.
+function _notifTodos(evs) {
+  return AVISOS_ATUALIZACAO.concat(evs || [])
+    .sort((a, b) => _notifQuando(b.criado_em).ms - _notifQuando(a.criado_em).ms);
+}
 
 function _notifQuando(criadoEm) {
   const raw = (criadoEm||'').replace(' ','T').replace(/\+00(:00)?$/, 'Z');
@@ -8669,18 +8689,28 @@ async function notifLoad() {
   const lista = document.getElementById('notif-lista');
   if (!lista) return;
   try {
-    const r = await fetch('/controle/eventos?limit=12');
-    if (!r.ok) { lista.innerHTML = '<div style="padding:18px 14px;color:var(--text3);font-size:.78rem;text-align:center;">Não foi possível carregar.</div>'; return; }
-    const evs = await r.json();
-    if (!evs || !evs.length) { lista.innerHTML = '<div style="padding:18px 14px;color:var(--text3);font-size:.78rem;text-align:center;">Nenhuma notificação.</div>'; return; }
+    let evsRaw = [];
+    try { const r = await fetch('/controle/eventos?limit=12'); if (r.ok) evsRaw = await r.json(); } catch(_) {}
+    const evs = _notifTodos(evsRaw);
+    if (!evs.length) { lista.innerHTML = '<div style="padding:18px 14px;color:var(--text3);font-size:.78rem;text-align:center;">Nenhuma notificação.</div>'; return; }
     // Atualiza o "último visto" para o evento mais recente
     let maisRecente = 0;
     lista.innerHTML = evs.map(ev => {
       const q = _notifQuando(ev.criado_em);
       if (q.ms > maisRecente) maisRecente = q.ms;
       const icon = _NOTIF_ICON[ev.tipo] || '📌';
-      const label = _NOTIF_LABEL[ev.tipo] || ev.tipo;
+      const label = ev._aviso ? (ev.titulo || 'Atualização') : (_NOTIF_LABEL[ev.tipo] || ev.tipo);
       const desc = (ev.descricao||'').replace(/</g,'&lt;');
+      if (ev._aviso) {
+        return `<div style="display:flex;gap:9px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(29,184,154,.10);border-left:3px solid var(--brand);">
+          <div style="font-size:1rem;line-height:1.2;">${icon}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:.78rem;font-weight:700;color:var(--brand);">${label}</div>
+            ${desc ? `<div style="font-size:.73rem;color:var(--text2);line-height:1.35;margin-top:2px;">${desc}</div>` : ''}
+            <div style="font-size:.65rem;color:var(--text3);margin-top:3px;">${q.txt}</div>
+          </div>
+        </div>`;
+      }
       return `<div style="display:flex;gap:9px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);">
         <div style="font-size:1rem;line-height:1.2;">${icon}</div>
         <div style="flex:1;min-width:0;">
@@ -8713,10 +8743,10 @@ function notifPedirPermissao() {
 // Verifica novos eventos periodicamente → ponto laranja + notificação desktop
 async function notifCheck() {
   try {
-    const r = await fetch('/controle/eventos?limit=5');
-    if (!r.ok) return;
-    const evs = await r.json();
-    if (!evs || !evs.length) return;
+    let evsRaw = [];
+    try { const r = await fetch('/controle/eventos?limit=5'); if (r.ok) evsRaw = await r.json(); } catch(_) {}
+    const evs = _notifTodos(evsRaw);
+    if (!evs.length) return;
     let maisRecente = 0; let novoEvento = null;
     evs.forEach(ev => {
       const q = _notifQuando(ev.criado_em);
@@ -8729,7 +8759,7 @@ async function notifCheck() {
       // Notificação na área de trabalho do evento mais recente
       if (novoEvento && 'Notification' in window && Notification.permission === 'granted') {
         const icon = _NOTIF_ICON[novoEvento.tipo] || '📌';
-        const label = _NOTIF_LABEL[novoEvento.tipo] || novoEvento.tipo;
+        const label = novoEvento._aviso ? (novoEvento.titulo || 'Atualização') : (_NOTIF_LABEL[novoEvento.tipo] || novoEvento.tipo);
         try {
           const n = new Notification(`${icon} ${label} — Ocupacional`, {
             body: novoEvento.descricao || 'Nova atividade no sistema.',
