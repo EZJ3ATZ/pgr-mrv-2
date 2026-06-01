@@ -3987,6 +3987,10 @@
       <div id="plan-checklist-items" style="display:flex;flex-direction:column;gap:5px;"></div>
     </div>
 
+    <div id="plan-edit-banner" style="display:none;margin-top:10px;padding:9px 12px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:8px;font-size:.8rem;display:none;align-items:center;justify-content:space-between;gap:10px;">
+      <span style="color:#f59e0b;">✏️ <b>Editando planejamento</b> — as alterações substituirão o existente.</span>
+      <button onclick="planCancelarEdicao()" style="background:transparent;color:var(--text2);border:1px solid var(--border);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.76rem;font-family:inherit;">Cancelar edição</button>
+    </div>
     <div style="display:flex;gap:10px;margin-top:10px;">
       <button onclick="planSalvar('rascunho')" style="flex:1;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:11px;border-radius:8px;font-size:.86rem;font-weight:600;cursor:pointer;font-family:inherit;">💾 Salvar Rascunho</button>
       <button onclick="planSalvar('confirmado')" style="flex:1;background:var(--blue);color:#fff;border:none;padding:11px;border-radius:8px;font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;">✅ Confirmar Planejamento</button>
@@ -8923,9 +8927,12 @@ async function planCarregarLista() {
             ${p.qtd_bombas_previstas > 0 ? `<span style="margin-left:6px;font-size:.72rem;color:var(--text3);">🔬 ${p.qtd_bombas_previstas} bomba(s)</span>` : ''}
           </div>
         </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
         ${p.status !== 'concluido' && p.status !== 'cancelado'
-          ? `<button class="plan-btn-campo" onclick="planIrParaCampo(${p.id})">📍 Ir para Campo</button>`
+          ? `<button class="plan-btn-campo" onclick="planIrParaCampo(${p.id})">📍 Ir para Campo</button>
+             <button onclick="planEditar(${p.id})" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Editar</button>`
           : ''}
+        </div>
       </div>`;
     }).join('');
   } catch(e) {
@@ -9631,14 +9638,19 @@ async function planSalvar(status) {
     checklist_prevista:  checklistItens,
   };
 
+  const editId = window._planEditId || null;
   try {
-    const r = await ctrlFetch('/controle/planejamentos', {
-      method: 'POST',
+    const r = await ctrlFetch(
+      editId ? '/controle/planejamentos/' + editId : '/controle/planejamentos', {
+      method: editId ? 'PUT' : 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
     });
     if (r.ok) {
-      const msg = status === 'confirmado' ? '✅ Planejamento confirmado!' : '💾 Rascunho salvo.';
+      const msg = editId ? '✏️ Planejamento atualizado!'
+                : (status === 'confirmado' ? '✅ Planejamento confirmado!' : '💾 Rascunho salvo.');
+      window._planEditId = null;
+      _planSetEditUI(false);
       _showToast(msg, 'ok');
       // Mostrar warnings de conflito
       if (r.warnings && r.warnings.length) {
@@ -9671,6 +9683,55 @@ async function planSalvar(status) {
   }
 }
 
+function _planSetEditUI(on) {
+  const banner = document.getElementById('plan-edit-banner');
+  if (banner) banner.style.display = on ? 'flex' : 'none';
+}
+
+function planCancelarEdicao() {
+  window._planEditId = null;
+  window._planAgentes = [];
+  ['plan-nv-os','plan-empresa-nome','plan-cnpj','plan-empresa-id','plan-demanda-id',
+   'plan-demanda-info','plan-data-prevista','plan-obs'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const info = document.getElementById('plan-os-info'); if (info) info.style.display = 'none';
+  if (typeof _planRenderizarAgentes === 'function') _planRenderizarAgentes();
+  _planSetEditUI(false);
+  _showToast('Edição cancelada.', 'ok');
+}
+
+async function planEditar(pid) {
+  try {
+    const p = await ctrlFetch('/controle/planejamentos/' + pid);
+    if (!p) { _showToast('Planejamento não encontrado.', 'err'); return; }
+    window._planEditId = pid;
+    // Preencher campos do formulário
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v == null ? '' : v); };
+    set('plan-nv-os', p.numero_os);
+    set('plan-empresa-nome', p.empresa_nome);
+    set('plan-empresa-id', p.empresa_id);
+    set('plan-cnpj', p.cnpj);
+    set('plan-demanda-id', p.demanda_id);
+    set('plan-data-prevista', p.data_prevista);
+    set('plan-obs', p.observacao);
+    if (p.tecnico) { const t = document.getElementById('plan-tecnico'); if (t) t.value = p.tecnico; }
+    // Agentes previstos
+    try {
+      window._planAgentes = typeof p.agentes_previstos === 'string'
+        ? JSON.parse(p.agentes_previstos || '[]')
+        : (p.agentes_previstos || []);
+    } catch(_) { window._planAgentes = []; }
+    if (typeof _planRenderizarAgentes === 'function') _planRenderizarAgentes();
+    const info = document.getElementById('plan-os-info');
+    if (info && p.empresa_nome) { info.style.display = ''; info.innerHTML = `<b>${p.empresa_nome}</b> · OS ${p.numero_os||'—'}`; }
+    _planSetEditUI(true);
+    _showToast('✏️ Editando — altere e salve para atualizar.', 'ok');
+    const form = document.getElementById('plan-nv-os');
+    if (form) form.scrollIntoView({behavior:'smooth', block:'center'});
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
+}
+
 async function nvCarregarPlanejamentosSelect() {
   const sel = document.getElementById('nv-plan-selector');
   if (!sel) return;
@@ -9684,8 +9745,18 @@ async function nvCarregarPlanejamentosSelect() {
 }
 
 function nvSelecionarPlanejamento(pid) {
-  if (!pid) return;
+  if (!pid) { nvLimparPlanejamentoVinculo(); return; }
   ctrlNvVincularPlanejamento(parseInt(pid));
+}
+
+// Remove o vínculo de planejamento e o banner (corrige banner "eterno")
+function nvLimparPlanejamentoVinculo() {
+  const banner = document.getElementById('nv-plan-banner');
+  if (banner) banner.remove();
+  window._nvPlanejamentoId = null;
+  window._nvAgentesPlano = [];
+  const cont = document.getElementById('nv-agentes-plano');
+  if (cont) cont.style.display = 'none';
 }
 
 function planIrParaCampo(planejamento_id) {
@@ -9897,14 +9968,29 @@ async function ctrlNvOsChange(val) {
       }
       // Armazena demanda_id para vincular à coleta
       window._nvDemandaId = j.id;
+      // ── Preencher empresa a partir da OS (atrela OS↔empresa) ──
+      if (j.empresa_nome) {
+        const empEl = document.getElementById('ctrl-nv-empresa');
+        if (empEl && !empEl.value) empEl.value = j.empresa_nome;
+        const empListEl = document.getElementById('ctrl-nv-empresa-list');
+        if (empListEl) empListEl.style.display = 'none';
+        if (j.empresa_id) {
+          window._ctrlNvEmpresa = { id: j.empresa_id, nome: j.empresa_nome, cnpj: j.cnpj || '' };
+          const statusEl = document.getElementById('ctrl-nv-empresa-status');
+          if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);font-size:.78rem;">✓ Empresa vinculada à OS</span>`;
+        }
+      }
       const _tl = {ruido:'🔊 Ruído', vibracao_vci:'〰️ VCI', vibracao_vbma:'〰️ VMB', vibracao:'〰️ Vibração', calor:'🌡️ Calor', particulado:'🌫️ Particulado', quimico:'⚗️ Químico'};
       const agentes = j.agentes || [];
-      // auto-seleciona tipo se unívoco
-      const tipos = [...new Set(agentes.map(a => a.tipo.replace('_vci','').replace('_vbma','')))];
-      const tipoSelect = document.getElementById('nv-tipo');
-      if (tipos.length === 1 && tipoSelect && tipoSelect.value === '') {
-        tipoSelect.value = tipos[0];
-        tipoSelect.dispatchEvent(new Event('change'));
+      // ── Auto-selecionar chips de tipo de medição com base nos agentes da OS ──
+      const tipoMap = {ruido:'nv-tipo-ruido', quimico:'nv-tipo-quimico', calor:'nv-tipo-calor',
+                       vibracao:'nv-tipo-vibracao', vibracao_vci:'nv-tipo-vibracao', vibracao_vbma:'nv-tipo-vibracao'};
+      if (agentes.length > 0) {
+        agentes.forEach(a => {
+          const elId = tipoMap[a.tipo];
+          if (elId) { const el = document.getElementById(elId); if (el) el.checked = true; }
+        });
+        if (typeof nvTipoChange === 'function') nvTipoChange();
       }
       const cards = agentes.length
         ? agentes.map(a => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 8px;background:rgba(57,153,255,.13);border-radius:12px;font-size:.77rem;">${_tl[a.tipo]||a.tipo} <b>${a.qtd}pt</b> — ${a.texto}</span>`).join('')
@@ -12665,6 +12751,9 @@ function nvReset() {
   _nvCrTrabs = []; _nvCrTermos = []; _nvCqAgentes = [];
   window._ctrlNvEmpresa = null;
   window._ctrlNvItens   = [];
+  window._nvDemandaId   = null;
+  if (typeof nvLimparPlanejamentoVinculo === 'function') nvLimparPlanejamentoVinculo();
+  const psel = document.getElementById('nv-plan-selector'); if (psel) psel.value = '';
   ['ctrl-nv-empresa','ctrl-nv-os','ctrl-nv-data','nv-unidade','nv-cidade',
    'nv-resp-empresa','nv-prazo'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
   const t = document.getElementById('nv-tipo'); if(t) t.value='';

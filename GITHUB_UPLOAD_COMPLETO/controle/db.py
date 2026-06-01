@@ -2417,6 +2417,32 @@ def criar_planejamento(data: dict) -> int:
         return cur.lastrowid
 
 
+def atualizar_planejamento(pid: int, data: dict) -> bool:
+    """Atualiza campos editáveis de um planejamento existente."""
+    import json as _json
+    campos = ['demanda_id', 'empresa_id', 'numero_os', 'tecnico', 'data_prevista',
+              'agentes_previstos', 'qtd_dosim_prevista', 'qtd_bombas_previstas',
+              'equipamentos_json', 'observacao', 'status', 'dias_estimados', 'cnpj',
+              'checklist_prevista', 'divergencias_json']
+    vals = {}
+    for c in campos:
+        if c not in data:
+            continue
+        v = data.get(c)
+        if isinstance(v, (dict, list)):
+            v = _json.dumps(v, ensure_ascii=False)
+        vals[c] = v
+    if not vals:
+        return False
+    sets = ', '.join(f'{c}=?' for c in vals.keys())
+    params = list(vals.values()) + [pid]
+    with get_db() as conn:
+        conn.execute(
+            f'UPDATE planejamentos SET {sets}, atualizado_em=CURRENT_TIMESTAMP WHERE id=?',
+            params)
+        return True
+
+
 def get_planejamento(pid: int):
     with get_db() as conn:
         r = conn.execute('''

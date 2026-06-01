@@ -21,6 +21,7 @@ from .db import (
     list_operational_demands, list_operational_por_empresa, list_contatos_empresa,
     # Planejamento + Visitas
     criar_planejamento, get_planejamento, list_planejamentos, update_planejamento_status,
+    atualizar_planejamento,
     criar_visita, get_visita, list_visitas, concluir_visita,
     registrar_evento,
 )
@@ -4408,6 +4409,48 @@ def api_get_planejamento(pid):
     if not p:
         return jsonify({'erro': 'não encontrado'}), 404
     return jsonify(p)
+
+
+@controle_bp.route('/planejamentos/<int:pid>', methods=['PUT'])
+def api_editar_planejamento(pid):
+    """Edita um planejamento existente. Recalcula equipamentos pelos agentes."""
+    init_db()
+    if not get_planejamento(pid):
+        return jsonify({'erro': 'não encontrado'}), 404
+    d = request.json or {}
+
+    # Recalcular equipamentos quando agentes vierem no payload
+    if 'agentes_previstos' in d:
+        agentes = d.get('agentes_previstos') or []
+        if isinstance(agentes, str):
+            import json as _j; agentes = _j.loads(agentes or '[]')
+        qtd_dosim  = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'ruido')
+        qtd_bombas = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'quimico')
+        d['qtd_dosim_prevista']   = qtd_dosim
+        d['qtd_bombas_previstas'] = qtd_bombas
+        equip = []
+        if qtd_dosim > 0:
+            equip.append({'tipo': 'dosimetro', 'qtd': qtd_dosim, 'obs': 'NHO-01'})
+            equip.append({'tipo': 'calibrador', 'qtd': 1, 'obs': 'Calibrador de campo'})
+        if qtd_bombas > 0:
+            equip.append({'tipo': 'bomba', 'qtd': qtd_bombas, 'obs': 'Bomba de amostragem'})
+            equip.append({'tipo': 'calibrador_bomba', 'qtd': 1, 'obs': 'Rotâmetro/calibrador de vazão'})
+        if any(a.get('tipo') == 'calor' for a in agentes):
+            equip.append({'tipo': 'termometro_ibutg', 'qtd': 1, 'obs': 'IBUTG NR-15 Anexo 3'})
+        if any(a.get('tipo') in ('vibracao', 'vibracao_vci', 'vibracao_vbma') for a in agentes):
+            equip.append({'tipo': 'acelerometro', 'qtd': 1, 'obs': 'ISO 2631 / NR-9'})
+        d['equipamentos_json'] = equip
+
+    try:
+        atualizar_planejamento(pid, d)
+        registrar_evento('planejamento_editado',
+                         f'OS: {d.get("numero_os","—")} | Status: {d.get("status","—")}',
+                         pid, 'planejamento',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
+        return jsonify({'ok': True, 'id': pid})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/planejamentos/<int:pid>/pdf')
