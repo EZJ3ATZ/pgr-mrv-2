@@ -8831,6 +8831,43 @@ function _planSetBombaModelo(i, modId) {
   _planRenderizarAgentes();
 }
 
+// ── Vazão: faixa do método + validação (TASK B) ───────────────────────
+function _planVazaoStatus(a) {
+  // Compara vazao_real com a faixa do método (vazao_faixa do guia)
+  const f = a && a.vazao_faixa;
+  const v = parseFloat(String(a && a.vazao_real || '').replace(',', '.'));
+  if (!f || f.passivo || isNaN(v) || v <= 0) return { dentro: true, msg: '' };
+  if (f.min != null && v < f.min) return { dentro: false, msg: `Vazão ${v} L/min ABAIXO do mínimo (${f.min})` };
+  if (f.max != null && v > f.max) return { dentro: false, msg: `Vazão ${v} L/min ACIMA do máximo (${f.max})` };
+  return { dentro: true, msg: '' };
+}
+function _planVazaoAvisoHtml(i) {
+  const a = window._planAgentes[i]; if (!a) return '';
+  const st = _planVazaoStatus(a);
+  if (st.dentro) { a.vazao_fora_faixa = false; return ''; }
+  a.vazao_fora_faixa = true;
+  const jv = (a.vazao_justificativa || '').replace(/"/g, '&quot;');
+  return `<div style="color:var(--red,#ef4444);font-size:.7rem;margin-top:3px;">⚠ ${st.msg} — justifique abaixo:</div>
+    <input type="text" value="${jv}" placeholder="Motivo da vazão fora da faixa (obrigatório)" oninput="window._planAgentes[${i}].vazao_justificativa=this.value"
+      style="background:var(--surface2);border:1px solid var(--red,#ef4444);border-radius:5px;color:var(--text);padding:3px 6px;font-size:.72rem;width:100%;margin-top:3px;box-sizing:border-box;">`;
+}
+function _planVazaoInput(i, val) {
+  const a = window._planAgentes[i]; if (!a) return;
+  a.vazao_real = val;
+  const box = document.getElementById('plan-vaz-aviso-' + i);
+  if (box) box.innerHTML = _planVazaoAvisoHtml(i);
+}
+function _planVazaoAplicarTipo(i, tipo) {
+  const a = window._planAgentes[i]; if (!a) return;
+  a.valor_tipo = tipo;
+  const f = a.vazao_faixa;
+  if (f && !f.passivo) {
+    if (tipo === 'teto' && f.max != null) a.vazao_real = f.max.toFixed(3);
+    else if (f.recomendada != null) a.vazao_real = f.recomendada.toFixed(3);
+  }
+  _planRenderizarAgentes();
+}
+
 async function planCarregarLista() {
   const loading = document.getElementById('plan-lista-loading');
   const lista   = document.getElementById('plan-lista');
@@ -9166,12 +9203,17 @@ function planConfirmarAgente(tipo) {
     qtd: tipo === 'calor' ? 1 : (isNaN(qtd) || qtd < 1 ? 1 : qtd),
     metodo:    metadados.metodo    || '',
     vazao:     metadados.vazao     || '',
+    vazao_faixa: metadados.vazao_faixa || null,
     volume:    metadados.volume    || '',
     amostrador: metadados.amostrador || '',
     unidade:   metadados.unidade   || '',
     bomba_sn:  '',
     valor_tipo: 'medio',
   };
+  // Pré-preenche vazão recomendada (valor médio) p/ químico com faixa conhecida
+  if (tipo === 'quimico' && obj.vazao_faixa && !obj.vazao_faixa.passivo && obj.vazao_faixa.recomendada != null) {
+    obj.vazao_real = obj.vazao_faixa.recomendada.toFixed(3);
+  }
   if (tipo === 'ruido') {
     obj.marca_dosimetro = document.getElementById('plan-modal-marca-dos')?.value || 'chrompack';
     obj.qtd_pessoas = obj.qtd;
@@ -9207,16 +9249,24 @@ function _planRenderizarAgentes() {
     if (a.tipo === 'quimico') {
       const modOpts = _planBombaModeloOpts(a.bomba_sn||'');
       const serieOpts = _planBombaSerieOpts(a.bomba_sn||'', a.id_bomba||'');
+      const f = a.vazao_faixa;
+      let faixaTxt = '';
+      if (f && f.passivo) faixaTxt = '🟣 Amostrador passivo — sem vazão';
+      else if (f && (f.min!=null || f.max!=null))
+        faixaTxt = `💨 Faixa: <b>${f.min!=null?f.min:'?'}–${f.max!=null?f.max:'?'}</b> L/min · médio <b>${f.recomendada!=null?f.recomendada:'—'}</b>`;
+      const vazDisabled = (f && f.passivo) ? 'disabled' : '';
       extraFields = `
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;align-items:center;">
           <select onchange="_planSetBombaModelo(${i}, this.value)" style="${inp}width:auto;" title="Modelo da bomba">${modOpts}</select>
           <select onchange="window._planAgentes[${i}].id_bomba=this.value" style="${inp}width:auto;" title="Nº de série (do banco)">${serieOpts}</select>
-          <input type="text" value="${a.vazao_real||a.vazao||''}" placeholder="Vazão L/min" onchange="window._planAgentes[${i}].vazao_real=this.value" style="${inp}width:85px;">
-          <select onchange="window._planAgentes[${i}].valor_tipo=this.value" style="${inp}width:auto;">
+          <input type="text" value="${a.vazao_real||''}" placeholder="Vazão L/min" oninput="_planVazaoInput(${i}, this.value)" ${vazDisabled} style="${inp}width:85px;" title="Vazão calibrada (L/min)">
+          <select onchange="_planVazaoAplicarTipo(${i}, this.value)" style="${inp}width:auto;" title="Médio = vazão recomendada · Teto = vazão máxima da faixa">
             <option value="medio" ${(a.valor_tipo||'medio')==='medio'?'selected':''}>Valor Médio</option>
             <option value="teto"  ${a.valor_tipo==='teto'?'selected':''}>Valor Teto</option>
           </select>
         </div>
+        ${faixaTxt ? `<div style="font-size:.68rem;color:var(--text3);margin-top:3px;">${faixaTxt}</div>` : ''}
+        <div id="plan-vaz-aviso-${i}">${_planVazaoAvisoHtml(i)}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;align-items:center;">
           <input type="text" value="${a.amostrador_codigo||''}" placeholder="Amostrador (cód.)" onchange="window._planAgentes[${i}].amostrador_codigo=this.value" style="${inp}width:115px;" title="Código do amostrador">
           <input type="text" value="${a.calibrador_nome||''}" placeholder="Calibrador vazão" onchange="window._planAgentes[${i}].calibrador_nome=this.value" style="${inp}width:115px;" title="Calibrador utilizado na calibração da bomba">
@@ -9540,6 +9590,16 @@ async function planSalvar(status) {
   if (!empresa_id) { _showToast('Informe a OS ou vincule uma empresa.', 'err'); return; }
   if (!tecnico)    { _showToast('Selecione o técnico.', 'err'); return; }
   if ((window._planAgentes || []).length === 0) { _showToast('Adicione pelo menos um agente previsto.', 'err'); return; }
+
+  // Vazão fora da faixa exige justificativa ao CONFIRMAR (rascunho fica livre)
+  if (status === 'confirmado') {
+    const semJust = (window._planAgentes || []).filter(a =>
+      a.tipo === 'quimico' && a.vazao_fora_faixa && !(a.vazao_justificativa || '').trim());
+    if (semJust.length) {
+      _showToast(`⚠ ${semJust.length} agente(s) com vazão fora da faixa sem justificativa. Justifique antes de confirmar.`, 'err');
+      return;
+    }
+  }
 
   // Checklist: quais itens foram marcados
   const checklistItens = Object.entries(window._planChecklistState || {})

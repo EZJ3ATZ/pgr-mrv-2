@@ -423,6 +423,50 @@ def update_equipamento(eid):
     return jsonify({'ok': True})
 
 
+_VAZAO_NUM_RE = re.compile(r'\d+(?:[.,]\d+)?')
+
+def parse_vazao(raw):
+    """Converte a string de vazao do guia_metodos numa faixa numerica (L/min).
+    Retorna {raw, passivo, min, max, recomendada, media}.
+      - passivo=True  -> amostrador passivo / sem vazao ('0' ou vazio)
+      - min/max=None   -> nao foi possivel determinar
+      - recomendada    -> valor a pre-preencher no planejamento
+      - media          -> (min+max)/2
+    Formatos suportados: '0,02 A 0,2 L/MIN', '2 L/MIN', '0',
+    'MAXIMO 0,1 L/MIN', listas de ciclone '1,7 NYLON OU 2,0 SKC ...', TWA/STEL."""
+    s = (raw or '').strip()
+    res = {'raw': s, 'passivo': False, 'min': None, 'max': None,
+           'recomendada': None, 'media': None}
+    if not s or s == '0':
+        res['passivo'] = True
+        return res
+    nums = [float(n.replace(',', '.')) for n in _VAZAO_NUM_RE.findall(s)]
+    nums = [n for n in nums if n > 0]
+    if not nums:
+        res['passivo'] = True
+        return res
+    up = s.upper()
+    is_max = ('MAX' in up) or ('MÁX' in up) or ('MÁXIM' in up) or ('MAXIM' in up)
+    if is_max and len(nums) == 1:
+        res['max'] = nums[0]
+        res['recomendada'] = nums[0]
+    elif len(nums) == 1:
+        res['min'] = res['max'] = res['recomendada'] = nums[0]
+    elif len(nums) == 2:
+        lo, hi = min(nums), max(nums)
+        res['min'], res['max'] = lo, hi
+        res['recomendada'] = round((lo + hi) / 2, 4)
+    else:
+        # lista de valores discretos (ex: ciclones) -> menor e mais comum
+        res['min'], res['max'] = min(nums), max(nums)
+        res['recomendada'] = min(nums)
+    if res['min'] is not None and res['max'] is not None:
+        res['media'] = round((res['min'] + res['max']) / 2, 4)
+    elif res['max'] is not None:
+        res['media'] = res['max']
+    return res
+
+
 @controle_bp.route('/agentes')
 def get_agentes():
     """Retorna todos os agentes do guia_metodos.json."""
@@ -453,6 +497,7 @@ def get_agentes():
                 'metodo': entry.get('metodoCod', ''),
                 'metodo_desc': entry.get('metodoDesc', ''),
                 'vazao': entry.get('vazao', ''),
+                'vazao_faixa': parse_vazao(entry.get('vazao', '')),
                 'volume': entry.get('volume', ''),
                 'amostrador': entry.get('amostradorCod', ''),
                 'amostrador_desc': entry.get('amostradorDesc', ''),
@@ -489,6 +534,8 @@ def get_agentes():
                 'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
             },
         ]
+        for g in grupos:
+            g['vazao_faixa'] = parse_vazao(g.get('vazao', ''))
         agentes = grupos + agentes
         return jsonify({'agentes': agentes, 'total': len(agentes)})
     except Exception as e:
@@ -1128,6 +1175,7 @@ def estoque_para_agente(nome):
         metodos_resumo.append({
             'metodoCod': m.get('metodoCod', ''),
             'vazao': m.get('vazao', ''),
+            'vazao_faixa': parse_vazao(m.get('vazao', '')),
             'volume': m.get('volume', ''),
             'amostradorCod': m.get('amostradorCod', ''),
             'amostradorDesc': m.get('amostradorDesc', ''),
@@ -1158,7 +1206,7 @@ def estoque_para_agente(nome):
                 por_tipo.setdefault(t, {'estoque': 0, 'lab': 0, 'reservado': 0, 'total': 0})
                 por_tipo[t]['total'] += 1
                 st = (d.get('status') or '').lower()
-                if 'estoque' in st: por_tipo[t]['estoque'] += 1
+                if 'dispon' in st or 'estoque' in st: por_tipo[t]['estoque'] += 1
                 elif 'lab' in st: por_tipo[t]['lab'] += 1
                 elif 'reserv' in st: por_tipo[t]['reservado'] += 1
 
