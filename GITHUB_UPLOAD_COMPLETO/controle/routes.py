@@ -893,6 +893,35 @@ def api_list_baixas():
     return jsonify({'baixas': [row_to_dict(r) for r in rows], 'total': len(rows)})
 
 
+@controle_bp.route('/demandas/<int:did>/concluir', methods=['POST'])
+def api_concluir_demanda(did):
+    """Baixa manual da demanda/OS — decisão explícita do técnico ao concluir a medição.
+    Sobrepõe a regra do Planner (que normalmente é a fonte de verdade), pois é
+    ação consciente do usuário. Fecha também o planejamento vinculado, se houver.
+    """
+    init_db()
+    d = request.json or {}
+    with get_db() as conn:
+        row = conn.execute('SELECT id, numero_os FROM demandas WHERE id=?', (did,)).fetchone()
+        if not row:
+            return jsonify({'erro': 'Demanda não encontrada'}), 404
+        os_num = row_to_dict(row).get('numero_os', '')
+        conn.execute(
+            "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+            (did,))
+        pid = d.get('planejamento_id')
+        if pid:
+            conn.execute(
+                "UPDATE planejamentos SET status='concluido' WHERE id=? AND status != 'cancelado'",
+                (pid,))
+    registrar_evento('demanda_baixa_manual',
+                     f'Baixa manual da OS {os_num or "—"} pelo técnico',
+                     ref_id=did, ref_tipo='demanda',
+                     usuario=current_user.nome if current_user.is_authenticated else 'sistema',
+                     ip=request.remote_addr)
+    return jsonify({'ok': True, 'demanda_id': did, 'status': 'concluida'})
+
+
 # ── Baixa de amostrador ───────────────────────────────────────────────
 @controle_bp.route('/baixa', methods=['POST'])
 def dar_baixa():
@@ -2734,14 +2763,34 @@ def gerar_relatorio_ruido():
     elements.append(Spacer(1, 10))
 
     # ─── Assinaturas finais ──────────────────────────────────────────
-    assin_rows = [[
-        Paragraph('_________________________________<br/><font size="7">Profissional Técnico</font><br/>'
-                  f'<font size="7">{tecnico}</font>', assin_sty),
-        Paragraph('_________________________________<br/><font size="7">Responsável da Empresa / Acompanhante</font><br/>'
-                  f'<font size="7">{acomp}</font>', assin_sty),
-        Paragraph(f'_________________________________<br/><font size="7">Data: {data_fmt}</font>',
-                  assin_sty),
-    ]]
+    # Assinatura digital do responsável técnico (obrigatória no app) → coluna 1
+    sig_avaliado = d.get('sig_avaliado')
+    sig_empresa  = d.get('sig_empresa')
+
+    def _sig_img_ruido(b64_str, w=4.6*cm, h=1.2*cm):
+        if not b64_str:
+            return None
+        try:
+            import base64 as _b64
+            from io import BytesIO as _BIO
+            from reportlab.platypus import Image as _RLImg
+            raw = _b64.b64decode(b64_str.split(',')[-1])
+            return _RLImg(_BIO(raw), width=w, height=h)
+        except Exception:
+            return None
+
+    img_tec = _sig_img_ruido(sig_empresa)
+    col_tec = (img_tec if img_tec else
+               Paragraph('_________________________________', assin_sty))
+    assin_rows = [
+        [col_tec, '', ''],
+        [Paragraph('<font size="7">Profissional Técnico (Responsável)</font><br/>'
+                   f'<font size="7">{tecnico}</font>', assin_sty),
+         Paragraph('_________________________________<br/><font size="7">Responsável da Empresa / Acompanhante</font><br/>'
+                   f'<font size="7">{acomp}</font>', assin_sty),
+         Paragraph(f'_________________________________<br/><font size="7">Data: {data_fmt}</font>',
+                   assin_sty)],
+    ]
     assin_tbl = Table(assin_rows, colWidths=[W/3, W/3, W/3])
     assin_tbl.setStyle(TableStyle([
         ('ALIGN',(0,0),(-1,-1),'CENTER'),
