@@ -10,6 +10,7 @@ from flask_login import login_required, current_user
 
 from .db import (
     USE_PG,
+    normalizar_status_amostrador, STATUS_AMOSTRADOR, STATUS_AMOSTRADOR_LABEL,
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
     registrar_sync, list_sync_log,
@@ -158,7 +159,7 @@ def cria_amostrador():
         cur = conn.execute("""
             INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
             VALUES (?, ?, ?, ?, ?)""",
-            (d['codigo'], d['tipo'], d.get('status', 'Estoque'),
+            (d['codigo'], d['tipo'], normalizar_status_amostrador(d.get('status', 'disponivel')),
              d.get('data_entrada', datetime.now().strftime('%Y-%m-%d')),
              d.get('observacao', '')))
         novo_id = cur.lastrowid
@@ -177,7 +178,12 @@ def update_amostrador(aid):
     params = []
     for k in ('status', 'tipo', 'codigo', 'avaliador', 'data_medicao', 'observacao', 'data_entrada'):
         if k in d:
-            fields.append(f'{k}=?'); params.append(d[k])
+            val = normalizar_status_amostrador(d[k]) if k == 'status' else d[k]
+            fields.append(f'{k}=?'); params.append(val)
+            # Ao concluir manualmente, carimba a data de conclusão (cert recebido)
+            if k == 'status' and val == 'concluido':
+                fields.append('data_conclusao=COALESCE(data_conclusao, ?)')
+                params.append(datetime.now().strftime('%Y-%m-%d'))
     if 'empresa' in d:
         emp_id = upsert_empresa('', d['empresa']) if d['empresa'] else None
         fields.append('empresa_id=?'); params.append(emp_id)
@@ -233,11 +239,12 @@ def baixa_simples_lote():
     with get_db() as conn:
         conn.execute(
             f"""UPDATE amostradores
-                SET status='Laboratorio', avaliador=?, data_medicao=?,
+                SET status='laboratorio', avaliador=?, data_medicao=?,
+                    data_envio_lab=COALESCE(data_envio_lab, ?),
                     observacao=?, empresa_id=COALESCE(?,empresa_id),
                     atualizado_em=CURRENT_TIMESTAMP
-                WHERE id IN ({ph}) AND status='Estoque'""",
-            [avaliador, data_med, obs_final, empresa_id] + ids
+                WHERE id IN ({ph}) AND status IN ('disponivel','reservado')""",
+            [avaliador, data_med, data_med, obs_final, empresa_id] + ids
         )
         afetados = conn.execute(
             f"SELECT COUNT(*) AS c FROM amostradores WHERE id IN ({ph})", ids
@@ -278,11 +285,12 @@ def concluir_amostradores():
     with get_db() as conn:
         conn.execute(
             f"""UPDATE amostradores
-                SET status='Concluido', observacao=?,
+                SET status='concluido', observacao=?,
+                    data_conclusao=COALESCE(data_conclusao, ?),
                     empresa_id=COALESCE(?,empresa_id),
                     atualizado_em=CURRENT_TIMESTAMP
                 WHERE id IN ({ph})""",
-            [obs_final, empresa_id] + ids
+            [obs_final, datetime.now().strftime('%Y-%m-%d'), empresa_id] + ids
         )
 
     user = getattr(current_user, 'email', 'sistema') if current_user.is_authenticated else 'sistema'
@@ -313,7 +321,7 @@ def fix_data_entrada():
         else:
             cur = conn.execute(
                 """UPDATE amostradores SET data_entrada=?, atualizado_em=CURRENT_TIMESTAMP
-                   WHERE status IN ('Estoque','Reservado')
+                   WHERE status IN ('disponivel','reservado')
                      AND data_entrada IS NOT NULL
                      AND CAST(julianday('now') - julianday(data_entrada) AS INTEGER) > ?""",
                 (nova_data, dias_min)
@@ -886,10 +894,11 @@ def dar_baixa():
         # Atualizar amostrador: muda status, vincula empresa, avaliador e data
         conn.execute("""
             UPDATE amostradores
-            SET status='Laboratorio', empresa_id=?, avaliador=?, data_medicao=?,
+            SET status='laboratorio', empresa_id=?, avaliador=?, data_medicao=?,
+                data_envio_lab=COALESCE(data_envio_lab, ?),
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?""",
-            (empresa_id, avaliador, data_medicao, amostrador_id))
+            (empresa_id, avaliador, data_medicao, data_medicao, amostrador_id))
 
         # Incrementar pontos realizados da medicao
         nova_qtd = (me['qtd_pontos_feita'] or 0) + 1
@@ -1138,7 +1147,7 @@ def estoque_para_agente(nome):
                 LEFT JOIN empresas e ON e.id = a.empresa_id
                 WHERE a.tipo IN ({placeholders})
                 ORDER BY
-                  CASE WHEN a.status='Estoque' THEN 0 ELSE 1 END,
+                  CASE WHEN a.status='disponivel' THEN 0 ELSE 1 END,
                   a.tipo, a.codigo
                 LIMIT 500
             """, tipos).fetchall()
@@ -1476,7 +1485,7 @@ def previsao_estoque():
     with get_db() as conn:
         for tipo, dados in necessidades.items():
             r = conn.execute(
-                "SELECT COUNT(*) c FROM amostradores WHERE tipo=? AND status='Estoque'",
+                "SELECT COUNT(*) c FROM amostradores WHERE tipo=? AND status='disponivel'",
                 (tipo,)).fetchone()
             dados['em_estoque'] = r['c'] if r else 0
             dados['falta'] = max(0, dados['qtd_necessaria'] - dados['em_estoque'])
@@ -1523,7 +1532,7 @@ def devolver_amostrador(aid):
             return jsonify({'erro': 'nao encontrado'}), 404
         conn.execute("""
             UPDATE amostradores
-            SET status='Devolvido',
+            SET status='devolvido',
                 observacao = CASE WHEN ? != '' THEN ? ELSE observacao END,
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?""",
@@ -1544,7 +1553,7 @@ def devolver_lote():
     with get_db() as conn:
         cur = conn.execute(f"""
             UPDATE amostradores
-            SET status='Devolvido', observacao=?,
+            SET status='devolvido', observacao=?,
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id IN ({placeholders})""",
             [obs] + ids)
@@ -1554,25 +1563,8 @@ def devolver_lote():
 # ── Utilitários de limpeza ────────────────────────────────────────────
 @controle_bp.route('/amostradores/normalizar_status', methods=['POST'])
 def normalizar_status_amostradores():
-    """
-    Normaliza status inconsistentes dos amostradores:
-    - ESTOQUE → Estoque
-    - RESERVADO → Reservado
-    - UTILIZADO? → Utilizado
-    - Nomes de empresa (não são status válidos) → Laboratorio
-    """
-    STATUSES_VALIDOS = {'Estoque', 'Laboratorio', 'Utilizado', 'Reservado', 'Descartado', 'EmUso'}
-    NORMALIZAR = {
-        'ESTOQUE': 'Estoque',
-        'estoque': 'Estoque',
-        'RESERVADO': 'Reservado',
-        'reservado': 'Reservado',
-        'UTILIZADO': 'Utilizado',
-        'utilizado': 'Utilizado',
-        'UTILIZADO?': 'Utilizado',
-        'LABORATORIO': 'Laboratorio',
-        'laboratorio': 'Laboratorio',
-    }
+    """Normaliza todos os status ao vocabulário canônico (db.normalizar_status_amostrador).
+    Remove o estado fantasma 'UTILIZADO?' e nomes de empresa gravados por engano."""
     init_db()
     total = 0
     with get_db() as conn:
@@ -1580,14 +1572,11 @@ def normalizar_status_amostradores():
         for row in rows:
             sid = row['id']
             st  = row['status'] or ''
-            novo = NORMALIZAR.get(st)
-            if not novo and st not in STATUSES_VALIDOS:
-                # Status que não é válido nem mapeado → era nome de empresa → Laboratorio
-                novo = 'Laboratorio'
-            if novo and novo != st:
+            novo = normalizar_status_amostrador(st)
+            if novo != st:
                 conn.execute('UPDATE amostradores SET status=? WHERE id=?', (novo, sid))
                 total += 1
-    return jsonify({'ok': True, 'normalizados': total})
+    return jsonify({'ok': True, 'normalizados': total, 'vocabulario': list(STATUS_AMOSTRADOR)})
 
 
 @controle_bp.route('/empresas/mesclar_duplicatas', methods=['POST'])

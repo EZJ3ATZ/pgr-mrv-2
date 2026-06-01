@@ -86,6 +86,50 @@ else:
         return f"CAST(julianday('now') - julianday({lab_col}) AS INTEGER)"
 
 
+# ── Status canônico do amostrador (fonte única de verdade) ─────────────
+# Fluxo operacional real (29/05/2026): disponivel → reservado → laboratorio
+# → concluido (resultado do lab recebido). devolvido/manutencao/descartado
+# são estados auxiliares. O antigo "UTILIZADO?" foi REMOVIDO (era estado
+# fantasma de auditoria que contaminava analytics) → volta para disponivel.
+STATUS_AMOSTRADOR = (
+    'disponivel', 'reservado', 'laboratorio',
+    'concluido', 'devolvido', 'manutencao', 'descartado',
+)
+STATUS_AMOSTRADOR_LABEL = {
+    'disponivel': 'Disponível',
+    'reservado':  'Reservado',
+    'laboratorio': 'No laboratório',
+    'concluido':  'Concluído',
+    'devolvido':  'Devolvido',
+    'manutencao': 'Manutenção',
+    'descartado': 'Descartado',
+}
+# Mapa de valores legados/variações → status canônico
+_STATUS_LEGADO = {
+    'estoque': 'disponivel', 'disponivel': 'disponivel', 'disponível': 'disponivel',
+    'reservado': 'reservado',
+    'laboratorio': 'laboratorio', 'laboratório': 'laboratorio',
+    'emuso': 'laboratorio', 'em uso': 'laboratorio', 'em_uso': 'laboratorio',
+    'enviado': 'laboratorio', 'em_analise': 'laboratorio',
+    'em analise': 'laboratorio', 'análise': 'laboratorio', 'analise': 'laboratorio',
+    'concluido': 'concluido', 'concluído': 'concluido', 'resultado': 'concluido',
+    'devolvido': 'devolvido',
+    'manutencao': 'manutencao', 'manutenção': 'manutencao',
+    'descartado': 'descartado',
+    # estado fantasma removido → devolve ao estoque
+    'utilizado': 'disponivel', 'utilizado?': 'disponivel', 'verificar': 'disponivel',
+}
+
+def normalizar_status_amostrador(raw):
+    """Converte qualquer valor de status (legado/maiúsculo/nome de empresa) no
+    status canônico. Valor desconhecido (ex: nome de empresa gravado por engano)
+    → 'laboratorio' (preserva o comportamento antigo de auditoria)."""
+    if not raw:
+        return 'disponivel'
+    k = str(raw).strip().lower()
+    return _STATUS_LEGADO.get(k, 'laboratorio')
+
+
 # ── Wrapper PostgreSQL (faz psycopg2 se comportar como sqlite3) ────────
 
 class _PGCursor:
@@ -264,7 +308,7 @@ CREATE TABLE IF NOT EXISTS amostradores (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo          TEXT NOT NULL,
     tipo            TEXT NOT NULL,
-    status          TEXT DEFAULT 'Estoque',
+    status          TEXT DEFAULT 'disponivel',
     data_entrada    TEXT,
     empresa_id      INTEGER,
     avaliador       TEXT,
@@ -967,9 +1011,32 @@ def _migrate(conn):
         'lote': 'TEXT', 'observacao_venc': 'TEXT',
         'cert_numero': 'TEXT', 'cert_validade': 'TEXT',
         'cert_laboratorio': 'TEXT', 'cert_arquivo': 'TEXT',
+        # Fluxo de status (29/05/2026): data em que virou 'concluido' (cert recebido)
+        'data_conclusao': 'TEXT',
+        # Arquivamento automático: 30 dias após concluído (não deletar)
+        'arquivado':    'INTEGER DEFAULT 0',
+        'arquivado_em': 'TEXT',
     }
     for col, tipo in amostr_extra.items():
         _add_col(conn, 'amostradores', col, tipo)
+
+    # ── Migração de status legados → canônico (remove 'UTILIZADO?' etc.) ──
+    # Idempotente: só atualiza linhas cujo status atual difere do canônico.
+    try:
+        rows = conn.execute('SELECT id, status FROM amostradores').fetchall()
+        for r in rows:
+            sid = r['id'] if hasattr(r, '__getitem__') else r[0]
+            atual = (r['status'] if hasattr(r, '__getitem__') else r[1]) or ''
+            canon = normalizar_status_amostrador(atual)
+            if canon != atual:
+                conn.execute('UPDATE amostradores SET status=? WHERE id=?', (canon, sid))
+            # Backfill data_conclusao para concluídos antigos sem timestamp
+            if canon == 'concluido':
+                conn.execute(
+                    "UPDATE amostradores SET data_conclusao=COALESCE(data_conclusao, atualizado_em) WHERE id=?",
+                    (sid,))
+    except Exception as e:
+        print(f'[migrate] status amostradores: {e}')
 
     # ── coletas_ruido ──
     for col, tipo in [('calibrador', 'TEXT'), ('unidade', 'TEXT'),
@@ -1804,7 +1871,7 @@ def list_amostradores_vencendo(dias_alerta=7):
         WHERE a.data_envio_lab IS NOT NULL
           AND a.data_envio_lab != ''
           {date_filter}
-          AND a.status != 'Devolvido'
+          AND a.status = 'laboratorio' AND COALESCE(a.arquivado,0)=0
         ORDER BY dias_para_vencer ASC
         LIMIT 500
     """
@@ -1827,7 +1894,7 @@ def contar_vencendo():
             FROM amostradores
             WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
               AND data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
-              AND status != 'Devolvido'
+              AND status = 'laboratorio' AND COALESCE(arquivado,0)=0
         """
     else:
         sql = f"""
@@ -1840,7 +1907,7 @@ def contar_vencendo():
               COUNT(*) AS total_no_lab
             FROM amostradores
             WHERE data_envio_lab IS NOT NULL AND data_envio_lab != ''
-              AND status != 'Devolvido'
+              AND status = 'laboratorio' AND COALESCE(arquivado,0)=0
         """
     with get_db() as conn:
         r = conn.execute(sql).fetchone()
@@ -1864,14 +1931,17 @@ def stats_dashboard():
         urg_cond  = f"julianday('now') BETWEEN julianday({lab}) + {val} - 3 AND julianday({lab}) + {val}"
         aler_cond = f"julianday('now') BETWEEN julianday({lab}) + {val} - 7 AND julianday({lab}) + {val} - 4"
 
-    base_filter = f"data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status != 'Devolvido'"
+    base_filter = f"data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status='laboratorio' AND COALESCE(arquivado,0)=0"
     sql = f"""
         SELECT
-          (SELECT COUNT(*) FROM amostradores) AS total_amostradores,
-          (SELECT COUNT(*) FROM amostradores WHERE status='Estoque') AS estoque,
-          (SELECT COUNT(*) FROM amostradores WHERE status='Laboratorio') AS laboratorio,
-          (SELECT COUNT(*) FROM amostradores WHERE status='Reservado') AS reservados,
-          (SELECT COUNT(*) FROM amostradores WHERE status='Devolvido') AS devolvidos,
+          (SELECT COUNT(*) FROM amostradores WHERE COALESCE(arquivado,0)=0) AS total_amostradores,
+          (SELECT COUNT(*) FROM amostradores WHERE status='disponivel' AND COALESCE(arquivado,0)=0) AS estoque,
+          (SELECT COUNT(*) FROM amostradores WHERE status='laboratorio' AND COALESCE(arquivado,0)=0) AS laboratorio,
+          (SELECT COUNT(*) FROM amostradores WHERE status='reservado' AND COALESCE(arquivado,0)=0) AS reservados,
+          (SELECT COUNT(*) FROM amostradores WHERE status='concluido' AND COALESCE(arquivado,0)=0) AS concluidos,
+          (SELECT COUNT(*) FROM amostradores WHERE status='devolvido' AND COALESCE(arquivado,0)=0) AS devolvidos,
+          (SELECT COUNT(*) FROM amostradores WHERE status='manutencao' AND COALESCE(arquivado,0)=0) AS manutencao,
+          (SELECT COUNT(*) FROM amostradores WHERE status='descartado' AND COALESCE(arquivado,0)=0) AS descartados,
           (SELECT COUNT(*) FROM medicoes WHERE status='realizado') AS medicoes_realizadas,
           (SELECT COUNT(*) FROM medicoes WHERE status='pendente') AS medicoes_pendentes,
           (SELECT COUNT(*) FROM demandas WHERE status!='concluida') AS demandas_pendentes,

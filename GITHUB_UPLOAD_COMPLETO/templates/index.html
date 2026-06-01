@@ -3515,11 +3515,14 @@
     display:inline-block; padding:2px 8px; border-radius:4px;
     font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
   }
+  .ctrl-badge.disponivel { background:rgba(16,185,129,.12);  color:var(--green); }
   .ctrl-badge.estoque    { background:rgba(16,185,129,.12);  color:var(--green); }
   .ctrl-badge.laboratorio{ background:rgba(96,165,250,.12);  color:var(--blue); }
   .ctrl-badge.reservado  { background:rgba(245,158,11,.12);  color:var(--yellow); }
   .ctrl-badge.devolvido  { background:rgba(150,150,150,.1);  color:#888; }
   .ctrl-badge.concluido  { background:rgba(42,157,157,.12);  color:var(--primary-l); }
+  .ctrl-badge.manutencao { background:rgba(249,115,22,.14);  color:var(--orange); }
+  .ctrl-badge.descartado { background:rgba(239,68,68,.12);   color:var(--red); }
   .ctrl-badge.pendente   { background:rgba(239,68,68,.12);   color:var(--red); }
   .ctrl-badge.parcial    { background:rgba(245,158,11,.12);  color:var(--yellow); }
   .ctrl-badge.realizado, .ctrl-badge.concluida { background:rgba(16,185,129,.12); color:var(--green); }
@@ -3624,11 +3627,13 @@
         <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
         <select id="ctrl-f-status" onchange="ctrlLoadAmostr()">
           <option value="">— Status —</option>
-          <option>Estoque</option>
-          <option>Laboratorio</option>
-          <option>Reservado</option>
-          <option>Devolvido</option>
-          <option>Concluido</option>
+          <option value="disponivel">Disponível</option>
+          <option value="reservado">Reservado</option>
+          <option value="laboratorio">No laboratório</option>
+          <option value="concluido">Concluído</option>
+          <option value="devolvido">Devolvido</option>
+          <option value="manutencao">Manutenção</option>
+          <option value="descartado">Descartado</option>
         </select>
         <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()">
           <option value="">— Tipo —</option>
@@ -5600,12 +5605,14 @@
       titulo:'Status de Amostradores',
       desc:'Cada amostrador passa por um ciclo de vida. Estes são os status possíveis.',
       termos:[
-        { t:'Estoque',       desc:'O amostrador está disponível na empresa, guardado, pronto para ser usado em campo. Nenhuma medição associada.' },
+        { t:'Disponível',    desc:'O amostrador está disponível na empresa, guardado, pronto para ser usado em campo. Nenhuma medição associada.' },
         { t:'Reservado',     desc:'O amostrador foi separado para uma OS específica mas ainda não foi para campo. Fica reservado para aquela empresa/data.' },
-        { t:'Dar Baixa',     desc:'Ação: registrar que o amostrador saiu do campo e foi enviado ao laboratório. Você informa empresa, avaliador, data da medição e a vazão. Status passa de <b>Estoque → Laboratório</b>.' },
-        { t:'Laboratório',   desc:'O amostrador já foi usado em campo e está no laboratório sendo analisado. Aguardando resultado.' },
-        { t:'Concluído',     desc:'Ação: registrar que a análise laboratorial chegou e a OS foi encerrada. Você só confirma a empresa. Status passa para <b>Concluído</b>. Ciclo encerrado.' },
+        { t:'Dar Baixa',     desc:'Ação: registrar que o amostrador saiu do campo e foi enviado ao laboratório. Você informa empresa, avaliador, data da medição e a vazão. Status passa de <b>Disponível → No laboratório</b>.' },
+        { t:'No laboratório',desc:'O amostrador já foi usado em campo e está no laboratório sendo analisado. Aguardando resultado.' },
+        { t:'Concluído',     desc:'A análise laboratorial chegou e o certificado foi preenchido (resultado recebido). Ciclo encerrado.' },
         { t:'Devolvido',     desc:'O amostrador foi devolvido sem uso — coleta cancelada ou reagendada.' },
+        { t:'Manutenção',    desc:'O amostrador está em manutenção/conserto e indisponível para uso.' },
+        { t:'Descartado',    desc:'O amostrador foi descartado/baixado definitivamente do inventário.' },
       ]
     },
     {
@@ -8157,11 +8164,11 @@ async function ctrlAbrirEnvioLab() {
   const lista = document.getElementById('ctrl-el-lista');
   lista.innerHTML = '<div style="color:var(--text3); padding:10px; text-align:center;">Carregando...</div>';
   try {
-    // Pegar amostradores em Laboratorio e Utilizado (sem data_envio_lab)
+    // Pegar amostradores no laboratório/reservados sem data_envio_lab
     const todos = await ctrlFetch('/controle/amostradores');
     const candidatos = todos.filter(a => {
       const s = (a.status||'').toLowerCase();
-      return (s.includes('lab') || s.includes('utiliz') || s.includes('reserv')) && !a.data_envio_lab;
+      return (s.includes('lab') || s.includes('reserv')) && !a.data_envio_lab;
     });
     if (!candidatos.length) {
       lista.innerHTML = '<div style="color:var(--text3); padding:10px; text-align:center;">Nenhum amostrador no laboratório sem data de envio registrada.</div>';
@@ -10256,7 +10263,7 @@ async function ctrlLoadAmostr() {
       return 0;
     });
     // Mostrar botão de correção se houver amostradores com +200 dias em estoque
-    const temVelhos = data.some(a => (a.tempo_parado||0) > 200 && ['estoque','reservado'].includes((a.status||'').toLowerCase()));
+    const temVelhos = data.some(a => (a.tempo_parado||0) > 200 && ['disponivel','reservado'].includes((a.status||'').toLowerCase()));
     const btnFix = document.getElementById('btn-fix-data-entrada');
     if (btnFix) btnFix.style.display = temVelhos ? 'inline-flex' : 'none';
 
@@ -10273,19 +10280,21 @@ async function ctrlLoadAmostr() {
       let rowStyle = '';
       if (st.includes('lab') && a.data_envio_lab) rowStyle = 'background:rgba(255,136,0,.03);';
       const acoes = [
-        st === 'estoque' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : '',
+        st === 'disponivel' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : '',
         `<select onchange="ctrlMudarStatusAmostr(${a.id}, this.value, this)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text3); border-radius:4px; font-size:.68rem; padding:2px 4px; margin-left:4px; cursor:pointer;" title="Alterar status">
           <option value="">Status</option>
-          <option value="Estoque" ${st==='estoque'?'selected':''}>Estoque</option>
-          <option value="Laboratorio" ${st==='laboratorio'?'selected':''}>Laboratório</option>
-          <option value="Reservado" ${st==='reservado'?'selected':''}>Reservado</option>
-          <option value="Devolvido" ${st==='devolvido'?'selected':''}>Devolvido</option>
-          <option value="Concluido" ${st==='concluido'?'selected':''}>Concluído</option>
+          <option value="disponivel" ${st==='disponivel'?'selected':''}>Disponível</option>
+          <option value="reservado" ${st==='reservado'?'selected':''}>Reservado</option>
+          <option value="laboratorio" ${st==='laboratorio'?'selected':''}>No laboratório</option>
+          <option value="concluido" ${st==='concluido'?'selected':''}>Concluído</option>
+          <option value="devolvido" ${st==='devolvido'?'selected':''}>Devolvido</option>
+          <option value="manutencao" ${st==='manutencao'?'selected':''}>Manutenção</option>
+          <option value="descartado" ${st==='descartado'?'selected':''}>Descartado</option>
         </select>`
       ].join('');
       return `<tr style="${rowStyle}" data-amostr-id="${a.id}">
-        <td><input type="checkbox" class="ctrl-amostr-chk" value="${a.id}" onchange="ctrlAtualizarBulkBar()" ${st!=='estoque'?'disabled':''}></td>
-        <td><span class="ctrl-badge ${st}">${a.status||'—'}</span></td>
+        <td><input type="checkbox" class="ctrl-amostr-chk" value="${a.id}" onchange="ctrlAtualizarBulkBar()" ${st!=='disponivel'?'disabled':''}></td>
+        <td><span class="ctrl-badge ${st}">${_amostrStatusLabel(a.status)}</span></td>
         <td><b>${a.tipo||'—'}</b></td>
         <td style="font-family:monospace; font-size:.82rem;">${a.codigo||'—'}</td>
         <td style="font-size:.78rem;">${(a.data_entrada||'').slice(0,10)||'—'}</td>
@@ -10870,7 +10879,7 @@ async function _ctrlPrepararBaixa() {
             .map(d => `<option value="${d.id}">${d.numero_os||'(s/OS)'} — ${(d.empresa_nome||'').slice(0,40)}</option>`).join('');
 
   // Carregar amostradores em estoque
-  const amostr = await ctrlFetch('/controle/amostradores?status=Estoque');
+  const amostr = await ctrlFetch('/controle/amostradores?status=disponivel');
   const selAm = document.getElementById('ctrl-bx-amostr');
   selAm.innerHTML = '<option value="">— Selecione amostrador —</option>' +
     amostr.map(a => `<option value="${a.id}" data-tipo="${a.tipo}">${a.tipo} ${a.codigo}</option>`).join('');
@@ -11459,7 +11468,7 @@ function empRenderPainel() {
               <div style="font-size:.8rem;font-weight:600;color:var(--text);">${a.codigo}</div>
               <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${a.data_medicao||'—'}</div>
             </div>
-            <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='Estoque'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='Estoque'?'var(--green)':'var(--blue)'};">${a.status}</span>
+            <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='disponivel'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='disponivel'?'var(--green)':'var(--blue)'};">${_amostrStatusLabel(a.status)}</span>
           </div>`).join('')}
         </div>` : '<div style="color:var(--text3);font-size:.8rem;text-align:center;padding:20px;">Nenhum amostrador registrado.</div>'}
       </div>`;
@@ -11517,7 +11526,7 @@ function empRenderPainel() {
               <div style="font-size:.8rem;font-weight:600;color:var(--text);">${a.codigo}</div>
               <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${a.data_medicao||'—'}</div>
             </div>
-            <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='Estoque'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='Estoque'?'var(--green)':'var(--blue)'};">${a.status}</span>
+            <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='disponivel'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='disponivel'?'var(--green)':'var(--blue)'};">${_amostrStatusLabel(a.status)}</span>
           </div>`).join('')}
         </div>` : '<div style="color:var(--text3);font-size:.8rem;text-align:center;padding:16px;">Nenhum amostrador registrado.</div>'}
       </div>`;
@@ -11643,10 +11652,12 @@ async function indLoad() {
     if (sa) {
       const amSt = (an && an.status_amostradores) || {};
       const statuses = [
-        {label:'Estoque',      val: amSt['Estoque']    ?? r.estoque    ?? 0, cor:'var(--green)',  bg:'rgba(16,185,129,.1)'},
-        {label:'Laboratório', val: amSt['Laboratorio'] ?? r.laboratorio ?? 0, cor:'var(--blue)',   bg:'rgba(96,165,250,.1)'},
-        {label:'Reservados',   val: amSt['Reservado']  ?? r.reservados ?? 0, cor:'var(--yellow)', bg:'rgba(245,158,11,.1)'},
-        {label:'Devolvidos',   val: amSt['Devolvido']  ?? r.devolvidos ?? 0, cor:'var(--text3)',  bg:'var(--surface3)'},
+        {label:'Disponíveis',  val: amSt['disponivel'] ?? r.estoque     ?? 0, cor:'var(--green)',  bg:'rgba(16,185,129,.1)'},
+        {label:'Reservados',   val: amSt['reservado']  ?? r.reservados  ?? 0, cor:'var(--yellow)', bg:'rgba(245,158,11,.1)'},
+        {label:'No laboratório', val: amSt['laboratorio'] ?? r.laboratorio ?? 0, cor:'var(--blue)', bg:'rgba(96,165,250,.1)'},
+        {label:'Concluídos',   val: amSt['concluido']  ?? r.concluidos  ?? 0, cor:'#4ade80',       bg:'rgba(74,222,128,.1)'},
+        {label:'Devolvidos',   val: amSt['devolvido']  ?? r.devolvidos  ?? 0, cor:'var(--text3)',  bg:'var(--surface3)'},
+        {label:'Manutenção',   val: amSt['manutencao'] ?? r.manutencao  ?? 0, cor:'#f97316',       bg:'rgba(249,115,22,.1)'},
       ];
       sa.innerHTML = statuses.map(s => `
         <div style="background:${s.bg};border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px 20px;min-width:120px;">
@@ -11666,26 +11677,37 @@ let _biDmndBuckets = {};
 let _biAmstBuckets = {};
 let _biEmpresasData = [];
 
+// Rótulos canônicos do status do amostrador (espelha db.STATUS_AMOSTRADOR_LABEL)
+const _STATUS_AMOSTR_LABEL = {
+  disponivel: 'Disponível', reservado: 'Reservado', laboratorio: 'No laboratório',
+  concluido: 'Concluído', devolvido: 'Devolvido', manutencao: 'Manutenção', descartado: 'Descartado',
+};
+function _amostrStatusLabel(raw) {
+  if (!raw) return '—';
+  return _STATUS_AMOSTR_LABEL[String(raw).toLowerCase()] || raw;
+}
+
 // Status normalization — whitelist only (empresa names → null)
 const _BI_AMST = {
-  'ESTOQUE':     { label: 'Estoque',    color: '#60a5fa' },
-  'RESERVADO':   { label: 'Reservado',  color: '#fbbf24' },
-  'ENVIADO':     { label: 'Em Lab',     color: '#a78bfa' },
-  'LABORATORIO': { label: 'Em Lab',     color: '#a78bfa' },
-  'EM_ANALISE':  { label: 'Em Análise', color: '#f97316' },
-  'RESULTADO':   { label: 'Resultado',  color: '#4ade80' },
-  'DEVOLVIDO':   { label: 'Devolvido',  color: '#71717a' },
-  'UTILIZADO?':  { label: 'Verificar',  color: '#f87171' },
+  'DISPONIVEL':  { label: 'Disponível',     color: '#34d399' },
+  'RESERVADO':   { label: 'Reservado',      color: '#fbbf24' },
+  'LABORATORIO': { label: 'No laboratório', color: '#a78bfa' },
+  'CONCLUIDO':   { label: 'Concluído',      color: '#4ade80' },
+  'DEVOLVIDO':   { label: 'Devolvido',      color: '#71717a' },
+  'MANUTENCAO':  { label: 'Manutenção',     color: '#f97316' },
+  'DESCARTADO':  { label: 'Descartado',     color: '#ef4444' },
 };
 function _biNormAmst(raw) {
   if (!raw) return null;
   const u = raw.toUpperCase().trim();
   if (_BI_AMST[u]) return _BI_AMST[u];
-  if (u.includes('ESTOQUE')) return _BI_AMST['ESTOQUE'];
+  if (u.includes('ESTOQUE') || u.includes('DISPON')) return _BI_AMST['DISPONIVEL'];
   if (u.includes('RESERV'))  return _BI_AMST['RESERVADO'];
   if (u.includes('DEVOL'))   return _BI_AMST['DEVOLVIDO'];
-  if (u.includes('RESULT'))  return _BI_AMST['RESULTADO'];
-  if (u.includes('LAB') || u.includes('ANALI') || u.includes('ENVIAD')) return _BI_AMST['LABORATORIO'];
+  if (u.includes('CONCLU') || u.includes('RESULT')) return _BI_AMST['CONCLUIDO'];
+  if (u.includes('MANUT'))   return _BI_AMST['MANUTENCAO'];
+  if (u.includes('DESCART')) return _BI_AMST['DESCARTADO'];
+  if (u.includes('LAB') || u.includes('ANALI') || u.includes('ENVIAD') || u.includes('USO')) return _BI_AMST['LABORATORIO'];
   return null;
 }
 
@@ -12092,7 +12114,7 @@ async function biLoad() {
     // ── S6: Amostradores em Lab ───────────────────────────────────
     const labItems = amostradores.filter(a => {
       const cfg = _biNormAmst(a.status);
-      return cfg && (cfg.label === 'Em Lab' || cfg.label === 'Em Análise');
+      return cfg && cfg.label === 'No laboratório';
     });
     const labListEl = document.getElementById('bi-lab-list');
     const labSubEl  = document.getElementById('bi-lab-sub');
