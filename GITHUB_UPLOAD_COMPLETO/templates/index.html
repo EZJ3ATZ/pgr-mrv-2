@@ -8562,8 +8562,15 @@ function ctrlAbrirEmail() {
   const para    = document.getElementById('ctrl-email-para').value.trim();
   const assunto = document.getElementById('ctrl-email-assunto').value.trim();
   const corpo   = document.getElementById('ctrl-email-corpo').value.trim();
+  if (!para) { alert('Informe o e-mail do destinatário.'); return; }
   const link = `mailto:${para}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  window.open(link, '_blank');
+  // Âncora temporária: abre o cliente de e-mail (Outlook) sem deixar aba em branco
+  // nem sair do app — mais confiável que window.open('mailto:',...) no Chrome.
+  const a = document.createElement('a');
+  a.href = link; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => document.body.removeChild(a), 0);
 }
 
 function ctrlCopiarEmail() {
