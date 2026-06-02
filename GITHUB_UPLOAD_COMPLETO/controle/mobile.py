@@ -235,19 +235,17 @@ def _parse_lista(v):
 
 
 def _salvar_assinatura(visita_id, data_url):
-    if not data_url or not data_url.startswith('data:image/'):
+    """Persiste a assinatura da visita NO BANCO (coluna visitas_tecnicas.assinatura).
+    Guarda a data-URL base64 inteira — o filesystem do Railway é efêmero e
+    apagava a evidência a cada redeploy."""
+    if not data_url or not data_url.startswith('data:image/') or not visita_id:
         return
     try:
-        import base64, os
-        _, b64 = data_url.split(',', 1)
-        img_bytes = base64.b64decode(b64)
-        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        sig_dir = os.path.join(base, 'data', 'assinaturas')
-        os.makedirs(sig_dir, exist_ok=True)
-        with open(os.path.join(sig_dir, f'visita_{visita_id}.png'), 'wb') as f:
-            f.write(img_bytes)
-    except Exception:
-        pass
+        with get_db() as conn:
+            conn.execute("UPDATE visitas_tecnicas SET assinatura=? WHERE id=?",
+                         (data_url, visita_id))
+    except Exception as e:
+        import traceback; traceback.print_exc()
 
 
 def _fmt_data(iso: str) -> str:

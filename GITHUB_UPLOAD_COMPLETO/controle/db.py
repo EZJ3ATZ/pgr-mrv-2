@@ -941,6 +941,11 @@ def _migrate(conn):
     _add_col(conn, 'planejamentos', 'checklist_prevista', 'TEXT DEFAULT NULL')
     _add_col(conn, 'planejamentos', 'divergencias_json',  'TEXT DEFAULT NULL')
 
+    # Assinatura da visita: data-URL base64 do PNG, persistida no banco.
+    # (Antes era salva em disco, mas o filesystem do Railway é efêmero e
+    #  apagava a evidência a cada redeploy.)
+    _add_col(conn, 'visitas_tecnicas', 'assinatura', 'TEXT DEFAULT NULL')
+
     # Tabela de inventário de equipamentos (Phase 1 — Jun 2026)
     _pk_equip = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
     conn.execute(f'''
