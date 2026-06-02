@@ -4,7 +4,10 @@ import io
 import os
 import re
 import json
+import logging
 from datetime import datetime, timedelta, timezone
+
+log = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify, send_file, redirect, url_for, render_template_string
 
 # Fuso horário oficial do Brasil (sem horário de verão desde 2019) = UTC-3.
@@ -2046,13 +2049,8 @@ def api_del_coleta_quimico(cid):
 
 
 # ── Coletas Outros (calor, vibração, iluminamento) ────────────────────
-
-@controle_bp.route('/coletas/outros')
-def api_list_coletas_outros():
-    init_db()
-    from .db import list_coletas_outros
-    return jsonify(list_coletas_outros(request.args.to_dict()))
-
+# Nota: o GET /coletas/outros (lista com filtros) está definido acima em
+# get_coletas_outros_route(). Aqui ficam apenas as rotas por id.
 
 @controle_bp.route('/coletas/outros/<int:cid>')
 def api_get_coleta_outros(cid):
@@ -4117,30 +4115,6 @@ def graph_list_users():
         } for u in users])
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
-
-
-@controle_bp.route('/eventos')
-def api_eventos():
-    """Retorna log de eventos operacionais com filtros tipo/data."""
-    init_db()
-    limit = int(request.args.get('limit', 200))
-    tipo  = request.args.get('tipo', '').strip()
-    data  = request.args.get('data', '').strip()
-    sql = """
-        SELECT e.*, u.display_name AS ms_user_nome, u.email AS ms_user_email
-        FROM eventos e
-        LEFT JOIN ms_users u ON u.ms_id = e.ms_user_id
-        WHERE 1=1
-    """
-    params = []
-    if tipo:
-        sql += ' AND e.tipo = ?'; params.append(tipo)
-    if data:
-        sql += ' AND DATE(e.criado_em) = ?'; params.append(data)
-    sql += f' ORDER BY e.criado_em DESC LIMIT {limit}'
-    with get_db() as conn:
-        rows = conn.execute(sql, params).fetchall()
-    return jsonify([row_to_dict(r) for r in rows])
 
 
 # ── Matching empresa ──────────────────────────────────────────────────

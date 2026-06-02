@@ -13095,9 +13095,10 @@ const NV_EQUIP_DB = {
   'A63555':  { tipo:'bomba', modelo:'SKC AirLite', cert:'171922B', validade:'2026-07-17' },
 
   // ── SMARTVIB 1 (Assiste — cal. 09/04/2026, val. 09/04/2027) ──
-  '0779': { tipo:'dosim', modelo:'Chrompack SmartVib', cert:'181.302', validade:'2027-04-09' },
+  // tipo 'vib' (não 'dosim'): vibração não preenche os campos de dosímetro de ruído
+  '0779': { tipo:'vib', modelo:'Chrompack SmartVib', cert:'181.302', validade:'2027-04-09' },
   // ── SMARTVIB 2 (Ocupacional — cal. 18/08/2025, val. 18/08/2026) ──
-  '1241': { tipo:'dosim', modelo:'Chrompack SmartVib', cert:'172.872', validade:'2026-08-18' },
+  '1241': { tipo:'vib', modelo:'Chrompack SmartVib', cert:'172.872', validade:'2026-08-18' },
 
   // ── TERMÔMETROS / IBUTG ──
   '0209':     { tipo:'therm', modelo:'Chrompack Smart TEMP', cert:'180.646', validade:'2027-03-24' },

@@ -850,7 +850,11 @@ def analisar_tarefa_planner(
     details   = task_details or {}
     descricao = details.get('description', '') or ''
     checklist = details.get('checklist') or {}
-    percent   = int(task.get('percentComplete', 0) or 0)
+    try:
+        percent = int(task.get('percentComplete', 0) or 0)
+    except (ValueError, TypeError):
+        # Planner às vezes manda valores não-numéricos (ex.: 'M') → trata como 0
+        percent = 0
 
     # Checklist → texto plano
     if isinstance(checklist, dict):

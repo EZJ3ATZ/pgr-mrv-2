@@ -1626,7 +1626,9 @@ def get_empresa_demandas(empresa_id):
                 _rows_ag = conn.execute(
                     "SELECT DISTINCT agente FROM medicoes WHERE demanda_id=? AND agente IS NOT NULL AND agente != '' ORDER BY agente",
                     (d['id'],)).fetchall()
-                todos_agentes = [r[0] for r in _rows_ag if r[0]]
+                # r['agente'] funciona em SQLite (sqlite3.Row) e PG (RealDictRow);
+                # r[0] quebra no Postgres (RealDictRow não aceita índice inteiro).
+                todos_agentes = [r['agente'] for r in _rows_ag if r['agente']]
                 if todos_agentes:
                     d['tarefa_display'] = d['nome_tarefa'] = ', '.join(todos_agentes)
                 else:
