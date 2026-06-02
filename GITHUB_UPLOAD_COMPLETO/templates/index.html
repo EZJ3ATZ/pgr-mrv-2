@@ -13297,6 +13297,7 @@ function nvVibrAddPonto() {
   window._nvVibrPontos.push({
     nome: '', funcao: '', setor: '',
     eixo: 'Z', aren: '', vdv: '', tempo: '',
+    tempo_nexp: '', trajeto: '', terreno: '',
   });
   nvVibrRenderPontos();
 }
@@ -13344,9 +13345,20 @@ function nvVibrRenderPontos() {
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">VDVexp</label>
           <input type="number" step="0.01" value="${p.vdv}" oninput="window._nvVibrPontos[${i}].vdv=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0.00"></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">T. exp. (h)</label>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo de exposição (h)</label>
           <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo não exposto (h)</label>
+          <input type="number" step="0.1" value="${p.tempo_nexp}" oninput="window._nvVibrPontos[${i}].tempo_nexp=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Trajeto</label>
+          <input value="${_esc(p.trajeto)}" oninput="window._nvVibrPontos[${i}].trajeto=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Pátio → Carga"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tipo de terreno</label>
+          <input value="${_esc(p.terreno)}" oninput="window._nvVibrPontos[${i}].terreno=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Asfalto / Terra"></div>
       </div>
     </div>
   `).join('');

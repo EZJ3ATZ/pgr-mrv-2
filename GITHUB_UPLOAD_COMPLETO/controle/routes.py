@@ -3201,30 +3201,39 @@ def gerar_relatorio_vibracao():
     elements.append(info_tbl); elements.append(Spacer(1, 10))
 
     # Tabela de medições (linhas em branco p/ preencher em campo)
-    med_head = [Paragraph('#', cell_bold), Paragraph('Trabalhador', cell_bold),
-                Paragraph('Função', cell_bold), Paragraph('Setor', cell_bold),
-                Paragraph('Eixo', cell_bold), Paragraph('aren (m/s²)', cell_bold),
-                Paragraph('VDVexp (m/s¹·⁷⁵)', cell_bold), Paragraph('T. exp. (h)', cell_bold)]
+    cell_bold7 = sty('Normal', fontSize=7, fontName='Helvetica-Bold', textColor=PRETO)
+    cell_reg7  = sty('Normal', fontSize=7, fontName='Helvetica', textColor=PRETO)
+    med_head = [Paragraph('#', cell_bold7), Paragraph('Trabalhador', cell_bold7),
+                Paragraph('Função', cell_bold7), Paragraph('Setor', cell_bold7),
+                Paragraph('Eixo', cell_bold7), Paragraph('aren (m/s²)', cell_bold7),
+                Paragraph('VDVexp (m/s¹·⁷⁵)', cell_bold7),
+                Paragraph('T. exp. (h)', cell_bold7), Paragraph('T. não exp. (h)', cell_bold7),
+                Paragraph('Trajeto', cell_bold7), Paragraph('Tipo de terreno', cell_bold7)]
     med_rows = [med_head]
     pts = list(pontos) if pontos else []
     while len(pts) < 6:
         pts.append({})
     for i, p in enumerate(pts, 1):
         med_rows.append([
-            Paragraph(str(i), cell_reg),
-            Paragraph(p.get('nome','') or '', cell_reg),
-            Paragraph(p.get('funcao','') or p.get('cargo','') or '', cell_reg),
-            Paragraph(p.get('setor','') or '', cell_reg),
-            Paragraph(p.get('eixo','') or '', cell_reg),
-            Paragraph(p.get('aren','') or '', cell_reg),
-            Paragraph(p.get('vdv','') or '', cell_reg),
-            Paragraph(p.get('tempo','') or '', cell_reg),
+            Paragraph(str(i), cell_reg7),
+            Paragraph(p.get('nome','') or '', cell_reg7),
+            Paragraph(p.get('funcao','') or p.get('cargo','') or '', cell_reg7),
+            Paragraph(p.get('setor','') or '', cell_reg7),
+            Paragraph(p.get('eixo','') or '', cell_reg7),
+            Paragraph(p.get('aren','') or '', cell_reg7),
+            Paragraph(p.get('vdv','') or '', cell_reg7),
+            Paragraph(p.get('tempo','') or '', cell_reg7),
+            Paragraph(p.get('tempo_nexp','') or '', cell_reg7),
+            Paragraph(p.get('trajeto','') or '', cell_reg7),
+            Paragraph(p.get('terreno','') or '', cell_reg7),
         ])
-    med_tbl = Table(med_rows, colWidths=[W*0.04, W*0.22, W*0.17, W*0.15, W*0.08, W*0.12, W*0.14, W*0.08], repeatRows=1)
+    med_tbl = Table(med_rows, colWidths=[W*0.03, W*0.15, W*0.11, W*0.10, W*0.055, W*0.085,
+                                         W*0.10, W*0.065, W*0.07, W*0.13, W*0.115], repeatRows=1)
     med_tbl.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
-        ('GRID',(0,0),(-1,-1),0.4,BORDA),('FONTSIZE',(0,0),(-1,-1),8),
+        ('GRID',(0,0),(-1,-1),0.4,BORDA),('FONTSIZE',(0,0),(-1,-1),7),
         ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
-        ('LEFTPADDING',(0,0),(-1,-1),4),('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA])]))
+        ('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA])]))
     elements.append(med_tbl); elements.append(Spacer(1, 8))
 
     if obs:
