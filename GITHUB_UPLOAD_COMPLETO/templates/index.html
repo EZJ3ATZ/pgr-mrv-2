@@ -9528,7 +9528,7 @@ function planAddAgente(tipo) {
         <div class="plan-f" style="margin:0;">
           <label>Aparelho</label>
           <select id="plan-modal-vib-aparelho" style="${fStyle}">
-            <option value="chrompack_1">Acelerômetro — S/N 1241 (SmartVib)</option>
+            <option value="chrompack_1">SmartVib — S/N 0779</option>
           </select>
         </div>
       </div>
@@ -9750,7 +9750,7 @@ function _planRenderizarAgentes() {
     } else if (a.tipo === 'vibracao') {
       const subOpts = [{v:'vci',l:'Corpo Inteiro (VCI)'},{v:'vbma',l:'Mãos e Braços (VBMA)'},{v:'ambos',l:'VCI + VBMA'}]
         .map(o=>`<option value="${o.v}" ${(a.subtipo||'vci')===o.v?'selected':''}>${o.l}</option>`).join('');
-      const aprOpts = [{v:'chrompack_1',l:'Acelerômetro — S/N 1241'}]
+      const aprOpts = [{v:'chrompack_1',l:'SmartVib — S/N 0779'}]
         .map(o=>`<option value="${o.v}" ${(a.aparelho||'chrompack_1')===o.v?'selected':''}>${o.l}</option>`).join('');
       extraFields = `
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;align-items:center;">
@@ -12936,7 +12936,7 @@ function nvShowStep3() {
   const genHint = document.getElementById('nv-gen-plano-hint');
   if (genHint) {
     const subLbl = {vci:'Corpo Inteiro (VCI)', vbma:'Mãos e Braços (VBMA)', ambos:'VCI + VBMA'};
-    const apaLbl = {chrompack_1:'Acelerômetro — S/N 1241', chrompack_2:'Acelerômetro — S/N 1241', chrompack_ibutg:'Chrompack IBUTG'};
+    const apaLbl = {chrompack_1:'SmartVib — S/N 0779', chrompack_2:'SmartVib — S/N 0779', chrompack_ibutg:'Chrompack IBUTG'};
     const linhas = [];
     if (_nvTipos.includes('vibracao')) {
       const it = (window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {};
@@ -13093,8 +13093,8 @@ const NV_EQUIP_DB = {
   'A062462': { tipo:'bomba', modelo:'SKC AirLite', cert:'315225B', validade:'2026-05-31' },
   'A63555':  { tipo:'bomba', modelo:'SKC AirLite', cert:'171922B', validade:'2026-07-17' },
 
-  // ── SMARTVIB (cal. 18/08/2025, val. 18/08/2026) ──
-  '1241': { tipo:'dosim', modelo:'Chrompack SmartVib', cert:'172.872', validade:'2026-08-18' },
+  // ── SMARTVIB (cal. 09/04/2026, val. 09/04/2027) ──
+  '0779': { tipo:'dosim', modelo:'Chrompack SmartVib', cert:'181.302', validade:'2027-04-09' },
 
   // ── TERMÔMETROS / IBUTG ──
   '0209':     { tipo:'therm', modelo:'Chrompack Smart TEMP', cert:'180.646', validade:'2027-03-24' },
