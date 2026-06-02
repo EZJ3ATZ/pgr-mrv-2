@@ -4388,12 +4388,12 @@
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <button onclick="nvSalvarMedicao()" style="background:var(--green);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">✅ Salvar Medição</button>
+        <button id="nv-btn-salvar" onclick="nvSalvarMedicao()" style="background:var(--green);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">✅ Salvar Medição</button>
         <button onclick="ctrlNvGerarPDF()" style="background:#2563EB;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">📄 Ficha de Campo</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <button onclick="nvGerarRelatorioCampo()" style="background:var(--orange);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">📄 Relatório de Campo</button>
-        <button onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Finalizar planilha</button>
+        <button id="nv-btn-finalizar" onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Finalizar planilha</button>
       </div>
       <div id="nv-final-status" style="margin-top:12px;font-size:.82rem;min-height:18px;"></div>
     </div>
@@ -10364,6 +10364,14 @@ async function ctrlNvInit() {
   // Data hoje
   document.getElementById('ctrl-nv-data').value = new Date().toISOString().slice(0,10);
   nvGotoStep(1);
+  // Libera a trava de finalização ao abrir uma nova visita
+  window._nvSaving = false; window._nvFinalizado = false; window._nvSavedResp = null;
+  if (typeof _nvSetSalvarDisabled === 'function') {
+    const _bs = document.getElementById('nv-btn-salvar');
+    if (_bs) { _bs.disabled=false; _bs.style.opacity=''; _bs.style.cursor='pointer'; _bs.textContent='✅ Salvar Medição'; }
+    const _bf = document.getElementById('nv-btn-finalizar');
+    if (_bf) { _bf.disabled=false; _bf.style.opacity=''; _bf.style.cursor='pointer'; _bf.textContent='✓ Finalizar planilha'; }
+  }
   // Carregar bombas
   if (!window._ctrlNvBombasCache) {
     try { window._ctrlNvBombasCache = await ctrlFetch('/controle/bombas'); }
@@ -13148,6 +13156,14 @@ function nvEquipAutoFill(campo, valor) {
 
 function nvReset() {
   _nvStep = 1; _nvTipo = ''; _nvTipos = [];
+  // Libera a trava de finalização para a nova visita
+  window._nvSaving = false; window._nvFinalizado = false; window._nvSavedResp = null;
+  window._nvVibrPontos = []; window._nvCalorSetores = [];
+  const _bs = document.getElementById('nv-btn-salvar');
+  if (_bs) { _bs.disabled = false; _bs.style.opacity=''; _bs.style.cursor='pointer'; _bs.textContent='✅ Salvar Medição'; }
+  const _bf = document.getElementById('nv-btn-finalizar');
+  if (_bf) { _bf.disabled = false; _bf.style.opacity=''; _bf.style.cursor='pointer'; _bf.textContent='✓ Finalizar planilha'; }
+  const _fs = document.getElementById('nv-final-status'); if (_fs) _fs.innerHTML='';
   // Desmarcar todos os chips de tipo
   ['ruido','quimico','calor','vibracao'].forEach(v => {
     const el = document.getElementById('nv-tipo-' + v);
@@ -13902,7 +13918,32 @@ function nvFotosRender() {
 }
 
 // ── Ações Finais ──────────────────────────────────────────────────────
+// Liga/desliga os botões de salvar/finalizar (trava contra duplo-clique)
+function _nvSetSalvarDisabled(disabled, finalizado) {
+  ['nv-btn-salvar','nv-btn-finalizar'].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.disabled = !!disabled;
+    b.style.opacity = disabled ? '.5' : '';
+    b.style.cursor  = disabled ? 'not-allowed' : 'pointer';
+  });
+  if (finalizado) {
+    const bf = document.getElementById('nv-btn-finalizar');
+    if (bf) bf.textContent = '✓ Já finalizada';
+    const bs = document.getElementById('nv-btn-salvar');
+    if (bs) bs.textContent = '✓ Salva';
+  }
+}
+
 async function nvSalvarMedicao() {
+  // Trava de reentrância: evita que duplo-clique grave a medição 2x
+  if (window._nvSaving) return null;
+  if (window._nvFinalizado) {
+    _showToast('Esta planilha já foi finalizada — não será salva de novo.','warn');
+    return window._nvSavedResp || null;
+  }
+  window._nvSaving = true;
+  _nvSetSalvarDisabled(true);
   try {
     // Dados comuns a todos os tipos da visita
     const base = {
@@ -14001,10 +14042,17 @@ async function nvSalvarMedicao() {
 
     document.getElementById('nv-final-status').innerHTML='<span style="color:var(--green);">✅ Medição salva com sucesso!</span>';
     _showToast('✅ Medição salva!','ok');
+    // Marca como finalizada: botões ficam travados até reabrir a visita
+    window._nvFinalizado = true;
+    window._nvSavedResp  = resp;
+    _nvSetSalvarDisabled(true, true);
     return resp;
   } catch(e) {
     document.getElementById('nv-final-status').innerHTML=`<span style="color:var(--red);">❌ Erro: ${e.message}</span>`;
+    _nvSetSalvarDisabled(false);   // erro → reabilita p/ tentar de novo
     return null;
+  } finally {
+    window._nvSaving = false;
   }
 }
 
