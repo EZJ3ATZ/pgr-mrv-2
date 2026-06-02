@@ -1524,8 +1524,14 @@ def mesclar_empresas_duplicatas():
                 "SELECT id FROM empresas WHERE LOWER(TRIM(nome)) = ? AND id != ?",
                 (g['nome_key'], id_princ)).fetchall()]
             for dup_id in dups:
-                conn.execute("UPDATE demandas SET empresa_id=? WHERE empresa_id=?", (id_princ, dup_id))
-                conn.execute("UPDATE amostradores SET empresa_id=? WHERE empresa_id=?", (id_princ, dup_id))
+                # Reaponta TODAS as tabelas com empresa_id para a principal antes
+                # de deletar a duplicata; senão coletas/planejamentos/visitas/
+                # contatos ficam órfãos apontando para uma empresa inexistente.
+                for _tbl in ('demandas', 'amostradores', 'coletas_ruido',
+                             'coletas_quimico', 'coletas_outros', 'planejamentos',
+                             'visitas_tecnicas', 'contatos_empresa'):
+                    conn.execute(f"UPDATE {_tbl} SET empresa_id=? WHERE empresa_id=?",
+                                 (id_princ, dup_id))
                 conn.execute("DELETE FROM empresas WHERE id=?", (dup_id,))
                 mescladas += 1
     return mescladas
