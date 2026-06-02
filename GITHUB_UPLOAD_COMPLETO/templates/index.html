@@ -13802,27 +13802,67 @@ function nvGerarResumo() {
 // ── Fotos da Atividade ────────────────────────────────────────────────
 window._nvFotos = window._nvFotos || [];
 
-function _nvComprimirImg(file, maxLado = 1280, q = 0.7) {
-  return new Promise((resolve) => {
+// Lê o arquivo como data URL (fallback)
+function _nvFileToDataURL(file) {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        let { width: w, height: h } = img;
-        if (w > h && w > maxLado) { h = Math.round(h * maxLado / w); w = maxLado; }
-        else if (h >= w && h > maxLado) { w = Math.round(w * maxLado / h); h = maxLado; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        try { resolve(canvas.toDataURL('image/jpeg', q)); }
-        catch(_) { resolve(e.target.result); }
-      };
-      img.onerror = () => resolve(e.target.result);
-      img.src = e.target.result;
-    };
-    reader.onerror = () => resolve(null);
+    reader.onload  = (e) => resolve(e.target.result);
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+// Decodifica via <img> esperando o decode REAL terminar (Android dispara
+// onload antes de decodificar → canvas preto). img.decode() garante o bitmap.
+function _nvLoadImg(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onerror = reject;
+    img.onload = async () => {
+      try { if (img.decode) await img.decode(); } catch(_) {}
+      resolve(img);
+    };
+    img.src = dataUrl;
+  });
+}
+
+async function _nvComprimirImg(file, maxLado = 1280, q = 0.7) {
+  // Caminho robusto p/ fotos de celular: createImageBitmap decodifica de
+  // forma assíncrona e respeita a orientação EXIF, evitando o canvas preto.
+  let src = null;          // ImageBitmap ou HTMLImageElement
+  try {
+    if (window.createImageBitmap) {
+      src = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    }
+  } catch(_) { src = null; }
+
+  if (!src) {
+    // Fallback: data URL + <img> com decode garantido
+    try {
+      const dataUrl = await _nvFileToDataURL(file);
+      src = await _nvLoadImg(dataUrl);
+    } catch(_) {
+      // Último recurso: devolve o arquivo cru
+      return await _nvFileToDataURL(file).catch(() => null);
+    }
+  }
+
+  try {
+    let w = src.width, h = src.height;
+    if (!w || !h) throw new Error('sem dimensões');
+    if (w > h && w > maxLado) { h = Math.round(h * maxLado / w); w = maxLado; }
+    else if (h >= w && h > maxLado) { w = Math.round(w * maxLado / h); h = maxLado; }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';            // fundo branco — evita imagem preta
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(src, 0, 0, w, h);
+    if (src.close) src.close();        // libera memória do ImageBitmap
+    return canvas.toDataURL('image/jpeg', q);
+  } catch(_) {
+    return await _nvFileToDataURL(file).catch(() => null);
+  }
 }
 
 async function nvFotosAdd(fileList) {
