@@ -13864,7 +13864,8 @@ function nvFotosRender() {
 // ── Ações Finais ──────────────────────────────────────────────────────
 async function nvSalvarMedicao() {
   try {
-    const payload = {
+    // Dados comuns a todos os tipos da visita
+    const base = {
       empresa_id:      window._ctrlNvEmpresa?.id || null,
       empresa_nome:    document.getElementById('ctrl-nv-empresa')?.value || '',
       demanda_id:      window._nvDemandaId || null,
@@ -13876,33 +13877,34 @@ async function nvSalvarMedicao() {
       data:         document.getElementById('ctrl-nv-data')?.value || '',
       prazo:        document.getElementById('nv-prazo')?.value || '',
       avaliador:    document.getElementById('ctrl-nv-avaliador')?.value || '',
-      tipo:         _nvTipo,         // compatibilidade backend (primeiro tipo)
       tipos:        _nvTipos,        // array completo de tipos
       unidade:      document.getElementById('nv-unidade')?.value || '',
       cidade:       document.getElementById('nv-cidade')?.value || '',
       resp_empresa: document.getElementById('nv-resp-empresa')?.value || '',
       itens:        window._ctrlNvItens || [],
       fotos:        window._nvFotos || [],
-      campo_ruido: _nvTipo==='ruido' ? {
-        acomp:document.getElementById('nv-cr-acomp')?.value||'', cargo_acomp:document.getElementById('nv-cr-cargo-acomp')?.value||'',
-        tecnico:document.getElementById('nv-cr-tecnico')?.value||'', hora_ini:document.getElementById('nv-cr-hora-ini')?.value||'',
-        hora_fim:document.getElementById('nv-cr-hora-fim')?.value||'', calibrador:document.getElementById('nv-cr-calibrador')?.value||'',
-        cal_ini:document.getElementById('nv-cr-cal-ini')?.value||'', cal_fim:document.getElementById('nv-cr-cal-fim')?.value||'',
-        trabalhadores:_nvCrTrabs, termos:_nvCrTermos
-      } : null,
-      campo_quimico: _nvTipo==='quimico' ? (_nvCqAgentes[0] || null) : null,
-      campo_generico: (_nvTipo !== 'ruido' && _nvTipo !== 'quimico') ? {
-        acomp:       document.getElementById('nv-gen-acomp')?.value||'',
-        hora_ini:    document.getElementById('nv-gen-hora-ini')?.value||'',
-        hora_fim:    document.getElementById('nv-gen-hora-fim')?.value||'',
-        obs:         document.getElementById('nv-gen-obs')?.value||'',
-        pontos:      document.getElementById('nv-plan-pontos-calor')?.value||'',
-        regime:      document.getElementById('nv-plan-regime')?.value||'',
-        tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
-        fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
-        ibutg_setores: _nvTipos.includes('calor') ? (window._nvCalorSetores || []) : [],
-        vibr_pontos: _nvTipos.includes('vibracao') ? (window._nvVibrPontos || []) : [],
-      } : null,
+    };
+    // Blocos por tipo — montados SEMPRE, independente da prioridade.
+    // (Antes só o tipo primário era salvo; químico/calor/vibração em visitas
+    //  multi-tipo eram descartados silenciosamente.)
+    const campoRuido = {
+      acomp:document.getElementById('nv-cr-acomp')?.value||'', cargo_acomp:document.getElementById('nv-cr-cargo-acomp')?.value||'',
+      tecnico:document.getElementById('nv-cr-tecnico')?.value||'', hora_ini:document.getElementById('nv-cr-hora-ini')?.value||'',
+      hora_fim:document.getElementById('nv-cr-hora-fim')?.value||'', calibrador:document.getElementById('nv-cr-calibrador')?.value||'',
+      cal_ini:document.getElementById('nv-cr-cal-ini')?.value||'', cal_fim:document.getElementById('nv-cr-cal-fim')?.value||'',
+      trabalhadores:_nvCrTrabs, termos:_nvCrTermos
+    };
+    const campoGenerico = {
+      acomp:       document.getElementById('nv-gen-acomp')?.value||'',
+      hora_ini:    document.getElementById('nv-gen-hora-ini')?.value||'',
+      hora_fim:    document.getElementById('nv-gen-hora-fim')?.value||'',
+      obs:         document.getElementById('nv-gen-obs')?.value||'',
+      pontos:      document.getElementById('nv-plan-pontos-calor')?.value||'',
+      regime:      document.getElementById('nv-plan-regime')?.value||'',
+      tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
+      fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
+      ibutg_setores: window._nvCalorSetores || [],
+      vibr_pontos:   window._nvVibrPontos   || [],
     };
     // Coletar agentes não medidos (do planejamento vinculado)
     const agentesPlano = window._nvAgentesPlano || [];
@@ -13915,17 +13917,31 @@ async function nvSalvarMedicao() {
         naoMedidos.push({...ag, causa, observacao: obs});
       }
     });
-    if (naoMedidos.length > 0) payload.agentes_nao_executados = naoMedidos;
 
-    const resp = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    window._nvSavedId   = resp.id   || null;
-    window._nvSavedTipo = resp.tipo || _nvTipo;
-
-    // Agentes adicionais (químico multi-agente): salvar cada um
-    if (_nvTipo === 'quimico' && _nvCqAgentes.length > 1) {
-      for (let ai = 1; ai < _nvCqAgentes.length; ai++) {
-        const extraPayload = { ...payload, campo_quimico: _nvCqAgentes[ai] };
-        await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(extraPayload)}).catch(() => {});
+    // Salva UMA coleta por tipo marcado (ruído, químico, calor, vibração).
+    const tiposSalvar = (_nvTipos && _nvTipos.length) ? _nvTipos.slice() : (_nvTipo ? [_nvTipo] : []);
+    let resp = {};
+    let _primeiro = true;
+    for (const tp of tiposSalvar) {
+      const p = { ...base, tipo: tp };
+      if (tp === 'ruido')        p.campo_ruido    = campoRuido;
+      else if (tp === 'quimico') p.campo_quimico  = (_nvCqAgentes[0] || {});
+      else                       p.campo_generico = campoGenerico;  // calor / vibração
+      // Agentes não medidos: registrar só uma vez (no primeiro POST)
+      if (_primeiro && naoMedidos.length > 0) p.agentes_nao_executados = naoMedidos;
+      const r = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
+      if (_primeiro) {
+        resp = r || {};
+        window._nvSavedId   = resp.id   || null;
+        window._nvSavedTipo = resp.tipo || tp;
+        _primeiro = false;
+      }
+      // Químico multi-agente: salvar cada agente adicional como coleta própria
+      if (tp === 'quimico' && _nvCqAgentes.length > 1) {
+        for (let ai = 1; ai < _nvCqAgentes.length; ai++) {
+          const extra = { ...base, tipo: 'quimico', campo_quimico: _nvCqAgentes[ai] };
+          await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(extra)}).catch(() => {});
+        }
       }
     }
 
