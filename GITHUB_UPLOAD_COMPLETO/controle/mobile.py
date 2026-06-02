@@ -171,10 +171,25 @@ def api_salvar_visita():
         init_db()
         data = request.get_json(force=True) or {}
 
+        # Resolve empresa: se não veio empresa_id mas veio o nome (visita avulsa
+        # onde o técnico digitou mas não selecionou da lista), tenta casar pelo
+        # nome para não salvar visita órfã.
+        empresa_id = _int(data.get('empresa_id'))
+        if not empresa_id and (data.get('empresa_nome') or '').strip():
+            try:
+                from .empresa_match import encontrar_empresa
+                with get_db() as conn:
+                    eid, _score, _met = encontrar_empresa(conn, data['empresa_nome'])
+                if eid:
+                    empresa_id = eid
+            except Exception:
+                pass
+
         vid = criar_visita({
             'planejamento_id':    _int(data.get('planejamento_id')),
             'demanda_id':         _int(data.get('demanda_id')),
-            'empresa_id':         _int(data.get('empresa_id')),
+            'empresa_id':         empresa_id,
+            'numero_os':          (data.get('numero_os') or '').strip() or None,
             'tecnico':            data.get('tecnico') or _usuario(),
             'data_visita':        data.get('data_visita') or _hoje(),
             'hora_inicio':        data.get('hora_inicio'),

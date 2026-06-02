@@ -945,6 +945,10 @@ def _migrate(conn):
     # (Antes era salva em disco, mas o filesystem do Railway é efêmero e
     #  apagava a evidência a cada redeploy.)
     _add_col(conn, 'visitas_tecnicas', 'assinatura', 'TEXT DEFAULT NULL')
+    # Nº da OS digitado em visita avulsa (sem planejamento vinculado)
+    _add_col(conn, 'visitas_tecnicas', 'numero_os', 'TEXT DEFAULT NULL')
+    # Assinatura do responsável da empresa (mobile envia 2 assinaturas)
+    _add_col(conn, 'visitas_tecnicas', 'assinatura_empresa', 'TEXT DEFAULT NULL')
 
     # Tabela de inventário de equipamentos (Phase 1 — Jun 2026)
     _pk_equip = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
@@ -2660,7 +2664,7 @@ def criar_visita(data: dict) -> int:
     campos = ['planejamento_id', 'demanda_id', 'empresa_id', 'tecnico',
               'data_visita', 'hora_inicio', 'hora_termino',
               'tipo_visita', 'resultado', 'retrabalho', 'justificativa', 'observacao_geral',
-              'acompanhante', 'cargo_acompanhante']
+              'acompanhante', 'cargo_acompanhante', 'numero_os']
     vals = {c: data.get(c) for c in campos if data.get(c) is not None}
     vals.setdefault('tipo_visita', 'medicao')
     vals.setdefault('resultado', 'pendente')
@@ -2679,7 +2683,9 @@ def criar_visita(data: dict) -> int:
 def get_visita(vid: int):
     with get_db() as conn:
         r = conn.execute('''
-            SELECT v.*, e.nome AS empresa_nome, p.numero_os, p.agentes_previstos, p.data_prevista
+            SELECT v.*, e.nome AS empresa_nome,
+                   COALESCE(v.numero_os, p.numero_os) AS numero_os,
+                   p.agentes_previstos, p.data_prevista
             FROM visitas_tecnicas v
             LEFT JOIN empresas e ON e.id = v.empresa_id
             LEFT JOIN planejamentos p ON p.id = v.planejamento_id
@@ -2691,7 +2697,8 @@ def get_visita(vid: int):
 def list_visitas(filtros=None) -> list:
     f = filtros or {}
     sql = '''
-        SELECT v.*, e.nome AS empresa_nome, p.numero_os
+        SELECT v.*, e.nome AS empresa_nome,
+               COALESCE(v.numero_os, p.numero_os) AS numero_os
         FROM visitas_tecnicas v
         LEFT JOIN empresas e ON e.id = v.empresa_id
         LEFT JOIN planejamentos p ON p.id = v.planejamento_id
