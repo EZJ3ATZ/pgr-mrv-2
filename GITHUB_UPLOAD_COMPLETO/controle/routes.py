@@ -247,12 +247,16 @@ def cria_amostrador():
 def cria_amostradores_lote():
     """Cria vários amostradores de uma vez (cadastro em série).
     Ignora códigos que já existem. Body: {tipo, codigos:[...], status,
-    data_entrada, observacao}."""
+    data_entrada, observacao, auto_tipo}.
+    Se auto_tipo=True (colar lista do e-mail do lab), o tipo de cada código é
+    detectado pelo prefixo de letras (ex: TCP4924AV3→TCP, EC93893A→EC,
+    PVC99V31→PVC, FVPH2181→FVPH); o campo `tipo` vira fallback."""
     init_db()
     d = request.json or {}
     tipo = (d.get('tipo') or '').strip().upper()
+    auto_tipo = bool(d.get('auto_tipo'))
     codigos = d.get('codigos') or []
-    if not tipo:
+    if not tipo and not auto_tipo:
         return jsonify({'erro': 'tipo obrigatorio'}), 400
     # normaliza, tira vazios e duplicados mantendo ordem
     vistos, limpos = set(), []
@@ -265,7 +269,14 @@ def cria_amostradores_lote():
     status = normalizar_status_amostrador(d.get('status', 'disponivel'))
     data_entrada = d.get('data_entrada') or datetime.now().strftime('%Y-%m-%d')
     obs = d.get('observacao', '')
+
+    def _tipo_do_codigo(cod):
+        # prefixo = letras iniciais antes do primeiro dígito (ex: FVPH2181→FVPH)
+        m = re.match(r'^([A-Z]+)', cod)
+        return (m.group(1) if m else '') or tipo or 'AMOSTRADOR'
+
     criados, ignorados = 0, 0
+    tipos_usados = set()
     with get_db() as conn:
         # códigos já existentes (qualquer status)
         existentes = {r['codigo'] for r in conn.execute(
@@ -274,15 +285,18 @@ def cria_amostradores_lote():
             if c in existentes:
                 ignorados += 1
                 continue
+            t = _tipo_do_codigo(c) if auto_tipo else tipo
             conn.execute("""
                 INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
                 VALUES (?, ?, ?, ?, ?)""",
-                (c, tipo, status, data_entrada, obs))
+                (c, t, status, data_entrada, obs))
             existentes.add(c)
             criados += 1
+            tipos_usados.add(t)
     if criados:
+        desc_tipo = (', '.join(sorted(tipos_usados)) if auto_tipo else tipo)
         registrar_evento('amostrador_criado',
-                         f'{criados} em série ({tipo})', None, 'amostrador',
+                         f'{criados} em série ({desc_tipo})', None, 'amostrador',
                          current_user.nome if current_user.is_authenticated else 'sistema',
                          request.remote_addr)
     return jsonify({'ok': True, 'criados': criados, 'ignorados': ignorados})

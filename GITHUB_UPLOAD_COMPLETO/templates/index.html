@@ -4662,8 +4662,9 @@
     <h3>➕ Adicionar amostradores em série</h3>
     <p style="font-size:.8rem;color:var(--text2);margin:2px 0 14px;">Cadastre vários de uma vez. Gere uma sequência automática ou cole uma lista de códigos.</p>
 
-    <label>Tipo <span style="color:var(--red)">*</span></label>
+    <label>Tipo <span id="ctrl-se-tipo-req" style="color:var(--red)">*</span></label>
     <input type="text" id="ctrl-se-tipo" placeholder="Ex: FV, TCP, FL, QZ, IOL..." style="text-transform:uppercase;">
+    <div id="ctrl-se-tipo-hint" style="display:none;font-size:.72rem;color:var(--text3);margin-top:3px;">No modo "Colar lista" o tipo é detectado automaticamente pelo prefixo de cada código (TCP, FVPH, EC, PVC…). Preencha só se quiser forçar um tipo único.</div>
 
     <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin:14px 0 12px;">
       <button id="ctrl-se-tab-seq" onclick="ctrlSerieModo('seq')" style="background:var(--brand);color:#fff;border:none;border-radius:4px 4px 0 0;padding:6px 14px;font-size:.78rem;cursor:pointer;">🔢 Sequência</button>
@@ -4682,8 +4683,8 @@
     </div>
 
     <div id="ctrl-se-panel-lista" style="display:none;">
-      <label>Códigos (um por linha, ou separados por vírgula/espaço)</label>
-      <textarea id="ctrl-se-lista" rows="5" placeholder="FV3131&#10;FV3132&#10;FV3133" oninput="ctrlSeriePreview()" style="width:100%;text-transform:uppercase;font-family:inherit;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px;color:var(--text);"></textarea>
+      <label>Códigos (cole do e-mail do lab — um por linha, vírgula ou espaço)</label>
+      <textarea id="ctrl-se-lista" rows="5" placeholder="TCP4924AV3&#10;EC93893A&#10;PVC99V31&#10;FVPH2181" oninput="ctrlSeriePreview()" style="width:100%;text-transform:uppercase;font-family:inherit;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px;color:var(--text);"></textarea>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
@@ -8306,7 +8307,14 @@ function ctrlSerieModo(m) {
   const off = 'background:transparent;border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;padding:6px 14px;font-size:.78rem;color:var(--text3);cursor:pointer;';
   document.getElementById('ctrl-se-tab-seq').style.cssText   = m === 'seq'   ? on : off;
   document.getElementById('ctrl-se-tab-lista').style.cssText = m === 'lista' ? on : off;
+  // No modo lista o tipo é detectado pelo prefixo → deixa de ser obrigatório
+  document.getElementById('ctrl-se-tipo-req').style.display  = m === 'lista' ? 'none' : '';
+  document.getElementById('ctrl-se-tipo-hint').style.display = m === 'lista' ? 'block' : 'none';
   ctrlSeriePreview();
+}
+function _serieTipoPrefixo(cod) {
+  const mm = (cod || '').toUpperCase().match(/^[A-Z]+/);
+  return mm ? mm[0] : '';
 }
 function _serieCodigos() {
   if (_serieModo === 'lista') {
@@ -8332,7 +8340,15 @@ function ctrlSeriePreview() {
   if (!cods.length) { el.innerHTML = 'Nenhum código gerado ainda.'; return; }
   const dup = [...new Set(cods.filter((c, i) => cods.indexOf(c) !== i))];
   const amostra = cods.slice(0, 6).join(', ') + (cods.length > 6 ? ` … (+${cods.length - 6})` : '');
-  el.innerHTML = `<b style="color:var(--brand);">${cods.length}</b> amostrador(es): ${amostra}` +
+  let tiposHtml = '';
+  const tipoForcado = (document.getElementById('ctrl-se-tipo').value || '').trim().toUpperCase();
+  if (_serieModo === 'lista' && !tipoForcado) {
+    const cont = {};
+    [...new Set(cods)].forEach(c => { const t = _serieTipoPrefixo(c) || '?'; cont[t] = (cont[t] || 0) + 1; });
+    const resumo = Object.keys(cont).sort().map(t => `${t} (${cont[t]})`).join(', ');
+    tiposHtml = `<div style="color:var(--text3);margin-top:4px;">Tipos detectados pelo prefixo: ${resumo}</div>`;
+  }
+  el.innerHTML = `<b style="color:var(--brand);">${cods.length}</b> amostrador(es): ${amostra}` + tiposHtml +
     (dup.length ? `<div style="color:var(--yellow);margin-top:4px;">⚠ ${dup.length} código(s) repetido(s) na lista — serão ignorados.</div>` : '');
 }
 async function ctrlSalvarSerie() {
@@ -8340,7 +8356,9 @@ async function ctrlSalvarSerie() {
   const erro = document.getElementById('ctrl-se-erro');
   erro.style.display = 'none';
   const cods = [...new Set(_serieCodigos())];
-  if (!tipo) { erro.textContent = 'Informe o tipo.'; erro.style.display = 'block'; return; }
+  // modo lista sem tipo → detecta pelo prefixo de cada código
+  const autoTipo = (_serieModo === 'lista' && !tipo);
+  if (!tipo && !autoTipo) { erro.textContent = 'Informe o tipo.'; erro.style.display = 'block'; return; }
   if (!cods.length) { erro.textContent = 'Nenhum código para adicionar.'; erro.style.display = 'block'; return; }
   const btn = document.getElementById('ctrl-se-btn');
   btn.disabled = true; btn.textContent = 'Adicionando...';
@@ -8348,7 +8366,7 @@ async function ctrlSalvarSerie() {
     const r = await ctrlFetch('/controle/amostradores/lote', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tipo, codigos: cods,
+        tipo, auto_tipo: autoTipo, codigos: cods,
         status: document.getElementById('ctrl-se-status').value,
         data_entrada: document.getElementById('ctrl-se-data').value,
         observacao: document.getElementById('ctrl-se-obs').value
