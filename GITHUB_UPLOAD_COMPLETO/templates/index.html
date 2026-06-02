@@ -8114,6 +8114,7 @@ async function ctrlLoadGraphStatus() {
         ${(st.erros||[]).length ? `<span style="color:var(--orange)">· ${st.erros.length} erros</span>` : ''}
       </span>
       <button onclick="ctrlSyncPlanner(this)" style="margin-left:12px;background:var(--blue);color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">⟳ Sincronizar agora</button>
+      <button onclick="ctrlReprocessarAgentes(this)" title="Re-extrai os agentes de TODAS as demandas do Planner (corrige OS sem agentes no painel)" style="margin-left:8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">🧠 Reprocessar agentes</button>
     `;
   } catch(e) {
     const el = document.getElementById('ctrl-graph-status-bar');
@@ -8133,6 +8134,19 @@ async function ctrlSyncPlanner(btn) {
     _showToast('❌ Erro no sync: ' + e.message, 'err');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⟳ Sincronizar agora'; }
+  }
+}
+
+async function ctrlReprocessarAgentes(btn) {
+  if (!confirm('Re-extrair os agentes de TODAS as demandas do Planner?\n\nÚtil pra corrigir OS que aparecem sem agentes no painel. Roda em segundo plano (~1-2 min).')) return;
+  if (btn) { btn.disabled = true; btn.textContent = '🧠 Reprocessando...'; }
+  try {
+    const r = await ctrlFetch('/controle/demandas/re-extrair', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    _showToast('🧠 Reprocessamento iniciado em segundo plano. Recarregue o painel em ~2 min.', 'ok');
+  } catch(e) {
+    _showToast('❌ Erro ao reprocessar: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🧠 Reprocessar agentes'; }
   }
 }
 
