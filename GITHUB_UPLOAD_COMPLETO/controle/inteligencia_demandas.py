@@ -170,7 +170,11 @@ AGENTES_SST: Dict[str, List[str]] = {
     ],
     'Monóxido de Carbono': [
         'monoxido de carbono', 'monóxido de carbono', 'co',
-        'gas carbonico', 'gás carbônico', 'intoxicacao co',
+        'intoxicacao co',
+    ],
+    'Dióxido de Carbono': [
+        'dioxido de carbono', 'dióxido de carbono', 'co2',
+        'gas carbonico', 'gás carbônico',
     ],
     'Dióxido de Enxofre': [
         'dioxido de enxofre', 'dióxido de enxofre', 'so2', 'anidrido sulfuroso',
