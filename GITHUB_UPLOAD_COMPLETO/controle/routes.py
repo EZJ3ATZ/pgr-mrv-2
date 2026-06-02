@@ -3025,7 +3025,7 @@ def gerar_relatorio_vibracao():
         return {'vci':'Corpo Inteiro (VCI)','vbma':'Mãos e Braços (VBMA)',
                 'ambos':'VCI + VBMA'}.get((s or '').lower(), s or '—')
     def _label_aparelho(a):
-        return {'chrompack_1':'SmartVib — S/N 0779','chrompack_2':'SmartVib — S/N 0779'}.get((a or '').lower(), a or '—')
+        return {'chrompack_1':'SmartVib — S/N 0779','chrompack_2':'SmartVib — S/N 1241'}.get((a or '').lower(), a or '—')
     subtipo  = d.get('subtipo')  or (itens[0].get('subtipo')  if itens else '') or ''
     aparelho = d.get('aparelho') or (itens[0].get('aparelho') if itens else '') or ''
 
