@@ -1998,6 +1998,88 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
         log.warning('[coleta] erro ao atualizar demanda %s: %s', demanda_id, e)
 
 
+def _norm_txt(s):
+    import unicodedata
+    s = (s or '').lower()
+    return ''.join(c for c in unicodedata.normalize('NFD', s)
+                   if unicodedata.category(c) != 'Mn')
+
+
+# Palavras-chave por família de agente para casar uma coleta com a medição pendente
+_TIPO_KEYWORDS = {
+    'ruido':    ['ruido'],
+    'calor':    ['calor', 'ibutg', 'ibtug', 'termic', 'termico', 'sobrecarga'],
+    'vibracao': ['vibra'],
+}
+
+
+def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
+    """Ao finalizar uma planilha de campo, dá baixa na medição pendente
+    correspondente (mesma demanda + tipo de agente) marcando-a como 'realizado'.
+    Assim a medição sai do pool de 'medições pendentes' e não fica disponível
+    para replanejamento em outro dia.
+
+    Retorna dict:
+      {'baixada': id|None, 'duplicada': bool, 'tinha_pendente': bool}
+    - duplicada=True quando TODAS as medições correspondentes já estavam
+      'realizado' → sinal de planilha de campo duplicada (trava).
+    """
+    res = {'baixada': None, 'duplicada': False, 'tinha_pendente': False}
+    if not demanda_id:
+        return res
+    fam = tipo or ''
+    if fam.startswith('vibracao'):
+        fam = 'vibracao'
+    kws = _TIPO_KEYWORDS.get(fam)
+    alvo_nome = _norm_txt(agente_nome) if agente_nome else None
+    try:
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT id, agente, qtd_pontos_prevista, qtd_pontos_feita, status "
+                "FROM medicoes WHERE demanda_id=?", (demanda_id,)
+            ).fetchall()
+
+            def _g(r, k, i):
+                return r[k] if hasattr(r, 'keys') else r[i]
+
+            def _match(ag):
+                agn = _norm_txt(ag)
+                if alvo_nome and (alvo_nome in agn or agn in alvo_nome):
+                    return True
+                if kws and any(k in agn for k in kws):
+                    return True
+                return False
+
+            matched = [r for r in rows if _match(_g(r, 'agente', 1))]
+            if not matched:
+                return res  # medição avulsa (sem demanda planejada) → não trava
+            pendentes = [r for r in matched if _g(r, 'status', 4) != 'realizado']
+            if not pendentes:
+                res['duplicada'] = True
+                res['tinha_pendente'] = True
+                return res
+            alvo = pendentes[0]
+            mid = _g(alvo, 'id', 0)
+            prev = _g(alvo, 'qtd_pontos_prevista', 2) or 1
+            conn.execute(
+                "UPDATE medicoes SET qtd_pontos_feita=?, status='realizado' WHERE id=?",
+                (prev, mid)
+            )
+            pend = conn.execute(
+                "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
+                (demanda_id,)
+            ).fetchone()
+            rest = pend['c'] if hasattr(pend, 'keys') else pend[0]
+            if rest == 0:
+                conn.execute("UPDATE demandas SET status='concluida' WHERE id=?", (demanda_id,))
+            res['baixada'] = mid
+            res['tinha_pendente'] = True
+            return res
+    except Exception as e:
+        log.warning('[medicao] erro ao baixar pendente demanda=%s tipo=%s: %s', demanda_id, tipo, e)
+        return res
+
+
 @controle_bp.route('/coletas/ruido', methods=['POST'])
 def api_save_coleta_ruido():
     init_db()
@@ -2435,9 +2517,13 @@ def api_salvar_medicao_wizard():
             'os':                  d.get('os', ''),
             'itens':               d.get('itens', []),
         }
+        bx = _baixar_medicao_pendente(d.get('demanda_id'), 'ruido')
+        if bx['duplicada']:
+            return jsonify({'ok': False, 'duplicada': True,
+                            'aviso': 'Esta medição de ruído já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_ruido(payload_ruido)
-        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
-        return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido'})
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
+        return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido', 'medicao_baixada': bx['baixada']})
 
     elif tipo == 'quimico':
         cq = d.get('campo_quimico') or {}
@@ -2462,9 +2548,13 @@ def api_salvar_medicao_wizard():
             'fracao':        cq.get('fracao', ''),
             'amostradores':  cq.get('amostradores', []),
         }
+        bx = _baixar_medicao_pendente(d.get('demanda_id'), 'quimico', cq.get('substancias', ''))
+        if bx['duplicada']:
+            return jsonify({'ok': False, 'duplicada': True,
+                            'aviso': 'Esta medição química já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_quimico(payload_q)
-        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
-        return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico'})
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
+        return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico', 'medicao_baixada': bx['baixada']})
 
     elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
         import json as _json
@@ -2495,9 +2585,14 @@ def api_salvar_medicao_wizard():
             # IBUTG setores (calor)
             'dados_json':   _json.dumps({'ibutg_setores': ibutg_setores}, ensure_ascii=False) if ibutg_setores else None,
         }
+        bx = _baixar_medicao_pendente(d.get('demanda_id'), tipo)
+        if bx['duplicada']:
+            _lbl = 'vibração' if tipo.startswith('vibracao') else 'de calor'
+            return jsonify({'ok': False, 'duplicada': True,
+                            'aviso': f'Esta medição {_lbl} já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_outros(payload_out)
-        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'em_andamento', d.get('planejamento_id'))
-        return jsonify({'ok': True, 'id': cid, 'tipo': tipo})
+        _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
+        return jsonify({'ok': True, 'id': cid, 'tipo': tipo, 'medicao_baixada': bx['baixada']})
 
     return jsonify({'ok': True, 'aviso': 'tipo nao mapeado, nao salvo'})
 

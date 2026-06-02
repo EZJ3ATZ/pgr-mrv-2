@@ -14003,6 +14003,7 @@ async function nvSalvarMedicao() {
     const tiposSalvar = (_nvTipos && _nvTipos.length) ? _nvTipos.slice() : (_nvTipo ? [_nvTipo] : []);
     let resp = {};
     let _primeiro = true;
+    const _duplicadas = [];
     for (const tp of tiposSalvar) {
       const p = { ...base, tipo: tp };
       if (tp === 'ruido')        p.campo_ruido    = campoRuido;
@@ -14011,6 +14012,8 @@ async function nvSalvarMedicao() {
       // Agentes não medidos: registrar só uma vez (no primeiro POST)
       if (_primeiro && naoMedidos.length > 0) p.agentes_nao_executados = naoMedidos;
       const r = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
+      // Trava backend: medição já finalizada para esta demanda (planilha duplicada)
+      if (r && r.duplicada) { _duplicadas.push(r.aviso || 'Medição já finalizada.'); }
       if (_primeiro) {
         resp = r || {};
         window._nvSavedId   = resp.id   || null;
@@ -14040,6 +14043,18 @@ async function nvSalvarMedicao() {
       }).catch(() => {});
     }
 
+    // Se TODOS os tipos retornaram "duplicada", não houve novo registro
+    if (_duplicadas.length > 0 && _duplicadas.length >= tiposSalvar.length) {
+      document.getElementById('nv-final-status').innerHTML=`<span style="color:var(--yellow);">⚠️ ${_duplicadas[0]}</span>`;
+      _showToast('⚠️ Esta medição já foi finalizada — planilha duplicada não registrada.','warn');
+      window._nvFinalizado = true;
+      window._nvSavedResp  = resp;
+      _nvSetSalvarDisabled(true, true);
+      return resp;
+    }
+    if (_duplicadas.length > 0) {
+      _showToast('⚠️ Parte já estava finalizada: '+_duplicadas[0],'warn');
+    }
     document.getElementById('nv-final-status').innerHTML='<span style="color:var(--green);">✅ Medição salva com sucesso!</span>';
     _showToast('✅ Medição salva!','ok');
     // Marca como finalizada: botões ficam travados até reabrir a visita
