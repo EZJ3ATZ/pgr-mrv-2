@@ -10271,6 +10271,7 @@ function nvLimparPlanejamentoVinculo() {
   const banner = document.getElementById('nv-plan-banner');
   if (banner) banner.remove();
   window._nvPlanejamentoId = null;
+  window._nvRuidoHerdado = false;
   window._nvAgentesPlano = [];
   const cont = document.getElementById('nv-agentes-plano');
   if (cont) cont.style.display = 'none';
@@ -10351,6 +10352,9 @@ async function ctrlNvVincularPlanejamento(pid) {
           series_dosim:     a.series_dosim || '',
           subtipo:          a.subtipo || 'vci',
           aparelho:         a.aparelho || 'chrompack_1',
+          // Ruído: calibrador e dosímetros escolhidos no plano (banco real)
+          calibrador_ruido_serie: a.calibrador_ruido_serie || '',
+          dosim_ruido:      a.dosim_ruido || [],
         };
       });
     }
@@ -13059,6 +13063,28 @@ function nvShowStep3() {
     if (_nvTipos.includes('vibracao') && !window._nvVibrPontos?.length) nvVibrAddPonto();
   }
 
+  // ── Ruído: herdar do planejamento (técnico, calibrador, dosímetros) ──
+  if (temRuido && window._nvPlanejamentoId && !window._nvRuidoHerdado) {
+    const itR = (window._ctrlNvItens || []).find(it => (it.tipo || '') === 'ruido') || {};
+    // Técnico Ocupacional ← técnico responsável (Etapa 1)
+    const tecEl = document.getElementById('nv-cr-tecnico');
+    const tecResp = document.getElementById('ctrl-nv-avaliador');
+    if (tecEl && !tecEl.value && tecResp && tecResp.value) tecEl.value = tecResp.value;
+    // Calibrador / N° Série ← calibrador de ruído do plano
+    const calEl = document.getElementById('nv-cr-calibrador');
+    if (calEl && !calEl.value && itR.calibrador_ruido_serie) calEl.value = itR.calibrador_ruido_serie;
+    // 1 linha de trabalhador por dosímetro selecionado no plano
+    const dosim = itR.dosim_ruido || [];
+    if (dosim.length && !_nvCrTrabs.length) {
+      const parts = (itR.funcao || '').split('/');
+      const cargo = (parts[0] || '').trim();
+      const setor = (parts[1] || '').trim();
+      dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', nivel:''}));
+      nvCrRenderTrabs();
+    }
+    window._nvRuidoHerdado = true;
+  }
+
   // Inicializar agentes químicos a partir do planejamento
   if (temQuimico && !_nvCqAgentes.length) {
     // Só itens químicos viram agente químico (evita criar fichas vazias p/ ruído/calor/vibração)
@@ -13252,6 +13278,7 @@ function nvReset() {
     if (el) el.checked = false;
   });
   _nvCrTrabs = []; _nvCrTermos = []; _nvCqAgentes = [];
+  window._nvRuidoHerdado = false;
   window._ctrlNvEmpresa = null;
   window._ctrlNvItens   = [];
   window._nvDemandaId   = null;
