@@ -2610,6 +2610,9 @@ def gerar_relatorio_ruido():
     hora_ini       = d.get('hora_inicio', d.get('hora_ini', ''))
     hora_fim       = d.get('hora_termino', d.get('hora_fim', ''))
     tecnico        = d.get('tecnico', '')
+    tecnico_mte    = d.get('tecnico_mte', '')
+    if tecnico_mte:
+        tecnico = f'{tecnico} — MTE {tecnico_mte}'
     acomp          = d.get('acompanhante', d.get('acomp', ''))
     cargo_acomp    = d.get('cargo_acompanhante', d.get('cargo_acomp', ''))
     calibrador     = d.get('calibrador', '')
@@ -3007,6 +3010,9 @@ def gerar_relatorio_vibracao():
     hora_ini     = d.get('hora_ini', d.get('hora_inicio', ''))
     hora_fim     = d.get('hora_fim', d.get('hora_termino', ''))
     tecnico      = d.get('tecnico', '')
+    tecnico_mte  = d.get('tecnico_mte', '')
+    if tecnico_mte:
+        tecnico = f'{tecnico} — MTE {tecnico_mte}'
     acomp        = d.get('acomp', d.get('acompanhante', ''))
     obs          = d.get('obs', d.get('observacoes', ''))
     sig_empresa  = d.get('sig_empresa')
@@ -3187,6 +3193,9 @@ def gerar_relatorio_quimico():
     os_num         = d.get('os', '')
     data_coleta    = d.get('data_coleta', '')
     tecnico        = d.get('tecnico', '')
+    tecnico_mte    = d.get('tecnico_mte', '')
+    if tecnico_mte:
+        tecnico = f'{tecnico} — MTE {tecnico_mte}'
     sig_avaliado   = d.get('sig_avaliado')   # base64 PNG ou None
     sig_empresa    = d.get('sig_empresa')    # base64 PNG ou None
 
