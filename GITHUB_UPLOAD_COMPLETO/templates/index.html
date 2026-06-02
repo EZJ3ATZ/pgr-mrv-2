@@ -4306,6 +4306,18 @@
           <div id="nv-calor-setores"></div>
         </div>
       </div>
+
+      <!-- Dados da Avaliação — Vibração (só aparece quando tipo=vibracao) -->
+      <div id="nv-vibr-pontos-section" style="display:none;margin-top:12px;">
+        <div class="nv-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div class="nv-card-title" style="margin:0;">📳 Dados da Avaliação — Vibração</div>
+            <button onclick="nvVibrAddPonto()" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Trabalhador</button>
+          </div>
+          <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada trabalhador avaliado: nome, cargo/função, setor e os valores medidos (eixo dominante, aren, VDVexp e tempo de exposição).</div>
+          <div id="nv-vibr-pontos"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -12950,6 +12962,12 @@ function nvShowStep3() {
     ibutgSec.style.display = _nvTipos.includes('calor') ? '' : 'none';
     if (_nvTipos.includes('calor') && !window._nvCalorSetores?.length) nvCalorAddSetor();
   }
+  // Seção Dados da Avaliação: só quando tipo vibração
+  const vibrSec = document.getElementById('nv-vibr-pontos-section');
+  if (vibrSec) {
+    vibrSec.style.display = _nvTipos.includes('vibracao') ? '' : 'none';
+    if (_nvTipos.includes('vibracao') && !window._nvVibrPontos?.length) nvVibrAddPonto();
+  }
 
   // Inicializar agentes químicos a partir do planejamento
   if (temQuimico && !_nvCqAgentes.length) {
@@ -13254,6 +13272,68 @@ function nvCalorCalcIBUTG(i) {
       if (elE) elE.textContent = ibutg_e + ' °C';
     }
   }
+}
+
+// ── Dados da Avaliação — Vibração ─────────────────────────────────────
+window._nvVibrPontos = [];
+
+function nvVibrAddPonto() {
+  window._nvVibrPontos.push({
+    nome: '', funcao: '', setor: '',
+    eixo: 'Z', aren: '', vdv: '', tempo: '',
+  });
+  nvVibrRenderPontos();
+}
+
+function nvVibrRemovePonto(i) {
+  window._nvVibrPontos.splice(i, 1);
+  nvVibrRenderPontos();
+}
+
+function nvVibrRenderPontos() {
+  const el = document.getElementById('nv-vibr-pontos');
+  if (!el) return;
+  if (!window._nvVibrPontos.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Clique em "+ Trabalhador" para adicionar avaliados.</div>';
+    return;
+  }
+  const eixos = ['Z', 'Y', 'X', 'Resultante'];
+  el.innerHTML = window._nvVibrPontos.map((p, i) => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-weight:700;font-size:.85rem;color:var(--text);">Trabalhador ${i+1}</span>
+        <button onclick="nvVibrRemovePonto(${i})" style="background:rgba(239,68,68,.1);border:none;color:#ef4444;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:.75rem;">✕ Remover</button>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:3px;">Nome do Funcionário</label>
+        <input value="${_esc(p.nome)}" oninput="window._nvVibrPontos[${i}].nome=this.value"
+          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:.83rem;font-family:inherit;" placeholder="Nome completo">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Cargo / Função</label>
+          <input value="${_esc(p.funcao)}" oninput="window._nvVibrPontos[${i}].funcao=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Operador"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Setor</label>
+          <input value="${_esc(p.setor)}" oninput="window._nvVibrPontos[${i}].setor=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Pátio"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Eixo</label>
+          <select oninput="window._nvVibrPontos[${i}].eixo=this.value" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 6px;font-size:.82rem;">
+            ${eixos.map(e => `<option value="${e}" ${p.eixo===e?'selected':''}>${e}</option>`).join('')}
+          </select></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">aren (m/s²)</label>
+          <input type="number" step="0.01" value="${p.aren}" oninput="window._nvVibrPontos[${i}].aren=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0.00"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">VDVexp</label>
+          <input type="number" step="0.01" value="${p.vdv}" oninput="window._nvVibrPontos[${i}].vdv=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0.00"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">T. exp. (h)</label>
+          <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8"></div>
+      </div>
+    </div>
+  `).join('');
 }
 
 // ── Trabalhadores Ruído ───────────────────────────────────────────────
@@ -13821,6 +13901,7 @@ async function nvSalvarMedicao() {
         tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
         fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
         ibutg_setores: _nvTipos.includes('calor') ? (window._nvCalorSetores || []) : [],
+        vibr_pontos: _nvTipos.includes('vibracao') ? (window._nvVibrPontos || []) : [],
       } : null,
     };
     // Coletar agentes não medidos (do planejamento vinculado)
@@ -13928,6 +14009,7 @@ async function nvGerarRelatorioCampo() {
       obs:      document.getElementById('nv-gen-obs')?.value||'',
       subtipo:  itemVib.subtipo  || itemVib.vib_subtipo  || '',
       aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
+      pontos:   window._nvVibrPontos || [],
       itens:    window._ctrlNvItens||[],
       sig_empresa:  nvSigGetData('nv-sig-empresa'),
       sig_avaliado: nvSigGetData('nv-sig-avaliado'),
