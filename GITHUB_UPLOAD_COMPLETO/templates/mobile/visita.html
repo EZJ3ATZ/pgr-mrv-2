@@ -216,18 +216,28 @@
         </div>
       </div>
 
-      <!-- ASSINATURA -->
-      <div class="section-title">Assinatura digital</div>
+      <!-- ASSINATURAS -->
+      <div class="section-title">Assinaturas digitais</div>
       <div class="card">
-        <div style="font-size:.8rem; color:var(--muted); margin-bottom:8px">Assine com o dedo</div>
+        <div style="font-size:.8rem; color:var(--muted); margin-bottom:8px">Técnico (Ocupacional)</div>
         <div class="sig-wrap">
           <canvas id="sigCanvas" height="160"></canvas>
         </div>
         <div class="sig-actions">
-          <button type="button" class="btn btn-ghost btn-sm" onclick="limparAssinatura()">Limpar</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="limparAssinatura('tec')">Limpar</button>
           <span id="sigStatus" style="font-size:.75rem; color:var(--muted); align-self:center; margin-left:4px">Não assinado</span>
         </div>
         <input type="hidden" name="assinatura_data_url" id="assinaturaInput">
+
+        <div style="font-size:.8rem; color:var(--muted); margin:16px 0 8px">Responsável da empresa</div>
+        <div class="sig-wrap">
+          <canvas id="sigCanvasEmp" height="160"></canvas>
+        </div>
+        <div class="sig-actions">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="limparAssinatura('emp')">Limpar</button>
+          <span id="sigStatusEmp" style="font-size:.75rem; color:var(--muted); align-self:center; margin-left:4px">Não assinado</span>
+        </div>
+        <input type="hidden" name="assinatura_empresa_data_url" id="assinaturaEmpInput">
       </div>
 
       <div style="padding-bottom:24px">
@@ -344,42 +354,52 @@ function coletarTrabalhadores() {
   return arr;
 }
 
-// ── Assinatura ─────────────────────────────────────────────────────────
-const canvas = document.getElementById('sigCanvas');
-const ctx    = canvas.getContext('2d');
-let drawing  = false;
-let hasSig   = false;
+// ── Assinaturas (técnico + empresa) ────────────────────────────────────
+function initSig(canvasId, statusId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx    = canvas.getContext('2d');
+  const pad    = { canvas, ctx, drawing: false, hasSig: false };
 
-function resizeCanvas() {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const dpr  = window.devicePixelRatio || 1;
-  canvas.width  = rect.width * dpr;
-  canvas.height = 160 * dpr;
-  canvas.style.height = '160px';
-  ctx.scale(dpr, dpr);
-  ctx.strokeStyle = '#f1f5f9';
-  ctx.lineWidth   = 2.5;
-  ctx.lineCap     = 'round';
-  ctx.lineJoin    = 'round';
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr  = window.devicePixelRatio || 1;
+    canvas.width  = rect.width * dpr;
+    canvas.height = 160 * dpr;
+    canvas.style.height = '160px';
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#f1f5f9';
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+  }
+  resize();
+  pad.resize = resize;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src  = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  canvas.addEventListener('pointerdown', e => { pad.drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+  canvas.addEventListener('pointermove', e => { if (!pad.drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); pad.hasSig = true; document.getElementById(statusId).textContent = 'Assinado ✓'; e.preventDefault(); });
+  canvas.addEventListener('pointerup',   () => { pad.drawing = false; });
+  canvas.addEventListener('pointerleave',() => { pad.drawing = false; });
+
+  pad.clear = function () {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pad.hasSig = false;
+    document.getElementById(statusId).textContent = 'Não assinado';
+  };
+  return pad;
 }
-resizeCanvas();
 
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  const src  = e.touches ? e.touches[0] : e;
-  return { x: src.clientX - rect.left, y: src.clientY - rect.top };
-}
+const sigTec = initSig('sigCanvas', 'sigStatus');
+const sigEmp = initSig('sigCanvasEmp', 'sigStatusEmp');
 
-canvas.addEventListener('pointerdown', e => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
-canvas.addEventListener('pointermove', e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasSig = true; document.getElementById('sigStatus').textContent = 'Assinado ✓'; e.preventDefault(); });
-canvas.addEventListener('pointerup',   () => { drawing = false; });
-canvas.addEventListener('pointerleave',() => { drawing = false; });
-
-function limparAssinatura() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  hasSig = false;
-  document.getElementById('sigStatus').textContent = 'Não assinado';
-  document.getElementById('assinaturaInput').value = '';
+function limparAssinatura(qual) {
+  if (qual === 'emp') { sigEmp.clear(); document.getElementById('assinaturaEmpInput').value = ''; }
+  else                { sigTec.clear(); document.getElementById('assinaturaInput').value = ''; }
 }
 
 // ── Salvar visita ──────────────────────────────────────────────────────
@@ -389,7 +409,8 @@ async function salvarVisita(e) {
   btn.disabled    = true;
   btn.textContent = '⏳ Salvando...';
 
-  if (hasSig) document.getElementById('assinaturaInput').value = canvas.toDataURL('image/png');
+  if (sigTec.hasSig) document.getElementById('assinaturaInput').value = sigTec.canvas.toDataURL('image/png');
+  if (sigEmp.hasSig) document.getElementById('assinaturaEmpInput').value = sigEmp.canvas.toDataURL('image/png');
   coletarTrabalhadores();
 
   const fd   = new FormData(document.getElementById('formCampo'));

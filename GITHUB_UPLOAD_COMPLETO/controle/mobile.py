@@ -217,7 +217,8 @@ def api_salvar_visita():
             'trabalhadores_json':     data.get('trabalhadores_json'),
         })
 
-        _salvar_assinatura(vid, data.get('assinatura_data_url'))
+        _salvar_assinatura(vid, data.get('assinatura_data_url'),
+                           data.get('assinatura_empresa_data_url'))
         return jsonify({'ok': True, 'visita_id': vid})
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -249,16 +250,24 @@ def _parse_lista(v):
         return [x.strip() for x in str(v).split(',') if x.strip()]
 
 
-def _salvar_assinatura(visita_id, data_url):
-    """Persiste a assinatura da visita NO BANCO (coluna visitas_tecnicas.assinatura).
+def _salvar_assinatura(visita_id, data_url, data_url_empresa=None):
+    """Persiste as assinaturas da visita NO BANCO.
+    - assinatura          → técnico Ocupacional (mapeia p/ sig_avaliado no laudo)
+    - assinatura_empresa  → responsável da empresa (sig_empresa)
     Guarda a data-URL base64 inteira — o filesystem do Railway é efêmero e
     apagava a evidência a cada redeploy."""
-    if not data_url or not data_url.startswith('data:image/') or not visita_id:
+    if not visita_id:
         return
+    def _ok(u):
+        return bool(u) and str(u).startswith('data:image/')
     try:
         with get_db() as conn:
-            conn.execute("UPDATE visitas_tecnicas SET assinatura=? WHERE id=?",
-                         (data_url, visita_id))
+            if _ok(data_url):
+                conn.execute("UPDATE visitas_tecnicas SET assinatura=? WHERE id=?",
+                             (data_url, visita_id))
+            if _ok(data_url_empresa):
+                conn.execute("UPDATE visitas_tecnicas SET assinatura_empresa=? WHERE id=?",
+                             (data_url_empresa, visita_id))
     except Exception as e:
         import traceback; traceback.print_exc()
 
