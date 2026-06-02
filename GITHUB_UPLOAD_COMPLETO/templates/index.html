@@ -13060,7 +13060,17 @@ function nvShowStep3() {
   const vibrSec = document.getElementById('nv-vibr-pontos-section');
   if (vibrSec) {
     vibrSec.style.display = _nvTipos.includes('vibracao') ? '' : 'none';
-    if (_nvTipos.includes('vibracao') && !window._nvVibrPontos?.length) nvVibrAddPonto();
+    if (_nvTipos.includes('vibracao') && !window._nvVibrPontos?.length) {
+      const itV = (window._ctrlNvItens || []).find(x => x.tipo === 'vibracao') || {};
+      // VCI (corpo inteiro) → eixo Z · VBMA (mãos/braços) → Resultante
+      const sub = itV.subtipo || itV.vib_subtipo || '';
+      const eixo = (sub === 'vbma') ? 'Resultante' : 'Z';
+      const parts = (itV.funcao || '').split('/');
+      const seed = { funcao: (parts[0]||'').trim(), setor: (parts[1]||'').trim(), eixo };
+      // Cria 1 ponto por trabalhador previsto no plano (qtd), senão 1
+      const n = Math.max(parseInt(itV.qtd || 1, 10) || 1, 1);
+      for (let k = 0; k < n; k++) nvVibrAddPonto(seed);
+    }
   }
 
   // ── Ruído: herdar do planejamento (técnico, calibrador, dosímetros) ──
@@ -13402,10 +13412,11 @@ function nvCalorCalcIBUTG(i) {
 // ── Dados da Avaliação — Vibração ─────────────────────────────────────
 window._nvVibrPontos = [];
 
-function nvVibrAddPonto() {
+function nvVibrAddPonto(seed) {
+  seed = seed || {};
   window._nvVibrPontos.push({
-    nome: '', funcao: '', setor: '',
-    eixo: 'Z', aren: '', vdv: '', tempo: '',
+    nome: '', funcao: seed.funcao || '', setor: seed.setor || '',
+    eixo: seed.eixo || 'Z', aren: '', vdv: '', tempo: '',
     tempo_nexp: '', trajeto: '', terreno: '',
   });
   nvVibrRenderPontos();
