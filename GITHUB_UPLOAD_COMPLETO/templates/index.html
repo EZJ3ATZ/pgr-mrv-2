@@ -10355,6 +10355,11 @@ async function ctrlNvVincularPlanejamento(pid) {
           // Ruído: calibrador e dosímetros escolhidos no plano (banco real)
           calibrador_ruido_serie: a.calibrador_ruido_serie || '',
           dosim_ruido:      a.dosim_ruido || [],
+          // Químico: método/meio/volume/unidade do plano (evita redigitar)
+          metodo:           a.metodo || '',
+          amostrador_meio:  a.amostrador || '',
+          volume:           a.volume || '',
+          unidade:          a.unidade || '',
         };
       });
     }
@@ -13111,11 +13116,15 @@ function nvShowStep3() {
         ag.amostrador_codigo = item.amostrador_codigo || '';
         ag.vazao_calibrada   = item.vazao_calibrada || '';
         ag.tipo_coleta       = item.tipo_coleta || 'pessoal';
+        // Fração amostrada: inferir da substância (Respirável/Total/Torácica/Inalável)
+        if (!ag.fracao) ag.fracao = _nvInferirFracao(ag.substancias);
+        // Tipo de amostrador (meio) vindo do plano, sem fixar TCP
+        const tipoAmostr = _nvTipoAmostrador(item.amostrador_meio) || 'TCP';
         // Pré-criar 1 amostrador com código e vazão planejados
         if (item.amostrador_codigo || item.vazao_calibrada) {
           ag.amostradores.push({
             id_amostrador: item.amostrador_codigo || '',
-            tipo_amostrador: 'TCP',
+            tipo_amostrador: tipoAmostr,
             vazao_inicial: parseFloat(item.vazao_calibrada) || 0,
             vazao_final: 0, hora_inicio:'', hora_final:'', intervalos:''
           });
@@ -13520,6 +13529,29 @@ function nvCrRenderTermos() {
     <td><input type="date" value="${t.devolucao||''}" style="width:120px;" onchange="_nvCrTermos[${i}].devolucao=this.value"></td>
     <td style="text-align:center;"><button onclick="_nvCrTermos.splice(${i},1);nvCrRenderTermos();" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
   </tr>`).join('');
+}
+
+// Infere a fração amostrada pelo nome da substância (p/ pré-preencher do plano)
+function _nvInferirFracao(s) {
+  const t = (s || '').toLowerCase();
+  if (/respir/.test(t)) return 'Respirável';
+  if (/tor[áa]cic/.test(t)) return 'Torácica';
+  if (/inal[áa]vel/.test(t)) return 'Inalável';
+  if (/total/.test(t)) return 'Total';
+  return '';
+}
+// Normaliza o meio de coleta do plano p/ o tipo de amostrador da planilha
+function _nvTipoAmostrador(meio) {
+  const t = (meio || '').toLowerCase();
+  if (!t) return '';
+  if (/carv[ãa]o/.test(t)) return 'Carvão';
+  if (/s[íi]lica/.test(t)) return 'Sílica gel';
+  if (/pvc/.test(t)) return 'PVC';
+  if (/mce|[ée]ster|membrana/.test(t)) return 'MCE';
+  if (/ciclone/.test(t)) return 'Ciclone';
+  if (/impinger/.test(t)) return 'Impinger';
+  if (/cassete/.test(t)) return 'Cassete';
+  return meio;  // mantém o texto do plano se não reconhecer
 }
 
 // ── Agentes Químicos — multi-agente ──────────────────────────────────
