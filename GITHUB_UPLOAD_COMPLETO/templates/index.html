@@ -6078,7 +6078,7 @@ function appMobileLoad() {
             el.innerHTML = visitas.slice(0,8).map(v => `
               <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
                 <div style="flex:1">
-                  <div style="font-weight:600;font-size:.85rem;">${v.empresa_nome||'Empresa'}</div>
+                  <div style="font-weight:600;font-size:.85rem;">${_esc(v.empresa_nome||'Empresa')}</div>
                   <div style="font-size:.75rem;color:var(--text2);">${v.tecnico||''} · ${v.data_visita||''}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
@@ -6188,7 +6188,7 @@ async function homeLoadStats() {
             const stLabel = pend > 0 ? `${pend} pend.` : 'ok';
             return `<div class="hv3-os-row" onclick="goToTab('controle');ctrlInit();setTimeout(()=>ctrlSwitchSub('demand',null),400);">
               <div>
-                <div class="hv3-os-empresa">${e.empresa_nome}</div>
+                <div class="hv3-os-empresa">${_esc(e.empresa_nome||'')}</div>
                 <div class="hv3-os-sub">${total} OS · ${concl} concluída${concl!==1?'s':''}</div>
               </div>
               <div class="hv3-status ${st}">${stLabel}</div>
@@ -8360,7 +8360,7 @@ async function ctrlLoadVencendo() {
           <td><span class="ctrl-badge laboratorio">no lab</span></td>
           <td><b>${a.tipo||'—'}</b></td>
           <td>${a.codigo||'—'}</td>
-          <td>${a.empresa_nome||'—'}</td>
+          <td>${_esc(a.empresa_nome||'—')}</td>
           <td style="color:var(--text3);">—</td>
           <td>${a.dias_validade||45}d</td>
           <td style="color:var(--text3);">—</td>
@@ -8378,7 +8378,7 @@ async function ctrlLoadVencendo() {
         <td><span class="ctrl-badge ${(a.status||'').toLowerCase()}">${a.status||'—'}</span></td>
         <td><b>${a.tipo||'—'}</b></td>
         <td>${a.codigo||'—'}</td>
-        <td>${a.empresa_nome||'—'}</td>
+        <td>${_esc(a.empresa_nome||'—')}</td>
         <td>${(a.data_envio_lab||'').slice(0,10)} <div style="color:var(--text3); font-size:.7rem;">há ${a.dias_no_lab||0}d</div></td>
         <td>${a.dias_validade||45}d</td>
         <td style="color:var(--text3); font-size:.75rem;">${ctrlCalcDataVenc(a.data_envio_lab, a.dias_validade)}</td>
@@ -8424,7 +8424,7 @@ async function ctrlAbrirEnvioLab() {
     lista.innerHTML = candidatos.map(a => `
       <label style="display:flex; align-items:center; gap:8px; padding:5px 4px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,.04);">
         <input type="checkbox" value="${a.id}" class="ctrl-el-chk">
-        <span style="flex:1;"><b>${a.tipo}</b> ${a.codigo} <span style="color:var(--text3); font-size:.75rem;">— ${a.empresa_nome||'sem empresa'}</span></span>
+        <span style="flex:1;"><b>${a.tipo}</b> ${a.codigo} <span style="color:var(--text3); font-size:.75rem;">— ${_esc(a.empresa_nome||'sem empresa')}</span></span>
         <span class="ctrl-badge ${(a.status||'').toLowerCase()}" style="font-size:.65rem;">${a.status||'—'}</span>
       </label>
     `).join('') + `
@@ -8541,7 +8541,7 @@ async function ctrlLoadPorEmpresa() {
       return `
       <tr style="cursor:pointer;" onclick="ctrlToggleExpandEmpresa(${e.empresa_id})">
         <td><span id="ctrl-earrow-${e.empresa_id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
-        <td><b>${e.empresa_nome}</b></td>
+        <td><b>${_esc(e.empresa_nome||'')}</b></td>
         <td style="color:var(--text3); font-size:.75rem;">${e.cnpj||'—'}</td>
         <td>
           <span style="color:#0a7; font-weight:600;" title="Concluídas">✓${concl}</span>
@@ -9028,7 +9028,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                           const bg  = fromPlanner ? 'rgba(45,212,191,.07)'  : 'var(--surface3)';
                           const brd = fromPlanner ? 'rgba(45,212,191,.25)'  : 'var(--border2)';
                           const tag = fromPlanner ? ' <span style="font-size:.6rem;opacity:.6;">Planner</span>' : '';
-                          return `<span style="background:${bg};border:1px solid ${brd};padding:2px 8px;border-radius:12px;font-size:.7rem;color:var(--text2);">${m.agente}${tag} <span style="color:var(--text3);">(${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</span></span>`;
+                          return `<span style="background:${bg};border:1px solid ${brd};padding:2px 8px;border-radius:12px;font-size:.7rem;color:var(--text2);">${_esc(m.agente)}${tag} <span style="color:var(--text3);">(${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</span></span>`;
                         }).join('')}
                       ${hasLaudar ? `<span style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);padding:2px 8px;border-radius:12px;font-size:.7rem;color:#fbbf24;">📄 Laudar</span>` : ''}
                     </div>
@@ -9037,7 +9037,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
               }
               return `<tr style="border-bottom:1px solid rgba(255,255,255,.04); ${!isDone&&d.prazo&&Math.round((new Date(d.prazo)-new Date())/86400000)<0?'background:rgba(239,68,68,.04);':''}">
                 <td style="padding:6px 10px;"><b>${d.numero_os||'—'}</b></td>
-                <td style="padding:6px 8px; font-size:.72rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2);" title="${(d.tarefa_display||d.nome_tarefa||d.titulo||'').replace(/"/g,'&quot;')}">${(d.tarefa_display||d.nome_tarefa||d.titulo||'—').slice(0,55)}</td>
+                <td style="padding:6px 8px; font-size:.72rem; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text2);" title="${(d.tarefa_display||d.nome_tarefa||d.titulo||'').replace(/"/g,'&quot;')}">${_esc((d.tarefa_display||d.nome_tarefa||d.titulo||'—').slice(0,55))}</td>
                 <td style="padding:6px 8px; font-size:.78rem;">${prazoHtml}</td>
                 <td style="padding:6px 8px;">
                   <div style="font-size:.75rem; margin-bottom:3px;">${pct}%</div>
@@ -9164,7 +9164,7 @@ async function ctrlLoadAudit() {
           <div style="color:var(--text3);font-size:.68rem;">${quando}</div>
         </td>
         <td><span style="display:inline-flex;align-items:center;gap:5px;background:${cor}22;color:${cor};border:1px solid ${cor}44;border-radius:12px;padding:2px 9px;font-size:.73rem;font-weight:700;white-space:nowrap;">${icon} ${label}</span></td>
-        <td style="color:var(--text2);font-size:.77rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(ev.descricao||'').replace(/"/g,'&quot;')}">${ev.descricao||'—'}</td>
+        <td style="color:var(--text2);font-size:.77rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(ev.descricao||'').replace(/"/g,'&quot;')}">${_esc(ev.descricao||'—')}</td>
         <td style="color:var(--text2);font-size:.77rem;white-space:nowrap;">${ev.usuario||'—'}</td>
         <td style="color:var(--text3);font-size:.72rem;">${ev.ip||'—'}</td>
       </tr>`;
@@ -9341,7 +9341,7 @@ async function planCarregarLista() {
       }).join(' · ') || '—';
       return `<div class="plan-row">
         <div class="plan-row-info">
-          <div class="plan-row-empresa">${p.empresa_nome || 'Empresa não vinculada'}</div>
+          <div class="plan-row-empresa">${_esc(p.empresa_nome || 'Empresa não vinculada')}</div>
           <div class="plan-row-meta">
             OS: <b>${p.numero_os || '—'}</b> ·
             Técnico: ${p.tecnico} ·
@@ -9393,8 +9393,8 @@ async function _planBuscarOsSugestoes(q) {
     if (!lista.length) { sugs.style.display = 'none'; return; }
     sugs.innerHTML = lista.map(d => {
       const os    = d.numero_os || '—';
-      const emp   = d.empresa_nome ? `<span style="color:var(--text3);font-size:.76rem;"> · ${d.empresa_nome}</span>` : '';
-      const title = d.titulo ? `<div style="font-size:.72rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.titulo.slice(0,60)}</div>` : '';
+      const emp   = d.empresa_nome ? `<span style="color:var(--text3);font-size:.76rem;"> · ${_esc(d.empresa_nome)}</span>` : '';
+      const title = d.titulo ? `<div style="font-size:.72rem;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(d.titulo.slice(0,60))}</div>` : '';
       return `<div onclick="planOsSelecionarSugestao('${os.replace(/'/g,"\\'")}','${d.id}')"
         style="padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);"
         onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
@@ -9447,9 +9447,9 @@ async function _planBuscarOs(os) {
         qtd:    a.qtd || 1,
       }));
       _planRenderizarAgentes();
-      info.innerHTML = `<b>✅ ${r.empresa_nome||'Empresa vinculada'}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
+      info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
     } else {
-      info.innerHTML = `<b>✅ ${r.empresa_nome||'Empresa vinculada'}</b> — OS encontrada. Adicione os agentes manualmente.`;
+      info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — OS encontrada. Adicione os agentes manualmente.`;
     }
   } catch(e) {
     info.innerHTML = `<span style="color:#ef4444;">Erro: ${e.message}</span>`;
@@ -9764,7 +9764,7 @@ function _planRenderizarAgentes() {
 
     return `<div class="plan-agente-item" style="flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;">
       <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-        <span>${tipos[a.tipo]||'📋'} <b>${a.agente}</b> ×${a.qtd} ${metaHtml}</span>
+        <span>${tipos[a.tipo]||'📋'} <b>${_esc(a.agente)}</b> ×${a.qtd} ${metaHtml}</span>
         <button type="button" onclick="planRemoverAgente(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 4px;flex-shrink:0;">✕</button>
       </div>
       ${extraFields}
@@ -10140,7 +10140,7 @@ async function planEditar(pid) {
     } catch(_) { window._planAgentes = []; }
     if (typeof _planRenderizarAgentes === 'function') _planRenderizarAgentes();
     const info = document.getElementById('plan-os-info');
-    if (info && p.empresa_nome) { info.style.display = ''; info.innerHTML = `<b>${p.empresa_nome}</b> · OS ${p.numero_os||'—'}`; }
+    if (info && p.empresa_nome) { info.style.display = ''; info.innerHTML = `<b>${_esc(p.empresa_nome)}</b> · OS ${p.numero_os||'—'}`; }
     _planSetEditUI(true);
     _showToast('✏️ Editando — altere e salve para atualizar.', 'ok');
     const form = document.getElementById('plan-nv-os');
@@ -10156,7 +10156,7 @@ async function nvCarregarPlanejamentosSelect() {
     const conf = (lista || []).filter(p => ['confirmado','em_execucao'].includes(p.status));
     const atual = sel.value;
     sel.innerHTML = '<option value="">— Começar em branco (preenchimento manual) —</option>' +
-      conf.map(p => `<option value="${p.id}" ${String(p.id)===atual?'selected':''}>OS ${p.numero_os||'—'} · ${(p.empresa_nome||'empresa?').slice(0,40)} · ${p.data_prevista||'sem data'}</option>`).join('');
+      conf.map(p => `<option value="${p.id}" ${String(p.id)===atual?'selected':''}>OS ${p.numero_os||'—'} · ${_esc((p.empresa_nome||'empresa?').slice(0,40))} · ${p.data_prevista||'sem data'}</option>`).join('');
   } catch(e) { /* silencioso */ }
 }
 
@@ -10260,7 +10260,7 @@ async function ctrlNvVincularPlanejamento(pid) {
       const banner = document.createElement('div');
       banner.id = 'nv-plan-banner';
       banner.style.cssText = 'background:rgba(57,153,255,.1);border:1.5px solid rgba(57,153,255,.3);border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:.82rem;';
-      banner.innerHTML = `<span style="font-size:1.1rem;">📋</span><div><b style="color:#39f;">Planejamento vinculado</b> — ${p.empresa_nome||'OS '+p.numero_os} · OS ${p.numero_os||'—'}<br><span style="font-size:.74rem;color:var(--text3);">Agentes previstos carregados. Confira os dados e avance as etapas.</span></div>`;
+      banner.innerHTML = `<span style="font-size:1.1rem;">📋</span><div><b style="color:#39f;">Planejamento vinculado</b> — ${_esc(p.empresa_nome||'OS '+p.numero_os)} · OS ${p.numero_os||'—'}<br><span style="font-size:.74rem;color:var(--text3);">Agentes previstos carregados. Confira os dados e avance as etapas.</span></div>`;
       s1.insertBefore(banner, s1.firstChild);
     }
 
@@ -10291,7 +10291,7 @@ function nvRenderAgentesPlano(agentes) {
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
         <input type="checkbox" id="nv-ag-check-${i}" checked onchange="nvToggleAgente(this,${i})"
           style="width:17px;height:17px;cursor:pointer;accent-color:var(--green);">
-        <span style="font-size:.88rem;">${icons[ag.tipo]||'📋'} ${ag.agente||ag.tipo} ×${ag.qtd||1}</span>
+        <span style="font-size:.88rem;">${icons[ag.tipo]||'📋'} ${_esc(ag.agente||ag.tipo)} ×${ag.qtd||1}</span>
         <span id="nv-ag-badge-${i}" style="margin-left:auto;font-size:.78rem;font-weight:700;color:var(--green);">✅ Medido</span>
       </label>
       <div id="nv-ag-just-${i}" style="display:none;margin-top:10px;background:var(--yellow-bg);border:1px solid var(--yellow-bd);border-radius:6px;padding:10px;">
@@ -10409,9 +10409,9 @@ async function ctrlNvOsChange(val) {
         if (typeof nvTipoChange === 'function') nvTipoChange();
       }
       const cards = agentes.length
-        ? agentes.map(a => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 8px;background:rgba(57,153,255,.13);border-radius:12px;font-size:.77rem;">${_tl[a.tipo]||a.tipo} <b>${a.qtd}pt</b> — ${a.texto}</span>`).join('')
+        ? agentes.map(a => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 8px;background:rgba(57,153,255,.13);border-radius:12px;font-size:.77rem;">${_tl[a.tipo]||a.tipo} <b>${a.qtd}pt</b> — ${_esc(a.texto)}</span>`).join('')
         : '<span style="color:var(--text3)">Nenhum agente identificado na OS</span>';
-      painel.innerHTML = `<b style="color:var(--blue)">OS encontrada:</b> ${j.titulo}<br><div style="margin-top:5px;">${cards}</div>`;
+      painel.innerHTML = `<b style="color:var(--blue)">OS encontrada:</b> ${_esc(j.titulo)}<br><div style="margin-top:5px;">${cards}</div>`;
     } catch(e) {
       painel.innerHTML = '<span style="color:var(--red)">Erro ao buscar OS</span>';
     }
@@ -10692,7 +10692,7 @@ function ctrlNvRenderLista() {
       <tbody>
         ${window._ctrlNvItens.map((it, i) => `<tr>
           <td>${i+1}</td>
-          <td><b>${it.agente}</b><div style="color:var(--text3); font-size:.7rem;">${it.metodo_cod||''}</div></td>
+          <td><b>${_esc(it.agente)}</b><div style="color:var(--text3); font-size:.7rem;">${_esc(it.metodo_cod||'')}</div></td>
           <td>${it.bomba_modelo||'—'}<div style="color:var(--text3); font-size:.7rem;">${it.bomba_sn||''}</div></td>
           <td>${it.vazao_calibrada ? it.vazao_calibrada.toFixed(3) + ' L/min' : '—'}</td>
           <td>${it.tempo_min ? `${it.tempo_min.toFixed(0)}–${it.tempo_max.toFixed(0)}` : '—'}</td>
@@ -10874,7 +10874,7 @@ async function ctrlLoadAmostr() {
         <td><b>${a.tipo||'—'}</b></td>
         <td style="font-family:monospace; font-size:.82rem;">${a.codigo||'—'}</td>
         <td style="font-size:.78rem;">${(a.data_entrada||'').slice(0,10)||'—'}</td>
-        <td style="font-size:.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${a.empresa_nome||''}">${a.empresa_nome||'—'}</td>
+        <td style="font-size:.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(a.empresa_nome||'').replace(/"/g,'&quot;')}">${_esc(a.empresa_nome||'—')}</td>
         <td style="font-size:.78rem;">${a.avaliador||'—'}</td>
         <td style="font-size:.78rem;">${(a.data_medicao||'').slice(0,10)||'—'}</td>
         <td style="color:${corParado}; font-size:.78rem; font-weight:600;">${lblParado}</td>
@@ -10932,10 +10932,10 @@ async function ctrlCarregarRevisao() {
         lista.innerHTML = (r.itens || []).map(d => `
           <div style="border-bottom:1px solid rgba(245,158,11,.2);padding:7px 0;font-size:.78rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-weight:600;color:var(--text);">${d.titulo||'—'}</span>
+              <span style="font-weight:600;color:var(--text);">${_esc(d.titulo||'—')}</span>
               <span style="color:var(--text3);font-size:.72rem;">OS: ${d.numero_os||'—'}</span>
             </div>
-            <div style="color:var(--text3);margin-top:2px;">${d.empresa_nome||'—'} · Confiança: <span style="color:var(--yellow);">${Math.round((d.empresa_match_score||0)*100)}%</span></div>
+            <div style="color:var(--text3);margin-top:2px;">${_esc(d.empresa_nome||'—')} · Confiança: <span style="color:var(--yellow);">${Math.round((d.empresa_match_score||0)*100)}%</span></div>
           </div>`).join('');
       }
     }
@@ -10990,7 +10990,7 @@ async function ctrlLoadDemand() {
       return `
       <tr style="cursor:pointer;" onclick="ctrlToggleExpandDemandEmp(${e.empresa_id})">
         <td><span id="ctrl-dmarrow-${e.empresa_id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
-        <td><b>${e.empresa_nome}</b><br><span style="font-size:.7rem; color:var(--text3);">${e.cnpj||''}</span></td>
+        <td><b>${_esc(e.empresa_nome||'')}</b><br><span style="font-size:.7rem; color:var(--text3);">${_esc(e.cnpj||'')}</span></td>
         <td>
           <span style="color:#f80; font-weight:600;">${pend} OS pendente${pend!==1?'s':''}</span>
           ${concl > 0 ? `<span style="color:var(--text3); font-size:.75rem;"> / ${concl} concluída${concl!==1?'s':''}</span>` : ''}
@@ -11055,7 +11055,7 @@ async function ctrlToggleExpandDemandEmp(empresaId) {
               }
               return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
                 <td style="padding:5px 8px;"><b>${d.numero_os || '—'}</b></td>
-                <td style="padding:5px 8px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${(d.nome_tarefa || '—').slice(0, 50)}</td>
+                <td style="padding:5px 8px; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(d.nome_tarefa||'').replace(/"/g,'&quot;')}">${_esc((d.nome_tarefa || '—').slice(0, 50))}</td>
                 <td style="padding:5px 8px;">${prazoHtml}</td>
                 <td style="padding:5px 8px; color:var(--text3);">${d.responsavel || '—'}</td>
                 <td style="padding:5px 8px;">
@@ -11382,7 +11382,7 @@ function ctrlVerEscopo(demandaId) {
       clEl.innerHTML = items.map(i =>
         `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
           <span style="color:${i.concluido?'#0a7':'var(--text3)'};">${i.concluido?'☑':'☐'}</span>
-          <span style="color:${i.concluido?'var(--text3)':'var(--text2)'}; ${i.concluido?'text-decoration:line-through;':''}">${i.titulo||''}</span>
+          <span style="color:${i.concluido?'var(--text3)':'var(--text2)'}; ${i.concluido?'text-decoration:line-through;':''}">${_esc(i.titulo||'')}</span>
         </div>`
       ).join('');
     } else {
@@ -11410,7 +11410,7 @@ function _ctrlRenderAgentes(agentes) {
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:6px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;">
       <span style="font-size:1.1rem;min-width:28px;text-align:center;background:rgba(255,255,255,.06);border-radius:4px;padding:2px 6px;font-weight:700;color:${cor};">${a.qtd}×</span>
       <div style="flex:1;">
-        <div style="font-size:.82rem;color:var(--text);font-weight:600;">${a.texto}</div>
+        <div style="font-size:.82rem;color:var(--text);font-weight:600;">${_esc(a.texto)}</div>
         <div style="font-size:.72rem;color:var(--text3);margin-top:1px;">${label}</div>
       </div>
     </div>`;
@@ -11451,7 +11451,7 @@ async function _ctrlPrepararBaixa() {
   const selDem = document.getElementById('ctrl-bx-demand');
   selDem.innerHTML = '<option value="">— Selecione a OS —</option>' +
     demandas.filter(d=>d.status!=='concluida')
-            .map(d => `<option value="${d.id}">${d.numero_os||'(s/OS)'} — ${(d.empresa_nome||'').slice(0,40)}</option>`).join('');
+            .map(d => `<option value="${d.id}">${d.numero_os||'(s/OS)'} — ${_esc((d.empresa_nome||'').slice(0,40))}</option>`).join('');
 
   // Carregar amostradores em estoque
   const amostr = await ctrlFetch('/controle/amostradores?status=disponivel');
@@ -11531,7 +11531,7 @@ async function ctrlLoadMedicoesDoBaixa(demId) {
     } else {
       sel.innerHTML = '<option value="">— Selecione o agente —</option>' +
         pendentes.map(m =>
-          `<option value="${m.id}" data-agente="${m.agente}" data-tipo="${m.tipo_amostrador||''}">${m.agente} (${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</option>`
+          `<option value="${m.id}" data-agente="${(m.agente||'').replace(/"/g,'&quot;')}" data-tipo="${m.tipo_amostrador||''}">${_esc(m.agente)} (${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</option>`
         ).join('');
       if (avulsoWrap) avulsoWrap.style.display = 'none';
     }
@@ -11834,10 +11834,10 @@ function empRender() {
            onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'"
            onclick="empAbrirPainel(${e.empresa_id})">
         <div style="width:40px;height:40px;background:var(--orange-dim);border:1px solid rgba(251,146,60,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:var(--orange);flex-shrink:0;">
-          ${(e.empresa_nome||'?')[0].toUpperCase()}
+          ${_esc((e.empresa_nome||'?')[0].toUpperCase())}
         </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:.87rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.empresa_nome||'—'}</div>
+          <div style="font-size:.87rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(e.empresa_nome||'—')}</div>
           <div style="font-size:.72rem;color:var(--text3);margin-top:2px;">${total} OS · ${pct}% concluídas${atr > 0 ? ` · <span style="color:var(--red)">${atr} atrasada${atr>1?'s':''}</span>` : ''}</div>
           <div style="height:3px;background:var(--surface3);border-radius:4px;margin-top:6px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:var(--orange);border-radius:4px;transition:width .4s;"></div>
@@ -11944,7 +11944,7 @@ function empRenderPainel() {
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:${chips.length ? '8px' : '0'};">
               <div style="width:8px;height:8px;border-radius:50%;background:${statusCor};flex-shrink:0;"></div>
               <div style="flex:1;min-width:0;">
-                <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${dem.titulo || dem.numero_os || '—'}</div>
+                <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(dem.titulo || dem.numero_os || '—')}</div>
                 <div style="font-size:.68rem;color:var(--text3);margin-top:2px;">
                   ${dem.planner_bucket || ''} ${dem.responsavel ? '· ' + dem.responsavel : ''}
                   ${dem.prazo ? ' · prazo: <span style="color:' + (atrasada ? 'var(--red)' : 'var(--text3)') + '">' + dem.prazo + (atrasada ? ' ⚠' : '') + '</span>' : ''}
@@ -12010,7 +12010,7 @@ function empRenderPainel() {
           return `
           <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
             <div style="flex:1;">
-              <div style="font-size:.83rem;font-weight:600;color:var(--text);">${a.agente}</div>
+              <div style="font-size:.83rem;font-weight:600;color:var(--text);">${_esc(a.agente)}</div>
               <div style="height:3px;background:var(--surface3);border-radius:3px;margin-top:5px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:var(--orange);border-radius:3px;"></div></div>
             </div>
             <div style="text-align:right;flex-shrink:0;">
@@ -12211,7 +12211,7 @@ async function indLoad() {
         const hue = [145,210,260,45,180,320,90,20,160,240][i%10];
         return `
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="font-size:.75rem;color:var(--text2);width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${a.agente||'Outros'}">${a.agente||'Outros'}</div>
+            <div style="font-size:.75rem;color:var(--text2);width:170px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${(a.agente||'Outros').replace(/"/g,'&quot;')}">${_esc(a.agente||'Outros')}</div>
             <div style="flex:1;height:7px;background:var(--surface3);border-radius:4px;overflow:hidden;">
               <div style="height:100%;width:${pct}%;background:hsl(${hue},70%,55%);border-radius:4px;transition:width .6s ease;"></div>
             </div>
@@ -12340,7 +12340,7 @@ function biProdDrill(idx) {
   const [tec, v] = window._biProdEntries[idx];
   const html = v.items.map(d =>
     `<div style="padding:10px 0;border-bottom:1px solid #27272a;">
-      <div style="font-size:.82rem;font-weight:600;color:#e4e4e7;">${d.empresa_nome||'—'}</div>
+      <div style="font-size:.82rem;font-weight:600;color:#e4e4e7;">${_esc(d.empresa_nome||'—')}</div>
       <div style="font-size:.72rem;color:#71717a;margin-top:2px;">${d.status||'—'} · OS ${d.os_numero||d.numero_os||'—'} · ${d.prazo||'—'}</div>
     </div>`
   ).join('');
@@ -12389,8 +12389,8 @@ function _biDmndCardHtml(d) {
       <span style="font-family:monospace;font-size:.75rem;font-weight:600;color:#e4e4e7;">${d.numero_os||'#'+d.id}</span>
       <span style="font-size:.65rem;padding:2px 6px;border-radius:4px;font-weight:600;color:${cfg.color};background:${cfg.color}20;border:1px solid ${cfg.color}40;">${cfg.label}</span>
     </div>
-    <div style="font-size:.82rem;font-weight:500;color:#e4e4e7;margin-bottom:4px;">${d.empresa_nome||'—'}</div>
-    ${d.descricao?`<div style="font-size:.72rem;color:#71717a;margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${d.descricao}</div>`:''}
+    <div style="font-size:.82rem;font-weight:500;color:#e4e4e7;margin-bottom:4px;">${_esc(d.empresa_nome||'—')}</div>
+    ${d.descricao?`<div style="font-size:.72rem;color:#71717a;margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${_esc(d.descricao)}</div>`:''}
     <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.65rem;color:#71717a;">
       ${d.prazo?`<span>📅 ${d.prazo}</span>`:''}
       ${d.responsavel?`<span>👤 ${d.responsavel}</span>`:''}
@@ -12406,7 +12406,7 @@ function _biAmstCardHtml(a) {
       <span style="font-family:monospace;font-size:.75rem;font-weight:600;color:#e4e4e7;">${a.codigo||'—'}</span>
       <span style="font-size:.65rem;padding:2px 6px;border-radius:4px;border:1px solid #27272a;color:#a1a1aa;background:#27272a;">${a.tipo||'—'}</span>
     </div>
-    <div style="font-size:.8rem;font-weight:500;color:#e4e4e7;margin-bottom:4px;">${a.empresa_nome||'—'}</div>
+    <div style="font-size:.8rem;font-weight:500;color:#e4e4e7;margin-bottom:4px;">${_esc(a.empresa_nome||'—')}</div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:.65rem;color:#71717a;">
       ${a.data_entrada?`<span>📥 ${a.data_entrada}</span>`:''}
       ${a.data_medicao?`<span>📊 ${a.data_medicao}</span>`:''}
@@ -12557,7 +12557,7 @@ async function biLoad() {
                 const cfg = _biDmndCfg(d.status);
                 return `<tr onclick="biAtrasadaDrill(${idx})" style="border-bottom:1px solid #1c1c1e;cursor:pointer;" onmouseover="this.style.background='#1f1f23'" onmouseout="this.style.background=''">
                   <td style="padding:8px 10px;font-family:monospace;font-weight:600;color:#e4e4e7;">${d.numero_os||'#'+d.id}</td>
-                  <td style="padding:8px 10px;color:#d4d4d8;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.empresa_nome||'—'}</td>
+                  <td style="padding:8px 10px;color:#d4d4d8;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(d.empresa_nome||'—')}</td>
                   <td style="padding:8px 10px;color:#a1a1aa;font-variant-numeric:tabular-nums;">${d.prazo}</td>
                   <td style="padding:8px 10px;color:#f87171;font-weight:600;">${d.dias_atraso}d</td>
                   <td style="padding:8px 10px;"><span style="font-size:.65rem;padding:2px 6px;border-radius:4px;color:${cfg.color};background:${cfg.color}20;border:1px solid ${cfg.color}40;">${cfg.label}</span></td>
@@ -14254,7 +14254,7 @@ function saudeRenderizar(d) {
   const semOsHtml = (os.sample_sem_os||[]).map(s =>
     `<tr style="border-bottom:1px solid rgba(255,255,255,.04);">
       <td style="padding:4px 8px;font-size:.68rem;color:var(--text3);">${s.id}</td>
-      <td style="padding:4px 8px;font-size:.7rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.titulo||''}</td>
+      <td style="padding:4px 8px;font-size:.7rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(s.titulo||'')}</td>
       <td style="padding:4px 8px;font-size:.7rem;color:var(--text3);">${s.planner_bucket||''}</td>
     </tr>`
   ).join('');
