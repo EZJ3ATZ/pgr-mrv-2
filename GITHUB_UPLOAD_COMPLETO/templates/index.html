@@ -2404,6 +2404,9 @@
   </div>
   <!-- ══ FIM HERO V4 ══════════════════════════════════════════════ -->
 
+  <!-- ── Alerta de calibração de equipamentos (validade = calibração + 2 anos) ── -->
+  <div id="hv4-calib-alert" style="display:none;margin-bottom:20px;"></div>
+
   <!-- ── Agentes NR-15 + Laboratório (abaixo do Controle de Medições) ── -->
   <div class="hv4-belowdash">
     <!-- Agentes NR-15 -->
@@ -6141,6 +6144,47 @@ function sidebarMedicoesSub(itemEl) {
   itemEl.classList.toggle('expanded', isOpen);
 }
 
+// Alerta de calibração de equipamentos no painel (vencido / vence em <=90 dias)
+async function carregarCalibAlerta() {
+  const box = document.getElementById('hv4-calib-alert');
+  if (!box) return;
+  try {
+    const d = await fetch('/controle/equipamentos/calibracao').then(r => r.json());
+    const vencidos = d.vencidos || 0, vencendo = d.vencendo || 0;
+    if (!vencidos && !vencendo) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const criticos = (d.itens || [])
+      .filter(i => i.status === 'vencido' || i.status === 'vencendo')
+      .sort((a, b) => (a.dias_restantes ?? 9999) - (b.dias_restantes ?? 9999));
+    const cor = vencidos ? 'var(--red)' : 'var(--yellow)';
+    const bg  = vencidos ? 'rgba(239,68,68,.08)' : 'rgba(245,158,11,.08)';
+    const bd  = vencidos ? 'rgba(239,68,68,.25)' : 'rgba(245,158,11,.25)';
+    const titulo = vencidos
+      ? `${vencidos} equipamento${vencidos>1?'s':''} com calibração VENCIDA`
+      : `${vencendo} equipamento${vencendo>1?'s':''} com calibração vencendo`;
+    const linhas = criticos.slice(0, 6).map(i => {
+      const dr = i.dias_restantes;
+      const txt = dr < 0 ? `venceu há ${Math.abs(dr)} dia${Math.abs(dr)>1?'s':''}`
+                         : `vence em ${dr} dia${dr>1?'s':''}`;
+      const c = dr < 0 ? 'var(--red)' : 'var(--yellow)';
+      const venc = i.vencimento ? i.vencimento.split('-').reverse().join('/') : '—';
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:.8rem;">
+        <span style="color:var(--text);">${_esc(i.nome)}</span>
+        <span style="color:${c};font-weight:600;white-space:nowrap;">${venc} · ${txt}</span></div>`;
+    }).join('');
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div style="background:${bg};border:1px solid ${bd};border-radius:12px;padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:1rem;">⚠️</span>
+          <span style="font-weight:700;color:${cor};font-size:.9rem;">${titulo}</span>
+          <span style="margin-left:auto;font-size:.72rem;color:var(--text3);">aviso 90 dias antes · validade 2 anos</span>
+        </div>
+        ${linhas}
+        <div style="margin-top:8px;"><a onclick="goToTab('controle');setTimeout(()=>{const t=document.getElementById('plan-inv-toggle');if(t&&!_planInvOpen)planInvToggle();},400);" style="cursor:pointer;font-size:.76rem;color:var(--primary-l);font-weight:600;">Abrir inventário de equipamentos →</a></div>
+      </div>`;
+  } catch(e) { box.style.display = 'none'; }
+}
+
 // Carrega estatísticas na home page
 async function homeLoadStats() {
   try {
@@ -6188,6 +6232,9 @@ async function homeLoadStats() {
       badgeAlerta.style.display = na > 0 ? '' : 'none';
     }
   } catch(e) { /* silencioso */ }
+
+  // ── Alerta de calibração de equipamentos ──
+  carregarCalibAlerta();
 
   // ── Hero V3: Demandas recentes no painel direito ──
   {
@@ -9870,7 +9917,8 @@ async function planInvCarregar() {
             ${e.compatibilidade ? `<span style="font-size:.68rem;background:rgba(57,153,255,.1);color:#39f;padding:1px 6px;border-radius:3px;">${e.compatibilidade}</span>` : ''}
             <input type="text" placeholder="N° Série" value="${e.numero_serie||''}" style="${inp}width:95px;" title="Número de série" onchange="planInvSalvar(${e.id},{numero_serie:this.value})">
             <input type="text" placeholder="Cert." value="${e.cert_numero||''}" style="${inp}width:75px;" title="Número do certificado" onchange="planInvSalvar(${e.id},{cert_numero:this.value})">
-            <input type="date" value="${e.cert_validade||''}" style="${inp}width:125px;" title="Validade do certificado" onchange="planInvSalvar(${e.id},{cert_validade:this.value})">
+            <input type="date" value="${e.data_calibracao||''}" style="${inp}width:125px;" title="Data da calibração (validade = +2 anos)" onchange="planInvSalvar(${e.id},{data_calibracao:this.value},true)">
+            ${_calibChip(e.data_calibracao, e.cert_validade)}
             <select style="${inp}width:auto;" onchange="planInvSalvar(${e.id},{status:this.value})">
               ${['disponivel','em_uso','manutencao','reservado'].map(s=>`<option value="${s}" ${e.status===s?'selected':''}>${s}</option>`).join('')}
             </select>
@@ -9879,11 +9927,27 @@ async function planInvCarregar() {
   } catch(e) { if (loading) loading.style.display = 'none'; list.innerHTML = `<div style="color:var(--red);font-size:.82rem;">Erro: ${e.message}</div>`; }
 }
 
-async function planInvSalvar(id, campos) {
+async function planInvSalvar(id, campos, reload) {
   try {
     await ctrlFetch('/controle/equipamentos/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(campos)});
     _showToast('Equipamento atualizado', 'ok');
+    if (reload) { planInvCarregar(); carregarCalibAlerta(); }
   } catch(e) { _showToast('Erro ao salvar: ' + e.message, 'err'); }
+}
+
+// Chip de status de calibração (validade = data_calibracao + 2 anos)
+function _calibChip(dataCalib, certValidade) {
+  const _p = (s) => { if(!s) return null; const d=new Date(String(s).slice(0,10)); return isNaN(d)?null:d; };
+  let venc = _p(certValidade);
+  if (!venc) { const dc=_p(dataCalib); if (dc) { venc=new Date(dc); venc.setFullYear(venc.getFullYear()+2); } }
+  if (!venc) return `<span style="font-size:.68rem;color:var(--text3);padding:1px 6px;">sem calibração</span>`;
+  const dias = Math.ceil((venc - new Date()) / 86400000);
+  const vfmt = venc.toISOString().slice(0,10).split('-').reverse().join('/');
+  let cor, bg, txt;
+  if (dias < 0)        { cor='var(--red)';    bg='rgba(239,68,68,.12)';  txt=`vencido (${vfmt})`; }
+  else if (dias <= 90) { cor='var(--yellow)'; bg='rgba(245,158,11,.12)'; txt=`vence em ${dias}d`; }
+  else                 { cor='var(--green)';  bg='rgba(16,185,129,.12)'; txt=`válido até ${vfmt}`; }
+  return `<span style="font-size:.68rem;color:${cor};background:${bg};padding:1px 7px;border-radius:3px;font-weight:600;white-space:nowrap;" title="Vencimento: ${vfmt}">${txt}</span>`;
 }
 
 function _planAtualizarEquipamentos() {

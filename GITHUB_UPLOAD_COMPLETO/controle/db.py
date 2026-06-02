@@ -990,6 +990,8 @@ def _migrate(conn):
                 )
     except Exception as _e:
         print(f'[migrate] equipamentos seed: {_e}')
+    # Data da última calibração (validade = +2 anos). cert_validade fica como override manual.
+    _add_col(conn, 'equipamentos_inventario', 'data_calibracao', 'TEXT')
 
     # Tabela de log de extração (rastreabilidade)
     # ATENÇÃO: AUTOINCREMENT é SQLite — PostgreSQL usa SERIAL
@@ -2048,6 +2050,62 @@ def stats_dashboard():
     """
     with get_db() as conn:
         return row_to_dict(conn.execute(sql).fetchone())
+
+
+def equipamentos_calibracao(dias_alerta=90):
+    """Calcula o status de calibração de cada equipamento.
+    Validade = data_calibracao + 2 anos. Se cert_validade estiver preenchido
+    manualmente, ele tem prioridade (override).
+    Retorna {itens:[...], vencidos:n, vencendo:n, dias_alerta}.
+    status de cada item: 'vencido' | 'vencendo' (<= dias_alerta) | 'ok' | 'sem_data'.
+    """
+    from datetime import date as _date, timedelta as _td
+    hoje = _date.today()
+
+    def _parse(s):
+        if not s:
+            return None
+        s = str(s)[:10]
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+            try:
+                from datetime import datetime as _dt
+                return _dt.strptime(s, fmt).date()
+            except Exception:
+                pass
+        return None
+
+    itens, vencidos, vencendo = [], 0, 0
+    with get_db() as conn:
+        rows = conn.execute(
+            'SELECT id, tipo, marca, modelo, numero_serie, observacao, '
+            'cert_numero, cert_validade, data_calibracao '
+            'FROM equipamentos_inventario ORDER BY tipo, marca, observacao'
+        ).fetchall()
+    for r in rows:
+        d = row_to_dict(r) if 'row_to_dict' in globals() else (dict(r) if hasattr(r, 'keys') else {})
+        dcal = _parse(d.get('data_calibracao'))
+        venc_manual = _parse(d.get('cert_validade'))
+        venc = venc_manual or (dcal + _td(days=730) if dcal else None)
+        dias = (venc - hoje).days if venc else None
+        if venc is None:
+            status = 'sem_data'
+        elif dias < 0:
+            status = 'vencido'; vencidos += 1
+        elif dias <= dias_alerta:
+            status = 'vencendo'; vencendo += 1
+        else:
+            status = 'ok'
+        nome = d.get('observacao') or d.get('modelo') or d.get('marca') or 'Equipamento'
+        if d.get('numero_serie'):
+            nome = f"{nome} (S/N {d['numero_serie']})"
+        itens.append({
+            'id': d.get('id'), 'tipo': d.get('tipo'), 'nome': nome,
+            'data_calibracao': d.get('data_calibracao') or '',
+            'vencimento': venc.isoformat() if venc else '',
+            'dias_restantes': dias, 'status': status,
+        })
+    return {'itens': itens, 'vencidos': vencidos, 'vencendo': vencendo,
+            'dias_alerta': dias_alerta}
 
 
 def produtividade_por_tecnico():

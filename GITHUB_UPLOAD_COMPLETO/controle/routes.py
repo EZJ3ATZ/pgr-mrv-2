@@ -521,12 +521,25 @@ def get_equipamentos():
     return jsonify([row_to_dict(r) for r in rows])
 
 
+@controle_bp.route('/equipamentos/calibracao')
+def get_equipamentos_calibracao():
+    """Status de calibração dos equipamentos (validade = data_calibracao + 2 anos).
+    ?dias=N define a antecedência do alerta (default 90)."""
+    init_db()
+    from .db import equipamentos_calibracao
+    try:
+        dias = int(request.args.get('dias', 90))
+    except Exception:
+        dias = 90
+    return jsonify(equipamentos_calibracao(dias))
+
+
 @controle_bp.route('/equipamentos/<int:eid>', methods=['PUT'])
 def update_equipamento(eid):
     """Atualiza campos de um equipamento (SN, cert, validade, status)."""
     init_db()
     d = request.get_json(force=True) or {}
-    allowed = {'numero_serie', 'cert_numero', 'cert_validade', 'status', 'observacao', 'modelo'}
+    allowed = {'numero_serie', 'cert_numero', 'cert_validade', 'status', 'observacao', 'modelo', 'data_calibracao'}
     sets, vals = [], []
     for k, v in d.items():
         if k in allowed:
