@@ -140,21 +140,32 @@ class _PGCursor:
         self._cur = None
         self._lastrowid = None
 
+    # Tabelas cuja PK NÃO é uma coluna 'id' (PK textual) — não anexar RETURNING id,
+    # senão o Postgres lança 'column "id" does not exist'.
+    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE')
+
     def execute(self, sql, params=None):
         self._cur = self._pg_conn.cursor(
             cursor_factory=psycopg2.extras.RealDictCursor)
         if params:
             # Escape literal % (LIKE patterns etc.) before replacing ? with %s
             sql = sql.replace('%', '%%').replace('?', '%s')
-        is_insert = sql.strip().upper().startswith('INSERT')
-        _is_upsert = 'ON CONFLICT' in sql.upper()
-        if is_insert and not _is_upsert and 'RETURNING' not in sql.upper():
+        upper = sql.strip().upper()
+        is_insert = upper.startswith('INSERT')
+        _is_upsert = 'ON CONFLICT' in upper
+        _has_returning = 'RETURNING' in upper
+        _table_has_id = not any(f'INTO {t}' in upper for t in self._NO_ID_TABLES)
+        _add_returning = is_insert and not _is_upsert and not _has_returning and _table_has_id
+        if _add_returning:
             sql = sql.rstrip(' \n;') + ' RETURNING id'
+            _has_returning = True
         if params:
             self._cur.execute(sql, params)
         else:
             self._cur.execute(sql)
-        if is_insert and not _is_upsert:  # upserts sem RETURNING não têm resultado
+        # Só busca lastrowid quando há RETURNING (anexado por nós ou já no SQL).
+        # Upserts e inserts em tabelas sem 'id' não produzem essa linha.
+        if is_insert and not _is_upsert and _has_returning:
             row = self._cur.fetchone()
             self._lastrowid = int(row['id']) if row and row.get('id') is not None else None
         return self
