@@ -1551,6 +1551,7 @@
     margin-bottom: 4px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s;
   }
   .hv3-os-row:hover { border-color: var(--border2); }
+  .hv3-os-row > div:first-child { min-width: 0; }   /* permite o 1fr encolher e o nome truncar (evita badge sair da caixa) */
   .hv3-os-empresa { font-size: .71rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hv3-os-sub { font-size: .62rem; color: var(--text3); margin-top: 1px; }
   .hv3-status { padding: 2px 7px; border-radius: 100px; font-size: .6rem; font-weight: 700; white-space: nowrap; margin-top: 1px; }
@@ -1883,6 +1884,7 @@
 
 /* ── Right Column ── */
 .hv4-right { display: flex; flex-direction: column; gap: 14px; }
+.hv4-belowdash { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
 .hv4-panel {
   background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
   border: 1px solid var(--border);
@@ -2024,6 +2026,7 @@
 @media (max-width: 700px) {
   .hv4-right { flex-direction: row; flex-wrap: wrap; }
   .hv4-right .hv4-panel { flex: 1; min-width: 240px; }
+  .hv4-belowdash { grid-template-columns: 1fr; }
 }
 
   </style>
@@ -2397,58 +2400,61 @@
         </div>
       </div>
 
-      <!-- Agentes NR-15 -->
-      <div class="hv4-panel">
-        <div class="hv4-panel-h">
-          <div class="hv4-panel-title">
-            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Agentes · NR-15
-          </div>
-          <div class="hv4-panel-meta">cobertura</div>
-        </div>
-        <div class="hv4-agentes">
-          <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Ru&#237;do Cont&#237;nuo</span><span class="hv4-ag-meta" id="ag-ruido-meta">An.1 · 85 dB</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-ruido-bar" style="width:0%"></div></div>
-          </div>
-          <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Agentes Qu&#237;micos</span><span class="hv4-ag-meta" id="ag-quimico-meta">An.11/13 · NHO</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-quimico-bar" style="width:0%;animation-delay:.1s"></div></div>
-          </div>
-          <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Calor · IBUTG</span><span class="hv4-ag-meta" id="ag-calor-meta">An.3 · IBUTG</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-calor-bar" style="width:0%;animation-delay:.2s"></div></div>
-          </div>
-          <div>
-            <div class="hv4-ag-head"><span class="hv4-ag-name">Vibra&#231;&#227;o</span><span class="hv4-ag-meta" id="ag-vibracao-meta">An.8 · ISO 5349</span></div>
-            <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-vibracao-bar" style="width:0%;animation-delay:.3s"></div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Laboratório -->
-      <div class="hv4-panel">
-        <div class="hv4-panel-h">
-          <div class="hv4-panel-title">
-            <svg viewBox="0 0 24 24"><path d="M9 3v8.5L4 19c-.7 1 0 2 1 2h14c1 0 1.7-1 1-2l-5-7.5V3M8 3h8"/></svg>
-            Laborat&#243;rio
-          </div>
-        </div>
-        <div class="hv4-lab-grid">
-          <div class="hv4-lab-card">
-            <div class="hv4-lab-n" id="hv3-lab">—</div>
-            <div class="hv4-lab-l">no laborat&#243;rio</div>
-          </div>
-          <div class="hv4-lab-card est">
-            <div class="hv4-lab-n" id="hv3-estoque">—</div>
-            <div class="hv4-lab-l">em estoque</div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
   <!-- ══ FIM HERO V4 ══════════════════════════════════════════════ -->
+
+  <!-- ── Agentes NR-15 + Laboratório (abaixo do Controle de Medições) ── -->
+  <div class="hv4-belowdash">
+    <!-- Agentes NR-15 -->
+    <div class="hv4-panel">
+      <div class="hv4-panel-h">
+        <div class="hv4-panel-title">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Agentes · NR-15
+        </div>
+        <div class="hv4-panel-meta">cobertura</div>
+      </div>
+      <div class="hv4-agentes">
+        <div>
+          <div class="hv4-ag-head"><span class="hv4-ag-name">Ru&#237;do Cont&#237;nuo</span><span class="hv4-ag-meta" id="ag-ruido-meta">An.1 · 85 dB</span></div>
+          <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-ruido-bar" style="width:0%"></div></div>
+        </div>
+        <div>
+          <div class="hv4-ag-head"><span class="hv4-ag-name">Agentes Qu&#237;micos</span><span class="hv4-ag-meta" id="ag-quimico-meta">An.11/13 · NHO</span></div>
+          <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-quimico-bar" style="width:0%;animation-delay:.1s"></div></div>
+        </div>
+        <div>
+          <div class="hv4-ag-head"><span class="hv4-ag-name">Calor · IBUTG</span><span class="hv4-ag-meta" id="ag-calor-meta">An.3 · IBUTG</span></div>
+          <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-calor-bar" style="width:0%;animation-delay:.2s"></div></div>
+        </div>
+        <div>
+          <div class="hv4-ag-head"><span class="hv4-ag-name">Vibra&#231;&#227;o</span><span class="hv4-ag-meta" id="ag-vibracao-meta">An.8 · ISO 5349</span></div>
+          <div class="hv4-ag-bar"><div class="hv4-ag-fill" id="ag-vibracao-bar" style="width:0%;animation-delay:.3s"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Laboratório -->
+    <div class="hv4-panel">
+      <div class="hv4-panel-h">
+        <div class="hv4-panel-title">
+          <svg viewBox="0 0 24 24"><path d="M9 3v8.5L4 19c-.7 1 0 2 1 2h14c1 0 1.7-1 1-2l-5-7.5V3M8 3h8"/></svg>
+          Laborat&#243;rio
+        </div>
+      </div>
+      <div class="hv4-lab-grid">
+        <div class="hv4-lab-card">
+          <div class="hv4-lab-n" id="hv3-lab">—</div>
+          <div class="hv4-lab-l">no laborat&#243;rio</div>
+        </div>
+        <div class="hv4-lab-card est">
+          <div class="hv4-lab-n" id="hv3-estoque">—</div>
+          <div class="hv4-lab-l">em estoque</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Fluxo Operacional V4 — FeatureCarousel ── -->
   <section class="hv4-fluxo">
