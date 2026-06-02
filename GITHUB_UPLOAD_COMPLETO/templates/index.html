@@ -5514,6 +5514,7 @@
       cor:'#fb923c',
       itens:[
         {t:'Evolução Mensal', d:`Gráfico de linha com o número de OS concluídas por mês. Mostra a produtividade histórica do setor.`},
+        {t:'Produtividade por Técnico', d:`Conta as MEDIÇÕES (coletas de ruído, químico, calor e vibração) feitas por cada técnico — cada coleta é atribuída a quem a finalizou. Não conta OS: como nem sempre um técnico faz todas as medições de uma empresa, o crédito vai por medição. Clique num técnico para ver o detalhamento por tipo e nº de empresas.`},
         {t:'Status dos Amostradores (barras)', d:`Gráfico horizontal mostrando quantos amostradores estão em cada status.`},
         {t:'Top Empresas', d:`Top 10 empresas com mais demandas. Útil para identificar clientes com maior volume.`},
       ]
@@ -5917,7 +5918,7 @@
   <!-- S5: Produtividade por Técnico -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
     <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">&#9889; Produtividade por Técnico</div>
-    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">Clique num técnico para ver as OS</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">Medições (coletas) feitas por cada técnico · clique para detalhar</div>
     <div id="bi-prod-wrap"></div>
   </div>
 
@@ -12344,13 +12345,18 @@ function _biMes(ym) {
 function biProdDrill(idx) {
   if (!window._biProdEntries) return;
   const [tec, v] = window._biProdEntries[idx];
-  const html = v.items.map(d =>
-    `<div style="padding:10px 0;border-bottom:1px solid #27272a;">
-      <div style="font-size:.82rem;font-weight:600;color:#e4e4e7;">${_esc(d.empresa_nome||'—')}</div>
-      <div style="font-size:.72rem;color:#71717a;margin-top:2px;">${d.status||'—'} · OS ${d.os_numero||d.numero_os||'—'} · ${d.prazo||'—'}</div>
-    </div>`
-  ).join('');
-  biDrawerOpen(`${tec} — ${v.total} OS`, html || '<div style="padding:20px;color:#71717a;text-align:center;">Sem dados</div>');
+  const linha = (rotulo, n, cor) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #27272a;">
+      <span style="font-size:.82rem;color:#e4e4e7;">${rotulo}</span>
+      <span style="font-size:.95rem;font-weight:800;color:${cor};">${n||0}</span>
+    </div>`;
+  const html =
+    linha('Ruído', v.ruido, '#3b82f6') +
+    linha('Químico', v.quimico, '#8b5cf6') +
+    linha('Calor / Vibração (outros)', v.outros, '#fb923c') +
+    linha('Medições este mês', v.mes, '#f59e0b') +
+    linha('Empresas atendidas', v.empresas, '#60a5fa');
+  biDrawerOpen(`${tec} — ${v.total||0} medições`, html);
 }
 function biDrawerOpen(title, html) {
   document.getElementById('bi-drawer-title').textContent = title;
@@ -12430,12 +12436,14 @@ async function biLoad() {
   if (contentEl) contentEl.style.display = 'none';
 
   try {
-    const [dmndRaw, amstRaw] = await Promise.all([
+    const [dmndRaw, amstRaw, prodRaw] = await Promise.all([
       ctrlFetch('/controle/demandas?limit=1000'),
       ctrlFetch('/controle/amostradores?limit=2000'),
+      ctrlFetch('/controle/produtividade/tecnicos').catch(() => []),
     ]);
     const demandas   = Array.isArray(dmndRaw) ? dmndRaw : (dmndRaw.items || []);
     const amostradores = Array.isArray(amstRaw) ? amstRaw : (amstRaw.items || []);
+    const prodTecnicos = Array.isArray(prodRaw) ? prodRaw : (prodRaw.items || []);
 
     if (loadEl)    loadEl.style.display   = 'none';
     if (contentEl) contentEl.style.display = 'block';
@@ -12669,54 +12677,32 @@ async function biLoad() {
     if (slaLeg && concl.length) slaLeg.innerHTML = `<span style="color:#4ade80;">&#9632; No prazo: ${pctOk}%</span><span style="color:#f87171;">&#9632; Em atraso: ${pctLate}%</span><span style="color:var(--text3);">&#9632; Sem dados: ${slaSemDados.length}</span>`;
 
     // ── S5: Produtividade por Técnico ────────────────────────────
-    // MARCO ZERO (go-live): a produtividade só conta CONCLUSÕES a partir desta data,
-    // usando o responsável REAL da demanda. O histórico do Planner (legado, sem
-    // atribuição confiável) fica fora — assim as métricas começam do zero hoje.
-    const _PROD_MARCO_ZERO = '2026-06-01';
-    const prodMap = {};
-    const mesAtual = new Date().toISOString().slice(0,7);
-    const _hojeISO = new Date().toISOString().slice(0,10);
-    const _prodTec = d => (d.responsavel_efetivo || d.responsavel || 'Sem responsável').trim();
-    const _prodInit = tec => { if (!prodMap[tec]) prodMap[tec] = { total:0, concluidas:0, abertas:0, atrasadas:0, mes:0, items:[] }; };
-    demandas.forEach(d => {
-      const st = (d.status||'').toLowerCase();
-      const isConcl = st==='concluida'||st==='concluída';
-      if (isConcl) {
-        // Só conta conclusões a partir do marco zero (data real de conclusão).
-        const dataConcl = (d.concluido_em_ms || '').slice(0,10);
-        if (!dataConcl || dataConcl < _PROD_MARCO_ZERO) return; // legado → fora
-        const tec = _prodTec(d); _prodInit(tec);
-        prodMap[tec].total++; prodMap[tec].concluidas++; prodMap[tec].items.push(d);
-        if (dataConcl.slice(0,7) === mesAtual) prodMap[tec].mes++;
-      } else {
-        // Demandas abertas = carga de trabalho atual do responsável.
-        const tec = _prodTec(d); _prodInit(tec);
-        prodMap[tec].total++; prodMap[tec].abertas++; prodMap[tec].items.push(d);
-        if (d.prazo && d.prazo < _hojeISO) prodMap[tec].atrasadas++;
-      }
-    });
-    const prodEntries = Object.entries(prodMap).sort((a,b) => b[1].total - a[1].total);
+    // Conta MEDIÇÕES (coletas) finalizadas, atribuídas ao técnico que as fez
+    // (coletas_*.tecnico_login). Cada coleta de ruído/químico/outros = 1 medição.
+    // Fonte: /controle/produtividade/tecnicos (agregado no backend).
+    const prodEntries = (prodTecnicos || []).map(v => [v.tecnico, v]);
     window._biProdEntries = prodEntries; // armazenar para drill-down por índice
+    const _prodMaxTotal = prodEntries.reduce((m,[,v]) => Math.max(m, v.total||0), 0) || 1;
     const prodWrap = document.getElementById('bi-prod-wrap');
     if (prodWrap) {
       if (!prodEntries.length) {
-        prodWrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--text3);font-size:.78rem;">Nenhuma demanda com responsável atribuído</div>';
+        prodWrap.innerHTML = '<div style="text-align:center;padding:28px;color:var(--text3);font-size:.78rem;">Nenhuma medição registrada ainda</div>';
       } else {
         prodWrap.innerHTML = prodEntries.map(([tec, v], i) => {
-          const pct = v.total ? Math.round(v.concluidas/v.total*100) : 0;
-          const barColor = pct >= 80 ? '#4ade80' : pct >= 50 ? '#fb923c' : '#f87171';
-          const initials = tec.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+          // Barra = volume relativo ao técnico que mais mediu.
+          const pct = Math.round((v.total||0)/_prodMaxTotal*100);
+          const barColor = '#4ade80';
+          const initials = String(tec||'?').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
           return `<div onclick="biProdDrill(${i})" style="display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:6px;background:var(--surface2);transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='var(--surface2)'">
             <div style="width:32px;height:32px;border-radius:50%;background:rgba(251,146,60,.15);color:var(--orange);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;flex-shrink:0;">${initials}</div>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:.83rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${tec}</div>
+              <div style="font-size:.83rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(tec)}</div>
               <div style="margin-top:5px;background:var(--border);border-radius:4px;height:5px;overflow:hidden;"><div style="height:100%;background:${barColor};width:${pct}%;border-radius:4px;"></div></div>
             </div>
             <div style="display:flex;gap:12px;flex-shrink:0;text-align:center;font-size:.7rem;">
-              <div><div style="font-weight:800;color:var(--text);font-size:.9rem;">${v.total}</div><div style="color:var(--text3);">total</div></div>
-              <div><div style="font-weight:800;color:#4ade80;font-size:.9rem;">${v.concluidas}</div><div style="color:var(--text3);">feitas</div></div>
-              <div><div style="font-weight:800;color:var(--orange);font-size:.9rem;">${v.mes}</div><div style="color:var(--text3);">este mês</div></div>
-              ${v.atrasadas > 0 ? `<div><div style="font-weight:800;color:#f87171;font-size:.9rem;">${v.atrasadas}</div><div style="color:var(--text3);">atrasadas</div></div>` : ''}
+              <div><div style="font-weight:800;color:var(--text);font-size:.9rem;">${v.total||0}</div><div style="color:var(--text3);">medições</div></div>
+              <div><div style="font-weight:800;color:var(--orange);font-size:.9rem;">${v.mes||0}</div><div style="color:var(--text3);">este mês</div></div>
+              <div><div style="font-weight:800;color:#60a5fa;font-size:.9rem;">${v.empresas||0}</div><div style="color:var(--text3);">empresas</div></div>
             </div>
           </div>`;
         }).join('');

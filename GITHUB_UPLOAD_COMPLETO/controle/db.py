@@ -2050,6 +2050,50 @@ def stats_dashboard():
         return row_to_dict(conn.execute(sql).fetchone())
 
 
+def produtividade_por_tecnico():
+    """Produtividade contada POR MEDIÇÃO (coleta), atribuída ao técnico que a
+    finalizou (coletas_*.tecnico_login). Cada coleta de ruído/químico/outros =
+    1 medição feita. Legado sem tecnico_login cai no campo antigo
+    (tecnico / responsavel_coleta / avaliador).
+    Retorna lista de dicts: {tecnico, total, mes, ruido, quimico, outros, empresas}.
+    'mes' = medições com data_coleta no mês corrente."""
+    from datetime import date as _date
+    mes_atual = _date.today().isoformat()[:7]  # 'YYYY-MM'
+    # (sql, rotulo_tipo, coluna_tecnico_legado)
+    fontes = [
+        ("SELECT tecnico_login, tecnico AS leg, data_coleta, empresa_nome FROM coletas_ruido", 'ruido'),
+        ("SELECT tecnico_login, responsavel_coleta AS leg, data_coleta, empresa_nome FROM coletas_quimico", 'quimico'),
+        ("SELECT tecnico_login, avaliador AS leg, data_coleta, empresa_nome FROM coletas_outros", 'outros'),
+    ]
+    agg = {}
+    with get_db() as conn:
+        for sql, tipo in fontes:
+            try:
+                rows = conn.execute(sql).fetchall()
+            except Exception:
+                rows = []
+            for r in rows:
+                d = row_to_dict(r)
+                tec = (d.get('tecnico_login') or d.get('leg') or '').strip() or 'Sem técnico'
+                a = agg.get(tec)
+                if not a:
+                    a = {'tecnico': tec, 'total': 0, 'mes': 0,
+                         'ruido': 0, 'quimico': 0, 'outros': 0, 'empresas': set()}
+                    agg[tec] = a
+                a['total'] += 1
+                a[tipo] += 1
+                if (d.get('data_coleta') or '')[:7] == mes_atual:
+                    a['mes'] += 1
+                if d.get('empresa_nome'):
+                    a['empresas'].add(d['empresa_nome'])
+    out = []
+    for a in agg.values():
+        a['empresas'] = len(a['empresas'])
+        out.append(a)
+    out.sort(key=lambda x: x['total'], reverse=True)
+    return out
+
+
 def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
     """Analytics operacional de amostradores (TASK C) — derivado dos
     timestamps reais, por isso reflete automaticamente cada mudança de status.

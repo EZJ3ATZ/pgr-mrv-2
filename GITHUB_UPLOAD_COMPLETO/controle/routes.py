@@ -95,6 +95,20 @@ def stats():
     return jsonify(d)
 
 
+@controle_bp.route('/produtividade/tecnicos')
+def produtividade_tecnicos():
+    """Produtividade por técnico contada POR MEDIÇÃO (coleta finalizada).
+    Cada coleta de ruído/químico/outros é atribuída a quem a finalizou
+    (coletas_*.tecnico_login). Alimenta o painel 'Produtividade por Técnico'."""
+    init_db()
+    from .db import produtividade_por_tecnico
+    try:
+        return jsonify(produtividade_por_tecnico())
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/amostradores/analytics')
 def amostradores_analytics():
     """Analytics operacional dos amostradores por status (TASK C).
