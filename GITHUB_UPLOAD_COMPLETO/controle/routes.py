@@ -2393,6 +2393,8 @@ def api_salvar_medicao_wizard():
     init_db()
     d = request.json or {}
     tipo = d.get('tipo', '')
+    # Técnico logado — cada medição é contabilizada para quem a finalizou
+    tecnico_login = (current_user.nome if current_user.is_authenticated else '') or ''
 
     if tipo == 'ruido':
         cr = d.get('campo_ruido') or {}
@@ -2402,6 +2404,7 @@ def api_salvar_medicao_wizard():
             'acompanhante':        cr.get('acomp', ''),
             'cargo_acompanhante':  cr.get('cargo_acomp', ''),
             'tecnico':             cr.get('tecnico') or d.get('avaliador', ''),
+            'tecnico_login':       tecnico_login,
             'data_coleta':         d.get('data', ''),
             'hora_inicio':         cr.get('hora_ini', ''),
             'hora_termino':        cr.get('hora_fim', ''),
@@ -2428,6 +2431,7 @@ def api_salvar_medicao_wizard():
             'empresa_id':    d.get('empresa_id'),
             'empresa_nome':  d.get('empresa_nome', ''),
             'avaliador':     d.get('avaliador', ''),
+            'tecnico_login': tecnico_login,
             'data_coleta':   d.get('data', ''),
             'status':        'concluida',
             'func_nome':     cq.get('func_nome', ''),
@@ -2460,6 +2464,7 @@ def api_salvar_medicao_wizard():
             'demanda_id':   d.get('demanda_id'),
             'numero_os':    d.get('os', ''),
             'avaliador':    d.get('avaliador', ''),
+            'tecnico_login': tecnico_login,
             'data_coleta':  d.get('data', ''),
             'acompanhante': gen.get('acomp', ''),
             'hora_inicio':  gen.get('hora_ini', ''),

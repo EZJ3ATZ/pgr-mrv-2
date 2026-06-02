@@ -1058,7 +1058,8 @@ def _migrate(conn):
     for col, tipo in [('calibrador', 'TEXT'), ('unidade', 'TEXT'),
                       ('cidade', 'TEXT'), ('resp_empresa', 'TEXT'),
                       ('os', 'TEXT'), ('visita_id', 'INTEGER'),
-                      ('planejamento_id', 'INTEGER')]:
+                      ('planejamento_id', 'INTEGER'),
+                      ('tecnico_login', 'TEXT')]:
         _add_col(conn, 'coletas_ruido', col, tipo)
 
     # ── coletas_quimico_amostr ──
@@ -1068,6 +1069,7 @@ def _migrate(conn):
     for tbl in ('coletas_quimico', 'coletas_outros'):
         _add_col(conn, tbl, 'visita_id', 'INTEGER')
         _add_col(conn, tbl, 'planejamento_id', 'INTEGER')
+        _add_col(conn, tbl, 'tecnico_login', 'TEXT')
 
     # ── visitas_tecnicas ──
     for col, tipo in [('planejamento_id', 'INTEGER'),
@@ -2338,7 +2340,7 @@ def save_coleta_outros(data):
     import json as _json
     cid = data.get('id')
     campos = ['tipo', 'empresa_id', 'empresa_nome', 'demanda_id', 'numero_os',
-              'avaliador', 'data_coleta', 'acompanhante', 'hora_inicio', 'hora_termino',
+              'avaliador', 'tecnico_login', 'data_coleta', 'acompanhante', 'hora_inicio', 'hora_termino',
               'unidade', 'cidade', 'observacao', 'status']
     vals = {c: data.get(c) for c in campos}
     extras = {k: v for k, v in data.items() if k not in campos + ['id', 'dados_json']}
@@ -2686,7 +2688,7 @@ def get_coleta_ruido(cid):
 def save_coleta_ruido(data):
     cid = data.get('id')
     campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'acompanhante',
-              'cargo_acompanhante', 'tecnico', 'data_coleta', 'hora_inicio',
+              'cargo_acompanhante', 'tecnico', 'tecnico_login', 'data_coleta', 'hora_inicio',
               'hora_termino', 'calibrador', 'calibracao_inicial', 'calibracao_final',
               'desvio_calibracao', 'status_calibracao', 'unidade', 'cidade',
               'resp_empresa', 'os', 'observacao', 'status']
@@ -2761,6 +2763,7 @@ def get_coleta_quimico(cid):
 def save_coleta_quimico(data):
     cid = data.get('id')
     campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'responsavel_coleta',
+              'tecnico_login',
               'cidade', 'unidade', 'data_coleta', 'dia_semana', 'turno',
               'nome_funcionario', 'jornada', 'funcao', 'setor', 'local_atividade',
               'atividade', 'ventilacao', 'ambiente', 'condicoes_meteo',

@@ -4381,7 +4381,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <button onclick="nvGerarRelatorioCampo()" style="background:var(--orange);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">📄 Relatório de Campo</button>
-        <button onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Concluir OS</button>
+        <button onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Finalizar planilha</button>
       </div>
       <div id="nv-final-status" style="margin-top:12px;font-size:.82rem;min-height:18px;"></div>
     </div>
@@ -13976,22 +13976,21 @@ async function nvGerarLaudo() { return nvGerarRelatorioCampo(); }
 async function nvConcluirOS() {
   const resp = await nvSalvarMedicao();
   if (!resp) return;  // erro ao salvar — não prossegue
-  const did = window._nvDemandaId;
   const os  = document.getElementById('ctrl-nv-os')?.value || '';
-  if (!did) { _showToast('✅ Medição salva! (sem OS vinculada para baixa)','ok'); return; }
-  // Notificação ao técnico: dar baixa nesta medição?
-  const ok = confirm(`Medição salva.\n\nDeseja dar baixa nesta medição?\nIsso marca a OS ${os || ''} como CONCLUÍDA no painel.`);
-  if (!ok) { _showToast('✅ Medição salva (OS mantida em andamento).','ok'); return; }
-  try {
-    await ctrlFetch(`/controle/demandas/${did}/concluir`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ planejamento_id: window._nvPlanejamentoId || null })
-    });
-    _showToast('✅ OS concluída — baixa registrada no painel!','ok');
-    if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
-  } catch(e) {
-    _showToast('Medição salva, mas falha ao dar baixa: ' + e.message,'err');
-  }
+  // A planilha NÃO conclui a OS. As medições ficam registradas como FEITAS
+  // (em seu nome) e somem da lista de pendências dos outros técnicos.
+  // A OS só é dada como CONCLUÍDA quando movida para o bucket
+  // "Entregue / Concluído" no Planner.
+  alert(
+    '✅ Planilha finalizada!\n\n' +
+    'As medições que você preencheu ficam registradas como FEITAS, em seu nome.\n' +
+    'Outro técnico que abrir esta empresa verá apenas as medições que ainda faltam — ' +
+    'não vai refazer as suas.\n\n' +
+    'ℹ️ A OS ' + (os ? os + ' ' : '') + 'só será marcada como CONCLUÍDA no painel quando ' +
+    'você movê-la para o bucket "Entregue / Concluído" no Planner.'
+  );
+  _showToast('✅ Planilha finalizada — medições registradas em seu nome.','ok');
+  if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
 }
 
 // nvGotoStep(1) é chamado na própria ctrlNvInit acima
