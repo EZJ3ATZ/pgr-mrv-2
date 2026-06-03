@@ -4395,13 +4395,13 @@
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <button id="nv-btn-salvar" onclick="nvSalvarMedicao()" style="background:var(--green);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">✅ Salvar Medição</button>
-        <button onclick="ctrlNvGerarPDF()" style="background:#2563EB;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">📄 Ficha de Campo</button>
+      <div style="margin-bottom:10px;">
+        <button id="nv-btn-finalizar" onclick="nvConcluirOS()" style="width:100%;background:var(--green);color:#fff;border:none;padding:14px;border-radius:8px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">✓ Finalizar planilha</button>
+        <div style="font-size:.7rem;color:var(--text3);text-align:center;margin-top:5px;">Salva e registra a medição no seu nome. A OS só fecha ao mover para o bucket "Entregue / Concluído" no Planner.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="ctrlNvGerarPDF()" style="background:#2563EB;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;">📄 Ficha de Campo</button>
         <button onclick="nvGerarRelatorioCampo()" style="background:var(--orange);color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">📄 Relatório de Campo</button>
-        <button id="nv-btn-finalizar" onclick="nvConcluirOS()" style="background:#7C3AED;color:#fff;border:none;padding:13px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">✓ Finalizar planilha</button>
       </div>
       <div id="nv-final-status" style="margin-top:12px;font-size:.82rem;min-height:18px;"></div>
     </div>
