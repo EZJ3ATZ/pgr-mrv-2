@@ -2054,6 +2054,19 @@ from .db import (list_coletas_ruido, get_coleta_ruido, save_coleta_ruido,
                  list_coletas_quimico, get_coleta_quimico, save_coleta_quimico,
                  save_coleta_outros)
 
+@controle_bp.route('/coletas/feitas')
+def api_coletas_feitas():
+    """Lista unificada de planilhas finalizadas (ruído+químico+outros),
+    com o técnico de cada uma. Alimenta a aba 'Planilhas Feitas'."""
+    init_db()
+    from .db import list_coletas_feitas
+    try:
+        limit = min(int(request.args.get('limit', 300) or 300), 1000)
+    except Exception:
+        limit = 300
+    return jsonify(list_coletas_feitas(limit))
+
+
 @controle_bp.route('/coletas/ruido')
 def api_list_coletas_ruido():
     init_db()

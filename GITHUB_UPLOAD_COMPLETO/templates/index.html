@@ -2176,6 +2176,11 @@
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19.88 18.47c.44-.7.7-1.51.7-2.39 0-2.49-2.01-4.5-4.5-4.5s-4.5 2.01-4.5 4.5 2.01 4.5 4.49 4.5c.88 0 1.7-.26 2.39-.7L21.58 23 23 21.58zm-3.8.11c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5m-.36-8.5c-.74.02-1.45.18-2.1.45l-.55-.83-3.8 6.18-3.01-3.52-3.63 5.81L1 17l5-8 3 3.5L13 6zm2.59.5c-.64-.28-1.33-.45-2.05-.49L21.38 2 23 3.18z"/></svg>
       <span>Analytics BI</span>
     </div>
+
+    <div class="sidebar-item" data-name="planilhas" onclick="goToTab('planilhas')">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m0 16H5V5h14zM7 12h2v5H7zm4-5h2v10h-2zm4 3h2v7h-2z"/></svg>
+      <span>Planilhas Feitas</span>
+    </div>
   </div>
 
   <div class="sidebar-divider"></div>
@@ -5058,6 +5063,22 @@
 </div>
 </div>
 
+<!-- ══ Painel PLANILHAS FEITAS ═════════════════════════════════════════ -->
+<div id="tab-planilhas" class="tab-panel">
+<div class="page" style="max-width:1100px;">
+  <div class="page-head page-head-v2">
+    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Medições · Ocupacional SST</div>
+    <div class="page-title sec-title">Planilhas Feitas</div>
+    <div class="page-sub sec-sub">Todas as medições finalizadas (ruído, químico, calor, vibração) — empresa, OS, data e o técnico que finalizou. É a confirmação de que a medição foi contabilizada.</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+    <input id="pf-busca" type="text" placeholder="Filtrar por empresa, OS ou técnico..." oninput="planilhasRender()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 12px;font-size:.82rem;font-family:inherit;outline:none;min-width:280px;">
+    <span id="pf-resumo" style="font-size:.74rem;color:var(--text3);"></span>
+  </div>
+  <div id="pf-lista"><div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div></div>
+</div>
+</div>
+
 <!-- ══ Painel EQUIPAMENTOS (inventário) ════════════════════════════════ -->
 <div id="tab-equipamentos" class="tab-panel">
 <div class="page" style="max-width:1040px;">
@@ -6004,6 +6025,7 @@ function goToTab(name) {
   if (name === 'saude') saudeCarregar();
   if (name === 'app-mobile') appMobileLoad();
   if (name === 'equipamentos') equipLoad();
+  if (name === 'planilhas') planilhasLoad();
   if (name === 'configuracoes') cfgCarregarPerfil();
   if (name === 'ruido') { nvSigInit('r-sig-avaliado'); nvSigInit('r-sig-empresa'); }
 }
@@ -9923,6 +9945,61 @@ function _calibChip(dataCalib, certValidade) {
   else if (dias <= 90) { cor='var(--yellow)'; bg='rgba(245,158,11,.12)'; txt=`vence em ${dias}d`; }
   else                 { cor='var(--green)';  bg='rgba(16,185,129,.12)'; txt=`válido até ${vfmt}`; }
   return `<span style="font-size:.68rem;color:${cor};background:${bg};padding:1px 7px;border-radius:3px;font-weight:600;white-space:nowrap;" title="Vencimento: ${vfmt}">${txt}</span>`;
+}
+
+// ── Aba dedicada: Planilhas Feitas ────────────────────────────────────
+let _pfDados = [];
+const _PF_TIPO_LABEL = {
+  ruido:'🔊 Ruído', quimico:'🧪 Químico', calor:'🌡️ Calor',
+  vibracao:'📳 Vibração', vibracao_vci:'📳 Vibração (corpo inteiro)',
+  vibracao_vbma:'📳 Vibração (mãos-braços)', outros:'📋 Outros'
+};
+
+async function planilhasLoad() {
+  const lista = document.getElementById('pf-lista');
+  if (lista) lista.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div>';
+  try {
+    const r = await ctrlFetch('/controle/coletas/feitas');
+    _pfDados = Array.isArray(r) ? r : [];
+    planilhasRender();
+  } catch(e) {
+    if (lista) lista.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${e.message}</div>`;
+  }
+}
+
+function planilhasRender() {
+  const lista  = document.getElementById('pf-lista');
+  const resumo = document.getElementById('pf-resumo');
+  if (!lista) return;
+  const q = (document.getElementById('pf-busca')?.value || '').toLowerCase().trim();
+  const dados = _pfDados.filter(c => !q ||
+    [c.empresa_nome, c.os, c.tecnico, c.tipo].some(v => String(v||'').toLowerCase().includes(q)));
+  // resumo por técnico (mostra que a medição foi contabilizada)
+  const porTec = {};
+  _pfDados.forEach(c => { const t = c.tecnico || 'Sem técnico'; porTec[t] = (porTec[t]||0)+1; });
+  if (resumo) resumo.textContent = `${_pfDados.length} planilha(s)` +
+    (Object.keys(porTec).length ? ' · ' + Object.entries(porTec).map(([t,n])=>`${t}: ${n}`).join('  ·  ') : '');
+  if (!dados.length) {
+    lista.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:.82rem;">Nenhuma planilha encontrada.</div>';
+    return;
+  }
+  const fmtData = (s) => { if(!s) return '—'; const p=String(s).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; };
+  lista.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+      <thead><tr style="text-align:left;border-bottom:1px solid var(--border);color:var(--text3);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;">
+        <th style="padding:8px 10px;">Data</th><th style="padding:8px 10px;">Empresa</th><th style="padding:8px 10px;">OS</th><th style="padding:8px 10px;">Tipo</th><th style="padding:8px 10px;">Técnico</th>
+      </tr></thead>
+      <tbody>
+        ${dados.map(c => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 10px;color:var(--text2);white-space:nowrap;">${fmtData(c.data_coleta)}</td>
+            <td style="padding:8px 10px;color:var(--text);">${_esc(c.empresa_nome)||'—'}</td>
+            <td style="padding:8px 10px;color:var(--text2);">${_esc(c.os)||'—'}</td>
+            <td style="padding:8px 10px;white-space:nowrap;">${_PF_TIPO_LABEL[c.tipo]||_esc(c.tipo)||'—'}</td>
+            <td style="padding:8px 10px;">${c.tecnico ? _esc(c.tecnico) : '<span style="color:var(--yellow);">⚠ sem técnico</span>'}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
 }
 
 // ── Aba dedicada: Inventário de Equipamentos ──────────────────────────

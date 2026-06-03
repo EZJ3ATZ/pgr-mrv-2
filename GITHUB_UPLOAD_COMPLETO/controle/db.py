@@ -2169,6 +2169,43 @@ def produtividade_por_tecnico():
     return out
 
 
+def list_coletas_feitas(limit=300):
+    """Lista unificada de planilhas (coletas) FINALIZADAS das 3 tabelas,
+    para a aba 'Planilhas Feitas'. Cada item mostra o técnico que finalizou
+    (tecnico_login; fallback no campo legado). Ordenada da mais recente."""
+    fontes = [
+        ('ruido',   'coletas_ruido',   'tecnico'),
+        ('quimico', 'coletas_quimico', 'responsavel_coleta'),
+        ('outros',  'coletas_outros',  'avaliador'),
+    ]
+    out = []
+    with get_db() as conn:
+        for tipo, tbl, legcol in fontes:
+            try:
+                rows = conn.execute(
+                    f'SELECT * FROM {tbl} ORDER BY criado_em DESC LIMIT ?', (limit,)
+                ).fetchall()
+            except Exception:
+                rows = []
+            for r in rows:
+                d = row_to_dict(r)
+                tipo_real = (d.get('tipo') or tipo) if tbl == 'coletas_outros' else tipo
+                out.append({
+                    'id':           d.get('id'),
+                    'tabela':       tbl,
+                    'tipo':         tipo_real,
+                    'empresa_nome': d.get('empresa_nome') or '',
+                    'os':           d.get('os') or d.get('numero_os') or '',
+                    'data_coleta':  d.get('data_coleta') or '',
+                    'tecnico':      (d.get('tecnico_login') or d.get(legcol) or '').strip(),
+                    'tem_login':    bool((d.get('tecnico_login') or '').strip()),
+                    'status':       d.get('status') or '',
+                    'criado_em':    d.get('criado_em') or '',
+                })
+    out.sort(key=lambda x: (x.get('criado_em') or x.get('data_coleta') or ''), reverse=True)
+    return out[:limit]
+
+
 def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
     """Analytics operacional de amostradores (TASK C) — derivado dos
     timestamps reais, por isso reflete automaticamente cada mudança de status.
