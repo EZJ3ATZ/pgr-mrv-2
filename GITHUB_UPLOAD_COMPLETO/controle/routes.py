@@ -3229,46 +3229,8 @@ def gerar_relatorio_ruido():
         cell_reg))
     elements.append(Spacer(1, 8))
 
-    # ─── Termo de Responsabilidade ───────────────────────────────────
-    elements.append(sec_label('6. TERMO DE RESPONSABILIDADE — DOSÍMETROS'))
-    elements.append(Spacer(1, 2))
-
-    termo_head = [
-        Paragraph('<b>N°</b>', cell_bold),
-        Paragraph('<b>Nome</b>', cell_bold),
-        Paragraph('<b>Função</b>', cell_bold),
-        Paragraph('<b>Assinatura</b>', cell_bold),
-        Paragraph('<b>Data Entrega</b>', cell_bold),
-        Paragraph('<b>Data Devolução</b>', cell_bold),
-    ]
-    termo_rows = [termo_head]
-
-    termos_fill = list(termos) if termos else []
-    while len(termos_fill) < 5:
-        termos_fill.append({})
-
-    for i, tr in enumerate(termos_fill, 1):
-        termo_rows.append([
-            Paragraph(str(i), cell_reg),
-            Paragraph(tr.get('nome','') or '', cell_reg),
-            Paragraph(tr.get('funcao','') or '', cell_reg),
-            Paragraph('', cell_reg),   # assinatura (campo em branco)
-            Paragraph(tr.get('data_entrega', data_fmt) or '', cell_reg),
-            Paragraph('', cell_reg),   # data devolução
-        ])
-
-    termo_tbl = Table(termo_rows, colWidths=[W*0.04, W*0.24, W*0.20, W*0.22, W*0.15, W*0.15],
-                      repeatRows=1)
-    termo_tbl.setStyle(TableStyle([
-        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
-        ('GRID',(0,0),(-1,-1),0.4,BORDA),
-        ('FONTSIZE',(0,0),(-1,-1),8),
-        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
-        ('LEFTPADDING',(0,0),(-1,-1),4),
-        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA]),
-    ]))
-    elements.append(termo_tbl)
-    elements.append(Spacer(1, 10))
+    # (Seção "Termo de Responsabilidade — Dosímetros" removida da planilha
+    #  de campo a pedido. O input de entrega/devolução no wizard segue existindo.)
 
     # ─── Assinaturas finais ──────────────────────────────────────────
     # Assinatura digital do responsável técnico (obrigatória no app) → coluna 1
