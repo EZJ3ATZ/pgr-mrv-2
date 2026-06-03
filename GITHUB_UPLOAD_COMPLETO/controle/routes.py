@@ -4553,6 +4553,40 @@ def graph_sync_error():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/graph/test_mail')
+def graph_test_mail():
+    """Verifica se o APP (identidade de Aplicação) tem permissão Mail.Read.All:
+    tenta ler 1 e-mail de uma caixa. 403 = permissão NÃO concedida no Azure."""
+    init_db()
+    from .graph import list_emails
+    mailbox = request.args.get('mailbox', 'engenharia19@ocupacional.com.br')
+    try:
+        msgs = list_emails(mailbox, top=1)
+        return jsonify({
+            'ok': True,
+            'mailbox': mailbox,
+            'permissao_mail_read': 'CONCEDIDA ✓',
+            'lidos': len(msgs),
+            'amostra_assunto': (msgs[0].get('subject') if msgs else '(caixa vazia)'),
+            'conclusao': 'O app PODE ler e-mails — dá para construir a ingestão automática.'
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        msg = str(e)
+        code = getattr(e, 'code', None)
+        sem_perm = (code in (401, 403)) or ('403' in msg) or ('Forbidden' in msg) or ('Access' in msg) or ('Authorization' in msg)
+        return jsonify({
+            'ok': False,
+            'mailbox': mailbox,
+            'permissao_mail_read': 'NEGADA ✗' if sem_perm else 'erro ao testar',
+            'erro': msg,
+            'codigo_http': code,
+            'conclusao': ('Falta a permissão Mail.Read.All (Aplicação) com consentimento do admin no Azure '
+                          'para o app registrado (AZURE_CLIENT_ID). Sem isso, a ingestão de e-mails não roda.')
+                         if sem_perm else 'Erro inesperado — ver o campo "erro".'
+        })
+
+
 @controle_bp.route('/graph/groups')
 def graph_list_groups():
     """Lista grupos Teams/Microsoft 365 disponíveis."""
