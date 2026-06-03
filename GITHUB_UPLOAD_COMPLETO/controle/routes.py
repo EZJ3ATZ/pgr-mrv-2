@@ -481,9 +481,14 @@ def concluir_amostradores_utilizados():
 
     alvo, ja, com_cadeia = [], 0, 0
     with get_db() as conn:
-        for r in conn.execute('SELECT id, codigo, status FROM amostradores').fetchall():
+        for r in conn.execute('SELECT id, codigo, tipo, status FROM amostradores').fetchall():
             d = row_to_dict(r)
-            if _norm(d.get('codigo')) in USADOS:
+            cod  = _norm(d.get('codigo'))
+            tipo = _norm(d.get('tipo'))
+            # No sistema o código pode estar só o sufixo (15T47) com tipo à parte (PVC),
+            # ou já completo (PVC15T47). Nas cadeias é sempre completo → testa as duas formas.
+            candidatos = {cod, tipo + cod}
+            if candidatos & USADOS:
                 com_cadeia += 1
                 if d.get('status') == 'concluido':
                     ja += 1
