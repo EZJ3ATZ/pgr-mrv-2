@@ -12029,8 +12029,9 @@ async function ctrlConcluirUtilizados() {
       method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
     });
     _showToast(`✓ ${r.concluidos} concluídos — ${r.com_cadeia} têm cadeia (${r.ja_concluidos} já estavam)`, 'success');
+    _ctrlStatsCache = null;   // invalida cache p/ os cards (Estoque/Lab/Total) recalcularem
     ctrlLoadAmostr();
-    if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
+    if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
   } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
 }
 
