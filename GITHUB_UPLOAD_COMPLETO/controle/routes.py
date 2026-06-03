@@ -600,58 +600,45 @@ def update_equipamento(eid):
     return jsonify({'ok': True})
 
 
-# Frota real de bombas (marca, modelo, serial, label) — seriais dos certificados
+# Frota real de bombas — dados conferidos nos certificados de calibração.
+# (marca, modelo, numero_serie, label, cert_numero, data_calibracao YYYY-MM-DD)
+# Validade = data_calibracao + 2 anos (calculada automaticamente).
 _BOMBAS_FROTA = [
-    ('SKC',    'AIRLITE',   'A060502',     'Bomba SKC AIRLITE'),
-    ('SKC',    'AIRLITE',   'A061553',     'Bomba SKC AIRLITE'),
-    ('SKC',    'AIRLITE',   'A061585',     'Bomba SKC AIRLITE'),
-    ('SKC',    'AIRLITE',   'A062462',     'Bomba SKC AIRLITE'),
-    ('SKC',    'AIRLITE',   'A63555',      'Bomba SKC AIRLITE'),
-    ('Gilian', 'BDX-II',    '38356',       'Bomba Gilian BDX-II'),
-    ('Gilian', 'BDX-II',    '38357',       'Bomba Gilian BDX-II'),
-    ('Gilian', 'BDX-II',    '38358',       'Bomba Gilian BDX-II'),
-    ('Gilian', 'BDX-II',    '38359',       'Bomba Gilian BDX-II'),
-    ('Formis', 'TURAM',     '2420120549',  'Bomba Formis TURAM'),
-    ('Formis', 'TURAM',     '2420120550',  'Bomba Formis TURAM'),
-    ('Formis', 'TURAM',     '2420120551',  'Bomba Formis TURAM'),
-    ('Inlite', 'VENTUSPRO', '25040902602B', 'Bomba Inlite'),
-    ('Inlite', 'VENTUSPRO', '25040903102B', 'Bomba Inlite'),
-    ('Inlite', 'VENTUSPRO', '25040907102B', 'Bomba Inlite'),
+    ('SKC',    'AIRLITE',   'A060502',      'Bomba SKC AIRLITE',   '315125B',    '2025-11-18'),
+    ('SKC',    'AIRLITE',   'A061553',      'Bomba SKC AIRLITE',   '270925B',    '2025-01-09'),
+    ('SKC',    'AIRLITE',   'A061585',      'Bomba SKC AIRLITE',   '315025B',    '2025-11-18'),
+    ('SKC',    'AIRLITE',   'A062462',      'Bomba SKC AIRLITE',   '315225B',    '2025-11-18'),
+    ('SKC',    'AIRLITE',   'A63555',       'Bomba SKC AIRLITE',   '171922B',    '2022-06-23'),
+    ('Gilian', 'BDX-II',    '20230702029',  'Bomba Gilian BDX-II', '2602A38356', '2026-02-28'),
+    ('Gilian', 'BDX-II',    '20141201119',  'Bomba Gilian BDX-II', '2602A38357', '2026-02-28'),
+    ('Gilian', 'BDX-II',    '20230702030',  'Bomba Gilian BDX-II', '2602A38358', '2026-02-28'),
+    ('Gilian', 'BDX-II',    '20230702024',  'Bomba Gilian BDX-II', '2602A38359', '2026-02-28'),
+    ('Formis', 'TURAM',     '2420120549',   'Bomba Formis TURAM',  None,         '2025-09-29'),
+    ('Formis', 'TURAM',     '2420120550',   'Bomba Formis TURAM',  None,         '2025-09-29'),
+    ('Formis', 'TURAM',     '2420120551',   'Bomba Formis TURAM',  None,         '2025-09-29'),
+    ('Inlite', 'VENTUSPRO', '25040902602B', 'Bomba Inlite',        '42.188-2025', '2025-08-28'),
+    ('Inlite', 'VENTUSPRO', '25040903102B', 'Bomba Inlite',        '42.187-2025', '2025-08-28'),
+    ('Inlite', 'VENTUSPRO', '25040907102B', 'Bomba Inlite',        '42.186-2025', '2025-08-28'),
 ]
 
 
 @controle_bp.route('/equipamentos/rebuild-bombas', methods=['POST'])
 def rebuild_bombas():
     """Reconstrói o inventário de BOMBAS com a frota real dos certificados
-    (15 bombas, seriais conferidos). Substitui as bombas existentes.
-    Preserva data_calibracao/cert quando o serial já existir no banco."""
+    (15 bombas: marca, série, nº de certificado e data de calibração conferidos
+    nos PDFs). Substitui as bombas existentes."""
     init_db()
     with get_db() as conn:
-        # guarda calibração já preenchida (por serial) para não perder
-        antigos = {}
-        try:
-            for r in conn.execute(
-                "SELECT numero_serie, data_calibracao, cert_numero, cert_validade "
-                "FROM equipamentos_inventario WHERE tipo='bomba'"
-            ).fetchall():
-                d = row_to_dict(r)
-                sn = (d.get('numero_serie') or '').strip()
-                if sn:
-                    antigos[sn] = d
-        except Exception:
-            pass
         conn.execute("DELETE FROM equipamentos_inventario WHERE tipo='bomba'")
-        for marca, modelo, sn, label in _BOMBAS_FROTA:
-            prev = antigos.get(sn, {})
+        for marca, modelo, sn, label, cert, dcal in _BOMBAS_FROTA:
             conn.execute(
                 "INSERT INTO equipamentos_inventario "
                 "(tipo, marca, modelo, numero_serie, compatibilidade, status, "
                 "cert_numero, cert_validade, observacao, data_calibracao) "
-                "VALUES ('bomba',?,?,?,'','disponivel',?,?,?,?)",
-                (marca, modelo, sn, prev.get('cert_numero'),
-                 prev.get('cert_validade'), label, prev.get('data_calibracao'))
+                "VALUES ('bomba',?,?,?,'','disponivel',?,NULL,?,?)",
+                (marca, modelo, sn, cert, label, dcal)
             )
-    registrar_evento('limpeza_demandas', f'Frota de bombas reconstruída ({len(_BOMBAS_FROTA)} bombas)',
+    registrar_evento('limpeza_demandas', f'Frota de bombas reconstruída ({len(_BOMBAS_FROTA)} bombas, dos certificados)',
                      None, 'equipamento',
                      current_user.nome if current_user.is_authenticated else 'sistema',
                      request.remote_addr)
