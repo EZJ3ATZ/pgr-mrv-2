@@ -1830,19 +1830,63 @@ def previsao_estoque():
                     'agente': agente, 'prazo': m['prazo'], 'pontos': pontos_faltam
                 })
 
-    # Contar estoque atual por tipo
+    # ── Inteligência de pedido: consumo histórico (cadeias) + lead time ──
+    import math as _math
+    from datetime import date as _date, timedelta as _td
+    try:
+        from .cadeia_consumo import CONSUMO_MENSAL, JANELA
+    except Exception:
+        CONSUMO_MENSAL, JANELA = {}, ''
+    LEAD = 7        # dias que o laboratório leva para entregar um pedido
+    MARGEM = 7      # folga de segurança
+    hoje = _date.today()
+
+    # Contar estoque atual por tipo + calcular quando/por que pedir
     with get_db() as conn:
         for tipo, dados in necessidades.items():
             r = conn.execute(
                 "SELECT COUNT(*) c FROM amostradores WHERE tipo=? AND status='disponivel'",
                 (tipo,)).fetchone()
-            dados['em_estoque'] = r['c'] if r else 0
-            dados['falta'] = max(0, dados['qtd_necessaria'] - dados['em_estoque'])
+            estoque = r['c'] if r else 0
+            dados['em_estoque'] = estoque
+            dados['falta'] = max(0, dados['qtd_necessaria'] - estoque)
 
-    # Ordenar: mais crítico primeiro (falta > 0, depois por qtd necessaria)
+            consumo = float(CONSUMO_MENSAL.get(tipo, 0) or 0)
+            dados['consumo_mensal'] = consumo
+            dias_cob = int(estoque / (consumo / 30.0)) if consumo > 0 else None
+            dados['dias_cobertura'] = dias_cob
+
+            if dados['falta'] > 0:
+                dados['acao'] = 'pedir_ja'
+                dados['quando'] = hoje.isoformat()
+                dados['qtd_sugerida'] = max(dados['falta'], _math.ceil(consumo) if consumo else dados['falta'])
+                dados['motivo'] = (f"Faltam {dados['falta']} para as demandas pendentes "
+                                   f"(necessário {dados['qtd_necessaria']}, em estoque {estoque}).")
+            elif dias_cob is not None and dias_cob <= LEAD + MARGEM:
+                dados['acao'] = 'pedir_ja'
+                dados['quando'] = hoje.isoformat()
+                dados['qtd_sugerida'] = max(1, _math.ceil(consumo))
+                dados['motivo'] = (f"Estoque ({estoque}) cobre ~{dias_cob} dias; consumo {consumo}/mês; "
+                                   f"o lab leva {LEAD} dias. Pedir agora para não faltar.")
+            elif dias_cob is not None:
+                quando = hoje + _td(days=max(0, dias_cob - LEAD - MARGEM))
+                dados['acao'] = 'agendar'
+                dados['quando'] = quando.isoformat()
+                dados['qtd_sugerida'] = max(1, _math.ceil(consumo))
+                dados['motivo'] = (f"Estoque ({estoque}) cobre ~{dias_cob} dias (consumo {consumo}/mês). "
+                                   f"Pedir até {quando.strftime('%d/%m/%Y')} — o lab leva {LEAD} dias.")
+            else:
+                dados['acao'] = 'ok'
+                dados['quando'] = ''
+                dados['qtd_sugerida'] = 0
+                dados['motivo'] = 'Sem falta nas demandas e sem histórico de consumo — sem necessidade imediata.'
+
+    # Ordenar: pedir já primeiro, depois por falta/necessidade
+    _ord = {'pedir_ja': 0, 'agendar': 1, 'ok': 2}
     lista = sorted(
         [{'tipo': t, **v} for t, v in necessidades.items()],
-        key=lambda x: (-x['falta'], -x['qtd_necessaria'])
+        key=lambda x: (_ord.get(x.get('acao'), 3), -x['falta'],
+                       x.get('dias_cobertura') if x.get('dias_cobertura') is not None else 99999)
     )
 
     return jsonify({
@@ -1850,6 +1894,8 @@ def previsao_estoque():
         'agentes_sem_guia': sorted(agentes_sem_guia),
         'agentes_fisicos': sorted(agentes_fisicos_presentes),
         'total_medicoes_pendentes': len(meds),
+        'lead_time_dias': LEAD,
+        'consumo_janela': JANELA,
     })
 
 

@@ -4461,11 +4461,11 @@
       <button onclick="ctrlLoadPrevisao()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); padding:7px 14px; border-radius:6px; font-size:.8rem; cursor:pointer;">🔄 Atualizar</button>
     </div>
     <div style="background:rgba(57,153,255,.06); border-left:3px solid #39f; padding:10px 14px; border-radius:6px; margin-bottom:14px; font-size:.8rem;">
-      Cruza <b>medições pendentes</b> com o <b>guia de métodos</b> e o <b>estoque atual</b>.
-      Mostra quantos amostradores de cada tipo são necessários e se há falta.
+      Cruza <b>medições pendentes</b> + <b>guia de métodos</b> + <b>estoque atual</b> + <b>consumo histórico</b> (das cadeias de custódia)
+      e diz <b>o que pedir, quanto, quando e por quê</b> — considerando que o laboratório leva ~7 dias para entregar.
     </div>
 
-    <!-- Alertas de falta -->
+    <!-- Plano de pedido (inteligência) -->
     <div id="ctrl-prev-alertas" style="margin-bottom:14px;"></div>
 
     <!-- Tabela principal -->
@@ -4475,11 +4475,11 @@
           <tr>
             <th>Tipo</th>
             <th>Método</th>
-            <th>Vazão / Volume</th>
+            <th style="text-align:center;">Consumo/mês</th>
             <th style="text-align:center;">Necessário</th>
             <th style="text-align:center;">Em Estoque</th>
             <th style="text-align:center;">Falta</th>
-            <th>Demandas</th>
+            <th>📦 Pedido (quando / por quê)</th>
           </tr>
         </thead>
         <tbody id="ctrl-tb-prev">
@@ -11454,19 +11454,29 @@ async function ctrlLoadPrevisao() {
     const lista = data.necessidades || [];
     resumo.textContent = `${data.total_medicoes_pendentes} medições pendentes`;
 
-    // Alertas de falta
-    const faltando = lista.filter(x => x.falta > 0);
-    if (faltando.length > 0) {
-      alertas.innerHTML = `
-        <div style="background:rgba(239,68,68,.08); border-left:3px solid #e22; border-radius:6px; padding:10px 14px; font-size:.82rem;">
-          <b style="color:#e22;">⚠ Estoque insuficiente para ${faltando.length} tipo(s):</b>
-          ${faltando.map(x => `<span style="background:rgba(239,68,68,.15); border-radius:4px; padding:2px 7px; margin:2px; display:inline-block;">
-            ${x.tipo} — falta <b>${x.falta}</b>
-          </span>`).join('')}
-        </div>`;
-    } else if (lista.length > 0) {
-      alertas.innerHTML = `<div style="background:var(--green-bg); border-left:3px solid var(--green); border-radius:6px; padding:8px 14px; font-size:.82rem; color:var(--green);">✓ Estoque suficiente para todas as demandas pendentes.</div>`;
+    const _fd = s => { if(!s) return '—'; const p=String(s).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}`:s; };
+
+    // Plano de pedido inteligente (o que / quanto / quando / por quê)
+    const pedirJa = lista.filter(x => x.acao === 'pedir_ja');
+    const agendar = lista.filter(x => x.acao === 'agendar');
+    let plano = '';
+    if (pedirJa.length) {
+      plano += `<div style="background:rgba(239,68,68,.08);border-left:3px solid #e22;border-radius:6px;padding:10px 14px;font-size:.82rem;margin-bottom:8px;">
+        <b style="color:#e22;">🛒 Pedir já (${pedirJa.length}):</b>
+        ${pedirJa.map(x => `<span title="${(x.motivo||'').replace(/"/g,'&quot;')}" style="background:rgba(239,68,68,.15);border-radius:4px;padding:2px 8px;margin:2px;display:inline-block;cursor:help;">${x.tipo} — <b>${x.qtd_sugerida} un.</b></span>`).join('')}
+      </div>`;
     }
+    if (agendar.length) {
+      plano += `<div style="background:rgba(245,158,11,.08);border-left:3px solid #f59e0b;border-radius:6px;padding:10px 14px;font-size:.82rem;">
+        <b style="color:#f59e0b;">📅 Agendar pedido:</b>
+        ${agendar.map(x => `<span title="${(x.motivo||'').replace(/"/g,'&quot;')}" style="background:rgba(245,158,11,.13);border-radius:4px;padding:2px 8px;margin:2px;display:inline-block;cursor:help;">${x.tipo} (${x.qtd_sugerida}) — até <b>${_fd(x.quando)}</b></span>`).join('')}
+      </div>`;
+    }
+    if (!pedirJa.length && !agendar.length && lista.length) {
+      plano = `<div style="background:var(--green-bg);border-left:3px solid var(--green);border-radius:6px;padding:8px 14px;font-size:.82rem;color:var(--green);">✓ Estoque e consumo sob controle — nenhum pedido necessário agora.</div>`;
+    }
+    if (data.consumo_janela) plano += `<div style="font-size:.68rem;color:var(--text3);margin-top:6px;">Consumo médio das cadeias de custódia (${data.consumo_janela}); o laboratório entrega em ~${data.lead_time_dias||7} dias.</div>`;
+    alertas.innerHTML = plano;
 
     if (!lista.length) {
       tb.innerHTML = '<tr><td colspan="7" class="ctrl-empty">Nenhuma medição pendente com guia de método.</td></tr>';
@@ -11475,21 +11485,19 @@ async function ctrlLoadPrevisao() {
 
     tb.innerHTML = lista.map(x => {
       const corFalta = x.falta > 0 ? '#e22' : '#0a7';
-      const fundoFalta = x.falta > 0 ? 'rgba(239,68,68,.08)' : '';
-      // Top 3 demandas
-      const meds = x.medicoes || [];
-      const demStr = meds.map(m =>
-        `<span style="font-size:.7rem; color:var(--text3);">${m.empresa}${m.os ? ` <span style="color:var(--text2);">(OS ${m.os})</span>` : ''}${m.prazo ? ` <span style="color:#f80;">${m.prazo}</span>` : ''}</span>`
-      ).join('<br>');
-      const mais = '';
-      return `<tr style="background:${fundoFalta};">
+      const fundo = x.acao==='pedir_ja' ? 'rgba(239,68,68,.06)' : (x.acao==='agendar' ? 'rgba(245,158,11,.05)' : '');
+      const badge = x.acao==='pedir_ja' ? `<span style="background:rgba(239,68,68,.15);color:#e22;border-radius:4px;padding:1px 7px;font-weight:700;font-size:.68rem;">PEDIR JÁ</span>`
+                  : x.acao==='agendar' ? `<span style="background:rgba(245,158,11,.15);color:#f59e0b;border-radius:4px;padding:1px 7px;font-weight:700;font-size:.68rem;">ATÉ ${_fd(x.quando)}</span>`
+                  : `<span style="color:var(--text3);font-size:.68rem;">OK</span>`;
+      const qtd = x.qtd_sugerida ? ` <b>${x.qtd_sugerida} un.</b>` : '';
+      return `<tr style="background:${fundo};">
         <td style="padding:7px 10px;"><b>${x.tipo}</b></td>
-        <td style="padding:7px 10px; font-size:.78rem; color:var(--text3);">${x.metodo||'—'}</td>
-        <td style="padding:7px 10px; font-size:.78rem; color:var(--text3);">${x.vazao||'—'} / ${x.volume||'—'}</td>
+        <td style="padding:7px 10px; font-size:.76rem; color:var(--text3);">${x.metodo||'—'}</td>
+        <td style="padding:7px 10px; text-align:center; font-size:.8rem;">${x.consumo_mensal ? Number(x.consumo_mensal).toFixed(1) : '—'}</td>
         <td style="padding:7px 10px; text-align:center; font-weight:600;">${x.qtd_necessaria}</td>
         <td style="padding:7px 10px; text-align:center; color:${x.em_estoque > 0 ? '#0a7':'#e22'}; font-weight:600;">${x.em_estoque}</td>
         <td style="padding:7px 10px; text-align:center; color:${corFalta}; font-weight:700;">${x.falta > 0 ? x.falta : '✓'}</td>
-        <td style="padding:7px 10px; max-width:300px;"><div style="max-height:120px; overflow-y:auto;">${demStr}</div></td>
+        <td style="padding:7px 10px; max-width:340px; font-size:.74rem;">${badge}${qtd}<div style="color:var(--text3); margin-top:3px; line-height:1.3;">${x.motivo||''}</div></td>
       </tr>`;
     }).join('');
 
