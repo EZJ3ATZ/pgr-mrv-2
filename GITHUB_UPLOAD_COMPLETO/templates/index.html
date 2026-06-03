@@ -3665,9 +3665,13 @@
           <option value="">— Tipo —</option>
         </select>
         <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
-        <label style="display:inline-flex;align-items:center;gap:5px;font-size:.75rem;color:var(--text2);cursor:pointer;" title="Concluídos há +30 dias são arquivados automaticamente (mantidos para auditoria)">
-          <input type="checkbox" id="ctrl-f-arquivados" onchange="ctrlLoadAmostr()"> 🗄 Arquivados
-        </label>
+        <input type="checkbox" id="ctrl-f-arquivados" style="display:none;">
+        <button type="button" id="ctrl-btn-arquivados" onclick="ctrlToggleArquivados()"
+                title="Amostradores concluídos há mais de 30 dias são arquivados (somem da lista, mas ficam guardados para auditoria). Clique para vê-los."
+                style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 13px;font-size:.76rem;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M3 7v13h18V7"/><path d="M1 3h22v4H1z"/><path d="M10 11h4"/></svg>
+          <span id="ctrl-arq-lbl">Ver arquivados</span>
+        </button>
         <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
           <option value="entrada_asc">📅 Entrada: mais antiga</option>
           <option value="entrada_desc">📅 Entrada: mais nova</option>
@@ -11037,6 +11041,25 @@ async function ctrlLoadStats(contexto) {
 }
 
 let _ctrlSubAtiva = 'empresa';
+
+function ctrlToggleArquivados() {
+  const cb  = document.getElementById('ctrl-f-arquivados');
+  const btn = document.getElementById('ctrl-btn-arquivados');
+  const lbl = document.getElementById('ctrl-arq-lbl');
+  cb.checked = !cb.checked;
+  if (cb.checked) {
+    btn.style.background = 'rgba(245,158,11,.15)';
+    btn.style.borderColor = 'var(--yellow)';
+    btn.style.color = 'var(--yellow)';
+    if (lbl) lbl.textContent = 'Ocultar arquivados';
+  } else {
+    btn.style.background = 'var(--surface2)';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text2)';
+    if (lbl) lbl.textContent = 'Ver arquivados';
+  }
+  ctrlLoadAmostr();
+}
 
 async function ctrlLoadAmostr() {
   const q = new URLSearchParams();
