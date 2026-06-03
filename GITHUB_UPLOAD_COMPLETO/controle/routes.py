@@ -464,6 +464,51 @@ def concluir_amostradores():
     return jsonify({'ok': True, 'afetados': len(ids)})
 
 
+@controle_bp.route('/amostradores/concluir-utilizados', methods=['POST'])
+def concluir_amostradores_utilizados():
+    """Marca como CONCLUÍDO todo amostrador cujo código aparece numa cadeia de
+    custódia (= foi utilizado). Regra: tem cadeia → foi usado → concluído.
+    Os códigos usados vêm de controle/cadeia_usados.py (extraído das 854 cadeias)."""
+    init_db()
+    import re as _re
+    try:
+        from .cadeia_usados import USADOS
+    except Exception as e:
+        return jsonify({'erro': f'Lista de utilizados indisponível: {e}'}), 500
+
+    def _norm(c):
+        return _re.sub(r'\s+', '', str(c or '')).upper()
+
+    alvo, ja, com_cadeia = [], 0, 0
+    with get_db() as conn:
+        for r in conn.execute('SELECT id, codigo, status FROM amostradores').fetchall():
+            d = row_to_dict(r)
+            if _norm(d.get('codigo')) in USADOS:
+                com_cadeia += 1
+                if d.get('status') == 'concluido':
+                    ja += 1
+                else:
+                    alvo.append(d['id'])
+        if alvo:
+            ph = ','.join(['?'] * len(alvo))
+            conn.execute(
+                f"""UPDATE amostradores
+                    SET status='concluido',
+                        data_conclusao=COALESCE(data_conclusao, ?),
+                        observacao=COALESCE(NULLIF(observacao, ''), 'Concluído — consta em cadeia de custódia'),
+                        atualizado_em=CURRENT_TIMESTAMP
+                    WHERE id IN ({ph})""",
+                [datetime.now().strftime('%Y-%m-%d')] + alvo
+            )
+    registrar_evento('amostrador_atualizado',
+                     f'{len(alvo)} amostradores concluídos (constam em cadeia de custódia)',
+                     None, 'amostrador',
+                     current_user.nome if current_user.is_authenticated else 'sistema',
+                     request.remote_addr)
+    return jsonify({'ok': True, 'concluidos': len(alvo), 'ja_concluidos': ja,
+                    'com_cadeia': com_cadeia, 'base_usados': len(USADOS)})
+
+
 # ── Manutencao / bulk updates ─────────────────────────────────────────
 @controle_bp.route('/amostradores/fix_data_entrada', methods=['POST'])
 def fix_data_entrada():

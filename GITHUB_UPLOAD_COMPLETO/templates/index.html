@@ -3679,6 +3679,7 @@
         <button class="ctrl-import-btn" id="btn-fix-data-entrada" onclick="ctrlFixDataEntrada()" style="background:#555;display:none;" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</button>
         <button class="ctrl-import-btn" onclick="ctrlAbrirNovoAmostrador()" style="background:var(--brand);">+ Adicionar</button>
         <button class="ctrl-import-btn" onclick="ctrlAbrirSerie()" style="background:#6d4aff;">➕ Adicionar em série</button>
+        <button class="ctrl-import-btn" onclick="ctrlConcluirUtilizados()" style="background:#16a34a;" title="Marca como concluído todo amostrador que consta em alguma cadeia de custódia (= foi utilizado)">✓ Concluir utilizados</button>
       </div>
       <!-- Barra de ações em lote (aparece ao selecionar) -->
       <div id="ctrl-amostr-bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:rgba(42,157,157,.08);border:1px solid var(--bd-teal);border-radius:8px;">
@@ -12018,6 +12019,19 @@ async function ctrlConfirmarConcluir() {
     ctrlLoadAmostr();
     ctrlLoadStats();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+// Conclui em massa os amostradores que aparecem em alguma cadeia de custódia
+async function ctrlConcluirUtilizados() {
+  if (!confirm('Marcar como CONCLUÍDO todo amostrador que consta em alguma cadeia de custódia (= foi utilizado)?\n\nBaseado na extração das 854 cadeias. Não mexe nos que nunca foram usados.')) return;
+  try {
+    const r = await ctrlFetch('/controle/amostradores/concluir-utilizados', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'
+    });
+    _showToast(`✓ ${r.concluidos} concluídos — ${r.com_cadeia} têm cadeia (${r.ja_concluidos} já estavam)`, 'success');
+    ctrlLoadAmostr();
+    if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
