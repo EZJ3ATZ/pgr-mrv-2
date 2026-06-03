@@ -41,6 +41,29 @@ from .import_xlsx import importar_amostradores, importar_medicoes, importar_dema
 controle_bp = Blueprint('controle', __name__, url_prefix='/controle')
 
 
+def _mte_do_tecnico(nome):
+    """Pré-preenche o nº MTE do relatório: busca pelo nome do técnico na
+    tabela usuarios; se não achar, usa o MTE do usuário logado. Assim o
+    técnico não precisa digitar o registro MTE em toda visita."""
+    nome = (nome or '').strip()
+    try:
+        if nome:
+            with get_db() as conn:
+                row = conn.execute(
+                    "SELECT registro_mte FROM usuarios "
+                    "WHERE LOWER(TRIM(nome))=LOWER(TRIM(?)) "
+                    "AND COALESCE(registro_mte,'') <> '' LIMIT 1",
+                    (nome,)
+                ).fetchone()
+            if row:
+                return (row_to_dict(row).get('registro_mte') or '').strip()
+    except Exception:
+        pass
+    if current_user.is_authenticated:
+        return (getattr(current_user, 'registro_mte', '') or '').strip()
+    return ''
+
+
 def _int_arg(nome, default=None):
     """Lê um query-param como int, sem quebrar em valor inválido."""
     v = request.args.get(nome)
@@ -2758,7 +2781,7 @@ def gerar_relatorio_ruido():
     hora_ini       = d.get('hora_inicio', d.get('hora_ini', ''))
     hora_fim       = d.get('hora_termino', d.get('hora_fim', ''))
     tecnico        = d.get('tecnico', '')
-    tecnico_mte    = d.get('tecnico_mte', '')
+    tecnico_mte    = d.get('tecnico_mte', '') or _mte_do_tecnico(tecnico)
     if tecnico_mte:
         tecnico = f'{tecnico} — MTE {tecnico_mte}'
     acomp          = d.get('acompanhante', d.get('acomp', ''))
@@ -3158,7 +3181,7 @@ def gerar_relatorio_vibracao():
     hora_ini     = d.get('hora_ini', d.get('hora_inicio', ''))
     hora_fim     = d.get('hora_fim', d.get('hora_termino', ''))
     tecnico      = d.get('tecnico', '')
-    tecnico_mte  = d.get('tecnico_mte', '')
+    tecnico_mte  = d.get('tecnico_mte', '') or _mte_do_tecnico(tecnico)
     if tecnico_mte:
         tecnico = f'{tecnico} — MTE {tecnico_mte}'
     acomp        = d.get('acomp', d.get('acompanhante', ''))
@@ -3350,7 +3373,7 @@ def gerar_relatorio_quimico():
     os_num         = d.get('os', '')
     data_coleta    = d.get('data_coleta', '')
     tecnico        = d.get('tecnico', '')
-    tecnico_mte    = d.get('tecnico_mte', '')
+    tecnico_mte    = d.get('tecnico_mte', '') or _mte_do_tecnico(tecnico)
     if tecnico_mte:
         tecnico = f'{tecnico} — MTE {tecnico_mte}'
     sig_avaliado   = d.get('sig_avaliado')   # base64 PNG ou None
