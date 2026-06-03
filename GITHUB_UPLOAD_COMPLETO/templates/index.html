@@ -8806,7 +8806,7 @@ const _NOTIF_ICON = {
   sync_planner:'🔄', importacao:'📥', coleta_ruido_criada:'🔊', coleta_quimico_criada:'🧪',
   planejamento_criado:'📋', os_concluida:'✅', laudo_gerado:'📄', medicao_salva:'📊',
   demanda_baixa_manual:'✅', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
-  empresa_nova_planner:'🏢', aviso_atualizacao:'📢',
+  empresa_nova_planner:'🏢', empresa_fantasma_excluida:'🗑️', aviso_atualizacao:'📢',
 };
 const _NOTIF_LABEL = {
   login:'Login', logout:'Logout', amostrador_criado:'Amostrador criado',
@@ -8816,7 +8816,7 @@ const _NOTIF_LABEL = {
   os_concluida:'OS Concluída', laudo_gerado:'Laudo gerado', medicao_salva:'Medição salva',
   demanda_baixa_manual:'Baixa de OS', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
   demanda_criada_planner:'Nova OS', empresa_nova_planner:'Nova empresa',
-  aviso_atualizacao:'Atualização',
+  empresa_fantasma_excluida:'Empresa removida', aviso_atualizacao:'Atualização',
 };
 
 // ── Avisos de atualização (mantidos no código) ─────────────────────────
@@ -8900,12 +8900,13 @@ async function notifLoad() {
           </div>
         </div>`;
       }
+      const quem = ev.usuario ? ' · por ' + String(ev.usuario).replace(/</g,'&lt;') : '';
       return `<div style="display:flex;gap:9px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.04);">
         <div style="font-size:1rem;line-height:1.2;">${icon}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:.76rem;font-weight:600;color:var(--text);">${label}</div>
           ${desc ? `<div style="font-size:.72rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${desc}</div>` : ''}
-          <div style="font-size:.65rem;color:var(--text3);margin-top:2px;">${q.txt}</div>
+          <div style="font-size:.65rem;color:var(--text3);margin-top:2px;">${q.txt}${quem}</div>
         </div>
       </div>`;
     }).join('');
