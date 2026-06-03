@@ -4587,6 +4587,19 @@ def graph_test_mail():
         })
 
 
+@controle_bp.route('/graph/lab_preview')
+def graph_lab_preview():
+    """PREVIEW (dry-run) da ingestão dos e-mails do laboratório — NÃO grava nada.
+    Mostra, por categoria, quantos e-mails/códigos e quantos casam com o inventário."""
+    init_db()
+    from .lab_inbox import preview
+    try:
+        return jsonify(preview())
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
 @controle_bp.route('/graph/groups')
 def graph_list_groups():
     """Lista grupos Teams/Microsoft 365 disponíveis."""
