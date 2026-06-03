@@ -5069,7 +5069,7 @@
   <div class="page-head page-head-v2">
     <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Medições · Ocupacional SST</div>
     <div class="page-title sec-title">Planilhas Feitas</div>
-    <div class="page-sub sec-sub">Todas as medições finalizadas (ruído, químico, calor, vibração) — empresa, OS, data e o técnico que finalizou. É a confirmação de que a medição foi contabilizada.</div>
+    <div class="page-sub sec-sub">Todas as medições finalizadas (ruído, químico, calor, vibração) — empresa, OS, data e o técnico que finalizou. É a confirmação de que a medição foi contabilizada. <strong>Clique numa linha</strong> para ver o que foi feito e gerar a planilha de novo.</div>
   </div>
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
     <input id="pf-busca" type="text" placeholder="Filtrar por empresa, OS ou técnico..." oninput="planilhasRender()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 12px;font-size:.82rem;font-family:inherit;outline:none;min-width:280px;">
@@ -9991,7 +9991,7 @@ function planilhasRender() {
       </tr></thead>
       <tbody>
         ${dados.map(c => `
-          <tr style="border-bottom:1px solid var(--border);">
+          <tr onclick="planilhaAbrir('${c.tabela}', ${c.id}, '${c.tipo}')" title="Abrir / gerar a planilha" style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.035)'" onmouseout="this.style.background=''">
             <td style="padding:8px 10px;color:var(--text2);white-space:nowrap;">${fmtData(c.data_coleta)}</td>
             <td style="padding:8px 10px;color:var(--text);">${_esc(c.empresa_nome)||'—'}</td>
             <td style="padding:8px 10px;color:var(--text2);">${_esc(c.os)||'—'}</td>
@@ -10000,6 +10000,14 @@ function planilhasRender() {
           </tr>`).join('')}
       </tbody>
     </table>`;
+}
+
+// Abre/gera a planilha de campo a partir da coleta salva (ver o que foi feito + regerar)
+function planilhaAbrir(tabela, id, tipo) {
+  if (!id) return;
+  if (tabela === 'coletas_ruido')   { window.open('/controle/coletas/ruido/'   + id + '/ficha', '_blank'); return; }
+  if (tabela === 'coletas_quimico') { window.open('/controle/coletas/quimico/' + id + '/ficha', '_blank'); return; }
+  _showToast('Planilha em PDF disponível para Ruído e Químico. Calor/Vibração: em desenvolvimento.', 'warn');
 }
 
 // ── Aba dedicada: Inventário de Equipamentos ──────────────────────────
