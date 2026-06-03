@@ -2,19 +2,23 @@
 """Ingestão dos e-mails do laboratório UniScientific → reconcilia amostradores.
 
 Lê via graph (Mail.Read.All, identidade de Aplicação). Classifica cada e-mail
-do lab e extrai os códigos de amostrador.
+do lab, extrai os códigos e — processando em ordem CRONOLÓGICA (o último sinal
+de cada código vence) — atualiza o status do amostrador.
 
-Categorias:
-  - remessa      : lab ENVIOU amostradores em branco → entram em posse (estoque)
-  - recebimento  : lab CONFIRMOU recebimento dos devolvidos → status 'devolvido'
-  - resultado    : laudo (RA) recebido por empresa avaliada
-  - pendentes    : lista oficial em posse +30 dias → cobrança (aba Vencimento)
+Categorias e efeito:
+  - remessa      : lab ENVIOU amostradores → 'disponivel' (entra em posse/estoque)
+  - recebimento  : lab CONFIRMOU recebimento dos devolvidos → 'devolvido'
+  - resultado    : laudo (RA) recebido por empresa → registrado (sem mexer status)
+  - pendentes    : lista oficial em posse +30 dias → guardada p/ aba Vencimento
 
-Por segurança, só age sobre códigos que JÁ EXISTEM no inventário (casamento por
-código ou tipo+código), evitando falso-positivo de regex (CEP, RA nº, etc.).
+Segurança: só age sobre códigos que JÁ EXISTEM no inventário (casa por código ou
+tipo+código). E-mails são removidos do texto antes de extrair (evita falso-positivo
+de 'recebimento04@', 'engenharia13@', etc.).
 """
 import re
 import html
+import json
+from datetime import datetime
 from .graph import graph_get
 from .db import get_db, row_to_dict
 
@@ -28,9 +32,11 @@ def _norm(c):
 
 
 def _codes(texto):
-    t = html.unescape(re.sub(r'<[^>]+>', ' ', texto or '')).upper()
+    t = html.unescape(re.sub(r'<[^>]+>', ' ', texto or ''))
+    t = re.sub(r'\S+@\S+', ' ', t)          # remove e-mails (mata MENTO04/HARIA13/TACAO01)
+    t = re.sub(r'https?://\S+', ' ', t)      # remove URLs
     out = []
-    for m in _CODE_RE.finditer(t):
+    for m in _CODE_RE.finditer(t.upper()):
         c = m.group(0)
         if 5 <= len(c) <= 16:
             out.append(c)
@@ -67,7 +73,7 @@ def _sistema_lookup():
     return look
 
 
-def _fetch_lab_emails(top=60):
+def _fetch_lab_emails(top=150):
     data = graph_get(
         f"/users/{MAILBOX}/mailFolders/inbox/messages"
         f"?$top={top}&$orderby=receivedDateTime desc"
@@ -86,48 +92,101 @@ def _fetch_lab_emails(top=60):
     return out
 
 
-def preview(top=60):
-    """Simulação (dry-run): classifica os e-mails do lab, extrai códigos e casa
-    com o inventário. NÃO grava nada — só mostra o que seria feito."""
-    look = _sistema_lookup()
-    emails = _fetch_lab_emails(top)
+def _kv_set(conn, chave, valor):
+    """Grava em ms_sync_state (cria a tabela se preciso)."""
+    conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
+    if _use_pg():
+        conn.execute("INSERT INTO ms_sync_state (chave,valor,atualizado_em) VALUES (?,?,CURRENT_TIMESTAMP) "
+                     "ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, atualizado_em=CURRENT_TIMESTAMP",
+                     (chave, valor))
+    else:
+        conn.execute("INSERT OR REPLACE INTO ms_sync_state (chave,valor,atualizado_em) VALUES (?,?,CURRENT_TIMESTAMP)",
+                     (chave, valor))
 
-    resumo = {c: {'emails': 0, 'codigos': 0, 'no_sistema': 0,
-                  'exemplos': [], 'fora_sistema': []}
-              for c in ('remessa', 'recebimento', 'resultado', 'pendentes')}
-    ignorados = 0
-    pendentes_oficial = None  # lista do e-mail de pendentes mais recente
+
+def _use_pg():
+    import os
+    return bool(os.environ.get('DATABASE_URL'))
+
+
+def sincronizar_lab(apply=False, top=150):
+    """Lê os e-mails do lab e reconcilia. apply=False → só simula (preview)."""
+    look = _sistema_lookup()
+    emails = sorted(_fetch_lab_emails(top), key=lambda e: e['data'])  # cronológico (antigo→novo)
+
+    cat_count = {'remessa': 0, 'recebimento': 0, 'resultado': 0, 'pendentes': 0, 'ignorado': 0}
+    fora = set()
+    # último sinal de status por código (cronológico → o último vence)
+    estado_final = {}   # codigo_sistema_key -> ('disponivel'|'devolvido', data)
+    pendentes = None
+    resultados = []
 
     for e in emails:
         cat = _classificar(e['from'], e['subject'])
-        if not cat:
-            ignorados += 1
-            continue
-        r = resumo[cat]
-        r['emails'] += 1
+        cat_count[cat or 'ignorado'] += 1
         if cat == 'resultado':
-            continue  # resultado: vínculo por empresa (assunto), sem casar código
+            resultados.append({'assunto': e['subject'], 'data': e['data']})
+            continue
+        if cat not in ('remessa', 'recebimento', 'pendentes'):
+            continue
         codes = _codes(e['body'])
         no_sis = [c for c in codes if c in look]
-        fora = [c for c in codes if c not in look]
-        r['codigos'] += len(codes)
-        r['no_sistema'] += len(no_sis)
-        for c in no_sis:
-            if len(r['exemplos']) < 12:
-                r['exemplos'].append(c)
-        for c in fora:
-            if len(r['fora_sistema']) < 8:
-                r['fora_sistema'].append(c)
-        if cat == 'pendentes' and pendentes_oficial is None:
-            pendentes_oficial = {'data': e['data'], 'codigos': no_sis,
-                                 'fora_sistema': fora, 'total': len(codes)}
+        for c in codes:
+            if c not in look:
+                fora.add(c)
+        if cat == 'pendentes':
+            pendentes = {'data': e['data'], 'codigos': no_sis, 'total': len(codes)}
+        else:
+            novo = 'disponivel' if cat == 'remessa' else 'devolvido'
+            for c in no_sis:
+                estado_final[c] = (novo, e['data'])
+
+    # monta plano de mudanças (status atual != alvo)
+    plano = []
+    for c, (alvo, data) in estado_final.items():
+        amos = look.get(c)
+        if amos and (amos.get('status') or '') != alvo:
+            plano.append({'id': amos['id'], 'codigo': amos.get('codigo'),
+                          'de': amos.get('status'), 'para': alvo, 'fonte_data': data})
+
+    aplicadas = 0
+    if apply:
+        with get_db() as conn:
+            for p in plano:
+                conn.execute("UPDATE amostradores SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                             (p['para'], p['id']))
+                aplicadas += 1
+            if pendentes is not None:
+                _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
+            if resultados:
+                _kv_set(conn, 'lab_resultados', json.dumps(resultados[:30], ensure_ascii=False))
 
     return {
+        'modo': 'APLICADO' if apply else 'PREVIEW (nada gravado)',
         'mailbox': MAILBOX,
-        'emails_do_lab': sum(resumo[c]['emails'] for c in resumo) + 0,
-        'ignorados': ignorados,
-        'por_categoria': resumo,
-        'pendentes_oficial': pendentes_oficial,
-        'inventario_indexado': len(look),
-        'modo': 'PREVIEW (nada foi gravado)',
+        'emails_por_categoria': cat_count,
+        'pendentes_oficial': pendentes,
+        'mudancas_de_status': plano if not apply else aplicadas,
+        'total_mudancas': len(plano),
+        'aplicadas': aplicadas,
+        'codigos_fora_do_sistema': sorted(fora)[:30],
+        'resultados_recentes': resultados[:10],
     }
+
+
+def preview(top=150):
+    return sincronizar_lab(apply=False, top=top)
+
+
+def get_pendentes_salvos():
+    """Lê a última lista de pendentes guardada (para a aba Vencimento)."""
+    try:
+        with get_db() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
+            row = conn.execute("SELECT valor FROM ms_sync_state WHERE chave='lab_pendentes'").fetchone()
+        if row:
+            d = row_to_dict(row)
+            return json.loads(d.get('valor') or '{}')
+    except Exception:
+        pass
+    return None

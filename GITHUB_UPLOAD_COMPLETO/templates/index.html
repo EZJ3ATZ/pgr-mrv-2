@@ -3715,6 +3715,7 @@
         Se não forem usados e devolvidos dentro do prazo, o <b>laboratório cobra</b>. Esta tela mostra os que estão perto de vencer — resolva antes da cobrança extra.
       </div>
       <div class="ctrl-stats" id="ctrl-venc-stats"></div>
+      <div id="ctrl-venc-lab" style="margin:10px 0;"></div>
       <div class="ctrl-filters">
         <select id="ctrl-fv-faixa" onchange="ctrlLoadVencendo()">
           <option value="">— Todos em posse —</option>
@@ -3724,6 +3725,7 @@
           <option value="sem_data">⚠️ Sem data de envio</option>
         </select>
         <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
+        <button onclick="ctrlSyncLab()" class="ctrl-import-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Lê os e-mails do laboratório e atualiza status + lista oficial de pendentes (admin)">🔄 Sincronizar com o lab</button>
       </div>
       <div class="ctrl-table-wrap">
         <table class="ctrl-table">
@@ -8410,6 +8412,20 @@ async function ctrlSalvarNovoAmostrador() {
   }
 }
 
+async function ctrlSyncLab() {
+  if (!confirm('Sincronizar com os e-mails do laboratório?\n\nLê os e-mails recebidos e atualiza: remessa→disponível, recebimento→devolvido (o sinal mais recente de cada código vence) e a lista oficial de pendentes. Só age sobre códigos que já existem no inventário.')) return;
+  _showToast('⏳ Lendo e-mails do laboratório...', 'ok');
+  try {
+    const r = await ctrlFetch('/controle/graph/lab_sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    if (r.erro) { _showToast('Erro: ' + r.erro, 'err'); return; }
+    const pend = (r.pendentes_oficial||{}).total || 0;
+    _showToast(`✓ ${r.aplicadas||0} status atualizados · ${pend} pendentes do lab`, 'ok');
+    _ctrlStatsCache = null;
+    ctrlLoadVencendo();
+    if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
+}
+
 async function ctrlLoadVencendo() {
   const tb = document.getElementById('ctrl-tb-venc');
   const stEl = document.getElementById('ctrl-venc-stats');
@@ -8430,6 +8446,20 @@ async function ctrlLoadVencendo() {
       ${s.sem_data ? `<div class="ctrl-stat" style="cursor:pointer;" onclick="document.getElementById('ctrl-fv-faixa').value='sem_data';ctrlLoadVencendo();" title="No lab sem data de envio — clique para listar"><div class="ctrl-stat-label" style="color:#f80;">⚠️ Sem data de envio</div><div class="ctrl-stat-value" style="color:#f80;">${s.sem_data}</div></div>` : ''}
       <div class="ctrl-stat blue"><div class="ctrl-stat-label">📦 Total no lab</div><div class="ctrl-stat-value">${s.total_no_lab||0}</div></div>
     `;
+    // Lista oficial do lab (pendentes de retorno, vinda dos e-mails)
+    const labBox = document.getElementById('ctrl-venc-lab');
+    if (labBox) {
+      const lp = data.lab_pendentes;
+      if (lp && lp.codigos && lp.codigos.length) {
+        labBox.innerHTML = `<div style="background:rgba(239,68,68,.08);border-left:3px solid #e22;border-radius:6px;padding:10px 14px;font-size:.82rem;">
+          <b style="color:#e22;">📌 Laboratório cobra retorno de ${lp.codigos.length} amostrador(es)</b>
+          <span style="color:var(--text3);">(lista oficial de ${lp.data?String(lp.data).split('-').reverse().join('/'):'—'})</span><br>
+          <span style="font-family:monospace;font-size:.75rem;color:var(--text2);">${lp.codigos.join(' · ')}</span>
+        </div>`;
+      } else {
+        labBox.innerHTML = `<div style="font-size:.74rem;color:var(--text3);">Lista oficial do lab ainda não sincronizada — clique em "🔄 Sincronizar com o lab".</div>`;
+      }
+    }
     const faixa = document.getElementById('ctrl-fv-faixa').value;
     let lista = data.amostradores || [];
     if (faixa === 'vencidos') lista = lista.filter(a => a.dias_para_vencer != null && a.dias_para_vencer < 0);

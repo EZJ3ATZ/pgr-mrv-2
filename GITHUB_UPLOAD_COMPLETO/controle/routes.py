@@ -614,9 +614,11 @@ def fix_data_entrada():
 def get_vencendo():
     init_db()
     try:
+        from .lab_inbox import get_pendentes_salvos
         return jsonify({
             'stats': contar_vencendo(),
-            'amostradores': list_amostradores_vencendo()
+            'amostradores': list_amostradores_vencendo(),
+            'lab_pendentes': get_pendentes_salvos()
         })
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -4595,6 +4597,26 @@ def graph_lab_preview():
     from .lab_inbox import preview
     try:
         return jsonify(preview())
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
+@controle_bp.route('/graph/lab_sync', methods=['POST'])
+def graph_lab_sync():
+    """APLICA a ingestão dos e-mails do lab: atualiza status (remessa→disponível,
+    recebimento→devolvido, cronológico) e guarda a lista de pendentes p/ Vencimento."""
+    init_db()
+    from .lab_inbox import sincronizar_lab
+    try:
+        r = sincronizar_lab(apply=True)
+        registrar_evento('sync_planner',
+                         f"Ingestão lab: {r.get('aplicadas', 0)} status atualizados, "
+                         f"{(r.get('pendentes_oficial') or {}).get('total', 0)} pendentes",
+                         None, 'amostrador',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
+        return jsonify(r)
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': str(e)}), 200
