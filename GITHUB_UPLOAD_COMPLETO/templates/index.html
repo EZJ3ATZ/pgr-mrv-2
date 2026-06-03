@@ -3684,7 +3684,9 @@
         <button class="ctrl-import-btn" onclick="ctrlAbrirNovoAmostrador()" style="background:var(--brand);">+ Adicionar</button>
         <button class="ctrl-import-btn" onclick="ctrlAbrirSerie()" style="background:#6d4aff;">➕ Adicionar em série</button>
         <button class="ctrl-import-btn" onclick="ctrlConcluirUtilizados()" style="background:#16a34a;" title="Marca como concluído todo amostrador que consta em alguma cadeia de custódia (= foi utilizado)">✓ Concluir utilizados</button>
+        <button class="ctrl-import-btn" onclick="ctrlDiagEstoque()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Entender os números: dos disponíveis, quantos já têm cadeia (usados) e por idade; lab por idade">🔍 Diagnóstico</button>
       </div>
+      <div id="ctrl-amostr-diag" style="display:none;margin-bottom:12px;"></div>
       <!-- Barra de ações em lote (aparece ao selecionar) -->
       <div id="ctrl-amostr-bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:rgba(42,157,157,.08);border:1px solid var(--bd-teal);border-radius:8px;">
         <span id="ctrl-amostr-bulk-count" style="font-size:.82rem;font-weight:700;color:var(--primary-l);">0 selecionados</span>
@@ -12064,6 +12066,45 @@ async function ctrlConcluirUtilizados() {
     ctrlLoadAmostr();
     if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
   } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
+}
+
+// Diagnóstico: entende os números de estoque/lab
+async function ctrlDiagEstoque() {
+  const box = document.getElementById('ctrl-amostr-diag');
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '<div style="color:var(--text3);font-size:.82rem;padding:8px;">Analisando...</div>';
+  try {
+    const r = await ctrlFetch('/controle/amostradores/diagnostico');
+    const d = r.disponivel || {}, l = r.laboratorio || {};
+    const bar = (lbl, val, tot, cor) => {
+      const pct = tot ? Math.round(val/tot*100) : 0;
+      return `<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:.76rem;">
+        <span style="min-width:170px;color:var(--text2);">${lbl}</span>
+        <div style="flex:1;background:var(--border);border-radius:4px;height:8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${cor};"></div></div>
+        <b style="min-width:42px;text-align:right;">${val}</b></div>`;
+    };
+    box.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+        <div style="font-weight:700;font-size:.88rem;margin-bottom:8px;">🔍 Diagnóstico de estoque</div>
+        <div style="font-size:.8rem;font-weight:700;color:#0a7;margin:8px 0 2px;">EM ESTOQUE (disponível): ${d.total||0}</div>
+        ${bar('Já têm cadeia (usados) ⚠', d.com_cadeia||0, d.total, '#e22')}
+        ${bar('Sem cadeia (estoque real)', d.sem_cadeia||0, d.total, '#0a7')}
+        ${bar('Entrada ≤ 30 dias', d.ate_30||0, d.total, '#60a5fa')}
+        ${bar('Entrada 30–180 dias', d.d30_180||0, d.total, '#f59e0b')}
+        ${bar('Parados há +180 dias', d.mais_180||0, d.total, '#e22')}
+        ${d.sem_data ? bar('Sem data de entrada', d.sem_data, d.total, '#888') : ''}
+        ${(d.com_cadeia>0) ? `<div style="font-size:.72rem;color:#e22;margin-top:6px;">⚠ ${d.com_cadeia} disponível(is) JÁ têm cadeia (foram usados) — deviam estar concluídos. Ex.: ${(d.exemplos_com_cadeia||[]).slice(0,10).join(', ')}. Rode "Concluir utilizados" de novo.</div>` : `<div style="font-size:.72rem;color:#0a7;margin-top:6px;">✓ Nenhum disponível com cadeia — os ${d.total||0} são estoque sem registro de uso.</div>`}
+        <div style="font-size:.8rem;font-weight:700;color:#a78bfa;margin:12px 0 2px;">NO LABORATÓRIO / em posse: ${l.total||0}</div>
+        ${bar('Há ≤ 30 dias', l.ate_30||0, l.total, '#60a5fa')}
+        ${bar('Há 30–180 dias', l.d30_180||0, l.total, '#f59e0b')}
+        ${bar('Há +180 dias', l.mais_180||0, l.total, '#e22')}
+        ${l.sem_data_envio ? bar('Sem data de envio ⚠', l.sem_data_envio, l.total, '#888') : ''}
+        <div style="text-align:right;margin-top:8px;"><button onclick="document.getElementById('ctrl-amostr-diag').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--text3);border-radius:6px;padding:4px 10px;font-size:.72rem;cursor:pointer;">Fechar</button></div>
+      </div>`;
+  } catch(e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:.82rem;padding:8px;">Erro: ${e.message}</div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -514,6 +514,71 @@ def concluir_amostradores_utilizados():
                     'com_cadeia': com_cadeia, 'base_usados': len(USADOS)})
 
 
+@controle_bp.route('/amostradores/diagnostico')
+def amostradores_diagnostico():
+    """Destrincha estoque/lab para entender os números:
+    - disponíveis COM cadeia (já usados → deveriam estar concluídos) vs sem cadeia
+    - por idade (data_entrada): novos vs parados há muito tempo
+    - lab por idade / sem data de envio."""
+    init_db()
+    import re as _re
+    from datetime import date as _date, datetime as _dt
+    try:
+        from .cadeia_usados import USADOS
+    except Exception:
+        USADOS = frozenset()
+
+    def _norm(c):
+        return _re.sub(r'\s+', '', str(c or '')).upper()
+
+    hoje = _date.today()
+    def _idade(v):
+        s = str(v or '')[:10]
+        try:
+            return (hoje - _dt.strptime(s, '%Y-%m-%d').date()).days
+        except Exception:
+            return None
+
+    disp = {'total': 0, 'com_cadeia': 0, 'sem_cadeia': 0,
+            'ate_30': 0, 'd30_180': 0, 'mais_180': 0, 'sem_data': 0, 'exemplos_com_cadeia': []}
+    lab = {'total': 0, 'sem_data_envio': 0, 'ate_30': 0, 'd30_180': 0, 'mais_180': 0}
+
+    with get_db() as conn:
+        rows = [row_to_dict(r) for r in conn.execute(
+            "SELECT codigo, tipo, status, data_entrada, data_envio_lab "
+            "FROM amostradores WHERE COALESCE(arquivado,0)=0").fetchall()]
+
+    for d in rows:
+        st = (d.get('status') or '').lower()
+        if st == 'disponivel':
+            disp['total'] += 1
+            cod, tipo = _norm(d.get('codigo')), _norm(d.get('tipo'))
+            if cod in USADOS or (tipo + cod) in USADOS:
+                disp['com_cadeia'] += 1
+                if len(disp['exemplos_com_cadeia']) < 20:
+                    disp['exemplos_com_cadeia'].append(f"{d.get('tipo','')} {d.get('codigo','')}".strip())
+            else:
+                disp['sem_cadeia'] += 1
+            idade = _idade(d.get('data_entrada'))
+            if idade is None:   disp['sem_data'] += 1
+            elif idade <= 30:   disp['ate_30'] += 1
+            elif idade <= 180:  disp['d30_180'] += 1
+            else:               disp['mais_180'] += 1
+        elif st == 'laboratorio':
+            lab['total'] += 1
+            dl = str(d.get('data_envio_lab') or '')
+            if not _re.match(r'^\d{4}-\d{2}-\d{2}', dl):
+                lab['sem_data_envio'] += 1
+            else:
+                idade = _idade(dl)
+                if idade is None:   pass
+                elif idade <= 30:   lab['ate_30'] += 1
+                elif idade <= 180:  lab['d30_180'] += 1
+                else:               lab['mais_180'] += 1
+
+    return jsonify({'disponivel': disp, 'laboratorio': lab, 'base_usados': len(USADOS)})
+
+
 # ── Manutencao / bulk updates ─────────────────────────────────────────
 @controle_bp.route('/amostradores/fix_data_entrada', methods=['POST'])
 def fix_data_entrada():
