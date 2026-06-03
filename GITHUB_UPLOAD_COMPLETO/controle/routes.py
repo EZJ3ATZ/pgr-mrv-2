@@ -4729,15 +4729,28 @@ def api_revisar_demanda(did):
     return jsonify({'ok': True, 'demanda_id': did})
 
 
+# Estado de progresso do reprocessamento (processo único → memória compartilhada)
+_REEXTRAIR_STATUS = {'running': False, 'total': 0, 'feitas': 0, 'erros': 0}
+
+
+@controle_bp.route('/demandas/re-extrair/status')
+def api_re_extrair_status():
+    """Progresso do reprocessamento de agentes (para a barra na UI)."""
+    return jsonify(_REEXTRAIR_STATUS)
+
+
 @controle_bp.route('/demandas/re-extrair', methods=['POST'])
 def api_re_extrair_demandas():
     """
     Re-executa o motor inteligente em todas as demandas do Planner.
     Útil após atualizar o dicionário operacional.
-    Processa em background (retorna imediatamente).
+    Processa em background (retorna imediatamente); progresso em /re-extrair/status.
     """
     init_db()
     import threading as _thr
+    if _REEXTRAIR_STATUS.get('running'):
+        return jsonify({'ok': True, 'info': 'Já em andamento', 'status': dict(_REEXTRAIR_STATUS)})
+    _REEXTRAIR_STATUS.update({'running': True, 'total': 0, 'feitas': 0, 'erros': 0})
     def _job():
         try:
             from .inteligencia_demandas import (
@@ -4751,6 +4764,7 @@ def api_re_extrair_demandas():
                     "planner_task_id, planner_bucket, percent_complete "
                     "FROM demandas WHERE origem='planner' ORDER BY id"
                 ).fetchall()
+            _REEXTRAIR_STATUS['total'] = len(rows)
             processadas = 0
             for r in rows:
                 try:
@@ -4796,15 +4810,19 @@ def api_re_extrair_demandas():
                              d['id'])
                         )
                     processadas += 1
+                    _REEXTRAIR_STATUS['feitas'] = processadas
                 except Exception as e:
+                    _REEXTRAIR_STATUS['erros'] = _REEXTRAIR_STATUS.get('erros', 0) + 1
                     import logging as _log
                     _log.getLogger(__name__).warning('re-extrair demanda %s: %s', d.get('id'), e)
         except Exception as e:
             import logging as _log
             _log.getLogger(__name__).error('re-extrair job error: %s', e)
+        finally:
+            _REEXTRAIR_STATUS['running'] = False
     t = _thr.Thread(target=_job, daemon=True)
     t.start()
-    return jsonify({'ok': True, 'info': 'Re-extração iniciada em background'})
+    return jsonify({'ok': True, 'info': 'Re-extração iniciada em background', 'status': dict(_REEXTRAIR_STATUS)})
 
 
 @controle_bp.route('/empresas/mesclar', methods=['POST'])

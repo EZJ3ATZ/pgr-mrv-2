@@ -8184,11 +8184,28 @@ async function ctrlSyncPlanner(btn) {
 }
 
 async function ctrlReprocessarAgentes(btn) {
-  if (!confirm('Re-extrair os agentes de TODAS as demandas do Planner?\n\nÚtil pra corrigir OS que aparecem sem agentes no painel. Roda em segundo plano (~1-2 min).')) return;
-  if (btn) { btn.disabled = true; btn.textContent = '🧠 Reprocessando...'; }
+  if (!confirm('Re-extrair os agentes de TODAS as demandas do Planner?\n\nÚtil pra corrigir OS que aparecem sem agentes no painel.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = '🧠 Iniciando...'; }
   try {
-    const r = await ctrlFetch('/controle/demandas/re-extrair', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
-    _showToast('🧠 Reprocessamento iniciado em segundo plano. Recarregue o painel em ~2 min.', 'ok');
+    await ctrlFetch('/controle/demandas/re-extrair', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    // Acompanha o progresso (processo único → estado em memória no servidor)
+    let done = false, ticks = 0;
+    while (!done && ticks < 400) {
+      await new Promise(res => setTimeout(res, 1500));
+      ticks++;
+      let s;
+      try { s = await ctrlFetch('/controle/demandas/re-extrair/status'); } catch(_) { continue; }
+      const total = s.total || 0, feitas = s.feitas || 0;
+      const pct = total ? Math.round(feitas / total * 100) : 0;
+      if (btn) btn.textContent = total ? `🧠 ${feitas}/${total} (${pct}%)` : '🧠 Processando...';
+      if (!s.running) {
+        done = true;
+        _showToast(`✅ Reprocessado: ${feitas} demanda(s)` + (s.erros ? `, ${s.erros} com erro` : ''), 'ok');
+      }
+    }
+    if (!done) _showToast('⏳ Ainda processando em segundo plano — recarregue em instantes.', 'warn');
+    if (typeof ctrlLoadDemand === 'function') ctrlLoadDemand();
+    if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
   } catch(e) {
     _showToast('❌ Erro ao reprocessar: ' + e.message, 'err');
   } finally {
