@@ -1988,7 +1988,7 @@ def list_amostradores_vencendo(dias_alerta=7):
         FROM amostradores a
         LEFT JOIN empresas e ON e.id = a.empresa_id
         WHERE a.status = 'laboratorio' AND COALESCE(a.arquivado,0)=0
-        ORDER BY (dias_para_vencer IS NULL), dias_para_vencer ASC
+        ORDER BY dias_para_vencer ASC NULLS LAST
         LIMIT 500
     """
     with get_db() as conn:

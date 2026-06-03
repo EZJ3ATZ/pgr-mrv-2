@@ -548,10 +548,17 @@ def fix_data_entrada():
 @controle_bp.route('/amostradores_vencendo')
 def get_vencendo():
     init_db()
-    return jsonify({
-        'stats': contar_vencendo(),
-        'amostradores': list_amostradores_vencendo()
-    })
+    try:
+        return jsonify({
+            'stats': contar_vencendo(),
+            'amostradores': list_amostradores_vencendo()
+        })
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({
+            'stats': {'vencidos': 0, 'urgente': 0, 'alerta': 0, 'sem_data': 0, 'total_no_lab': 0},
+            'amostradores': [], 'erro': str(e)
+        })
 
 
 @controle_bp.route('/amostradores/<int:aid>/envio_lab', methods=['POST'])

@@ -3709,13 +3709,13 @@
     <!-- View: Vencimento -->
     <div id="ctrl-amostr-view-venc" style="display:none;">
       <div style="background:rgba(255,136,0,.06); border-left:3px solid #f80; padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:.82rem;">
-        <b>⏱ Controle de vencimento:</b> O laboratório começa a cobrar após N dias do envio do amostrador.
-        Esta tela ajuda a identificar amostradores próximos do vencimento para retornar antes da cobrança extra.
+        <b>⏱ Controle de vencimento:</b> amostradores que estão <b>em posse da Ocupacional</b> (recebidos do laboratório).
+        Se não forem usados e devolvidos dentro do prazo, o <b>laboratório cobra</b>. Esta tela mostra os que estão perto de vencer — resolva antes da cobrança extra.
       </div>
       <div class="ctrl-stats" id="ctrl-venc-stats"></div>
       <div class="ctrl-filters">
         <select id="ctrl-fv-faixa" onchange="ctrlLoadVencendo()">
-          <option value="">— Todos no lab —</option>
+          <option value="">— Todos em posse —</option>
           <option value="vencidos">🔴 Vencidos</option>
           <option value="urgente">🟠 Urgente (≤3d)</option>
           <option value="alerta">🟡 Alerta (≤7d)</option>
