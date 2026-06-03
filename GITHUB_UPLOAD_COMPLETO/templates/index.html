@@ -5066,6 +5066,10 @@
     <div class="page-title sec-title">Inventário de Equipamentos</div>
     <div class="page-sub sec-sub">Bombas, calibradores, vibrômetros e termômetro — nº de série, certificado e validade de calibração (validade = data da calibração + 2 anos)</div>
   </div>
+  <div style="margin-bottom:14px;">
+    <button onclick="equipRebuildBombas()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text2);padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;">🔬 Carregar frota de bombas dos certificados</button>
+    <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">Aplica as 15 bombas reais (SKC AIRLITE, Gilian BDX-II, Formis TURAM, Inlite) com os seriais conferidos. As datas de calibração você preenche depois.</div>
+  </div>
   <div id="equip-inv-loading" style="display:none;color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando inventário...</div>
   <div id="equip-inv-list"></div>
 </div>
@@ -9961,6 +9965,16 @@ async function equipLoad() {
     if (loading) loading.style.display = 'none';
     list.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${e.message}</div>`;
   }
+}
+
+async function equipRebuildBombas() {
+  if (!confirm('Aplicar a frota real de 15 bombas (seriais dos certificados)?\n\nSubstitui as bombas atuais. Datas de calibração já preenchidas para os mesmos seriais são mantidas.')) return;
+  try {
+    const r = await ctrlFetch('/controle/equipamentos/rebuild-bombas', {method:'POST'});
+    _showToast(`✓ ${r.bombas||15} bombas carregadas`, 'ok');
+    equipLoad();
+    if (typeof carregarCalibAlerta === 'function') carregarCalibAlerta();
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
 }
 
 async function equipSalvar(id, campos, reload) {

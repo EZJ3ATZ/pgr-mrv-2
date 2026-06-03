@@ -600,6 +600,64 @@ def update_equipamento(eid):
     return jsonify({'ok': True})
 
 
+# Frota real de bombas (marca, modelo, serial, label) — seriais dos certificados
+_BOMBAS_FROTA = [
+    ('SKC',    'AIRLITE',   'A060502',     'Bomba SKC AIRLITE'),
+    ('SKC',    'AIRLITE',   'A061553',     'Bomba SKC AIRLITE'),
+    ('SKC',    'AIRLITE',   'A061585',     'Bomba SKC AIRLITE'),
+    ('SKC',    'AIRLITE',   'A062462',     'Bomba SKC AIRLITE'),
+    ('SKC',    'AIRLITE',   'A63555',      'Bomba SKC AIRLITE'),
+    ('Gilian', 'BDX-II',    '38356',       'Bomba Gilian BDX-II'),
+    ('Gilian', 'BDX-II',    '38357',       'Bomba Gilian BDX-II'),
+    ('Gilian', 'BDX-II',    '38358',       'Bomba Gilian BDX-II'),
+    ('Gilian', 'BDX-II',    '38359',       'Bomba Gilian BDX-II'),
+    ('Formis', 'TURAM',     '2420120549',  'Bomba Formis TURAM'),
+    ('Formis', 'TURAM',     '2420120550',  'Bomba Formis TURAM'),
+    ('Formis', 'TURAM',     '2420120551',  'Bomba Formis TURAM'),
+    ('Inlite', 'VENTUSPRO', '25040902602B', 'Bomba Inlite'),
+    ('Inlite', 'VENTUSPRO', '25040903102B', 'Bomba Inlite'),
+    ('Inlite', 'VENTUSPRO', '25040907102B', 'Bomba Inlite'),
+]
+
+
+@controle_bp.route('/equipamentos/rebuild-bombas', methods=['POST'])
+def rebuild_bombas():
+    """Reconstrói o inventário de BOMBAS com a frota real dos certificados
+    (15 bombas, seriais conferidos). Substitui as bombas existentes.
+    Preserva data_calibracao/cert quando o serial já existir no banco."""
+    init_db()
+    with get_db() as conn:
+        # guarda calibração já preenchida (por serial) para não perder
+        antigos = {}
+        try:
+            for r in conn.execute(
+                "SELECT numero_serie, data_calibracao, cert_numero, cert_validade "
+                "FROM equipamentos_inventario WHERE tipo='bomba'"
+            ).fetchall():
+                d = row_to_dict(r)
+                sn = (d.get('numero_serie') or '').strip()
+                if sn:
+                    antigos[sn] = d
+        except Exception:
+            pass
+        conn.execute("DELETE FROM equipamentos_inventario WHERE tipo='bomba'")
+        for marca, modelo, sn, label in _BOMBAS_FROTA:
+            prev = antigos.get(sn, {})
+            conn.execute(
+                "INSERT INTO equipamentos_inventario "
+                "(tipo, marca, modelo, numero_serie, compatibilidade, status, "
+                "cert_numero, cert_validade, observacao, data_calibracao) "
+                "VALUES ('bomba',?,?,?,'','disponivel',?,?,?,?)",
+                (marca, modelo, sn, prev.get('cert_numero'),
+                 prev.get('cert_validade'), label, prev.get('data_calibracao'))
+            )
+    registrar_evento('limpeza_demandas', f'Frota de bombas reconstruída ({len(_BOMBAS_FROTA)} bombas)',
+                     None, 'equipamento',
+                     current_user.nome if current_user.is_authenticated else 'sistema',
+                     request.remote_addr)
+    return jsonify({'ok': True, 'bombas': len(_BOMBAS_FROTA)})
+
+
 _VAZAO_NUM_RE = re.compile(r'\d+(?:[.,]\d+)?')
 
 def parse_vazao(raw):
