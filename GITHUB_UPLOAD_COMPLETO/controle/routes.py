@@ -2599,6 +2599,128 @@ def ficha_coleta_quimico(cid):
     return render_template_string(html, c=c)
 
 
+_FICHA_OUTROS_HTML = """<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Ficha de Campo — {{ 'Calor' if c.eh_calor else 'Vibração' }}</title>
+{{ css }}
+</head>
+<body>
+<div class="no-print" style="background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;gap:16px;align-items:center;">
+  <span style="font-weight:bold;">Ficha de Campo — {{ 'Calor / IBUTG' if c.eh_calor else 'Vibração' }}</span>
+  <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">🖨 Imprimir / Salvar PDF</button>
+  <button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;">✕ Fechar</button>
+</div>
+<div class="page">
+  <div class="logo-bar">
+    <div style="font-size:9pt;font-weight:bold;min-width:90px;">OCUPACIONAL SST</div>
+    <div class="title">{{ 'AVALIAÇÃO DE CALOR (IBUTG)' if c.eh_calor else 'AVALIAÇÃO DE VIBRAÇÃO' }}</div>
+    <div class="sub">{{ 'NR-15 An.3 / NHO-06' if c.eh_calor else 'NR-09 / NHO-09 e NHO-10' }}<br>Ficha ID: {{ c.id }}</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">IDENTIFICAÇÃO DA EMPRESA</div>
+    <div class="row">
+      <div class="cell w6"><label>Empresa</label><div class="val">{{ c.empresa_nome or '' }}</div></div>
+      <div class="cell w2"><label>Data da Coleta</label><div class="val">{{ c.data_coleta or '' }}</div></div>
+      <div class="cell w2"><label>OS / Demanda</label><div class="val">{{ c.os or '' }}</div></div>
+    </div>
+    <div class="row">
+      <div class="cell w3"><label>Unidade</label><div class="val">{{ c.unidade or '' }}</div></div>
+      <div class="cell w3"><label>Cidade</label><div class="val">{{ c.cidade or '' }}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">DADOS DA AVALIAÇÃO</div>
+    <div class="row">
+      <div class="cell w3"><label>Técnico / Avaliador</label><div class="val">{{ c.avaliador or c.tecnico_login or '' }}</div></div>
+      <div class="cell w3"><label>Acompanhante</label><div class="val">{{ c.acompanhante or '' }}</div></div>
+      <div class="cell w1"><label>Início</label><div class="val">{{ c.hora_inicio or '' }}</div></div>
+      <div class="cell w1"><label>Término</label><div class="val">{{ c.hora_termino or '' }}</div></div>
+    </div>
+    <div class="row">
+      {% if c.eh_calor %}
+      <div class="cell w3"><label>Regime de trabalho</label><div class="val">{{ c.regime or '' }}</div></div>
+      <div class="cell w3"><label>Pontos avaliados</label><div class="val">{{ c.pontos or '' }}</div></div>
+      {% else %}
+      <div class="cell w2"><label>Tipo de vibração</label><div class="val">{{ c.tipo_vibr or (('Mãos-braços (VMB)' if 'vbma' in c.tipo else 'Corpo inteiro (VCI)') if c.tipo != 'vibracao' else '') }}</div></div>
+      <div class="cell w2"><label>Fonte</label><div class="val">{{ c.fonte_vibr or '' }}</div></div>
+      <div class="cell w2"><label>Pontos</label><div class="val">{{ c.pontos or '' }}</div></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">{{ c.registro_titulo }}</div>
+    {% if c.registro_linhas %}
+      {% for ln in c.registro_linhas %}
+      <div class="row"><div class="cell w6"><div class="val">{{ ln }}</div></div></div>
+      {% endfor %}
+    {% else %}
+      <div class="row"><div class="cell w6 blank">&nbsp;</div></div>
+      <div class="row"><div class="cell w6 blank">&nbsp;</div></div>
+      <div class="row"><div class="cell w6 blank">&nbsp;</div></div>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <div class="section-title">OBSERVAÇÕES</div>
+    <div class="obs-box">{{ c.observacao or '' }}</div>
+  </div>
+
+  <div class="sig-row">
+    <div class="sig-box">Técnico responsável</div>
+    <div class="sig-box">Responsável da empresa</div>
+  </div>
+</div>
+</body>
+</html>"""
+
+
+@controle_bp.route('/coletas/outros/<int:cid>/ficha')
+def ficha_coleta_outros(cid):
+    """Regenera a ficha de campo de uma coleta de calor/vibração a partir do
+    que foi salvo (coletas_outros + dados_json)."""
+    init_db()
+    from .db import get_coleta_outros
+    import json as _json
+    c = get_coleta_outros(cid)
+    if not c:
+        return 'Coleta não encontrada', 404
+    try:
+        extras = _json.loads(c.get('dados_json') or '{}') or {}
+    except Exception:
+        extras = {}
+    c['os']        = c.get('numero_os') or ''
+    c['regime']    = extras.get('regime') or ''
+    c['pontos']    = extras.get('pontos') or ''
+    c['tipo_vibr'] = extras.get('tipo_vibr') or ''
+    c['fonte_vibr'] = extras.get('fonte_vibr') or ''
+    c['tipo']      = c.get('tipo') or ''
+    c['eh_calor']  = (c['tipo'] == 'calor')
+    c['eh_vibr']   = c['tipo'].startswith('vibracao')
+
+    def _linhas(lst):
+        out = []
+        for s in (lst or []):
+            if isinstance(s, dict):
+                txt = ' · '.join(f'{k}: {v}' for k, v in s.items() if v not in (None, '', []))
+                if txt:
+                    out.append(txt)
+            elif s not in (None, ''):
+                out.append(str(s))
+        return out
+
+    if c['eh_calor']:
+        c['registro_titulo'] = 'IBUTG POR SETOR'
+        c['registro_linhas'] = _linhas(extras.get('ibutg_setores'))
+    else:
+        c['registro_titulo'] = 'PONTOS DE VIBRAÇÃO'
+        c['registro_linhas'] = _linhas(extras.get('vibr_pontos'))
+    html = _FICHA_OUTROS_HTML.replace('{{ css }}', _FICHA_CSS)
+    return render_template_string(html, c=c)
+
+
 # ── Wizard: salvar medicao completa ──────────────────────────────────
 @controle_bp.route('/medicoes', methods=['POST'])
 def api_salvar_medicao_wizard():

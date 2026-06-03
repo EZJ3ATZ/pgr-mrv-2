@@ -10007,7 +10007,8 @@ function planilhaAbrir(tabela, id, tipo) {
   if (!id) return;
   if (tabela === 'coletas_ruido')   { window.open('/controle/coletas/ruido/'   + id + '/ficha', '_blank'); return; }
   if (tabela === 'coletas_quimico') { window.open('/controle/coletas/quimico/' + id + '/ficha', '_blank'); return; }
-  _showToast('Planilha em PDF disponível para Ruído e Químico. Calor/Vibração: em desenvolvimento.', 'warn');
+  if (tabela === 'coletas_outros')  { window.open('/controle/coletas/outros/'  + id + '/ficha', '_blank'); return; }
+  _showToast('Planilha não disponível para este tipo.', 'warn');
 }
 
 // ── Aba dedicada: Inventário de Equipamentos ──────────────────────────
