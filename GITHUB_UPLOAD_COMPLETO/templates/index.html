@@ -2167,11 +2167,6 @@
       <span>Empresas</span>
     </div>
 
-    <div class="sidebar-item" data-name="relatorios" onclick="goToTab('relatorios')">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M15 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.89 2 1.99 2H19c1.1 0 2-.9 2-2V9zM5 19V5h9v5h5v9zM9 8c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1m0 4c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1m0 4c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1"/></svg>
-      <span>Relat&#243;rios</span>
-    </div>
-
     <div class="sidebar-item" data-name="indicadores" onclick="goToTab('indicadores')">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M4 9h4v11H4zm12 4h4v7h-4zm-6-9h4v16h-4z"/></svg>
       <span>Indicadores</span>
@@ -2527,13 +2522,13 @@
       <span class="home-mod-tag" style="background:rgba(96,165,250,.08);color:var(--blue);">Campo</span>
     </div>
 
-    <div class="home-mod" onclick="goToTab('relatorios')">
+    <div class="home-mod" onclick="goToTab('indicadores')">
       <div class="home-mod-icon" style="background:rgba(167,139,250,.12);color:var(--purple);">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
         </svg>
       </div>
-      <div class="home-mod-name">Relat&#243;rios e Indicadores</div>
+      <div class="home-mod-name">Indicadores</div>
       <div class="home-mod-desc">KPIs do setor, gr&#225;ficos de conformidade e hist&#243;rico por empresa e per&#237;odo.</div>
       <span class="home-mod-tag" style="background:rgba(167,139,250,.08);color:var(--purple);">An&#225;lise</span>
     </div>
@@ -5058,66 +5053,6 @@
 </div>
 </div>
 
-<!-- ══ Painel RELATÓRIOS ════════════════════════════════════════════════ -->
-<div id="tab-relatorios" class="tab-panel">
-<div class="page" style="max-width:900px;">
-  <div class="page-head page-head-v2">
-    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
-    <div class="page-title sec-title">Centro de Relatórios</div>
-    <div class="page-sub sec-sub">Exporte dados e gere relatórios consolidados</div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;">
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="width:40px;height:40px;background:var(--orange-dim);border:1px solid rgba(34,197,94,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-        <svg width="18" height="18" fill="none" stroke="var(--orange)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/></svg>
-      </div>
-      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório de Demandas</div>
-      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Todas as OS com status, empresa, agente e prazo. Filtrável por período e empresa.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('demand',null),300);" style="background:var(--orange-dim);color:var(--orange);border:1px solid rgba(34,197,94,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Demandas →</button>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="width:40px;height:40px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-        <svg width="18" height="18" fill="none" stroke="var(--blue)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6h2v6m4 0v-4h2v4M5 7h14M5 7l1 13h12l1-13M5 7V4h14v3"/></svg>
-      </div>
-      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório de Amostradores</div>
-      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Status atual, histórico de uso, vencimentos e empresa vinculada por amostrador.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),500);" style="background:rgba(96,165,250,.08);color:var(--blue);border:1px solid rgba(96,165,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Amostradores →</button>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="width:40px;height:40px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-        <svg width="18" height="18" fill="none" stroke="var(--yellow)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      </div>
-      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Vencimentos Próximos</div>
-      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Amostradores no laboratório com data de vencimento se aproximando — evite cobranças extras.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('prev',null),300);" style="background:rgba(245,158,11,.08);color:var(--yellow);border:1px solid rgba(245,158,11,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver Vencimentos →</button>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="width:40px;height:40px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-        <svg width="18" height="18" fill="none" stroke="var(--purple)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M10 6h4m-4 4h4m-4 4h4"/></svg>
-      </div>
-      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Relatório por Empresa</div>
-      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Histórico completo por empresa: todas as OS, medições realizadas e status consolidado.</div>
-      <button onclick="goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('empresa',null),300);" style="background:rgba(167,139,250,.08);color:var(--purple);border:1px solid rgba(167,139,250,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Ver por Empresa →</button>
-    </div>
-
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="width:40px;height:40px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-        <svg width="18" height="18" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/></svg>
-      </div>
-      <div style="font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:6px;">Gerar PGR</div>
-      <div style="font-size:.76rem;color:var(--text2);line-height:1.5;margin-bottom:16px;">Gere o Programa de Gerenciamento de Riscos completo em formato DOCX.</div>
-      <button onclick="goToTab('pgr');" style="background:rgba(16,185,129,.08);color:var(--green);border:1px solid rgba(16,185,129,.25);border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;width:100%;">Gerar PGR →</button>
-    </div>
-
-  </div>
-</div>
-</div>
-
 <!-- ══ Painel INDICADORES ══════════════════════════════════════════════ -->
 <div id="tab-indicadores" class="tab-panel">
 <div class="page" style="max-width:1000px;">
@@ -6390,8 +6325,6 @@ homeLoadStats();
       fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('nova',null),400); }},
     {name:'Assinatura',   icon:'<path d="M3 18l4-4 4 2 6-6 4 4"/><path d="M3 21h18"/>',
       fn: ()=>{ goToTab('controle'); ctrlInit(); }},
-    {name:'Relatório', icon:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/>',
-      fn: ()=>{ goToTab('relatorios'); }},
     {name:'Laboratório', icon:'<path d="M9 3v8.5L4 19c-.7 1 0 2 1 2h14c1 0 1.7-1 1-2l-5-7.5V3M8 3h8"/>',
       fn: ()=>{ goToTab('controle'); ctrlInit(); setTimeout(()=>ctrlSwitchSub('amostr',null),400); }},
     {name:'Resultado',    icon:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
