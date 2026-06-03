@@ -226,17 +226,26 @@ def amostradores_arquivar():
 def cria_amostrador():
     init_db()
     d = request.json or {}
-    if not d.get('codigo') or not d.get('tipo'):
+    codigo = (str(d.get('codigo') or '')).strip().upper()
+    if not codigo or not d.get('tipo'):
         return jsonify({'erro': 'codigo e tipo obrigatorios'}), 400
     with get_db() as conn:
+        # trava: não cadastrar amostrador que já existe (mesmo código, qualquer status)
+        ja = conn.execute('SELECT id, status FROM amostradores WHERE UPPER(codigo)=?',
+                          (codigo,)).fetchone()
+        if ja:
+            jad = row_to_dict(ja)
+            return jsonify({'erro': f'Amostrador {codigo} já está cadastrado '
+                                    f'(status atual: {jad.get("status", "?")}).',
+                            'duplicado': True, 'id': jad.get('id')}), 409
         cur = conn.execute("""
             INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
             VALUES (?, ?, ?, ?, ?)""",
-            (d['codigo'], d['tipo'], normalizar_status_amostrador(d.get('status', 'disponivel')),
+            (codigo, d['tipo'], normalizar_status_amostrador(d.get('status', 'disponivel')),
              d.get('data_entrada', datetime.now().strftime('%Y-%m-%d')),
              d.get('observacao', '')))
         novo_id = cur.lastrowid
-    registrar_evento('amostrador_criado', f'{d["codigo"]} ({d["tipo"]})',
+    registrar_evento('amostrador_criado', f'{codigo} ({d["tipo"]})',
                      novo_id, 'amostrador',
                      current_user.nome if current_user.is_authenticated else 'sistema',
                      request.remote_addr)
