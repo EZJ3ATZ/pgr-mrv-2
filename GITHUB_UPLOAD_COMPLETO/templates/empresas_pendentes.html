@@ -91,6 +91,7 @@
     <div style="display:flex;gap:8px;">
       <button class="btn btn-gray" onclick="rematchAll()">🔄 Re-executar matching</button>
       <button class="btn btn-brand" onclick="limparZeradas()">🗑 Remover sem demandas</button>
+      <button class="btn btn-gray" onclick="carregarFantasmas()">👻 Verificar fantasmas</button>
     </div>
   </div>
 
@@ -120,6 +121,20 @@
       <tr><td colspan="4" class="empty"><div class="spinner"></div></td></tr>
     </tbody>
   </table>
+
+  <!-- Seção de limpeza de empresas fantasma -->
+  <div id="fantasmas-sec" style="display:none;margin-top:30px;">
+    <h2 style="font-size:15px;font-weight:700;margin-bottom:4px;">👻 Empresas fantasma (limpeza)</h2>
+    <p class="sub" style="margin-bottom:12px;">Nome inválido (vazio · só números · AET) e <strong>sem nenhuma demanda, coleta ou visita</strong> vinculada. Seguro excluir.</p>
+    <table>
+      <thead>
+        <tr><th>Empresa</th><th>Motivo</th><th>Ações</th></tr>
+      </thead>
+      <tbody id="fantasmas-tbody">
+        <tr><td colspan="3" class="empty"><div class="spinner"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <!-- Modal vincular -->
   <div class="overlay" id="overlay">
@@ -342,6 +357,50 @@
       }
       showToast(`✓ ${ok} removidas.`);
       await carregar();
+    }
+
+    // ── Empresas fantasma ─────────────────────────────────────────────
+    async function carregarFantasmas() {
+      const sec = document.getElementById('fantasmas-sec');
+      sec.style.display = 'block';
+      sec.scrollIntoView({ behavior: 'smooth' });
+      const tb = document.getElementById('fantasmas-tbody');
+      tb.innerHTML = '<tr><td colspan="3" class="empty"><div class="spinner"></div></td></tr>';
+      try {
+        const r = await fetch('/controle/empresas/suspeitas');
+        const data = await r.json();
+        if (!Array.isArray(data) || !data.length) {
+          tb.innerHTML = '<tr><td colspan="3" class="empty"><div class="empty-icon">✨</div>Nenhuma empresa fantasma encontrada.</td></tr>';
+          return;
+        }
+        tb.innerHTML = data.map(e => `
+          <tr id="fant-${e.id}">
+            <td class="nome-cell">
+              <div class="nome-text">${esc(e.nome) || '<span style="color:var(--text2)">(sem nome)</span>'}</div>
+              ${e.cnpj ? `<div class="nome-sub">CNPJ: ${esc(e.cnpj)}</div>` : ''}
+              <div class="nome-sub">ID ${e.id}</div>
+            </td>
+            <td><span class="badge-num badge-zero">${esc(e.motivo)}</span></td>
+            <td><button class="btn btn-red" style="font-size:11px;padding:5px 10px" onclick="excluirFantasma(${e.id})">Excluir</button></td>
+          </tr>`).join('');
+      } catch (err) {
+        tb.innerHTML = `<tr><td colspan="3" class="empty">Erro: ${esc(err.message)}</td></tr>`;
+      }
+    }
+
+    async function excluirFantasma(id) {
+      if (!confirm('Excluir esta empresa fantasma? Só funciona se não tiver nenhum registro vinculado.')) return;
+      try {
+        const r = await fetch(`/controle/empresas/${id}/excluir-fantasma`, { method: 'POST' });
+        const d = await r.json();
+        if (r.ok && d.ok) {
+          const row = document.getElementById('fant-' + id);
+          if (row) row.remove();
+          showToast('✓ Empresa fantasma excluída.');
+        } else {
+          showToast(d.erro || 'Não foi possível excluir.');
+        }
+      } catch (err) { showToast('Erro: ' + err.message); }
     }
 
     // Fecha modal com Esc

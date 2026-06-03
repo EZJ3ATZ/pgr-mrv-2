@@ -4360,6 +4360,77 @@ def api_vincular_empresa_pendente(pend_id):
             return jsonify({'erro': 'Informe empresa_id, confirmar ou excluir'}), 400
 
 
+# ── Limpeza de empresas "fantasma" ────────────────────────────────────
+_EMPRESA_TABELAS_USO = [
+    'demandas', 'amostradores', 'coletas_ruido', 'coletas_quimico',
+    'coletas_outros', 'visitas_tecnicas', 'planejamentos', 'contatos_empresa',
+]
+
+
+def _empresa_uso(conn, eid):
+    """Conta quantos registros estão vinculados a uma empresa em todas as
+    tabelas com empresa_id. Usado para nunca excluir empresa com histórico."""
+    out, total = {}, 0
+    for t in _EMPRESA_TABELAS_USO:
+        try:
+            r = conn.execute(f'SELECT COUNT(*) AS n FROM {t} WHERE empresa_id=?', (eid,)).fetchone()
+            n = int(row_to_dict(r).get('n', 0) or 0)
+        except Exception:
+            n = 0
+        out[t] = n
+        total += n
+    out['total'] = total
+    return out
+
+
+@controle_bp.route('/empresas/suspeitas')
+def api_empresas_suspeitas():
+    """Lista empresas provavelmente-fantasma (nome vazio / só números / AET-*)
+    QUE NÃO TÊM nenhum registro vinculado. Read-only — só lista, não apaga."""
+    init_db()
+    suspeitas = []
+    with get_db() as conn:
+        rows = conn.execute('SELECT id, nome, cnpj FROM empresas').fetchall()
+        for r in rows:
+            e = row_to_dict(r)
+            nome = (e.get('nome') or '').strip()
+            if not nome:
+                motivo = 'nome vazio'
+            elif nome.isdigit():
+                motivo = 'nome só números'
+            elif nome.upper().startswith('AET'):
+                motivo = 'AET (teste antigo)'
+            else:
+                continue
+            uso = _empresa_uso(conn, e['id'])
+            if uso['total'] == 0:
+                e['motivo'] = motivo
+                suspeitas.append(e)
+    return jsonify(suspeitas)
+
+
+@controle_bp.route('/empresas/<int:eid>/excluir-fantasma', methods=['POST'])
+def api_excluir_empresa_fantasma(eid):
+    """Exclui uma empresa SOMENTE se ela não tiver nenhum registro vinculado.
+    Trava de segurança: se houver qualquer demanda/coleta/visita, recusa."""
+    init_db()
+    with get_db() as conn:
+        row = conn.execute('SELECT nome FROM empresas WHERE id=?', (eid,)).fetchone()
+        if not row:
+            return jsonify({'erro': 'Empresa não encontrada'}), 404
+        nome = (row_to_dict(row).get('nome') or '').strip()
+        uso = _empresa_uso(conn, eid)
+        if uso['total'] > 0:
+            return jsonify({'erro': f'Empresa tem {uso["total"]} registro(s) vinculado(s) — não excluída.',
+                            'uso': uso}), 409
+        conn.execute('DELETE FROM empresas WHERE id=?', (eid,))
+    registrar_evento('empresa_fantasma_excluida', f'{nome or "(sem nome)"} (#{eid})',
+                     eid, 'empresa',
+                     current_user.nome if current_user.is_authenticated else 'sistema',
+                     request.remote_addr)
+    return jsonify({'ok': True, 'excluida': eid})
+
+
 @controle_bp.route('/demandas/match-empresas', methods=['POST'])
 def api_match_empresas():
     """Re-executa matching de empresa em todas as demandas sem vínculo.
