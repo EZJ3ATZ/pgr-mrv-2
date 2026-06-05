@@ -2237,6 +2237,89 @@ def api_coletas_feitas():
     return jsonify(list_coletas_feitas(limit))
 
 
+def _coletas_dedup_plano():
+    """Plano de deduplicação (read-only). Agrupa coletas que representam a MESMA
+    medição — mesma OS (demanda_id; fallback no nº da OS) + mesmo tipo; químico
+    também separa por substância — e marca para exclusão todas menos a MAIS NOVA
+    (maior criado_em; desempate maior id). Não apaga nada."""
+    init_db()
+    specs = [('coletas_ruido', 'ruido'), ('coletas_quimico', 'quimico'), ('coletas_outros', 'outros')]
+    grupos = {}
+    with get_db() as conn:
+        for tbl, tipo_tbl in specs:
+            try:
+                rows = conn.execute(f'SELECT * FROM {tbl}').fetchall()
+            except Exception:
+                rows = []
+            for r in rows:
+                d = row_to_dict(r)
+                ident = str(d.get('demanda_id') or '').strip() or str(d.get('os') or d.get('numero_os') or '').strip()
+                if not ident:
+                    continue  # sem OS/demanda → não agrupa (não arrisca apagar)
+                tipo_real = (d.get('tipo') or tipo_tbl) if tbl == 'coletas_outros' else tipo_tbl
+                if tbl == 'coletas_quimico':
+                    key = (tbl, ident, tipo_real, str(d.get('substancias') or '').strip())
+                else:
+                    key = (tbl, ident, tipo_real)
+                grupos.setdefault(key, []).append({
+                    'id': d.get('id'), 'tabela': tbl,
+                    'os': d.get('os') or d.get('numero_os') or '', 'tipo': tipo_real,
+                    'data_coleta': d.get('data_coleta') or '', 'criado_em': d.get('criado_em') or '',
+                    'tecnico': (d.get('tecnico_login') or d.get('tecnico') or d.get('avaliador') or d.get('responsavel_coleta') or '').strip(),
+                    'empresa_nome': d.get('empresa_nome') or '',
+                })
+    plano = []
+    for key, items in grupos.items():
+        if len(items) < 2:
+            continue
+        ordenado = sorted(items, key=lambda x: ((x.get('criado_em') or ''), x.get('id') or 0), reverse=True)
+        plano.append({'tabela': key[0], 'os': ordenado[0]['os'], 'tipo': ordenado[0]['tipo'],
+                      'manter': ordenado[0], 'excluir': ordenado[1:], 'qtd_excluir': len(ordenado) - 1})
+    return plano
+
+
+@controle_bp.route('/coletas/duplicadas')
+def api_coletas_duplicadas():
+    """Preview read-only: grupos de coletas duplicadas e quais seriam removidas
+    (mantém a mais nova de cada OS+tipo). Não apaga nada."""
+    plano = _coletas_dedup_plano()
+    return jsonify({'grupos': plano, 'total_grupos': len(plano),
+                    'total_excluir': sum(p['qtd_excluir'] for p in plano)})
+
+
+@controle_bp.route('/coletas/dedup', methods=['POST'])
+def api_coletas_dedup():
+    """Remove as coletas duplicadas mantendo a MAIS NOVA de cada OS+tipo.
+    Admin-only (manutenção destrutiva)."""
+    if not (current_user.is_authenticated and getattr(current_user, 'role', '') == 'admin'):
+        return jsonify({'ok': False, 'erro': 'Apenas admin pode remover duplicadas.'}), 403
+    plano = _coletas_dedup_plano()
+    removidos = []
+    with get_db() as conn:
+        for p in plano:
+            tbl = p['tabela']
+            for item in p['excluir']:
+                cid = item.get('id')
+                if cid is None:
+                    continue
+                if tbl == 'coletas_ruido':
+                    conn.execute('DELETE FROM coletas_ruido_func WHERE coleta_id=?', (cid,))
+                    conn.execute('DELETE FROM coletas_ruido WHERE id=?', (cid,))
+                elif tbl == 'coletas_quimico':
+                    conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
+                    conn.execute('DELETE FROM coletas_quimico WHERE id=?', (cid,))
+                else:
+                    conn.execute('DELETE FROM coletas_outros WHERE id=?', (cid,))
+                removidos.append({'tabela': tbl, 'id': cid, 'os': item.get('os'),
+                                  'tipo': item.get('tipo'), 'data': item.get('data_coleta')})
+    try:
+        registrar_evento('coletas_dedup', f'{len(removidos)} coleta(s) duplicada(s) removida(s) — mantida a mais nova',
+                         usuario=current_user.nome if current_user.is_authenticated else 'admin', ip=request.remote_addr)
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'removidos': len(removidos), 'detalhe': removidos})
+
+
 @controle_bp.route('/coletas/ruido')
 def api_list_coletas_ruido():
     init_db()

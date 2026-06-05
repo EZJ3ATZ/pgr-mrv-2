@@ -5085,6 +5085,9 @@
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
     <input id="pf-busca" type="text" placeholder="Filtrar por empresa, OS ou técnico..." oninput="planilhasRender()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 12px;font-size:.82rem;font-family:inherit;outline:none;min-width:280px;">
     <span id="pf-resumo" style="font-size:.74rem;color:var(--text3);"></span>
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <button id="pf-dedup-btn" onclick="planilhasDedup()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;" title="Remove planilhas duplicadas da mesma OS, mantendo a mais nova (admin)">🧹 Remover duplicadas</button>
+    {% endif %}
   </div>
   <div id="pf-lista"><div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div></div>
 </div>
@@ -10021,6 +10024,26 @@ async function planilhasLoad() {
   } catch(e) {
     if (lista) lista.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${e.message}</div>`;
   }
+}
+
+// Admin: remove planilhas duplicadas da mesma OS, mantendo a MAIS NOVA
+async function planilhasDedup() {
+  let prev;
+  try { prev = await ctrlFetch('/controle/coletas/duplicadas'); }
+  catch(e) { alert('Erro ao verificar duplicadas: ' + e.message); return; }
+  const n = (prev && prev.total_excluir) || 0;
+  if (!n) { alert('Nenhuma duplicata encontrada. Nada a remover.'); return; }
+  const resumo = (prev.grupos||[]).map(g =>
+    `• OS ${g.os} (${g.tipo}): remover ${g.qtd_excluir}, manter a de ${String(g.manter.data_coleta||'').slice(0,10)}`).join('\n');
+  if (!confirm(`Remover ${n} planilha(s) duplicada(s), mantendo a MAIS NOVA de cada OS?\n\n${resumo}\n\nEsta ação não pode ser desfeita.`)) return;
+  try {
+    const r = await ctrlFetch('/controle/coletas/dedup', { method:'POST' });
+    if (r && r.ok) {
+      try { _ctrlStatsCache = null; } catch(e) {}
+      alert(`✓ ${r.removidos} planilha(s) duplicada(s) removida(s).\nA contagem por técnico no analytics atualiza sozinha.`);
+      planilhasLoad();
+    } else { alert('Erro: ' + ((r && r.erro) || 'falha ao remover')); }
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 function planilhasRender() {
