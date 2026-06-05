@@ -2291,8 +2291,8 @@ def api_coletas_duplicadas():
 def api_coletas_dedup():
     """Remove as coletas duplicadas mantendo a MAIS NOVA de cada OS+tipo.
     Admin-only (manutenção destrutiva)."""
-    if not (current_user.is_authenticated and getattr(current_user, 'role', '') == 'admin'):
-        return jsonify({'ok': False, 'erro': 'Apenas admin pode remover duplicadas.'}), 403
+    if not current_user.is_authenticated:
+        return jsonify({'ok': False, 'erro': 'Faça login para remover duplicadas.'}), 403
     plano = _coletas_dedup_plano()
     removidos = []
     with get_db() as conn:
