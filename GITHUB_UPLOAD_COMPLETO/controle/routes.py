@@ -1591,9 +1591,23 @@ def api_diario_tecnicos():
                  {'acao': 'visita', 'tipo': 'visita',
                   'empresa': dd.get('empresa_nome') or '', 'os': '',
                   'resultado': dd.get('resultado') or ''})
+        # Agendado: visitas previstas (planejamentos) neste dia
+        try:
+            arows = conn.execute(
+                "SELECT p.tecnico, p.numero_os, e.nome AS empresa_nome "
+                "FROM planejamentos p LEFT JOIN empresas e ON e.id=p.empresa_id "
+                "WHERE substr(COALESCE(p.data_prevista,''),1,10)=?", (data,)).fetchall()
+        except Exception:
+            arows = []
+    agendados = []
+    for r in arows:
+        dd = row_to_dict(r)
+        agendados.append({'tecnico': (dd.get('tecnico') or '').strip() or 'Sem técnico',
+                          'empresa': dd.get('empresa_nome') or '', 'os': dd.get('numero_os') or ''})
     out = [{'tecnico': t, 'qtd': len(items), 'atividades': items} for t, items in ativ.items()]
     out.sort(key=lambda x: -x['qtd'])
-    return jsonify({'data': data, 'total': sum(x['qtd'] for x in out), 'tecnicos': out})
+    return jsonify({'data': data, 'total': sum(x['qtd'] for x in out),
+                    'tecnicos': out, 'agendados': agendados})
 
 
 @controle_bp.route('/diario_calendario')

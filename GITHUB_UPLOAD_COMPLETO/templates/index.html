@@ -9771,10 +9771,25 @@ async function diarioLoadDia() {
   try {
     const r = await ctrlFetch('/controle/diario_tecnicos' + (data ? '?data=' + encodeURIComponent(data) : ''));
     const tecs = (r && r.tecnicos) || [];
+    const agend = (r && r.agendados) || [];
     const resumo = document.getElementById('diario-resumo');
-    if (resumo) resumo.textContent = `${(r&&r.total)||0} atividade(s) · ${tecs.length} técnico(s)`;
-    if (!tecs.length) { if (lista) lista.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:.82rem;">Nenhuma atividade registrada neste dia.</div>'; return; }
-    if (lista) lista.innerHTML = tecs.map(t => `
+    if (resumo) resumo.textContent = `${(r&&r.total)||0} feito · ${agend.length} agendado(s)`;
+    if (!tecs.length && !agend.length) { if (lista) lista.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:.82rem;">Nenhuma atividade nem visita agendada neste dia.</div>'; return; }
+    let _diaHtml = '';
+    if (agend.length) {
+      _diaHtml += `<div style="background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.3);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
+        <div style="font-weight:700;font-size:.85rem;color:#60a5fa;margin-bottom:8px;">📌 Agendado para este dia (${agend.length} visita${agend.length>1?'s':''} prevista${agend.length>1?'s':''})</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${agend.map(a => `<div style="display:flex;align-items:center;gap:10px;font-size:.8rem;padding:6px 10px;background:var(--surface2);border-radius:7px;">
+            <span style="font-size:1rem;">🚗</span>
+            <span style="flex:1;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(a.empresa||'—')}</span>
+            ${a.os?`<span style="color:var(--text3);font-size:.74rem;">OS ${_esc(a.os)}</span>`:''}
+            <span style="color:var(--text3);font-size:.74rem;">${_esc(a.tecnico||'')}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+    _diaHtml += tecs.map(t => `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="font-weight:700;font-size:.92rem;">${_esc(t.tecnico)}</div>
@@ -9792,6 +9807,7 @@ async function diarioLoadDia() {
             </div>`).join('')}
         </div>
       </div>`).join('');
+    if (lista) lista.innerHTML = _diaHtml;
   } catch(e) { if (lista) lista.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${e.message}</div>`; }
 }
 
