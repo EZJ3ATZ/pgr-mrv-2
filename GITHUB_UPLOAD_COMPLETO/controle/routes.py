@@ -1734,7 +1734,7 @@ def get_bombas():
     return jsonify({
         'modelos': [
             {'id': 'airlite', 'nome': 'AIRLITE – SKC', 'sns': ['A060502', 'A061553', 'A061585', 'A062462', 'A63555']},
-            {'id': 'bdx',     'nome': 'BDX II – GILLIAN', 'sns': ['38356', '38357', '38358', '38359']},
+            {'id': 'bdx',     'nome': 'BDX II – GILLIAN', 'sns': ['20230702024', '20230702029', '20230702030', '20141201119']},
             {'id': 'turam',   'nome': 'FORMIS – TURAM', 'sns': ['2420120549', '2420120550', '2420120551']},
             {'id': 'inlite',  'nome': 'INLITE VENTUSPRO', 'sns': ['25040902602B', '25040903102B', '25040907102B']},
         ]
