@@ -745,28 +745,69 @@ _BOMBAS_FROTA = [
     ('Inlite', 'VENTUSPRO', '25040907102B', 'Bomba Inlite',        '42.186-2025', '2025-08-28'),
 ]
 
+# Vibração e calor — Chrompack (série, nº de certificado e data de calibração conferidos nos PDFs).
+# (marca, modelo, numero_serie, label, cert_numero, data_calibracao YYYY-MM-DD)
+_VIBRACAO_FROTA = [
+    ('Chrompack', 'SmartVib', '000000779', 'Medidor de vibração SmartVib', '181.302', '2026-04-09'),
+    ('Chrompack', 'SmartVib', '1241',      'Medidor de vibração SmartVib', '',        ''),  # sem certificado na pasta — confirmar
+]
+_CALOR_FROTA = [
+    ('Chrompack', 'SmartTemp', '000000209', 'Termômetro de stress térmico (IBUTG)', '180.646', '2026-03-24'),
+]
 
-@controle_bp.route('/equipamentos/rebuild-bombas', methods=['POST'])
-def rebuild_bombas():
-    """Reconstrói o inventário de BOMBAS com a frota real dos certificados
-    (15 bombas: marca, série, nº de certificado e data de calibração conferidos
-    nos PDFs). Substitui as bombas existentes."""
+
+def _eq_ins(conn, tipo, marca, modelo, sn, label, cert, dcal, compat=''):
+    conn.execute(
+        "INSERT INTO equipamentos_inventario "
+        "(tipo, marca, modelo, numero_serie, compatibilidade, status, "
+        "cert_numero, cert_validade, observacao, data_calibracao) "
+        "VALUES (?,?,?,?,?,'disponivel',?,NULL,?,?)",
+        (tipo, marca, modelo, sn, compat, (cert or None), label, (dcal or None))
+    )
+
+
+@controle_bp.route('/equipamentos/rebuild-frota', methods=['POST'])
+def rebuild_frota():
+    """Reconstrói o inventário COMPLETO com a frota real dos certificados:
+    bombas, dosímetros de ruído (Chrompack+Inlite), calibradores, vibração e calor.
+    Substitui os equipamentos desses tipos pelos dados conferidos nos PDFs."""
     init_db()
+    import sys
+    app_mod = sys.modules.get('app')
+    dosim        = getattr(app_mod, '_DOSIM_RUIDO', {}) if app_mod else {}
+    dosim_mod    = getattr(app_mod, '_DOSIM_RUIDO_MODELO', {}) if app_mod else {}
+    calib        = getattr(app_mod, '_CALIB_RUIDO', {}) if app_mod else {}
+    calib_marca  = getattr(app_mod, '_CALIB_RUIDO_MARCA', 'Chrompack') if app_mod else 'Chrompack'
+    calib_modelo = getattr(app_mod, '_CALIB_RUIDO_MODELO', 'SmartCal') if app_mod else 'SmartCal'
+    n = {'bomba': 0, 'dosimetro': 0, 'calibrador_ruido': 0, 'vibrador': 0, 'termometro': 0}
     with get_db() as conn:
-        conn.execute("DELETE FROM equipamentos_inventario WHERE tipo='bomba'")
+        conn.execute("DELETE FROM equipamentos_inventario WHERE tipo IN "
+                     "('bomba','dosimetro','calibrador_ruido','vibrador','termometro')")
         for marca, modelo, sn, label, cert, dcal in _BOMBAS_FROTA:
-            conn.execute(
-                "INSERT INTO equipamentos_inventario "
-                "(tipo, marca, modelo, numero_serie, compatibilidade, status, "
-                "cert_numero, cert_validade, observacao, data_calibracao) "
-                "VALUES ('bomba',?,?,?,'','disponivel',?,NULL,?,?)",
-                (marca, modelo, sn, cert, label, dcal)
-            )
-    registrar_evento('limpeza_demandas', f'Frota de bombas reconstruída ({len(_BOMBAS_FROTA)} bombas, dos certificados)',
+            _eq_ins(conn, 'bomba', marca, modelo, sn, label, cert, dcal); n['bomba'] += 1
+        for mkey, items in (dosim or {}).items():
+            marca  = 'Chrompack' if mkey == 'chrompack' else ('Inlite' if mkey == 'inlite' else str(mkey).title())
+            modelo = dosim_mod.get(mkey, '')
+            for _id, d in items.items():
+                _eq_ins(conn, 'dosimetro', marca, modelo, d.get('serie', _id),
+                        'Dosímetro de ruído', d.get('cert'), d.get('data_calib'), compat=mkey)
+                n['dosimetro'] += 1
+        for _id, c in (calib or {}).items():
+            marca  = (c.get('marca') or calib_marca).title()
+            modelo = c.get('modelo') or calib_modelo
+            _eq_ins(conn, 'calibrador_ruido', marca, modelo, c.get('serie', _id),
+                    'Calibrador de nível sonoro', c.get('cert'), c.get('data_calib'))
+            n['calibrador_ruido'] += 1
+        for marca, modelo, sn, label, cert, dcal in _VIBRACAO_FROTA:
+            _eq_ins(conn, 'vibrador', marca, modelo, sn, label, cert, dcal); n['vibrador'] += 1
+        for marca, modelo, sn, label, cert, dcal in _CALOR_FROTA:
+            _eq_ins(conn, 'termometro', marca, modelo, sn, label, cert, dcal); n['termometro'] += 1
+    total = sum(n.values())
+    registrar_evento('limpeza_demandas', f'Inventário reconstruído dos certificados: {total} equipamentos {n}',
                      None, 'equipamento',
                      current_user.nome if current_user.is_authenticated else 'sistema',
                      request.remote_addr)
-    return jsonify({'ok': True, 'bombas': len(_BOMBAS_FROTA)})
+    return jsonify({'ok': True, 'total': total, 'detalhe': n})
 
 
 _VAZAO_NUM_RE = re.compile(r'\d+(?:[.,]\d+)?')

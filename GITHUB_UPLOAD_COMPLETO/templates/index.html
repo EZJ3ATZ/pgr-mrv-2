@@ -5102,8 +5102,10 @@
     <div class="page-sub sec-sub">Bombas, calibradores, vibrômetros e termômetro — nº de série, certificado e validade de calibração (validade = data da calibração + 2 anos)</div>
   </div>
   <div style="margin-bottom:14px;">
-    <button onclick="equipRebuildBombas()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text2);padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;">🔬 Carregar frota de bombas dos certificados</button>
-    <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">Aplica as 15 bombas reais (SKC AIRLITE, Gilian BDX-II, Formis TURAM, Inlite) com série, nº de certificado e data de calibração já conferidos nos PDFs. A validade (2 anos) é calculada sozinha.</div>
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <button onclick="equipRebuildBombas()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text2);padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;">🔬 Reconstruir inventário dos certificados</button>
+    <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">Aplica a frota real (séries, nº de certificado e data de calibração dos PDFs): bombas SKC AIRLITE / Gilian BDX-II / Formis TURAM / Inlite, dosímetros de ruído Chrompack SmartdB + Inlite DoseMax, calibradores, vibração SmartVib e calor SmartTemp. A validade (2 anos) é calculada sozinha.</div>
+    {% endif %}
   </div>
   <div id="equip-inv-loading" style="display:none;color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando inventário...</div>
   <div id="equip-inv-list"></div>
@@ -9946,7 +9948,7 @@ function _planRenderChecklist() {
 // ── Inventário de equipamentos ────────────────────────────────────────
 let _planInvOpen = false;
 const _TIPO_LABELS = {
-  calibrador_ruido:'🎵 Calibrador Ruído', bomba:'🔬 Bomba', vibrador:'📳 Vibrador', termometro:'🌡️ Termômetro'
+  calibrador_ruido:'🎵 Calibrador Ruído', bomba:'🔬 Bomba', dosimetro:'🎧 Dosímetro Ruído', vibrador:'📳 Vibrador', termometro:'🌡️ Termômetro'
 };
 
 async function planInvToggle() {
@@ -10140,10 +10142,11 @@ async function equipLoad() {
 }
 
 async function equipRebuildBombas() {
-  if (!confirm('Aplicar a frota real de 15 bombas (seriais dos certificados)?\n\nSubstitui as bombas atuais. Datas de calibração já preenchidas para os mesmos seriais são mantidas.')) return;
+  if (!confirm('Reconstruir o inventário completo a partir dos certificados?\n\nAplica bombas, dosímetros de ruído (Chrompack + Inlite), calibradores, vibração e calor — com série, nº de certificado e data de calibração conferidos nos PDFs.\n\nSubstitui os equipamentos atuais desses tipos.')) return;
   try {
-    const r = await ctrlFetch('/controle/equipamentos/rebuild-bombas', {method:'POST'});
-    _showToast(`✓ ${r.bombas||15} bombas carregadas`, 'ok');
+    const r = await ctrlFetch('/controle/equipamentos/rebuild-frota', {method:'POST'});
+    const d = r.detalhe || {};
+    _showToast(`✓ ${r.total||0} equipamentos: ${d.bomba||0} bombas · ${d.dosimetro||0} dosímetros · ${d.calibrador_ruido||0} calibradores · ${d.vibrador||0} vibração · ${d.termometro||0} calor`, 'ok');
     equipLoad();
     if (typeof carregarCalibAlerta === 'function') carregarCalibAlerta();
   } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
