@@ -2892,7 +2892,6 @@ def ficha_coleta_outros(cid):
 
 
 # ── Wizard: salvar medicao completa ──────────────────────────────────
-@controle_bp.route('/medicoes', methods=['POST'])
 def _coleta_duplicada(tipo, demanda_id, data, substancia=None):
     """True se já existe coleta para a MESMA OS (demanda) + tipo + data — químico
     também considera a substância. Evita finalizar a mesma planilha 2×.
@@ -2924,6 +2923,7 @@ def _coleta_duplicada(tipo, demanda_id, data, substancia=None):
         return int((row_to_dict(r).get('c') if r else 0) or 0) > 0
 
 
+@controle_bp.route('/medicoes', methods=['POST'])
 def api_salvar_medicao_wizard():
     """Recebe payload do wizard Central Operacional e salva em coletas_ruido ou coletas_quimico."""
     init_db()
