@@ -1529,6 +1529,73 @@ def cria_empresa():
     return jsonify({'ok': True, 'id': eid})
 
 
+@controle_bp.route('/empresas/busca')
+def api_empresas_busca():
+    """Autocomplete de empresas por nome — para planejamento de empresa por
+    CONTRATO (sem OS). Busca em TODAS as empresas, não só as que têm demanda."""
+    init_db()
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    try:
+        limit = min(int(request.args.get('limit', 10) or 10), 30)
+    except (TypeError, ValueError):
+        limit = 10
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT id, nome, cnpj FROM empresas WHERE LOWER(COALESCE(nome,'')) LIKE LOWER(?) "
+            "ORDER BY nome LIMIT ?", (f'%{q}%', limit)).fetchall()
+    return jsonify([row_to_dict(r) for r in rows])
+
+
+@controle_bp.route('/diario_tecnicos')
+def api_diario_tecnicos():
+    """O que cada técnico fez num dia: coletas (ruído/quím/calor/vibr) + visitas.
+    ?data=YYYY-MM-DD (default = hoje). Visível a todos (transparência)."""
+    init_db()
+    from datetime import date as _date
+    data = (request.args.get('data') or '').strip()[:10] or _date.today().isoformat()
+    ativ = {}
+    def _add(tec, item):
+        tec = (tec or '').strip() or 'Sem técnico'
+        ativ.setdefault(tec, []).append(item)
+    with get_db() as conn:
+        for tbl, tipo_tbl, teccol in [
+            ('coletas_ruido', 'ruido', 'tecnico'),
+            ('coletas_quimico', 'quimico', 'responsavel_coleta'),
+            ('coletas_outros', 'outros', 'avaliador')]:
+            try:
+                rows = conn.execute(
+                    f"SELECT * FROM {tbl} WHERE substr(COALESCE(data_coleta,''),1,10)=?",
+                    (data,)).fetchall()
+            except Exception:
+                rows = []
+            for r in rows:
+                dd = row_to_dict(r)
+                tipo_real = (dd.get('tipo') or tipo_tbl) if tbl == 'coletas_outros' else tipo_tbl
+                _add(dd.get('tecnico_login') or dd.get(teccol),
+                     {'acao': 'coleta', 'tipo': tipo_real,
+                      'empresa': dd.get('empresa_nome') or '',
+                      'os': dd.get('os') or dd.get('numero_os') or '',
+                      'hora': dd.get('hora_inicio') or ''})
+        try:
+            vrows = conn.execute(
+                "SELECT vt.tecnico, vt.resultado, e.nome AS empresa_nome "
+                "FROM visitas_tecnicas vt LEFT JOIN empresas e ON e.id=vt.empresa_id "
+                "WHERE substr(COALESCE(vt.data_visita,''),1,10)=?", (data,)).fetchall()
+        except Exception:
+            vrows = []
+        for r in vrows:
+            dd = row_to_dict(r)
+            _add(dd.get('tecnico'),
+                 {'acao': 'visita', 'tipo': 'visita',
+                  'empresa': dd.get('empresa_nome') or '', 'os': '',
+                  'resultado': dd.get('resultado') or ''})
+    out = [{'tecnico': t, 'qtd': len(items), 'atividades': items} for t, items in ativ.items()]
+    out.sort(key=lambda x: -x['qtd'])
+    return jsonify({'data': data, 'total': sum(x['qtd'] for x in out), 'tecnicos': out})
+
+
 # ── Estoque de amostradores por agente ────────────────────────────────
 
 # Tipos de amostrador que a empresa NÃO utiliza (não aparecem na previsão)
