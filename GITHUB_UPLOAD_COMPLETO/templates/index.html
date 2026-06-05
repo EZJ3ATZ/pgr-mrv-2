@@ -5116,8 +5116,15 @@
     <div class="page-title sec-title">Diário por Técnico</div>
     <div class="page-sub sec-sub">O que cada técnico fez em cada dia — coletas (ruído, químico, calor, vibração) e visitas técnicas. Escolha a data.</div>
   </div>
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
-    <input type="date" id="diario-data" onchange="diarioLoad()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 12px;font-size:.84rem;font-family:inherit;outline:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;max-width:560px;">
+    <button onclick="diarioCalNav(-1)" title="Mês anterior" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;width:34px;height:34px;cursor:pointer;font-size:1.1rem;">‹</button>
+    <div id="diario-mes-lbl" style="font-weight:700;font-size:.95rem;"></div>
+    <button onclick="diarioCalNav(1)" title="Próximo mês" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;width:34px;height:34px;cursor:pointer;font-size:1.1rem;">›</button>
+  </div>
+  <div id="diario-cal" style="max-width:560px;margin-bottom:22px;"></div>
+  <input type="date" id="diario-data" onchange="diarioLoadDia()" style="display:none;">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+    <div id="diario-sel-lbl" style="font-weight:700;font-size:.9rem;"></div>
     <span id="diario-resumo" style="font-size:.76rem;color:var(--text3);"></span>
   </div>
   <div id="diario-lista"><div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div></div>
@@ -9681,7 +9688,63 @@ const _DIARIO_ICON = {ruido:'🔊', quimico:'⚗️', calor:'🌡️', vibracao:
 function _diarioTipoLbl(t) {
   return {ruido:'Ruído', quimico:'Químico', calor:'Calor', vibracao:'Vibração', vibracao_vci:'Vibração VCI', vibracao_vbma:'Vibração VMB', outros:'Medição'}[t] || t;
 }
-async function diarioLoad() {
+window._diarioMes = '';
+function diarioLoad() {
+  if (!window._diarioMes) { try { window._diarioMes = new Date().toISOString().slice(0,7); } catch(e){ window._diarioMes = '2026-06'; } }
+  diarioCalLoad();
+  let hoje = ''; try { hoje = new Date().toISOString().slice(0,10); } catch(e){}
+  diarioPickDay(hoje && hoje.slice(0,7) === window._diarioMes ? hoje : (window._diarioMes + '-01'));
+}
+async function diarioCalLoad() {
+  const lbl = document.getElementById('diario-mes-lbl');
+  const [y,m] = window._diarioMes.split('-').map(Number);
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  if (lbl) lbl.textContent = `${meses[m-1]} ${y}`;
+  let dias = {};
+  try { const r = await ctrlFetch('/controle/diario_calendario?mes=' + window._diarioMes); dias = (r&&r.dias)||{}; } catch(e){}
+  window._diarioCalDias = dias;
+  diarioCalRender();
+}
+function diarioCalRender() {
+  const cal = document.getElementById('diario-cal'); if (!cal) return;
+  const dias = window._diarioCalDias || {};
+  const [y,m] = window._diarioMes.split('-').map(Number);
+  const firstDow = new Date(y, m-1, 1).getDay();
+  const numDays = new Date(y, m, 0).getDate();
+  const wd = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  let cells = wd.map(w => `<div style="text-align:center;font-size:.66rem;color:var(--text3);font-weight:600;padding:3px 0;">${w}</div>`).join('');
+  for (let i=0;i<firstDow;i++) cells += '<div></div>';
+  const selData = (document.getElementById('diario-data')||{}).value || '';
+  for (let d=1; d<=numDays; d++) {
+    const iso = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const info = dias[iso] || {feito:0, agendado:0};
+    const sel = iso === selData;
+    const badges = `${info.feito?`<span style="background:rgba(74,222,128,.18);color:#4ade80;border-radius:4px;padding:0 4px;font-size:.58rem;font-weight:700;">${info.feito}</span>`:''}${info.agendado?`<span style="background:rgba(96,165,250,.18);color:#60a5fa;border-radius:4px;padding:0 4px;font-size:.58rem;font-weight:700;">${info.agendado}</span>`:''}`;
+    cells += `<div onclick="diarioPickDay('${iso}')" style="min-height:52px;border:1px solid ${sel?'#2DD4BF':'var(--border)'};border-radius:7px;padding:4px 5px;cursor:pointer;background:${sel?'rgba(45,212,191,.10)':'var(--surface)'};display:flex;flex-direction:column;gap:3px;">
+      <div style="font-size:.7rem;color:var(--text2);font-weight:600;">${d}</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;">${badges}</div>
+    </div>`;
+  }
+  cal.innerHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">${cells}</div>
+    <div style="display:flex;gap:16px;margin-top:8px;font-size:.66rem;color:var(--text3);">
+      <span><span style="display:inline-block;width:9px;height:9px;background:#4ade80;border-radius:2px;"></span> Feito (coleta/visita)</span>
+      <span><span style="display:inline-block;width:9px;height:9px;background:#60a5fa;border-radius:2px;"></span> Agendado (visita prevista)</span>
+    </div>`;
+}
+function diarioCalNav(delta) {
+  let [y,m] = window._diarioMes.split('-').map(Number);
+  m += delta; if (m<1){m=12;y--;} if (m>12){m=1;y++;}
+  window._diarioMes = `${y}-${String(m).padStart(2,'0')}`;
+  diarioCalLoad();
+}
+function diarioPickDay(iso) {
+  const dataEl = document.getElementById('diario-data'); if (dataEl) dataEl.value = iso;
+  const sl = document.getElementById('diario-sel-lbl');
+  if (sl) sl.textContent = '📋 ' + (iso ? iso.split('-').reverse().join('/') : '');
+  diarioCalRender();
+  diarioLoadDia();
+}
+async function diarioLoadDia() {
   const lista = document.getElementById('diario-lista');
   const dataEl = document.getElementById('diario-data');
   if (dataEl && !dataEl.value) { try { dataEl.value = new Date().toISOString().slice(0,10); } catch(e){} }

@@ -1596,6 +1596,48 @@ def api_diario_tecnicos():
     return jsonify({'data': data, 'total': sum(x['qtd'] for x in out), 'tecnicos': out})
 
 
+@controle_bp.route('/diario_calendario')
+def api_diario_calendario():
+    """Contagem por dia do mês p/ o calendário estilo Outlook: 'feito'
+    (coletas+visitas) e 'agendado' (planejamentos por data prevista).
+    ?mes=YYYY-MM (default = mês atual)."""
+    init_db()
+    from datetime import date as _date
+    mes = (request.args.get('mes') or '').strip()[:7] or _date.today().isoformat()[:7]
+    dias = {}
+    def _bump(dataiso, key):
+        d10 = str(dataiso or '')[:10]
+        if len(d10) == 10:
+            dias.setdefault(d10, {'feito': 0, 'agendado': 0})[key] += 1
+    with get_db() as conn:
+        for tbl in ('coletas_ruido', 'coletas_quimico', 'coletas_outros'):
+            try:
+                rows = conn.execute(
+                    f"SELECT data_coleta FROM {tbl} WHERE substr(COALESCE(data_coleta,''),1,7)=?",
+                    (mes,)).fetchall()
+            except Exception:
+                rows = []
+            for r in rows:
+                _bump(row_to_dict(r).get('data_coleta'), 'feito')
+        try:
+            vrows = conn.execute(
+                "SELECT data_visita FROM visitas_tecnicas WHERE substr(COALESCE(data_visita,''),1,7)=?",
+                (mes,)).fetchall()
+        except Exception:
+            vrows = []
+        for r in vrows:
+            _bump(row_to_dict(r).get('data_visita'), 'feito')
+        try:
+            prows = conn.execute(
+                "SELECT data_prevista FROM planejamentos WHERE substr(COALESCE(data_prevista,''),1,7)=?",
+                (mes,)).fetchall()
+        except Exception:
+            prows = []
+        for r in prows:
+            _bump(row_to_dict(r).get('data_prevista'), 'agendado')
+    return jsonify({'mes': mes, 'dias': dias})
+
+
 # ── Estoque de amostradores por agente ────────────────────────────────
 
 # Tipos de amostrador que a empresa NÃO utiliza (não aparecem na previsão)
