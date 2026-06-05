@@ -2893,6 +2893,37 @@ def ficha_coleta_outros(cid):
 
 # ── Wizard: salvar medicao completa ──────────────────────────────────
 @controle_bp.route('/medicoes', methods=['POST'])
+def _coleta_duplicada(tipo, demanda_id, data, substancia=None):
+    """True se já existe coleta para a MESMA OS (demanda) + tipo + data — químico
+    também considera a substância. Evita finalizar a mesma planilha 2×.
+    Sem demanda_id → não bloqueia (medição avulsa sem OS)."""
+    try:
+        did = int(demanda_id)
+    except (TypeError, ValueError):
+        return False
+    d10 = str(data or '')[:10]
+    if not d10:
+        return False
+    with get_db() as conn:
+        if tipo == 'ruido':
+            r = conn.execute(
+                "SELECT COUNT(*) AS c FROM coletas_ruido "
+                "WHERE demanda_id=? AND substr(COALESCE(data_coleta,''),1,10)=?",
+                (did, d10)).fetchone()
+        elif tipo == 'quimico':
+            r = conn.execute(
+                "SELECT COUNT(*) AS c FROM coletas_quimico "
+                "WHERE demanda_id=? AND substr(COALESCE(data_coleta,''),1,10)=? "
+                "AND COALESCE(substancias,'')=?",
+                (did, d10, substancia or '')).fetchone()
+        else:
+            r = conn.execute(
+                "SELECT COUNT(*) AS c FROM coletas_outros "
+                "WHERE demanda_id=? AND COALESCE(tipo,'')=? AND substr(COALESCE(data_coleta,''),1,10)=?",
+                (did, tipo, d10)).fetchone()
+        return int((row_to_dict(r).get('c') if r else 0) or 0) > 0
+
+
 def api_salvar_medicao_wizard():
     """Recebe payload do wizard Central Operacional e salva em coletas_ruido ou coletas_quimico."""
     init_db()
@@ -2906,6 +2937,7 @@ def api_salvar_medicao_wizard():
         payload_ruido = {
             'empresa_id':          d.get('empresa_id'),
             'empresa_nome':        d.get('empresa_nome', ''),
+            'demanda_id':          d.get('demanda_id'),
             'acompanhante':        cr.get('acomp', ''),
             'cargo_acompanhante':  cr.get('cargo_acomp', ''),
             'tecnico':             cr.get('tecnico') or d.get('avaliador', ''),
@@ -2926,6 +2958,9 @@ def api_salvar_medicao_wizard():
             'os':                  d.get('os', ''),
             'itens':               d.get('itens', []),
         }
+        if _coleta_duplicada('ruido', d.get('demanda_id'), d.get('data')):
+            return jsonify({'ok': False, 'duplicada': True,
+                            'aviso': 'Esta planilha de ruído (mesma OS e data) já foi finalizada. Não registrada de novo.'})
         bx = _baixar_medicao_pendente(d.get('demanda_id'), 'ruido')
         if bx['duplicada']:
             return jsonify({'ok': False, 'duplicada': True,
@@ -2939,6 +2974,7 @@ def api_salvar_medicao_wizard():
         payload_q = {
             'empresa_id':    d.get('empresa_id'),
             'empresa_nome':  d.get('empresa_nome', ''),
+            'demanda_id':    d.get('demanda_id'),
             'avaliador':     d.get('avaliador', ''),
             'tecnico_login': tecnico_login,
             'data_coleta':   d.get('data', ''),
@@ -2957,6 +2993,9 @@ def api_salvar_medicao_wizard():
             'fracao':        cq.get('fracao', ''),
             'amostradores':  cq.get('amostradores', []),
         }
+        if _coleta_duplicada('quimico', d.get('demanda_id'), d.get('data'), cq.get('substancias', '')):
+            return jsonify({'ok': False, 'duplicada': True,
+                            'aviso': 'Esta planilha química (mesma OS, data e substância) já foi finalizada. Não registrada de novo.'})
         bx = _baixar_medicao_pendente(d.get('demanda_id'), 'quimico', cq.get('substancias', ''))
         if bx['duplicada']:
             return jsonify({'ok': False, 'duplicada': True,
@@ -2994,6 +3033,10 @@ def api_salvar_medicao_wizard():
             # IBUTG setores (calor)
             'dados_json':   _json.dumps({'ibutg_setores': ibutg_setores}, ensure_ascii=False) if ibutg_setores else None,
         }
+        if _coleta_duplicada(tipo, d.get('demanda_id'), d.get('data')):
+            _lbl = 'de vibração' if tipo.startswith('vibracao') else 'de calor'
+            return jsonify({'ok': False, 'duplicada': True,
+                            'aviso': f'Esta planilha {_lbl} (mesma OS e data) já foi finalizada. Não registrada de novo.'})
         bx = _baixar_medicao_pendente(d.get('demanda_id'), tipo)
         if bx['duplicada']:
             _lbl = 'vibração' if tipo.startswith('vibracao') else 'de calor'
