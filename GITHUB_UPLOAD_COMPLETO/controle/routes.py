@@ -126,7 +126,7 @@ def produtividade_tecnicos():
     init_db()
     from .db import produtividade_por_tecnico
     try:
-        return jsonify(produtividade_por_tecnico())
+        return jsonify(produtividade_por_tecnico(request.args.get('de'), request.args.get('ate')))
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': str(e)}), 500

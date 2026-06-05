@@ -2126,7 +2126,7 @@ def equipamentos_calibracao(dias_alerta=90):
             'dias_alerta': dias_alerta}
 
 
-def produtividade_por_tecnico():
+def produtividade_por_tecnico(de=None, ate=None):
     """Produtividade contada POR MEDIÇÃO (coleta), atribuída ao técnico que a
     finalizou (coletas_*.tecnico_login). Cada coleta de ruído/químico/outros =
     1 medição feita. Legado sem tecnico_login cai no campo antigo
@@ -2135,17 +2135,25 @@ def produtividade_por_tecnico():
     'mes' = medições com data_coleta no mês corrente."""
     from datetime import date as _date
     mes_atual = _date.today().isoformat()[:7]  # 'YYYY-MM'
+    # Filtro opcional por período (data_coleta entre de e ate, YYYY-MM-DD)
+    cond = ''
+    fparams = []
+    de10 = str(de or '')[:10]; ate10 = str(ate or '')[:10]
+    if de10:
+        cond += " WHERE substr(COALESCE(data_coleta,''),1,10) >= ?"; fparams.append(de10)
+    if ate10:
+        cond += (' AND' if cond else ' WHERE') + " substr(COALESCE(data_coleta,''),1,10) <= ?"; fparams.append(ate10)
     # (sql, rotulo_tipo, coluna_tecnico_legado)
     fontes = [
-        ("SELECT tecnico_login, tecnico AS leg, data_coleta, empresa_nome FROM coletas_ruido", 'ruido'),
-        ("SELECT tecnico_login, responsavel_coleta AS leg, data_coleta, empresa_nome FROM coletas_quimico", 'quimico'),
-        ("SELECT tecnico_login, avaliador AS leg, data_coleta, empresa_nome FROM coletas_outros", 'outros'),
+        ("SELECT tecnico_login, tecnico AS leg, data_coleta, empresa_nome FROM coletas_ruido" + cond, 'ruido'),
+        ("SELECT tecnico_login, responsavel_coleta AS leg, data_coleta, empresa_nome FROM coletas_quimico" + cond, 'quimico'),
+        ("SELECT tecnico_login, avaliador AS leg, data_coleta, empresa_nome FROM coletas_outros" + cond, 'outros'),
     ]
     agg = {}
     with get_db() as conn:
         for sql, tipo in fontes:
             try:
-                rows = conn.execute(sql).fetchall()
+                rows = conn.execute(sql, fparams).fetchall()
             except Exception:
                 rows = []
             for r in rows:

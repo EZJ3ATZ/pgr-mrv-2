@@ -5970,6 +5970,24 @@
     <div id="bi-prod-wrap"></div>
   </div>
 
+  <!-- S5b: Produtividade por Técnico — gráfico com filtro de data -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;">&#128202; Produtividade por T&#233;cnico (gr&#225;fico)</div>
+        <div style="font-size:.7rem;color:var(--text3);margin-top:3px;">Medi&#231;&#245;es por t&#233;cnico (ru&#237;do/qu&#237;mico/calor-vibra&#231;&#227;o). Edite o per&#237;odo:</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <input type="date" id="bi-prod-de" onchange="biProdChartLoad()" title="De" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.76rem;font-family:inherit;outline:none;">
+        <span style="color:var(--text3);font-size:.76rem;">at&#233;</span>
+        <input type="date" id="bi-prod-ate" onchange="biProdChartLoad()" title="At&#233;" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.76rem;font-family:inherit;outline:none;">
+        <button onclick="biProdLimparData()" title="Limpar datas (tudo)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:.76rem;cursor:pointer;">Tudo</button>
+      </div>
+    </div>
+    <div id="bi-prod-chart-wrap" style="position:relative;height:240px;"><canvas id="bi-chart-prod"></canvas></div>
+    <div id="bi-prod-chart-empty" style="display:none;text-align:center;padding:32px;color:var(--text3);font-size:.78rem;">Nenhuma medi&#231;&#227;o no per&#237;odo selecionado.</div>
+  </div>
+
   <!-- Row S6 + S7 -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
     <!-- S6: Lab -->
@@ -13102,6 +13120,47 @@ function _biAmstCardHtml(a) {
   </div>`;
 }
 
+let _biProdChart = null;
+async function biProdChartLoad() {
+  if (!window.Chart) return;
+  const de  = (document.getElementById('bi-prod-de')||{}).value || '';
+  const ate = (document.getElementById('bi-prod-ate')||{}).value || '';
+  const qs = []; if (de) qs.push('de=' + de); if (ate) qs.push('ate=' + ate);
+  let data = [];
+  try { data = await ctrlFetch('/controle/produtividade/tecnicos' + (qs.length ? '?' + qs.join('&') : '')); } catch(e){}
+  data = Array.isArray(data) ? data : (data.items || []);
+  const wrap = document.getElementById('bi-prod-chart-wrap');
+  const empty = document.getElementById('bi-prod-chart-empty');
+  const total = data.reduce((s,t)=>s+(t.total||0),0);
+  if (!data.length || !total) {
+    if (wrap) wrap.style.display='none'; if (empty) empty.style.display='block';
+    if (_biProdChart) { _biProdChart.destroy(); _biProdChart=null; }
+    return;
+  }
+  if (wrap) wrap.style.display='block'; if (empty) empty.style.display='none';
+  const labels = data.map(t => t.tecnico);
+  const datasets = [
+    {label:'Ruído',          data:data.map(t=>t.ruido||0),   backgroundColor:'#4ade80cc'},
+    {label:'Químico',        data:data.map(t=>t.quimico||0), backgroundColor:'#60a5facc'},
+    {label:'Calor/Vibração', data:data.map(t=>t.outros||0),  backgroundColor:'#fb923ccc'},
+  ];
+  if (_biProdChart) _biProdChart.destroy();
+  _biProdChart = new Chart(document.getElementById('bi-chart-prod'), {
+    type:'bar',
+    data:{ labels, datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#9ca3af', font:{size:11} } },
+                tooltip:{ callbacks:{ footer: items => 'Total: ' + items.reduce((s,i)=>s+(i.raw||0),0) } } },
+      scales:{ x:{ stacked:true, grid:{display:false}, ticks:{color:'#9ca3af',font:{size:10}} },
+               y:{ stacked:true, beginAtZero:true, grid:{color:'#1f2937'}, ticks:{color:'#4b5563',precision:0} } } }
+  });
+}
+function biProdLimparData() {
+  const de=document.getElementById('bi-prod-de'); if(de) de.value='';
+  const ate=document.getElementById('bi-prod-ate'); if(ate) ate.value='';
+  biProdChartLoad();
+}
+
 async function biLoad() {
   if (!window.Chart) { console.warn('Chart.js nao carregado'); return; }
   const loadEl   = document.getElementById('bi-loading');
@@ -13382,6 +13441,8 @@ async function biLoad() {
         }).join('');
       }
     }
+
+    biProdChartLoad();
 
     // ── S6: Amostradores em Lab ───────────────────────────────────
     const labItems = amostradores.filter(a => {
