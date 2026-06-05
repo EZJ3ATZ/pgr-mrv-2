@@ -3981,6 +3981,7 @@
         <button type="button" onclick="planAddAgente('quimico')" style="background:rgba(57,153,255,.1);color:#39f;border:1px solid #39f;padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Químico</button>
         <button type="button" onclick="planAddAgente('calor')" style="background:rgba(245,158,11,.1);color:var(--yellow);border:1px solid var(--yellow);padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Calor</button>
         <button type="button" onclick="planAddAgente('vibracao')" style="background:rgba(167,139,250,.1);color:var(--purple);border:1px solid var(--purple);padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;">+ Vibração</button>
+        <button type="button" onclick="planSalvarAgentesNaOS()" title="Persiste estes agentes na OS — corrige a extração e passa a valer em todo lugar (Empresa, próximas visitas)" style="background:rgba(45,212,191,.12);color:#2DD4BF;border:1px solid #2DD4BF;padding:5px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;margin-left:auto;">💾 Salvar na OS</button>
       </div>
     </div>
 
@@ -9591,6 +9592,87 @@ function _planLimparDemanda() {
   if (info) info.style.display = 'none';
 }
 
+// ── Editar agentes de uma OS (corrige a extração; persiste na demanda) ──
+const _AG_TIPOS = [
+  {v:'ruido',l:'🔊 Ruído'},{v:'quimico',l:'⚗️ Químico'},{v:'particulado',l:'🌫️ Particulado'},
+  {v:'calor',l:'🌡️ Calor'},{v:'vibracao_vci',l:'〰️ Vibração VCI'},{v:'vibracao_vbma',l:'〰️ Vibração VMB'},
+  {v:'vibracao',l:'〰️ Vibração (geral)'},{v:'iluminamento',l:'💡 Iluminamento'},{v:'outro',l:'Outro'}
+];
+window._agEditDid = null; window._agEditRows = []; window._agEditLabel = '';
+
+async function editarAgentesOS(did, osNum, label) {
+  let ags = [];
+  if ((!did || did === 'null') && osNum) {
+    try { const r = await ctrlFetch('/controle/demandas/por_os/' + encodeURIComponent(osNum));
+      if (r && r.id) { did = r.id; ags = r.agentes || []; } } catch(e){}
+  } else if (did && did !== 'null') {
+    try { const r = await ctrlFetch('/controle/demandas/' + did + '/agentes'); ags = (r && r.agentes) || []; } catch(e){}
+  }
+  if (!did || did === 'null') { _showToast('OS não encontrada no banco.', 'error'); return; }
+  window._agEditDid = did;
+  window._agEditLabel = label || ('OS ' + (osNum || did));
+  window._agEditRows = (ags || []).map(a => ({tipo:a.tipo||'quimico', texto:a.texto||a.agente||'', qtd:a.qtd||1}));
+  _agEditRender();
+}
+
+function _agEditRender() {
+  const label = window._agEditLabel || '';
+  const old = document.getElementById('ag-edit-modal'); if (old) old.remove();
+  const fld = 'background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.8rem;font-family:inherit;outline:none;';
+  const opt = (sel) => _AG_TIPOS.map(t => `<option value="${t.v}"${t.v===sel?' selected':''}>${t.l}</option>`).join('');
+  const esc2 = (s) => _esc(s).replace(/"/g,'&quot;');
+  const rows = window._agEditRows.map((a,i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <select onchange="window._agEditRows[${i}].tipo=this.value" style="${fld}width:150px;">${opt(a.tipo)}</select>
+      <input type="text" value="${esc2(a.texto)}" oninput="window._agEditRows[${i}].texto=this.value" placeholder="Nome do agente" style="${fld}flex:1;">
+      <input type="number" min="1" value="${a.qtd}" oninput="window._agEditRows[${i}].qtd=parseInt(this.value)||1" title="quantidade" style="${fld}width:54px;">
+      <button onclick="window._agEditRows.splice(${i},1);_agEditRender()" title="Remover" style="background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3);border-radius:6px;width:30px;height:30px;cursor:pointer;flex-shrink:0;">✕</button>
+    </div>`).join('');
+  const m = document.createElement('div');
+  m.id = 'ag-edit-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(580px,94vw);max-height:86vh;overflow:auto;">
+    <div style="font-weight:700;font-size:1rem;">✏️ Editar agentes — ${_esc(label)}</div>
+    <div style="font-size:.74rem;color:var(--text3);margin:4px 0 14px;">Corrija o que a extração trouxe errado. Salva na OS, vale em todo lugar e o "Reprocessar agentes" não apaga. Remover todos = volta ao automático.</div>
+    <div id="ag-edit-rows">${rows || '<div style="color:var(--text3);font-size:.82rem;padding:6px 0;">Nenhum agente. Adicione abaixo.</div>'}</div>
+    <button onclick="window._agEditRows.push({tipo:'quimico',texto:'',qtd:1});_agEditRender()" style="margin-top:6px;background:var(--surface2);border:1px dashed var(--border2);color:var(--text2);border-radius:7px;padding:7px 12px;font-size:.8rem;cursor:pointer;">+ Adicionar agente</button>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+      <button onclick="document.getElementById('ag-edit-modal').remove()" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:8px 16px;cursor:pointer;">Cancelar</button>
+      <button onclick="agEditSave()" style="background:#2DD4BF;border:none;color:#07090e;border-radius:7px;padding:8px 18px;font-weight:700;cursor:pointer;">Salvar na OS</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+async function agEditSave() {
+  const did = window._agEditDid;
+  const agentes = (window._agEditRows||[]).filter(a => (a.texto||'').trim()).map(a => ({tipo:a.tipo, texto:(a.texto||'').trim(), qtd:a.qtd||1}));
+  try {
+    const r = await fetch('/controle/demandas/' + did + '/agentes', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({agentes})});
+    const j = await r.json();
+    if (j && j.ok) {
+      const md = document.getElementById('ag-edit-modal'); if (md) md.remove();
+      _showToast('Agentes salvos na OS (' + (j.modo||'manual') + ')', 'success');
+      const pd = document.getElementById('plan-demanda-id');
+      if (pd && String(pd.value) === String(did) && typeof _planRenderizarAgentes === 'function') {
+        window._planAgentes = agentes.map(a => ({tipo:a.tipo, agente:a.texto, qtd:a.qtd}));
+        _planRenderizarAgentes();
+      }
+    } else { _showToast('Erro: ' + ((j&&j.erro)||'falha'), 'error'); }
+  } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
+}
+
+async function planSalvarAgentesNaOS() {
+  const did = document.getElementById('plan-demanda-id') ? document.getElementById('plan-demanda-id').value : '';
+  if (!did) { _showToast('Vincule uma OS primeiro (busque pelo número).', 'error'); return; }
+  const agentes = (window._planAgentes||[]).map(a => ({tipo:a.tipo, texto:a.agente||a.texto||'', qtd:a.qtd||1})).filter(a => (a.texto||'').trim());
+  try {
+    const r = await fetch('/controle/demandas/' + did + '/agentes', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({agentes})});
+    const j = await r.json();
+    _showToast(j && j.ok ? 'Agentes salvos na OS — corrigido em todo lugar' : ('Erro: ' + ((j&&j.erro)||'falha')), j && j.ok ? 'success' : 'error');
+  } catch(e) { _showToast('Erro: ' + e.message, 'error'); }
+}
+
 function planAddAgente(tipo) {
   const labels = {ruido:'Ruído (dosimetria)', quimico:'Agente Químico', calor:'Calor (IBUTG)', vibracao:'Vibração'};
   const old = document.getElementById('plan-add-modal');
@@ -12364,6 +12446,7 @@ function empRenderPainel() {
                 </div>
               </div>
               <div style="font-size:.7rem;font-weight:600;color:${statusCor};flex-shrink:0;">${dem.status || ''}</div>
+              <button onclick="event.stopPropagation();editarAgentesOS(${dem.id || 'null'}, '${dem.numero_os || ''}', '${dem.numero_os || ''}')" title="Editar agentes desta OS" style="background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer;flex-shrink:0;">✏️</button>
             </div>
             ${chips.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;">
               ${chips.map(a => `<span style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);padding:2px 8px;border-radius:12px;font-size:.68rem;color:var(--orange);">${a.canonical || a.agente || a}</span>`).join('')}

@@ -1043,6 +1043,24 @@ def _ags_de_extracao_json(extracao_json_str: str) -> list:
         return []
 
 
+def _ags_manual(agentes_manual_str):
+    """Agentes editados manualmente pelo técnico — override que VENCE a extração
+    automática e sobrevive ao re-extrair. Retorna None se não houver edição
+    (cai pro automático); retorna lista (pode ser vazia) se houver."""
+    if not agentes_manual_str:
+        return None
+    try:
+        import json as _j
+        ags = _j.loads(agentes_manual_str)
+        if isinstance(ags, list):
+            return [{'tipo': a.get('tipo', 'quimico'),
+                     'qtd':  a.get('qtd', 1),
+                     'texto': a.get('texto', '')} for a in ags if a.get('texto')]
+    except Exception:
+        pass
+    return None
+
+
 def _ags_multifonte(titulo: str, descricao: str, checklist_raw: str, bucket: str) -> list:
     """Motor inteligente multi-fonte: título + desc + checklist + bucket."""
     try:
@@ -1072,32 +1090,71 @@ def get_demanda_agentes(did):
         init_db()
         with get_db() as conn:
             row = conn.execute(
-                'SELECT titulo, descricao, checklist, planner_bucket, extracao_json FROM demandas WHERE id=?',
+                'SELECT titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual FROM demandas WHERE id=?',
                 (did,)
             ).fetchone()
         if not row:
             return jsonify({'erro': 'nao encontrada'}), 404
         d = row_to_dict(row)
 
-        # 1. extracao_json — já computado pelo motor no sync
-        agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
-
-        # 2. motor multifonte (título + desc + checklist + bucket)
-        if not agentes:
-            agentes = _ags_multifonte(
-                d.get('titulo', ''), d.get('descricao', ''),
-                d.get('checklist', ''), d.get('planner_bucket', '')
-            )
-
-        # 3. fallback: parser antigo (só descrição)
-        if not agentes:
-            from .parser_agentes import extrair_agentes
-            agentes = extrair_agentes(d.get('descricao') or '')
+        # 0. edição manual do técnico (override — vence a extração automática)
+        agentes = _ags_manual(d.get('agentes_manual'))
+        if agentes is None:
+            # 1. extracao_json — já computado pelo motor no sync
+            agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
+            # 2. motor multifonte (título + desc + checklist + bucket)
+            if not agentes:
+                agentes = _ags_multifonte(
+                    d.get('titulo', ''), d.get('descricao', ''),
+                    d.get('checklist', ''), d.get('planner_bucket', '')
+                )
+            # 3. fallback: parser antigo (só descrição)
+            if not agentes:
+                from .parser_agentes import extrair_agentes
+                agentes = extrair_agentes(d.get('descricao') or '')
 
         return jsonify({'agentes': agentes, 'resumo': resumo_agentes(agentes)})
     except Exception as e:
         import traceback
         return jsonify({'erro': str(e), 'trace': traceback.format_exc()}), 500
+
+
+@controle_bp.route('/demandas/<int:did>/agentes', methods=['POST'])
+def save_demanda_agentes(did):
+    """Salva a edição MANUAL dos agentes de uma OS (corrige o que a extração errou).
+    Vence a extração automática e sobrevive ao 'Reprocessar agentes'.
+    Lista vazia → limpa o override e volta ao automático."""
+    init_db()
+    payload = request.json or {}
+    raw = payload.get('agentes', [])
+    if not isinstance(raw, list):
+        return jsonify({'ok': False, 'erro': 'agentes deve ser uma lista'}), 400
+    limpos = []
+    for a in raw:
+        if not isinstance(a, dict):
+            continue
+        texto = (a.get('texto') or '').strip()
+        if not texto:
+            continue
+        try:
+            qtd = int(a.get('qtd') or 1)
+        except (TypeError, ValueError):
+            qtd = 1
+        limpos.append({'tipo': (a.get('tipo') or 'quimico'), 'qtd': max(1, min(qtd, 99)), 'texto': texto})
+    import json as _j
+    valor = _j.dumps(limpos, ensure_ascii=False) if limpos else None  # vazio → volta ao automático
+    with get_db() as conn:
+        conn.execute('UPDATE demandas SET agentes_manual=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?',
+                     (valor, did))
+    try:
+        registrar_evento('agentes_editados',
+                         f'Agentes da OS editados manualmente ({len(limpos)} agente(s))',
+                         did, 'demanda',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
+    except Exception:
+        pass
+    return jsonify({'ok': True, 'agentes': limpos, 'modo': 'manual' if limpos else 'automatico'})
 
 
 @controle_bp.route('/demandas/busca')
@@ -1130,28 +1187,30 @@ def get_demanda_por_os(os_num):
         os_clean = os_num.strip()
         with get_db() as conn:
             row = conn.execute(
-                "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json FROM demandas WHERE numero_os=? LIMIT 1",
+                "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual FROM demandas WHERE numero_os=? LIMIT 1",
                 (os_clean,)
             ).fetchone()
             if not row:
                 row = conn.execute(
-                    "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json FROM demandas WHERE titulo LIKE ? LIMIT 1",
+                    "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual FROM demandas WHERE titulo LIKE ? LIMIT 1",
                     (f'%{os_clean}%',)
                 ).fetchone()
         if not row:
             return jsonify({'encontrado': False}), 200
         d = row_to_dict(row)
 
-        # Extrair agentes multi-fonte
-        agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
-        if not agentes:
-            agentes = _ags_multifonte(
-                d.get('titulo', ''), d.get('descricao', ''),
-                d.get('checklist', ''), d.get('planner_bucket', '')
-            )
-        if not agentes:
-            from .parser_agentes import extrair_agentes
-            agentes = extrair_agentes(d.get('descricao') or '')
+        # Edição manual do técnico vence a extração automática
+        agentes = _ags_manual(d.get('agentes_manual'))
+        if agentes is None:
+            agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
+            if not agentes:
+                agentes = _ags_multifonte(
+                    d.get('titulo', ''), d.get('descricao', ''),
+                    d.get('checklist', ''), d.get('planner_bucket', '')
+                )
+            if not agentes:
+                from .parser_agentes import extrair_agentes
+                agentes = extrair_agentes(d.get('descricao') or '')
 
         # Buscar empresa vinculada
         with get_db() as conn:

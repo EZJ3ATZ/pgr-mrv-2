@@ -933,6 +933,7 @@ def _migrate(conn):
     for col, dfn in [
         ('needs_review',  'INTEGER DEFAULT 0'),
         ('extracao_json', 'TEXT DEFAULT NULL'),
+        ('agentes_manual','TEXT DEFAULT NULL'),
     ]:
         _add_col(conn, 'demandas', col, dfn)
 
