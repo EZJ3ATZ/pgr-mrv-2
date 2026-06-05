@@ -613,6 +613,13 @@ def extrair_agentes_multifonte(
                         confianca=0.65,
                     )
 
+    # Dedup vibração: se há vibração ESPECÍFICA (VCI/VMB), descarta a genérica
+    # "Vibração (geral)". Sem isso, "vibração de corpo inteiro" casa nos dois
+    # (a substring "vibração" dispara o genérico junto com o específico).
+    if ('Vibração de Corpo Inteiro (VCI)' in acumulado
+            or 'Vibração de Mão-Braço (VMB)' in acumulado):
+        acumulado.pop('Vibração (geral)', None)
+
     return sorted(acumulado.values(), key=lambda a: -a.confianca)
 
 
