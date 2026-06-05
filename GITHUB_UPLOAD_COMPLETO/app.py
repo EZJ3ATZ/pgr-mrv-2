@@ -885,6 +885,12 @@ def login_redirect():
     from flask import redirect, url_for
     return redirect(url_for('auth.login'))
 
+@app.route('/favicon.ico')
+def favicon():
+    """Ícone da aba do navegador (usa o ícone do PWA). Cobre todas as páginas."""
+    return send_from_directory('static', 'icon-192.png', mimetype='image/png')
+
+
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
