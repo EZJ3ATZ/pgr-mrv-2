@@ -107,7 +107,7 @@ AGENTES_SST: Dict[str, List[str]] = {
     ],
     'Benzeno': [
         'benzeno', 'benzene', 'benzol', 'nr15 benzeno', 'nr-15 benzeno',
-        'ppra benzeno', 'programa benzeno', 'btex', 'hidrocarboneto aromatico',
+        'ppra benzeno', 'programa benzeno', 'btx', 'btex', 'hidrocarboneto aromatico',
     ],
     'Tolueno': [
         'tolueno', 'toluene', 'metilbenzeno',
@@ -619,6 +619,13 @@ def extrair_agentes_multifonte(
     if ('Vibração de Corpo Inteiro (VCI)' in acumulado
             or 'Vibração de Mão-Braço (VMB)' in acumulado):
         acumulado.pop('Vibração (geral)', None)
+
+    # Dedup gases: se há um gás/vapor orgânico ESPECÍFICO (VOC), descarta o
+    # genérico "Gases e Vapores (geral)" — a substring 'gases'/'vapores' dispara
+    # o genérico junto com o específico (mesma classe do bug da vibração).
+    _GAS_VOC = {'Benzeno', 'Tolueno', 'Xileno', 'Hexano', 'MEK (Butanona)', 'Acetona', 'Álcool'}
+    if any(c in acumulado for c in _GAS_VOC):
+        acumulado.pop('Gases e Vapores (geral)', None)
 
     return sorted(acumulado.values(), key=lambda a: -a.confianca)
 
