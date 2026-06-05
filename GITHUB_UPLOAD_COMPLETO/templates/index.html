@@ -9884,9 +9884,16 @@ function _planRenderizarAgentes() {
       extraFields = `<div style="margin-top:4px;font-size:.73rem;color:var(--yellow);">🌡️ Chrompack IBUTG — único operacional</div>`;
     }
 
+    const _av = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     return `<div class="plan-agente-item" style="flex-direction:column;align-items:flex-start;gap:3px;padding:8px 10px;">
-      <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-        <span>${tipos[a.tipo]||'📋'} <b>${_esc(a.agente)}</b> ×${a.qtd} ${metaHtml}</span>
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center;gap:6px;">
+        <span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1;">
+          <span style="flex-shrink:0;">${tipos[a.tipo]||'📋'}</span>
+          <input type="text" value="${_av(a.agente)}" onchange="window._planAgentes[${i}].agente=this.value;" title="Nome do agente — clique para editar" style="${inp}font-weight:700;min-width:150px;flex:1;">
+          <span style="color:var(--text3);">×</span>
+          <input type="number" min="1" value="${a.qtd||1}" onchange="window._planAgentes[${i}].qtd=Math.max(1,parseInt(this.value)||1);_planRenderizarAgentes();" title="Quantidade — clique para editar" style="${inp}width:50px;text-align:center;">
+          <input type="text" value="${_av(a.metodo)}" placeholder="método" onchange="window._planAgentes[${i}].metodo=this.value;" title="Método analítico — clique para editar" style="${inp}min-width:110px;flex:1;color:var(--text3);font-size:.7rem;">
+        </span>
         <button type="button" onclick="planRemoverAgente(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 4px;flex-shrink:0;">✕</button>
       </div>
       ${extraFields}
@@ -14613,19 +14620,29 @@ async function nvConcluirOS() {
   const resp = await nvSalvarMedicao();
   if (!resp) return;  // erro ao salvar — não prossegue
   const os  = document.getElementById('ctrl-nv-os')?.value || '';
-  // A planilha NÃO conclui a OS. As medições ficam registradas como FEITAS
-  // (em seu nome) e somem da lista de pendências dos outros técnicos.
-  // A OS só é dada como CONCLUÍDA quando movida para o bucket
-  // "Entregue / Concluído" no Planner.
-  alert(
-    '✅ Planilha finalizada!\n\n' +
-    'As medições que você preencheu ficam registradas como FEITAS, em seu nome.\n' +
-    'Outro técnico que abrir esta empresa verá apenas as medições que ainda faltam — ' +
-    'não vai refazer as suas.\n\n' +
-    'ℹ️ A OS ' + (os ? os + ' ' : '') + 'só será marcada como CONCLUÍDA no painel quando ' +
-    'você movê-la para o bucket "Entregue / Concluído" no Planner.'
-  );
-  _showToast('✅ Planilha finalizada — medições registradas em seu nome.','ok');
+  const jaExistia = !!(resp && resp.duplicada);
+  // ANTES: "Finalizar planilha" só salvava no banco e NÃO gerava arquivo — o técnico
+  // achava que "a planilha não veio". Agora gera/baixa a planilha SEMPRE (nova ou repetida).
+  try { await nvGerarRelatorioCampo(); } catch (e) {}
+  if (jaExistia) {
+    // A trava de duplicidade barrou um registro novo. Mensagem honesta (sem ✅ falso),
+    // mas a planilha foi gerada do mesmo jeito pra ele baixar.
+    alert(
+      '⚠️ Esta planilha já tinha sido finalizada antes (mesma OS e data).\n\n' +
+      'Não dupliquei o registro — mas gerei a planilha de novo pra você baixar.'
+    );
+    _showToast('⚠️ Já estava finalizada — planilha gerada de novo, sem duplicar.','warn');
+  } else {
+    alert(
+      '✅ Planilha finalizada!\n\n' +
+      'As medições que você preencheu ficam registradas como FEITAS, em seu nome.\n' +
+      'Outro técnico que abrir esta empresa verá apenas as medições que ainda faltam — ' +
+      'não vai refazer as suas.\n\n' +
+      'ℹ️ A OS ' + (os ? os + ' ' : '') + 'só será marcada como CONCLUÍDA no painel quando ' +
+      'você movê-la para o bucket "Entregue / Concluído" no Planner.'
+    );
+    _showToast('✅ Planilha finalizada — registrada em seu nome e planilha gerada.','ok');
+  }
   if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
 }
 
