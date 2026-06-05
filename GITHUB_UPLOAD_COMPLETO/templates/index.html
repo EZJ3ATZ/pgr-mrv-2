@@ -10185,12 +10185,12 @@ function _planAtualizarEquipamentos() {
 //   Poeira          4:00       6
 //   Metais          1:20       6
 //   Gases/Vapores   1:00       6
-// LÓGICA (igual planilha tradicional — arredonda CADA agente separado):
-//   • horas_agente = ceil(qtd / equip) × duração_h
-//   • dias_agente  = ceil(horas_agente / 8)   ← cada agente vira dia(s) inteiro(s)
-//   • Total = soma dos dias de cada agente.
-//     (ex.: calor 1h → 1 dia + vibração 40min → 1 dia = 2 dias)
-//   • Ruído: ceil(qtd/15) batches × 8h ÷ 8 = ceil(qtd/15) dias inteiros.
+// LÓGICA REAL (célula F9 da planilha) — dia útil de 9h, medições EM PARALELO:
+//   • Ruído    = teto(qtd / 15)                                  (lotes de 15 dosímetros)
+//   • Químicos = teto( Σhoras(Poeira+Metais+Gases) / (6 bombas × 9h) )
+//   • BASE     = MAX(ruído, químicos)    ← rodam no MESMO dia, NÃO soma
+//   • Calor+Vibração encaixam na base; extra = teto(max(0, Σh_téc − BASE×9h) / 9h)
+//   • TOTAL    = BASE + extra   (ex.: ruído 3, poeira 4, vibração 2 → 1 dia, não 4)
 const _CALC_PARAMS = {
   ruido:         { duracao_h: 8.0,    equip: 15, label: '🔊 Ruído',          cor: 'var(--green)'  },
   quimico:       { duracao_h: 4.0,    equip: 6,  label: '⚗️ Químico (poeira)',cor: '#39f'          },
@@ -10225,32 +10225,55 @@ function _planCalcularDias() {
     por_tipo[key] = (por_tipo[key] || 0) + (a.qtd || 1);
   });
 
+  // Grupos da planilha: ruído | químicos (mesmo bolo de bombas) | tempo técnico (encaixa na base)
+  const GRUPO = { ruido:'ruido', quimico:'quimico', particulado:'quimico', metais:'quimico',
+                  gases:'quimico', calor:'tecnico', vibracao:'tecnico',
+                  vibracao_vci:'tecnico', vibracao_vbma:'tecnico' };
+  const DIA_H = 9;   // dia útil de 9h (planilha usa TIME(9,0,0))
+
   let linhas = [];
-  let total = 0;
+  let ruidoQtd = 0, ruidoEquip = 15;
+  let horasQuim = 0, equipQuim = 6;   // Poeira+Metais+Gases compartilham as 6 bombas
+  let horasTec  = 0;                  // Calor+Vibração: tempo técnico que encaixa na base
   for (const [tipo, qtd] of Object.entries(por_tipo)) {
     const p = _CALC_PARAMS[tipo];
     if (!p) continue;
-    const batches = Math.ceil(qtd / p.equip);
-    const horas   = batches * p.duracao_h;
-    const dias    = Math.ceil(horas / 8);   // planilha: cada agente arredonda p/ dia inteiro
-    total += dias;
-    const info = tipo === 'ruido'
-      ? `${dias} dia${dias!==1?'s':''} (dosimetria 8h)`
-      : `${_fmtDur(horas)} → ${dias} dia${dias!==1?'s':''}`;
-    linhas.push({ label: p.label, cor: p.cor, qtd, equip: p.equip, duracao_h: p.duracao_h, info });
+    const horas = qtd * p.duracao_h;
+    const g = GRUPO[tipo] || 'tecnico';
+    if (g === 'ruido')        { ruidoQtd += qtd; ruidoEquip = p.equip; }
+    else if (g === 'quimico') { horasQuim += horas; equipQuim = Math.min(equipQuim, p.equip); }
+    else                      { horasTec  += horas; }
+    linhas.push({ label: p.label, cor: p.cor, qtd, equip: p.equip, duracao_h: p.duracao_h });
   }
+
+  // Réplica fiel da célula F9 da planilha "Calculo de Dias de Medições" (medições em paralelo)
+  const diasRuido = Math.ceil(ruidoQtd / ruidoEquip) || 0;
+  const diasQuim  = horasQuim > 0 ? Math.ceil(horasQuim / (equipQuim * DIA_H)) : 0;
+  const base      = Math.max(diasRuido, diasQuim);
+  const extra     = Math.ceil(Math.max(0, horasTec - base * DIA_H) / DIA_H) || 0;
+  const total     = base + extra;
 
   window._planDiasEstimado = total;
 
+  // Detalhe por agente (informativo — sem somar dia por agente)
   let html = linhas.map(l =>
     `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface2);border-radius:6px;margin-bottom:4px;font-size:.82rem;">
       <span style="color:var(--text2);">${l.label} <span style="color:var(--text3);">× ${l.qtd} / ${l.equip} equip. / ${_fmtDur(l.duracao_h)} cada</span></span>
-      <span style="font-weight:700;color:${l.cor};">${l.info}</span>
     </div>`
   ).join('');
 
+  // Resumo (igual à aba "Resumo" da planilha)
+  const _lr = (txt, val, forte) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;font-size:.8rem;${forte?'font-weight:700;color:var(--text);':'color:var(--text3);'}"><span>${txt}</span><span>${val}</span></div>`;
+  html += `<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">`;
+  if (ruidoQtd > 0)  html += _lr('Ruído (lotes de 15 dosímetros)', `${diasRuido} dia${diasRuido!==1?'s':''}`);
+  if (horasQuim > 0) html += _lr('Químicos — Poeira+Metais+Gases (6 bombas)', `${diasQuim} dia${diasQuim!==1?'s':''}`);
+  html += _lr('Base — maior entre ruído e químicos (mesmo dia)', `${base} dia${base!==1?'s':''}`, true);
+  if (horasTec > 0)  html += _lr(`Tempo técnico (Calor+Vibração) = ${_fmtDur(horasTec)}`, extra > 0 ? `+${extra} dia${extra!==1?'s':''}` : 'encaixa na base');
+  html += `</div>`;
+
   html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:8px;margin-top:8px;">
-    <span style="font-weight:700;color:var(--text);">Total estimado (soma dos dias por agente)</span>
+    <span style="font-weight:700;color:var(--text);">Total estimado (medições em paralelo)</span>
     <span style="font-weight:800;font-size:1.1rem;color:#93c5fd;">${total} dia${total !== 1 ? 's' : ''}</span>
   </div>`;
 
