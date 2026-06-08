@@ -2277,6 +2277,10 @@
       <span>Configura&#231;&#245;es</span>
     </div>
 
+    <div class="sidebar-item" data-name="pops" onclick="goToTab('pops')" title="POPs — Procedimentos Operacionais Padrão de campo">
+      <svg class="sidebar-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20v-5M4 19.5V5a2 2 0 012-2h14v14H6.5A2.5 2.5 0 004 19.5z"/></svg>
+      <span class="sidebar-label">Biblioteca de POPs</span>
+    </div>
     <div class="sidebar-item" data-name="guia" onclick="goToTab('guia')" title="Guia Completo do Sistema">
       <svg class="sidebar-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
       <span class="sidebar-label">Guia do Sistema</span>
@@ -5404,6 +5408,21 @@
 </div>
 </div>
 
+<!-- ══ Painel BIBLIOTECA DE POPs ═════════════════════════════════════════ -->
+<div id="tab-pops" class="tab-panel">
+<div class="page" style="max-width:900px;">
+  <div class="page-head page-head-v2">
+    <div>
+      <h1 class="page-title">📚 Biblioteca de POPs</h1>
+      <p class="page-sub">Procedimentos Operacionais Padrão de campo — abra o passo a passo oficial de cada medição.</p>
+    </div>
+  </div>
+  <input id="pops-busca" type="text" placeholder="🔎 Buscar POP (ex: ruído, calor, químico, VCI...)" oninput="popsRender(this.value)"
+    style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:9px;color:var(--text);padding:11px 14px;font-size:.9rem;font-family:inherit;outline:none;margin-bottom:16px;">
+  <div id="pops-lista" style="display:grid;gap:10px;"></div>
+</div>
+</div>
+
 <!-- ══ Painel GUIA DO SISTEMA ════════════════════════════════════════════ -->
 <div id="tab-guia" class="tab-panel">
 <div class="page" style="max-width:900px;">
@@ -6111,6 +6130,35 @@ function goToTab(name) {
   if (name === 'diario') diarioLoad();
   if (name === 'configuracoes') cfgCarregarPerfil();
   if (name === 'ruido') { nvSigInit('r-sig-avaliado'); nvSigInit('r-sig-empresa'); }
+  if (name === 'pops') popsLoad();
+}
+
+// ── Biblioteca de POPs (PDFs servidos em /static/pops/) ────────────────
+const _POPS = [
+  { tipo:'Ruído',    icon:'🔊', arq:'pop-ruido.pdf',                  nome:'POP OCP 005 — Medição de Ruído',           desc:'Dosimetria ocupacional: calibração, posicionamento do dosímetro, tempo de coleta e registro.' },
+  { tipo:'Calor',    icon:'🌡️', arq:'pop-calor.pdf',                  nome:'POP OCP 002 — Medição de Calor (IBUTG)',   desc:'IBUTG: montagem do termômetro, regime de trabalho/descanso, taxa metabólica e leituras.' },
+  { tipo:'Químico',  icon:'🧪', arq:'pop-quimico.pdf',                nome:'POP OCUP — Avaliação Química',             desc:'Amostragem de agentes químicos: bomba, vazão, amostrador, volume e cadeia de custódia.' },
+  { tipo:'Vibração VCI', icon:'📳', arq:'pop-vci.pdf',                nome:'POP OCP 003 — Medição de VCI',             desc:'Vibração de corpo inteiro: aparelho, eixos, trajeto, terreno e tempo de exposição.' },
+  { tipo:'Vibração VMB', icon:'📳', arq:'pop-vmb.pdf',                nome:'POP OCP 004 — Medição de VMB',             desc:'Vibração mãos e braços: acelerômetro na ferramenta, tempo de exposição e registro.' },
+  { tipo:'Levantamento', icon:'📋', arq:'pop-levantamento-ambiental.pdf', nome:'POP — Levantamento Ambiental',         desc:'Reconhecimento do ambiente, GHEs, fontes de risco e definição do que medir.' },
+];
+function popsLoad() { popsRender(document.getElementById('pops-busca')?.value || ''); }
+function popsRender(q) {
+  const lista = document.getElementById('pops-lista'); if (!lista) return;
+  const qq = (q||'').toLowerCase().trim();
+  const items = _POPS.filter(p => !qq || (p.tipo+' '+p.nome+' '+p.desc).toLowerCase().includes(qq));
+  if (!items.length) { lista.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:10px;">Nenhum POP encontrado.</div>'; return; }
+  lista.innerHTML = items.map(p => `
+    <a href="/static/pops/${p.arq}" target="_blank" rel="noopener"
+       style="display:flex;align-items:center;gap:14px;text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;transition:border-color .15s;"
+       onmouseover="this.style.borderColor='var(--blue,#39f)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-size:1.7rem;line-height:1;">${p.icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:var(--text);font-size:.9rem;">${p.nome}</div>
+        <div style="color:var(--text3);font-size:.78rem;margin-top:2px;line-height:1.4;">${p.desc}</div>
+      </div>
+      <div style="color:var(--blue,#39f);font-size:.8rem;font-weight:700;white-space:nowrap;">Abrir PDF →</div>
+    </a>`).join('');
 }
 
 async function cfgCarregarPerfil() {
