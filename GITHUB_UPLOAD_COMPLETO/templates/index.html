@@ -14134,7 +14134,7 @@ function nvVibrAddPonto(seed) {
   seed = seed || {};
   window._nvVibrPontos.push({
     nome: '', funcao: seed.funcao || '', setor: seed.setor || '',
-    tempo: '', tempo_nexp: '', trajeto: '', terreno: '',
+    tempo: '', tempo_nexp: '', trajeto: '', terreno: '', obs: '',
   });
   nvVibrRenderPontos();
 }
@@ -14151,7 +14151,8 @@ function nvVibrRenderPontos() {
     el.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Clique em "+ Trabalhador" para adicionar avaliados.</div>';
     return;
   }
-  const eixos = ['Z', 'Y', 'X', 'Resultante'];
+  const _vibSub = (((window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {}).subtipo || '').toLowerCase();
+  const isVmb = (_vibSub === 'vbma' || _vibSub === 'vmb');
   el.innerHTML = window._nvVibrPontos.map((p, i) => `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -14176,16 +14177,19 @@ function nvVibrRenderPontos() {
         <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
           style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8">
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+      <div style="display:grid;grid-template-columns:repeat(${isVmb?'2':'4'},1fr);gap:8px;margin-top:8px;">
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo não exposto (h)</label>
           <input type="number" step="0.1" value="${p.tempo_nexp}" oninput="window._nvVibrPontos[${i}].tempo_nexp=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0"></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Trajeto</label>
+        ${isVmb ? '' : `<div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Trajeto</label>
           <input value="${_esc(p.trajeto)}" oninput="window._nvVibrPontos[${i}].trajeto=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Pátio → Carga"></div>
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tipo de terreno</label>
           <input value="${_esc(p.terreno)}" oninput="window._nvVibrPontos[${i}].terreno=this.value"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Asfalto / Terra"></div>
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Asfalto / Terra"></div>`}
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Observação</label>
+          <input value="${_esc(p.obs||'')}" oninput="window._nvVibrPontos[${i}].obs=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Observação do trabalhador"></div>
       </div>
     </div>
   `).join('');
