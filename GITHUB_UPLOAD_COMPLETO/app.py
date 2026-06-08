@@ -877,7 +877,11 @@ def extrair_pdf(file_bytes):
 
 @app.route('/sw.js')
 def sw_js():
-    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    resp = send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    # Nunca cachear o SW: garante que toda checagem de atualização pegue a versão nova
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
 
 
 @app.route('/login')

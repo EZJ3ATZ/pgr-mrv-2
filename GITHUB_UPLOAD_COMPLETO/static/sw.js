@@ -1,5 +1,5 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v2';
+const CACHE = 'medicoes-v3';
 const SHELL = [
   '/mobile/',
   '/mobile/hoje',
@@ -30,6 +30,21 @@ self.addEventListener('fetch', e => {
 
   // Só intercepta mesmo domínio
   if (url.origin !== location.origin) return;
+
+  // Nunca cachear o próprio SW (evita travar atualizações)
+  if (url.pathname === '/sw.js' || url.pathname === '/static/sw.js') return;
+
+  // Navegação (HTML/páginas): SEMPRE network-first — nunca servir app velho.
+  // Só cai no cache se estiver realmente offline (mantém PWA usável sem rede).
+  if (e.request.mode === 'navigate' ||
+      (e.request.headers.get('accept') || '').includes('text/html')) {
+    e.respondWith(
+      fetch(e.request).catch(async () =>
+        (await caches.match(e.request)) || (await caches.match('/mobile/'))
+      )
+    );
+    return;
+  }
 
   // Estáticos: cache-first
   if (url.pathname.startsWith('/static/')) {
