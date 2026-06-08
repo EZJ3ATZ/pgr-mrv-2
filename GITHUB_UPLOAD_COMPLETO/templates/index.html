@@ -4271,7 +4271,10 @@
       <div class="nv-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div class="nv-card-title" style="margin:0;">Trabalhadores Monitorados</div>
-          <button onclick="nvCrAddTrab()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.81rem;font-family:inherit;">+ Trabalhador</button>
+          <div style="display:flex;gap:8px;">
+            <button onclick="nvCrPuxarTrabs()" title="Copia nome/cargo/setor dos trabalhadores já digitados em outras medições desta visita" style="background:transparent;color:var(--orange);border:1px solid var(--orange);border-radius:6px;padding:6px 12px;cursor:pointer;font-size:.81rem;font-family:inherit;">↧ Puxar trabalhadores</button>
+            <button onclick="nvCrAddTrab()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.81rem;font-family:inherit;">+ Trabalhador</button>
+          </div>
         </div>
         <div style="overflow-x:auto;">
           <table class="nv-trab-tbl">
@@ -4360,7 +4363,10 @@
         <div class="nv-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div class="nv-card-title" style="margin:0;">📳 Dados da Avaliação — Vibração</div>
-            <button onclick="nvVibrAddPonto()" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Trabalhador</button>
+            <div style="display:flex;gap:8px;">
+              <button onclick="nvVibrPuxarTrabs()" title="Copia nome/cargo/setor dos trabalhadores já digitados em outras medições desta visita" style="background:transparent;border:1px solid rgba(167,139,250,.5);color:#a78bfa;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">↧ Puxar trabalhadores</button>
+              <button onclick="nvVibrAddPonto()" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Trabalhador</button>
+            </div>
           </div>
           <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada trabalhador avaliado: nome, cargo/função, setor, tempo de exposição e trajeto. Os resultados (aren / VDV) saem do histograma do aparelho — não se preenche aqui.</div>
           <div id="nv-vibr-pontos"></div>
@@ -14339,6 +14345,42 @@ function nvVibrRenderPontos() {
     </div>
   `;
   }).join('');
+}
+
+// ── Roster compartilhado de trabalhadores (evita redigitar nome/cargo/setor) ──
+// Coleta nome/cargo/setor únicos já digitados nos outros módulos da MESMA visita.
+function _nvColetarTrabalhadores(excluir) {
+  const out = []; const vistos = new Set();
+  const add = (nome, cargo, setor) => {
+    nome = (nome||'').trim(); if (!nome) return;
+    const k = nome.toLowerCase(); if (vistos.has(k)) return; vistos.add(k);
+    out.push({ nome, cargo:(cargo||'').trim(), setor:(setor||'').trim() });
+  };
+  if (excluir !== 'ruido')    (_nvCrTrabs||[]).forEach(t => add(t.nome, t.cargo, t.setor));
+  if (excluir !== 'quimico')  (_nvCqAgentes||[]).forEach(a => add(a.func_nome, a.func_funcao, a.func_setor));
+  if (excluir !== 'vibracao') (window._nvVibrPontos||[]).forEach(p => add(p.nome, p.funcao, p.setor));
+  return out;
+}
+function nvCrPuxarTrabs() {
+  const lista = _nvColetarTrabalhadores('ruido');
+  if (!lista.length) { _showToast('Nenhum trabalhador digitado em outras medições ainda.', 'warn'); return; }
+  const existentes = new Set((_nvCrTrabs||[]).map(t => (t.nome||'').toLowerCase().trim()));
+  let n = 0;
+  lista.forEach(w => { if (existentes.has(w.nome.toLowerCase())) return;
+    _nvCrTrabs.push({sn:'', nome:w.nome, cargo:w.cargo, setor:w.setor, pausa:'', almoco_fim:''}); n++; });
+  nvCrRenderTrabs();
+  _showToast(n ? `✅ ${n} trabalhador(es) importado(s).` : 'Todos já estavam na lista.', n ? 'ok' : 'warn');
+}
+function nvVibrPuxarTrabs() {
+  const lista = _nvColetarTrabalhadores('vibracao');
+  if (!lista.length) { _showToast('Nenhum trabalhador digitado em outras medições ainda.', 'warn'); return; }
+  const existentes = new Set((window._nvVibrPontos||[]).map(p => (p.nome||'').toLowerCase().trim()));
+  let n = 0;
+  lista.forEach(w => { if (existentes.has(w.nome.toLowerCase())) return;
+    window._nvVibrPontos.push({nome:w.nome, funcao:w.cargo, setor:w.setor, tipo:_nvVibrTipoPadrao(),
+      tempo:'', tempo_nexp:'', trajeto:'', terreno:'', obs:''}); n++; });
+  nvVibrRenderPontos();
+  _showToast(n ? `✅ ${n} trabalhador(es) importado(s).` : 'Todos já estavam na lista.', n ? 'ok' : 'warn');
 }
 
 // ── Trabalhadores Ruído ───────────────────────────────────────────────
