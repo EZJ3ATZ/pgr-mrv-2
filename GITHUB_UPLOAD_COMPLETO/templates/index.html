@@ -14143,7 +14143,7 @@ window._nvCalorSetores = [];
 function nvCalorAddSetor() {
   window._nvCalorSetores.push({
     setor: '', tbs: '', tbn: '', tg: '', regime: 'Trabalho Moderado', M: 198,
-    ibutg_interno: '', ibutg_externo: '',
+    ibutg_interno: '', ibutg_externo: '', duracao: '',
   });
   nvCalorRenderSetores();
 }
@@ -14171,10 +14171,14 @@ function nvCalorRenderSetores() {
         <span style="font-weight:700;font-size:.85rem;color:var(--text);">Setor ${i+1}</span>
         <button onclick="nvCalorRemoveSetor(${i})" style="background:rgba(239,68,68,.1);border:none;color:#ef4444;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:.75rem;">✕ Remover</button>
       </div>
-      <div style="margin-bottom:8px;">
-        <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:3px;">Local / Setor</label>
-        <input value="${_esc(s.setor)}" oninput="window._nvCalorSetores[${i}].setor=this.value"
-          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Cozinha industrial">
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-bottom:8px;align-items:start;">
+        <div><label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:3px;">Local / Setor</label>
+          <input value="${_esc(s.setor)}" oninput="window._nvCalorSetores[${i}].setor=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Cozinha industrial"></div>
+        <div><label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:3px;">Duração (min) <span style="color:var(--text3);">máx 60</span></label>
+          <input type="number" min="1" max="60" value="${s.duracao||''}" oninput="nvCalorSetDuracao(${i}, this)"
+            style="width:100%;background:var(--surface);border:1px solid ${(s.duracao && +s.duracao>60)?'#ef4444':'var(--border)'};border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="60">
+          <div id="nv-cal-dur-aviso-${i}" style="font-size:.68rem;color:#ef4444;margin-top:2px;">${(s.duracao && +s.duracao>60)?'⚠ Máximo 60 min por medição':''}</div></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TBS (°C)</label>
@@ -14205,6 +14209,15 @@ function nvCalorRenderSetores() {
   `).join('');
 }
 
+function nvCalorSetDuracao(i, el) {
+  const v = el.value;
+  window._nvCalorSetores[i].duracao = v;
+  const over = v && (+v > 60);
+  el.style.borderColor = over ? '#ef4444' : 'var(--border)';
+  const av = document.getElementById('nv-cal-dur-aviso-' + i);
+  if (av) av.textContent = over ? '⚠ Máximo 60 min por medição' : '';
+}
+
 function nvCalorCalcIBUTG(i) {
   const s = window._nvCalorSetores[i];
   const tbs = parseFloat(s.tbs), tbn = parseFloat(s.tbn), tg = parseFloat(s.tg);
@@ -14227,12 +14240,21 @@ function nvCalorCalcIBUTG(i) {
 // ── Dados da Avaliação — Vibração ─────────────────────────────────────
 window._nvVibrPontos = [];
 
+function _nvVibrTipoPadrao() {
+  const sub = (((window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {}).subtipo || '').toLowerCase();
+  return (sub === 'vbma' || sub === 'vmb') ? 'vmb' : 'vci';
+}
 function nvVibrAddPonto(seed) {
   seed = seed || {};
   window._nvVibrPontos.push({
     nome: '', funcao: seed.funcao || '', setor: seed.setor || '',
+    tipo: seed.tipo || _nvVibrTipoPadrao(),
     tempo: '', tempo_nexp: '', trajeto: '', terreno: '', obs: '',
   });
+  nvVibrRenderPontos();
+}
+function nvVibrSetTipo(i, v) {
+  window._nvVibrPontos[i].tipo = v;
   nvVibrRenderPontos();
 }
 
@@ -14248,13 +14270,20 @@ function nvVibrRenderPontos() {
     el.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Clique em "+ Trabalhador" para adicionar avaliados.</div>';
     return;
   }
-  const _vibSub = (((window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {}).subtipo || '').toLowerCase();
-  const isVmb = (_vibSub === 'vbma' || _vibSub === 'vmb');
-  el.innerHTML = window._nvVibrPontos.map((p, i) => `
+  el.innerHTML = window._nvVibrPontos.map((p, i) => {
+    const isVmb = ((p.tipo||'vci').toLowerCase() === 'vmb');
+    return `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;">
         <span style="font-weight:700;font-size:.85rem;color:var(--text);">Trabalhador ${i+1}</span>
-        <button onclick="nvVibrRemovePonto(${i})" style="background:rgba(239,68,68,.1);border:none;color:#ef4444;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:.75rem;">✕ Remover</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select onchange="nvVibrSetTipo(${i}, this.value)" title="Tipo de vibração deste funcionário"
+            style="background:var(--surface);border:1px solid ${isVmb?'#a78bfa':'#39f'};border-radius:6px;color:var(--text);padding:4px 8px;font-size:.78rem;font-weight:700;font-family:inherit;">
+            <option value="vci" ${!isVmb?'selected':''}>📳 VCI (corpo inteiro)</option>
+            <option value="vmb" ${isVmb?'selected':''}>✋ VMB (mãos/braços)</option>
+          </select>
+          <button onclick="nvVibrRemovePonto(${i})" style="background:rgba(239,68,68,.1);border:none;color:#ef4444;border-radius:5px;padding:3px 9px;cursor:pointer;font-size:.75rem;">✕ Remover</button>
+        </div>
       </div>
       <div style="margin-bottom:8px;">
         <label style="font-size:.75rem;color:var(--text2);display:block;margin-bottom:3px;">Nome do Funcionário</label>
@@ -14289,7 +14318,8 @@ function nvVibrRenderPontos() {
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Observação do trabalhador"></div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // ── Trabalhadores Ruído ───────────────────────────────────────────────

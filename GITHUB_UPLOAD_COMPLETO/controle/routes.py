@@ -3391,9 +3391,16 @@ def _fotos_pdf_flowables(fotos, W=None):
                   textColor=_col.HexColor('#1E3A8A'))
     hdr_sty = _PS('fhdr', fontName='Helvetica-Bold', fontSize=9, leading=12)
 
+    # Cabeçalho do grupo de cargo (mais destacado que a legenda da foto)
+    grp_sty = _PS('fgrp', fontName='Helvetica-Bold', fontSize=9, leading=12,
+                  textColor=_col.HexColor('#FFFFFF'))
+
     col_w = W / 2.0
     img_w = col_w - 0.5 * _cm
-    cells = []
+
+    # Agrupa as fotos por cargo, preservando a ordem de chegada
+    grupos = {}   # cargo -> [cells]
+    ordem = []    # ordem dos cargos
     for f in fotos:
         if isinstance(f, dict):
             src = f.get('data') or f.get('src') or ''
@@ -3411,34 +3418,53 @@ def _fotos_pdf_flowables(fotos, W=None):
         except Exception:
             continue
         parts = [im]
-        if crg:
-            parts += [_Sp(1, 2), _P(crg, crg_sty)]
         if leg:
             parts += [_Sp(1, 2), _P(leg, cap_sty)]
-        cells.append(parts if (crg or leg) else im)
+        cell = parts if leg else im
+        key = crg or ' '   # sem cargo => grupo genérico (não imprime título)
+        if key not in grupos:
+            grupos[key] = []
+            ordem.append(key)
+        grupos[key].append(cell)
 
-    if not cells:
+    if not ordem:
         return out
 
-    rows = []
-    for i in range(0, len(cells), 2):
-        pair = cells[i:i + 2]
-        if len(pair) == 1:
-            pair.append('')
-        rows.append(pair)
+    def _tabela_fotos(cells):
+        rows = []
+        for i in range(0, len(cells), 2):
+            pair = cells[i:i + 2]
+            if len(pair) == 1:
+                pair.append('')
+            rows.append(pair)
+        t = _Tbl(rows, colWidths=[col_w, col_w])
+        t.setStyle(_TS([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        return t
 
-    tbl = _Tbl(rows, colWidths=[col_w, col_w])
-    tbl.setStyle(_TS([
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
+    def _faixa_cargo(txt):
+        t = _Tbl([[_P(txt, grp_sty)]], colWidths=[W])
+        t.setStyle(_TS([
+            ('BACKGROUND', (0, 0), (-1, -1), _col.HexColor('#1E3A8A')),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ]))
+        return t
 
     out.append(_Sp(1, 10))
     out.append(_P('REGISTRO FOTOGRÁFICO DA ATIVIDADE', hdr_sty))
     out.append(_Sp(1, 4))
-    out.append(tbl)
+    for key in ordem:
+        if key.strip():   # tem cargo => imprime faixa-título do cargo
+            out.append(_Sp(1, 4))
+            out.append(_faixa_cargo(key.upper()))
+            out.append(_Sp(1, 3))
+        out.append(_tabela_fotos(grupos[key]))
     return out
 
 
@@ -3631,28 +3657,43 @@ def gerar_relatorio_campo_completo():
         story.append(Spacer(1, 4))
 
         pontos = v.get('pontos', [])
-        is_vmb = (v.get('subtipo','') or '').lower() in ('vbma','ambos')
-        if is_vmb:
-            cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Obs']
-            cw_v  = [W*0.04,W*0.22,W*0.17,W*0.14,W*0.12,W*0.12,W*0.19]
-        else:
-            cab_v = ['#','Trabalhador/Veículo','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Obs']
-            cw_v  = [W*0.04,W*0.20,W*0.14,W*0.12,W*0.10,W*0.10,W*0.14,W*0.16]
-        linhas_v = []
-        for i, p in enumerate(pontos, 1):
-            row = [i, p.get('nome',''), p.get('funcao','') or p.get('cargo',''),
-                   p.get('setor',''), p.get('tempo',''), p.get('tempo_nexp','')]
-            if not is_vmb:
-                row.append(p.get('trajeto',''))
-            row.append(p.get('obs',''))
-            linhas_v.append(row)
-        while len(linhas_v) < 5:
-            row = [len(linhas_v)+1,'','','','','']
-            if not is_vmb: row.append('')
-            row.append('')
-            linhas_v.append(row)
-        story.append(_tabela(cab_v, linhas_v, cw_v))
-        story.append(Spacer(1, 10))
+        _glob_vmb = (v.get('subtipo','') or '').lower() in ('vbma','ambos','vmb')
+        def _pt_vmb(p):
+            t = (p.get('tipo') or '').lower()
+            if t in ('vmb','vbma'): return True
+            if t == 'vci': return False
+            return _glob_vmb
+        vci_p = [p for p in pontos if not _pt_vmb(p)]
+        vmb_p = [p for p in pontos if _pt_vmb(p)]
+        def _tab_vib(is_vmb_t, pts_t, titulo=None):
+            if is_vmb_t:
+                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Obs']
+                cw_v  = [W*0.04,W*0.22,W*0.17,W*0.14,W*0.12,W*0.12,W*0.19]
+            else:
+                cab_v = ['#','Trabalhador/Veículo','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Obs']
+                cw_v  = [W*0.04,W*0.20,W*0.14,W*0.12,W*0.10,W*0.10,W*0.14,W*0.16]
+            linhas_v = []
+            for i, p in enumerate(pts_t, 1):
+                row = [i, p.get('nome',''), p.get('funcao','') or p.get('cargo',''),
+                       p.get('setor',''), p.get('tempo',''), p.get('tempo_nexp','')]
+                if not is_vmb_t:
+                    row.append(p.get('trajeto',''))
+                row.append(p.get('obs',''))
+                linhas_v.append(row)
+            while len(linhas_v) < 4:
+                row = [len(linhas_v)+1,'','','','','']
+                if not is_vmb_t: row.append('')
+                row.append('')
+                linhas_v.append(row)
+            if titulo:
+                story.append(Paragraph(f'<b>{titulo}</b>', bold)); story.append(Spacer(1, 2))
+            story.append(_tabela(cab_v, linhas_v, cw_v)); story.append(Spacer(1, 6))
+        _both = bool(vci_p) and bool(vmb_p)
+        if vci_p or (not pontos and not _glob_vmb):
+            _tab_vib(False, vci_p, 'VCI — Corpo Inteiro' if _both else None)
+        if vmb_p or (not pontos and _glob_vmb):
+            _tab_vib(True, vmb_p, 'VMB — Mãos e Braços' if _both else None)
+        story.append(Spacer(1, 4))
 
     # ── Assinaturas ───────────────────────────────────────────────────────
     story.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
@@ -4165,54 +4206,75 @@ def gerar_relatorio_vibracao():
         ('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),5)]))
     elements.append(info_tbl); elements.append(Spacer(1, 10))
 
-    # ── Veículo (VCI) / Ferramenta (VMB) avaliado ──
+    # ── Tipo por funcionário (VCI/VMB); fallback no subtipo global ──
     _sub = (subtipo or '').lower()
-    is_vmb = _sub in ('vbma', 'vmb')
-    if is_vmb:
-        _vlbl = 'FERRAMENTA / EQUIPAMENTO AVALIADO'
-        _vfields = [('Equipamento', d.get('equipamento', '')), ('Modelo', d.get('modelo', '')), ('Ano', d.get('ano', ''))]
-    else:
-        _vlbl = 'VEÍCULO AVALIADO'
-        _vfields = [('Placa', d.get('placa', '')), ('Modelo', d.get('modelo', '')), ('Ano', d.get('ano', ''))]
-    elements.append(Paragraph(f'<font size="7" color="#64748B"><b>{_vlbl}</b></font>', cell_reg))
-    _veic_tbl = Table([[_info(l, v) for l, v in _vfields]], colWidths=[W/3, W/3, W/3])
-    _veic_tbl.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.4,BORDA),('VALIGN',(0,0),(-1,-1),'TOP'),
-        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),5)]))
-    elements.append(_veic_tbl); elements.append(Spacer(1, 10))
+    _glob_vmb = _sub in ('vbma', 'vmb')
+    def _pt_is_vmb(p):
+        t = (p.get('tipo') or '').lower()
+        if t in ('vmb', 'vbma'): return True
+        if t == 'vci': return False
+        return _glob_vmb
+    pts_all = list(pontos) if pontos else []
+    vci_pts = [p for p in pts_all if not _pt_is_vmb(p)]
+    vmb_pts = [p for p in pts_all if _pt_is_vmb(p)]
+    has_vci = bool(vci_pts) or (not pts_all and not _glob_vmb)
+    has_vmb = bool(vmb_pts) or (not pts_all and _glob_vmb)
 
-    # Tabela de medições (linhas em branco p/ preencher em campo) — colunas conforme VCI x VMB
+    # ── Veículo (VCI) e/ou Ferramenta (VMB) avaliado ──
+    def _bloco_equip(lbl, campos):
+        elements.append(Paragraph(f'<font size="7" color="#64748B"><b>{lbl}</b></font>', cell_reg))
+        t = Table([[_info(l, v) for l, v in campos]], colWidths=[W/3, W/3, W/3])
+        t.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.4,BORDA),('VALIGN',(0,0),(-1,-1),'TOP'),
+            ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),5)]))
+        elements.append(t); elements.append(Spacer(1, 8))
+    if has_vci:
+        _bloco_equip('VEÍCULO AVALIADO (VCI)', [('Placa', d.get('placa','')), ('Modelo', d.get('modelo','')), ('Ano', d.get('ano',''))])
+    if has_vmb:
+        _bloco_equip('FERRAMENTA / EQUIPAMENTO AVALIADO (VMB)', [('Equipamento', d.get('equipamento','')), ('Modelo', d.get('modelo','')), ('Ano', d.get('ano',''))])
+    elements.append(Spacer(1, 4))
+
+    # Tabela de medições — uma por tipo presente (VCI tem trajeto/terreno; VMB não)
     cell_bold7 = sty('Normal', fontSize=7, fontName='Helvetica-Bold', textColor=PRETO)
     cell_reg7  = sty('Normal', fontSize=7, fontName='Helvetica', textColor=PRETO)
-    if is_vmb:
-        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Observação']
-        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'tempo', 'tempo_nexp', 'obs']
-        _colw  = [W*0.04, W*0.24, W*0.18, W*0.15, W*0.10, W*0.10, W*0.19]
-    else:
-        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno', 'Observação']
-        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', 'obs']
-        _colw  = [W*0.04, W*0.18, W*0.13, W*0.12, W*0.08, W*0.08, W*0.12, W*0.12, W*0.13]
-    med_head = [Paragraph(h, cell_bold7) for h in _heads]
-    med_rows = [med_head]
-    pts = list(pontos) if pontos else []
-    while len(pts) < 6:
-        pts.append({})
-    for i, p in enumerate(pts, 1):
-        row = []
-        for k in _keys:
-            if k is None:
-                row.append(Paragraph(str(i), cell_reg7))
-            elif isinstance(k, tuple):
-                row.append(Paragraph(p.get(k[0], '') or p.get(k[1], '') or '', cell_reg7))
-            else:
-                row.append(Paragraph(p.get(k, '') or '', cell_reg7))
-        med_rows.append(row)
-    med_tbl = Table(med_rows, colWidths=_colw, repeatRows=1)
-    med_tbl.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
-        ('GRID',(0,0),(-1,-1),0.4,BORDA),('FONTSIZE',(0,0),(-1,-1),7),
-        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
-        ('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3),
-        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA])]))
-    elements.append(med_tbl); elements.append(Spacer(1, 8))
+    def _vibr_med_tbl(is_vmb_t, pts_t):
+        if is_vmb_t:
+            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Observação']
+            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', 'obs']
+            _colw  = [W*0.04, W*0.24, W*0.18, W*0.15, W*0.10, W*0.10, W*0.19]
+        else:
+            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno', 'Observação']
+            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', 'obs']
+            _colw  = [W*0.04, W*0.18, W*0.13, W*0.12, W*0.08, W*0.08, W*0.12, W*0.12, W*0.13]
+        rows = [[Paragraph(h, cell_bold7) for h in _heads]]
+        pl = list(pts_t)
+        while len(pl) < 6:
+            pl.append({})
+        for i, p in enumerate(pl, 1):
+            row = []
+            for k in _keys:
+                if k is None:
+                    row.append(Paragraph(str(i), cell_reg7))
+                elif isinstance(k, tuple):
+                    row.append(Paragraph(p.get(k[0],'') or p.get(k[1],'') or '', cell_reg7))
+                else:
+                    row.append(Paragraph(p.get(k,'') or '', cell_reg7))
+            rows.append(row)
+        t = Table(rows, colWidths=_colw, repeatRows=1)
+        t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
+            ('GRID',(0,0),(-1,-1),0.4,BORDA),('FONTSIZE',(0,0),(-1,-1),7),
+            ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
+            ('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3),
+            ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA])]))
+        return t
+    _both = has_vci and has_vmb
+    if has_vci:
+        if _both:
+            elements.append(Paragraph('<font size="8" color="#1E3A8A"><b>VCI — Vibração de Corpo Inteiro</b></font>', cell_bold)); elements.append(Spacer(1, 3))
+        elements.append(_vibr_med_tbl(False, vci_pts)); elements.append(Spacer(1, 8))
+    if has_vmb:
+        if _both:
+            elements.append(Paragraph('<font size="8" color="#1E3A8A"><b>VMB — Vibração Mãos e Braços</b></font>', cell_bold)); elements.append(Spacer(1, 3))
+        elements.append(_vibr_med_tbl(True, vmb_pts)); elements.append(Spacer(1, 8))
 
     # Registro fotográfico — marcar em campo (igual aos formulários oficiais VCI/VMB)
     if is_vmb:
