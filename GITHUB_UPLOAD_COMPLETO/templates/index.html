@@ -15049,39 +15049,86 @@ async function nvGerarRelatorioCampo() {
     return null;
   }
 
-  // #6: gera UM relatório por tipo selecionado (ruído + químico + vibração)
   const _tiposRel = ((_nvTipos && _nvTipos.length) ? _nvTipos : (_nvTipo ? [_nvTipo] : []))
                       .filter(t => ['ruido','quimico','vibracao'].includes(t));
   if (!_tiposRel.length) {
     if (st) st.innerHTML = '<span style="color:var(--text3);">Relatório de Campo disponível para Ruído, Químico e Vibração.</span>';
     return;
   }
-  let _ok = 0; const _erros = [];
-  for (const tipo of _tiposRel) {
-    const cfg = _relConfig(tipo);
-    if (!cfg) continue;
-    if (st) st.innerHTML = `<span style="color:var(--blue);">⏳ Gerando ${tipo} (${_ok+1}/${_tiposRel.length})...</span>`;
+
+  const _lblTipo = { ruido:'🔊 Ruído', quimico:'⚗️ Químico', vibracao:'〰️ Vibração' };
+
+  // Tipo único: auto-download direto (sem bloqueio de browser)
+  if (_tiposRel.length === 1) {
+    const tipo = _tiposRel[0];
+    const cfg  = _relConfig(tipo);
+    if (!cfg) return;
     try {
-      const r = await fetch(cfg.endpoint, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(cfg.payload)
-      });
+      const r = await fetch(cfg.endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg.payload) });
       if (!r.ok) { const e = await r.json().catch(()=>({erro:r.statusText})); throw new Error(e.erro||r.statusText); }
       const blob = await r.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href = url; a.download = cfg.fname; a.click();
-      URL.revokeObjectURL(url);
-      _ok++;
-      await new Promise(res => setTimeout(res, 500));  // espaça downloads (evita bloqueio do navegador)
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      if (st) st.innerHTML = `<span style="color:var(--green);">✅ Planilha de ${_lblTipo[tipo]} gerada!</span>`;
     } catch(e) {
-      _erros.push(`${tipo}: ${e.message}`);
+      if (st) st.innerHTML = `<span style="color:var(--red);">❌ Erro ${_lblTipo[tipo]}: ${e.message}</span>`;
+      _showToast('Erro ao gerar: ' + e.message, 'err');
+    }
+    return;
+  }
+
+  // Múltiplos tipos: browsers bloqueiam auto-downloads em série após await.
+  // Solução: buscar todos os PDFs, exibir botões — cada clique é gesto do usuário.
+  const _blobs = []; const _erros = [];
+  for (const tipo of _tiposRel) {
+    const cfg = _relConfig(tipo);
+    if (!cfg) continue;
+    if (st) st.innerHTML = `<span style="color:var(--blue);">⏳ Preparando ${_lblTipo[tipo]||tipo} (${_blobs.length+_erros.length+1}/${_tiposRel.length})...</span>`;
+    try {
+      const r = await fetch(cfg.endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg.payload) });
+      if (!r.ok) { const e = await r.json().catch(()=>({erro:r.statusText})); throw new Error(e.erro||r.statusText); }
+      const blob = await r.blob();
+      _blobs.push({ tipo, url: URL.createObjectURL(blob), fname: cfg.fname });
+    } catch(e) {
+      _erros.push(`${_lblTipo[tipo]||tipo}: ${e.message}`);
     }
   }
-  if (st) {
-    if (_erros.length) { st.innerHTML = `<span style="color:var(--red);">⚠️ ${_ok} gerado(s) · erro em ${_erros.join('; ')}</span>`; _showToast('Erro ao gerar: ' + _erros.join('; '), 'err'); }
-    else st.innerHTML = `<span style="color:var(--green);">✅ ${_ok} relatório(s) gerado(s)!</span>`;
+
+  if (!st) return;
+  st.innerHTML = '';
+  const _panel = document.createElement('div');
+  _panel.style.cssText = 'background:var(--surface2,#f0f4f8);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px;margin-top:4px;';
+  if (_erros.length) {
+    const _ed = document.createElement('div');
+    _ed.style.cssText = 'color:var(--red,#dc2626);font-size:.75rem;margin-bottom:8px;';
+    _ed.textContent = '⚠️ ' + _erros.join(' · ');
+    _panel.appendChild(_ed);
   }
+  if (_blobs.length) {
+    const _th = document.createElement('div');
+    _th.style.cssText = 'font-size:.74rem;color:var(--text3,#64748b);margin-bottom:8px;';
+    _th.textContent = `${_blobs.length} planilha(s) prontas — clique para baixar cada uma:`;
+    _panel.appendChild(_th);
+    _blobs.forEach(({tipo, url, fname}) => {
+      const _a = document.createElement('a');
+      _a.href = url; _a.download = fname;
+      _a.style.cssText = 'display:block;background:var(--blue,#2563eb);color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px;font-size:.84rem;font-weight:600;text-align:center;margin-bottom:6px;cursor:pointer;';
+      _a.textContent = `📄 Baixar ${_lblTipo[tipo]||tipo}`;
+      _a.addEventListener('click', () => { setTimeout(() => { URL.revokeObjectURL(url); _a.style.opacity='0.4'; _a.style.pointerEvents='none'; _a.textContent = `✅ ${_lblTipo[tipo]||tipo} baixado`; }, 2000); });
+      _panel.appendChild(_a);
+    });
+    // Auto-revoga depois de 15 min caso o usuário não clique
+    setTimeout(() => _blobs.forEach(b => { try { URL.revokeObjectURL(b.url); } catch(_){} }), 900000);
+  } else {
+    st.innerHTML = `<span style="color:var(--red);">❌ Nenhuma planilha gerada: ${_erros.join('; ')}</span>`;
+    _showToast('Erro ao gerar planilhas: ' + _erros.join('; '), 'err');
+    return;
+  }
+  st.appendChild(_panel);
+  if (_erros.length) _showToast(`⚠️ ${_blobs.length} gerada(s), erro em: ${_erros.join('; ')}`, 'warn');
+  else _showToast(`✅ ${_blobs.length} planilha(s) prontas para download!`, 'ok');
 }
 
 // Mantém compatibilidade com chamadas antigas
