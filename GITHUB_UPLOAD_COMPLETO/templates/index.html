@@ -9461,7 +9461,10 @@ function _planBombaSerieOpts(modId, selSerie) {
 }
 function _planSetBombaModelo(i, modId) {
   window._planAgentes[i].bomba_sn = modId;   // id do modelo (bdx/airlite/...)
-  window._planAgentes[i].id_bomba = '';      // zera a série ao trocar de modelo
+  // Auto-seleciona a 1ª série do modelo (ID puxa automaticamente; editável)
+  const mods = (window._planBombas && window._planBombas.modelos) || [];
+  const m = mods.find(x => x.id === modId);
+  window._planAgentes[i].id_bomba = (m && m.sns && m.sns[0]) ? m.sns[0] : '';
   _planRenderizarAgentes();
 }
 
@@ -9632,11 +9635,39 @@ async function _planBuscarOs(os) {
     // Preencher agentes se disponíveis
     const agentes = r.agentes || [];
     if (agentes.length > 0) {
-      window._planAgentes = agentes.map(a => ({
-        tipo:   a.tipo || a.tipo_medicao || 'quimico',
-        agente: a.texto || a.nome_agente || a.agente || '',
-        qtd:    a.qtd || 1,
-      }));
+      // Garante o banco de agentes (método/vazão/amostrador) carregado p/ enriquecer
+      if (!_planAgenteCache) {
+        try {
+          const resp = await ctrlFetch('/controle/agentes');
+          _planAgenteCache = (resp && resp.agentes) ? resp.agentes : (Array.isArray(resp) ? resp : []);
+        } catch(e) { _planAgenteCache = []; }
+      }
+      window._planAgentes = agentes.map(a => {
+        const tipo = a.tipo || a.tipo_medicao || 'quimico';
+        const nome = a.texto || a.nome_agente || a.agente || '';
+        const obj  = { tipo, agente: nome, qtd: a.qtd || 1 };
+        // Enriquece químico com método/vazão/amostrador do banco (mesmo do modo manual)
+        if (tipo === 'quimico' && nome) {
+          const m = (_planAgenteCache || []).find(x => x.nome && x.nome.toLowerCase() === nome.toLowerCase())
+                 || (_planAgenteCache || []).find(x => x.nome && nome.toLowerCase().includes(x.nome.toLowerCase()));
+          if (m) {
+            obj.metodo      = m.metodo || '';
+            obj.vazao       = m.vazao || '';
+            obj.vazao_faixa = m.vazao_faixa || null;
+            obj.volume      = m.volume || '';
+            obj.amostrador  = m.amostrador || '';
+            obj.unidade     = m.unidade || '';
+            obj.valor_tipo  = 'medio';
+            if (obj.vazao_faixa && !obj.vazao_faixa.passivo && obj.vazao_faixa.recomendada != null)
+              obj.vazao_real = obj.vazao_faixa.recomendada.toFixed(3);
+          }
+          // Bomba padrão (SKC Airlite) + primeira série disponível — editável pelo técnico
+          const mods = (window._planBombas && window._planBombas.modelos) || [];
+          const padrao = mods.find(x => x.id === 'airlite') || mods[0];
+          if (padrao) { obj.bomba_sn = padrao.id; obj.id_bomba = (padrao.sns && padrao.sns[0]) || ''; }
+        }
+        return obj;
+      });
       _planRenderizarAgentes();
       info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
     } else {
@@ -13719,8 +13750,17 @@ window.addEventListener('load', () => {
       let d; try { d = JSON.parse(localStorage.getItem(_NV_DRAFT_KEY) || 'null'); } catch (e) { return; }
       if (!d || !d.tipos || !d.tipos.length) return;
       const quando = d.ts ? new Date(d.ts).toLocaleString('pt-BR') : '';
-      if (confirm('Há uma planilha de campo não finalizada' + (quando ? (' (de ' + quando + ')') : '') + '.\n\nRecuperar o que você já preencheu?')) nvDraftRestore();
-      else nvDraftClear();
+      // Banner NÃO-bloqueante (nada de confirm() que trava a página)
+      if (document.getElementById('nv-draft-banner')) return;
+      const b = document.createElement('div');
+      b.id = 'nv-draft-banner';
+      b.style.cssText = 'position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:99999;background:var(--surface,#1a2332);border:1.5px solid var(--border2,#39f);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.45);padding:12px 16px;display:flex;align-items:center;gap:12px;max-width:92vw;font-family:inherit;';
+      b.innerHTML = '<div style="font-size:.83rem;color:var(--text,#e7edf5);line-height:1.4;">📝 Planilha não finalizada' + (quando ? ' <span style="color:var(--text3,#9aa);font-size:.75rem;">(de ' + quando + ')</span>' : '') + '<br><span style="font-size:.74rem;color:var(--text3,#9aa);">Quer recuperar o que já preencheu?</span></div>' +
+        '<button id="nv-draft-rec" style="background:#39f;color:#fff;border:none;padding:8px 14px;border-radius:7px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.8rem;">Recuperar</button>' +
+        '<button id="nv-draft-desc" style="background:transparent;color:var(--text3,#9aa);border:1px solid var(--border,#334);padding:8px 12px;border-radius:7px;cursor:pointer;font-family:inherit;font-size:.8rem;">Descartar</button>';
+      document.body.appendChild(b);
+      document.getElementById('nv-draft-rec').onclick = () => { try { nvDraftRestore(); } catch(e){} b.remove(); };
+      document.getElementById('nv-draft-desc').onclick = () => { try { nvDraftClear(); } catch(e){} b.remove(); };
     } catch (e) {}
   }, 1500);
 });
