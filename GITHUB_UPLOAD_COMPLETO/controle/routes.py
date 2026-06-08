@@ -4277,10 +4277,12 @@ def gerar_relatorio_vibracao():
         elements.append(_vibr_med_tbl(True, vmb_pts)); elements.append(Spacer(1, 8))
 
     # Registro fotográfico — marcar em campo (igual aos formulários oficiais VCI/VMB)
-    if is_vmb:
-        _fotos = 'Foto do equipamento ( )      Foto do equipamento + acelerômetro ( )      Foto do funcionário executando a atividade ( )'
-    else:
-        _fotos = 'Foto do veículo ( )      Foto do equipamento posicionado ( )      Foto do documento do veículo ( )'
+    _fotos_parts = []
+    if has_vci:
+        _fotos_parts.append('<b>VCI:</b> Foto do veículo ( )   Foto do equipamento posicionado ( )   Foto do documento do veículo ( )')
+    if has_vmb:
+        _fotos_parts.append('<b>VMB:</b> Foto do equipamento ( )   Foto do equipamento + acelerômetro ( )   Foto do funcionário executando a atividade ( )')
+    _fotos = '<br/>'.join(_fotos_parts) if _fotos_parts else ''
     elements.append(Paragraph(f'<font size="7" color="#64748B"><b>REGISTRO FOTOGRÁFICO (marcar)</b></font><br/>{_fotos}', cell_reg))
     elements.append(Spacer(1, 10))
 
