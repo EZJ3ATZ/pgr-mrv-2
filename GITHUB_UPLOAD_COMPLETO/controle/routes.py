@@ -3939,13 +3939,13 @@ def gerar_relatorio_vibracao():
     cell_bold7 = sty('Normal', fontSize=7, fontName='Helvetica-Bold', textColor=PRETO)
     cell_reg7  = sty('Normal', fontSize=7, fontName='Helvetica', textColor=PRETO)
     if is_vmb:
-        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'Eixo', 'aren (m/s²)', 'T. exp. (h)', 'T. não exp. (h)']
-        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'eixo', 'aren', 'tempo', 'tempo_nexp']
-        _colw  = [W*0.04, W*0.24, W*0.18, W*0.16, W*0.08, W*0.12, W*0.09, W*0.09]
+        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)']
+        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'tempo', 'tempo_nexp']
+        _colw  = [W*0.05, W*0.30, W*0.22, W*0.20, W*0.115, W*0.115]
     else:
-        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'Eixo', 'aren (m/s²)', 'VDVexp (m/s^1,75)', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno']
-        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'eixo', 'aren', 'vdv', 'tempo', 'tempo_nexp', 'trajeto', 'terreno']
-        _colw  = [W*0.03, W*0.15, W*0.11, W*0.10, W*0.055, W*0.085, W*0.10, W*0.065, W*0.07, W*0.13, W*0.115]
+        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno']
+        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'tempo', 'tempo_nexp', 'trajeto', 'terreno']
+        _colw  = [W*0.04, W*0.22, W*0.16, W*0.14, W*0.09, W*0.09, W*0.13, W*0.13]
     med_head = [Paragraph(h, cell_bold7) for h in _heads]
     med_rows = [med_head]
     pts = list(pontos) if pontos else []

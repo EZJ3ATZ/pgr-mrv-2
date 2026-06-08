@@ -4345,12 +4345,20 @@
 
       <!-- Dados da Avaliação — Vibração (só aparece quando tipo=vibracao) -->
       <div id="nv-vibr-pontos-section" style="display:none;margin-top:12px;">
+        <div class="nv-card" style="margin-bottom:12px;">
+          <div class="nv-card-title" style="margin:0 0 10px;">🚛 Veículo / Equipamento Avaliado</div>
+          <div class="nv-g3 nv-f">
+            <div><label>Placa / ID do Equipamento</label><input type="text" id="nv-vibr-veic-ident" placeholder="Ex: ABC-1D23 ou Martelete" oninput="(window._nvVibrVeic=window._nvVibrVeic||{}).ident=this.value"></div>
+            <div><label>Modelo</label><input type="text" id="nv-vibr-veic-modelo" placeholder="Ex: Volvo FH / Bosch GBH" oninput="(window._nvVibrVeic=window._nvVibrVeic||{}).modelo=this.value"></div>
+            <div><label>Ano</label><input type="text" id="nv-vibr-veic-ano" placeholder="Ex: 2021" oninput="(window._nvVibrVeic=window._nvVibrVeic||{}).ano=this.value"></div>
+          </div>
+        </div>
         <div class="nv-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div class="nv-card-title" style="margin:0;">📳 Dados da Avaliação — Vibração</div>
             <button onclick="nvVibrAddPonto()" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Trabalhador</button>
           </div>
-          <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada trabalhador avaliado: nome, cargo/função, setor e os valores medidos (eixo dominante, aren, VDVexp e tempo de exposição).</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada trabalhador avaliado: nome, cargo/função, setor, tempo de exposição e trajeto. Os resultados (aren / VDV) saem do histograma do aparelho — não se preenche aqui.</div>
           <div id="nv-vibr-pontos"></div>
         </div>
       </div>
@@ -14067,8 +14075,7 @@ function nvVibrAddPonto(seed) {
   seed = seed || {};
   window._nvVibrPontos.push({
     nome: '', funcao: seed.funcao || '', setor: seed.setor || '',
-    eixo: seed.eixo || 'Z', aren: '', vdv: '', tempo: '',
-    tempo_nexp: '', trajeto: '', terreno: '',
+    tempo: '', tempo_nexp: '', trajeto: '', terreno: '',
   });
   nvVibrRenderPontos();
 }
@@ -14105,20 +14112,10 @@ function nvVibrRenderPontos() {
           <input value="${_esc(p.setor)}" oninput="window._nvVibrPontos[${i}].setor=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Pátio"></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Eixo</label>
-          <select oninput="window._nvVibrPontos[${i}].eixo=this.value" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 6px;font-size:.82rem;">
-            ${eixos.map(e => `<option value="${e}" ${p.eixo===e?'selected':''}>${e}</option>`).join('')}
-          </select></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">aren (m/s²)</label>
-          <input type="number" step="0.01" value="${p.aren}" oninput="window._nvVibrPontos[${i}].aren=this.value"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0.00"></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">VDVexp</label>
-          <input type="number" step="0.01" value="${p.vdv}" oninput="window._nvVibrPontos[${i}].vdv=this.value"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0.00"></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo de exposição (h)</label>
-          <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8"></div>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo de exposição (h)</label>
+        <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
+          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8">
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo não exposto (h)</label>
@@ -14935,6 +14932,10 @@ async function nvGerarRelatorioCampo() {
       subtipo:  itemVib.subtipo  || itemVib.vib_subtipo  || '',
       aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
       pontos:   window._nvVibrPontos || [],
+      placa:        (window._nvVibrVeic||{}).ident  || '',
+      equipamento:  (window._nvVibrVeic||{}).ident  || '',
+      modelo:       (window._nvVibrVeic||{}).modelo || '',
+      ano:          (window._nvVibrVeic||{}).ano    || '',
       itens:    window._ctrlNvItens||[],
       sig_empresa:  nvSigGetData('nv-sig-empresa'),
       sig_avaliado: nvSigGetData('nv-sig-avaliado'),
