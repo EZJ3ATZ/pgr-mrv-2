@@ -13667,6 +13667,64 @@ function nvGotoStep(n) {
   if (n === 5) { nvGerarResumo(); nvSigShowSection(); }
 }
 
+// ── Autosave da Planilha de Campo (#2) — rascunho em localStorage ───────
+const _NV_DRAFT_KEY = 'nv_planilha_draft_v1';
+function _nvCollectFields() {
+  const o = {};
+  document.querySelectorAll('input[id^="nv-"],select[id^="nv-"],textarea[id^="nv-"],input[id^="ctrl-nv-"],select[id^="ctrl-nv-"],textarea[id^="ctrl-nv-"]').forEach(el => {
+    if (el.type === 'file' || el.type === 'checkbox' || el.type === 'radio') return;
+    o[el.id] = el.value;
+  });
+  return o;
+}
+function nvDraftSave() {
+  try {
+    if (!_nvTipos || !_nvTipos.length) return;   // nada iniciado
+    if (window._nvFinalizado) return;             // já finalizada
+    localStorage.setItem(_NV_DRAFT_KEY, JSON.stringify({
+      ts: Date.now(), tipos: _nvTipos, tipo: _nvTipo, step: _nvStep,
+      fields: _nvCollectFields(),
+      trabs: _nvCrTrabs || [], crTermos: _nvCrTermos || [], cq: _nvCqAgentes || [],
+      vibr: window._nvVibrPontos || [], vibrVeic: window._nvVibrVeic || {},
+      calor: window._nvCalorSetores || [],
+      itens: window._ctrlNvItens || [], planId: window._nvPlanejamentoId || null,
+      empresa: window._ctrlNvEmpresa || null, demandaId: window._nvDemandaId || null,
+    }));
+  } catch (e) {}
+}
+function nvDraftClear() { try { localStorage.removeItem(_NV_DRAFT_KEY); } catch (e) {} }
+function nvDraftRestore() {
+  let d; try { d = JSON.parse(localStorage.getItem(_NV_DRAFT_KEY) || 'null'); } catch (e) { return false; }
+  if (!d || !d.tipos || !d.tipos.length) return false;
+  _nvTipos = d.tipos.slice(); _nvTipo = d.tipo || _nvTipos[0] || '';
+  _nvCrTrabs = d.trabs || []; _nvCrTermos = d.crTermos || []; _nvCqAgentes = d.cq || [];
+  window._nvVibrPontos = d.vibr || []; window._nvVibrVeic = d.vibrVeic || {};
+  window._nvCalorSetores = d.calor || [];
+  window._ctrlNvItens = d.itens || []; window._nvPlanejamentoId = d.planId || null;
+  window._ctrlNvEmpresa = d.empresa || null; window._nvDemandaId = d.demandaId || null;
+  ['ruido','quimico','calor','vibracao'].forEach(v => { const el = document.getElementById('nv-tipo-' + v); if (el) el.checked = _nvTipos.includes(v); });
+  Object.entries(d.fields || {}).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+  try { nvTipoChange(); } catch (e) {}
+  ['nvCrRenderTrabs','nvCqRenderAgentes','nvVibrRenderPontos','nvCalorRenderSetores','nvFotosRender'].forEach(fn => { try { if (typeof window[fn] === 'function') window[fn](); } catch (e) {} });
+  try { nvGotoStep(d.step || 1); } catch (e) {}
+  _showToast('✅ Rascunho da planilha recuperado', 'ok');
+  return true;
+}
+setInterval(nvDraftSave, 4000);
+window.addEventListener('beforeunload', nvDraftSave);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') nvDraftSave(); });
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    try {
+      let d; try { d = JSON.parse(localStorage.getItem(_NV_DRAFT_KEY) || 'null'); } catch (e) { return; }
+      if (!d || !d.tipos || !d.tipos.length) return;
+      const quando = d.ts ? new Date(d.ts).toLocaleString('pt-BR') : '';
+      if (confirm('Há uma planilha de campo não finalizada' + (quando ? (' (de ' + quando + ')') : '') + '.\n\nRecuperar o que você já preencheu?')) nvDraftRestore();
+      else nvDraftClear();
+    } catch (e) {}
+  }, 1500);
+});
+
 function nvShowStep3() {
   const temRuido   = _nvTipos.includes('ruido');
   const temQuimico = _nvTipos.includes('quimico');
@@ -13932,6 +13990,7 @@ function nvEquipAutoFill(campo, valor) {
 // ═══════════════════════════════════════════════════════════════════
 
 function nvReset() {
+  try { nvDraftClear(); } catch (e) {}
   _nvStep = 1; _nvTipo = ''; _nvTipos = [];
   // Libera a trava de finalização para a nova visita
   window._nvSaving = false; window._nvFinalizado = false; window._nvSavedResp = null;
@@ -15002,6 +15061,7 @@ async function nvConcluirOS() {
     );
     _showToast('✅ Planilha finalizada — registrada em seu nome e planilha gerada.','ok');
   }
+  try { nvDraftClear(); } catch (e) {}
   if (typeof ctrlLoadStats === 'function') ctrlLoadStats();
 }
 
