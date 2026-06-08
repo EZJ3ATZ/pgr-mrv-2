@@ -14521,13 +14521,13 @@ function _nvRunValidacoesCore(res) {
   }
 
   if (tipos.includes('quimico')) {
-    const totalAmostr = _nvCqAgentes.reduce((s, ag) => s + ag.amostradores.length, 0);
+    const totalAmostr = _nvCqAgentes.reduce((s, ag) => s + (ag.amostradores||[]).length, 0);
     checks.push({ok:_nvCqAgentes.length>0, msg:`${_nvCqAgentes.length} agente(s) configurado(s) · ${totalAmostr} amostrador(es)`});
     _nvCqAgentes.forEach((ag, idx) => {
       if (ag.substancias) checks.push({ok:true, msg:`Agente ${idx+1}: <b>${ag.substancias}</b>`});
       if (!ag.bomba) checks.push({warn:true, msg:`Agente ${idx+1}: bomba não selecionada`});
       else checks.push({ok:true, msg:`Agente ${idx+1}: bomba <b>${ag.bomba}</b> S/N <b>${ag.id_bomba||'—'}</b>`});
-      ag.amostradores.forEach((am, ai) => {
+      (ag.amostradores||[]).forEach((am, ai) => {
         const vi=parseFloat(am.vazao_inicial)||0, vf=parseFloat(am.vazao_final)||0;
         if (vi&&vf) { const dv=Math.abs(vi-vf)/vi*100; checks.push({ok:dv<=5,warn:dv>5,msg:`Agente ${idx+1} Amostrador #${ai+1}: ΔV = <b>${dv.toFixed(2)}%</b>${dv>5?' ⚠ Ultrapassa ±5%!':' ✓'}`}); }
       });
