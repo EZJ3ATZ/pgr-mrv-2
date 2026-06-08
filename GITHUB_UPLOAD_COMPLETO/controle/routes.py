@@ -3658,7 +3658,7 @@ def gerar_relatorio_ruido():
         Paragraph('<b>Nome Completo</b>', cell_bold),
         Paragraph('<b>Cargo/Função</b>', cell_bold),
         Paragraph('<b>Setor/GHE</b>', cell_bold),
-        Paragraph('<b>Almoço/Pausa</b>', cell_bold),
+        Paragraph('<b>Almoço (início–fim)</b>', cell_bold),
     ]
     trab_rows = [trab_head]
 
@@ -3674,7 +3674,7 @@ def gerar_relatorio_ruido():
             Paragraph(tr.get('nome','') or '', cell_reg),
             Paragraph(tr.get('cargo','') or '', cell_sml),
             Paragraph(tr.get('setor','') or '', cell_sml),
-            Paragraph(tr.get('pausa','') or tr.get('almoco','') or '', cell_reg),
+            Paragraph(' – '.join([x for x in [tr.get('pausa','') or tr.get('almoco',''), tr.get('almoco_fim','')] if x]) or '', cell_reg),
         ])
 
     # Linha GHE (agentes do planejamento)

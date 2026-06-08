@@ -4277,8 +4277,8 @@
               <th>Nome</th>
               <th>Cargo</th>
               <th>Setor</th>
-              <th>Pausa (hh:mm)</th>
-              <th>Nível (dB)</th>
+              <th>Início do Almoço</th>
+              <th>Fim do Almoço</th>
               <th></th>
             </tr></thead>
             <tbody id="nv-cr-trab-tbody">
@@ -13736,7 +13736,7 @@ function nvShowStep3() {
       const parts = (itR.funcao || '').split('/');
       const cargo = (parts[0] || '').trim();
       const setor = (parts[1] || '').trim();
-      dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', nivel:''}));
+      dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', almoco_fim:''}));
       nvCrRenderTrabs();
     }
     window._nvRuidoHerdado = true;
@@ -14137,7 +14137,7 @@ function nvVibrRenderPontos() {
 
 // ── Trabalhadores Ruído ───────────────────────────────────────────────
 function nvCrAddTrab() {
-  _nvCrTrabs.push({sn:'',nome:'',cargo:'',setor:'',pausa:'',nivel:''});
+  _nvCrTrabs.push({sn:'',nome:'',cargo:'',setor:'',pausa:'',almoco_fim:''});
   nvCrRenderTrabs();
 }
 function nvCrRenderTrabs() {
@@ -14150,7 +14150,7 @@ function nvCrRenderTrabs() {
     <td><input value="${t.cargo||''}" placeholder="Cargo" style="width:110px;" onchange="_nvCrTrabs[${i}].cargo=this.value"></td>
     <td><input value="${t.setor||''}" placeholder="Setor" style="width:100px;" onchange="_nvCrTrabs[${i}].setor=this.value"></td>
     <td><input value="${t.pausa||''}" placeholder="hh:mm" style="width:62px;" onchange="_nvCrTrabs[${i}].pausa=this.value"></td>
-    <td><input type="number" step="0.1" value="${t.nivel||''}" placeholder="dB" style="width:62px;" onchange="_nvCrTrabs[${i}].nivel=this.value"></td>
+    <td><input value="${t.almoco_fim||''}" placeholder="hh:mm" style="width:62px;" onchange="_nvCrTrabs[${i}].almoco_fim=this.value"></td>
     <td style="text-align:center;"><button onclick="_nvCrTrabs.splice(${i},1);nvCrRenderTrabs();" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
   </tr>`).join('');
 }
