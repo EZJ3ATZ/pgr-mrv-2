@@ -3442,6 +3442,251 @@ def _fotos_pdf_flowables(fotos, W=None):
     return out
 
 
+# ── Planilha de Campo Completa (multi-tipo: ruído + químico + vibração) ──
+@controle_bp.route('/relatorio/campo-completo', methods=['POST'])
+def gerar_relatorio_campo_completo():
+    """Gera UM PDF com seções de todos os tipos medidos na visita."""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Table, TableStyle, HRFlowable, KeepTogether)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    except ImportError:
+        return jsonify({'erro': 'reportlab nao instalado'}), 500
+
+    d = request.json or {}
+    tipos   = [t for t in d.get('tipos', []) if t in ('ruido', 'quimico', 'vibracao')]
+    base    = d.get('base', d)   # compatibilidade: base pode vir no topo
+
+    empresa_nome  = base.get('empresa_nome', '—')
+    os_num        = base.get('os', '')
+    data_coleta   = base.get('data_coleta', base.get('data', ''))
+    tecnico       = base.get('tecnico', '')
+    tecnico_mte   = base.get('tecnico_mte', '') or _mte_do_tecnico(tecnico)
+    unidade       = base.get('unidade', '')
+    cidade        = base.get('cidade', '')
+    resp_empresa  = base.get('resp_empresa', '')
+    sig_avaliado  = base.get('sig_avaliado') or d.get('sig_avaliado')
+    sig_empresa   = base.get('sig_empresa')  or d.get('sig_empresa')
+
+    if data_coleta and '-' in str(data_coleta):
+        try:
+            from datetime import datetime as _dt
+            data_fmt = _dt.strptime(data_coleta, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except Exception:
+            data_fmt = data_coleta
+    else:
+        data_fmt = data_coleta or '___/___/______'
+
+    AZUL     = colors.HexColor('#1E3A8A')
+    AZUL_CLR = colors.HexColor('#DBEAFE')
+    CINZA    = colors.HexColor('#F3F4F6')
+    BORDA    = colors.HexColor('#CBD5E1')
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+        leftMargin=1.8*cm, rightMargin=1.8*cm,
+        topMargin=1.5*cm, bottomMargin=1.5*cm,
+        title=f'Planilha de Campo — {empresa_nome}')
+    styles = getSampleStyleSheet()
+
+    def _sty(name, **kw):
+        return ParagraphStyle(f'_cp_{name}_{id(kw)}', parent=styles.get(name, styles['Normal']), **kw)
+
+    tit  = _sty('Normal', fontSize=11, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_CENTER)
+    sub  = _sty('Normal', fontSize=8,  fontName='Helvetica',      textColor=colors.HexColor('#64748B'), alignment=TA_CENTER)
+    norm = _sty('Normal', fontSize=8,  fontName='Helvetica',      textColor=colors.black)
+    bold = _sty('Normal', fontSize=8,  fontName='Helvetica-Bold', textColor=colors.black)
+    sec  = _sty('Normal', fontSize=9,  fontName='Helvetica-Bold', textColor=AZUL)
+    W    = A4[0] - 3.6*cm
+
+    def _hdr(txt):
+        t = Table([[Paragraph(txt, _sty('Normal', fontSize=9, fontName='Helvetica-Bold',
+                   textColor=colors.white))]], colWidths=[W])
+        t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),AZUL),
+            ('LEFTPADDING',(0,0),(-1,-1),6),('TOPPADDING',(0,0),(-1,-1),4),
+            ('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+        return t
+
+    def _row2(l1, v1, l2='', v2=''):
+        row = [Paragraph(f'<b>{l1}</b> {v1 or "—"}', norm)]
+        if l2:
+            row.append(Paragraph(f'<b>{l2}</b> {v2 or "—"}', norm))
+        cw = [W/2, W/2] if l2 else [W]
+        t = Table([row], colWidths=cw)
+        t.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),('TOPPADDING',(0,0),(-1,-1),2),
+            ('BOTTOMPADDING',(0,0),(-1,-1),2),('BOX',(0,0),(-1,-1),0.3,BORDA),
+            ('INNERGRID',(0,0),(-1,-1),0.3,BORDA)]))
+        return t
+
+    def _tabela(cabecalho, linhas, col_widths):
+        data = [[Paragraph(h, _sty('Normal', fontSize=7, fontName='Helvetica-Bold',
+                            textColor=colors.white)) for h in cabecalho]]
+        for row in linhas:
+            data.append([Paragraph(str(c) if c is not None else '', norm) for c in row])
+        t = Table(data, colWidths=col_widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),AZUL),
+            ('GRID',(0,0),(-1,-1),0.3,BORDA),
+            ('FONTSIZE',(0,0),(-1,-1),7),
+            ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),12),
+            ('LEFTPADDING',(0,0),(-1,-1),3),
+            ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white, CINZA])
+        ]))
+        return t
+
+    def _sig_img(b64_str, w=4.5*cm, h=1.1*cm):
+        if not b64_str:
+            return None
+        try:
+            import base64 as _b64
+            from io import BytesIO as _BIO
+            from reportlab.platypus import Image as _RI
+            raw = _b64.b64decode(b64_str.split(',')[-1])
+            return _RI(_BIO(raw), width=w, height=h)
+        except Exception:
+            return None
+
+    story = []
+
+    # Cabeçalho
+    story.append(Paragraph('OCUPACIONAL — Medicina e Segurança do Trabalho', sub))
+    story.append(Paragraph('PLANILHA DE CAMPO', tit))
+    story.append(Spacer(1, 6))
+    story.append(_row2('Empresa:', empresa_nome, 'OS Nº:', os_num))
+    story.append(_row2('Data:', data_fmt, 'Técnico:', f'{tecnico}{"  —  MTE " + tecnico_mte if tecnico_mte else ""}'))
+    story.append(_row2('Unidade / Obra:', unidade, 'Cidade:', cidade))
+    story.append(_row2('Responsável empresa:', resp_empresa, '', ''))
+    story.append(Spacer(1, 8))
+
+    # ── Seção Ruído ──────────────────────────────────────────────────────
+    if 'ruido' in tipos:
+        r = d.get('ruido', {})
+        story.append(_hdr('🔊  RUÍDO'))
+        story.append(Spacer(1, 4))
+        story.append(_row2('Acompanhante:', r.get('acomp',''), 'Cargo:', r.get('cargo_acomp','')))
+        story.append(_row2('Horário:', f'{r.get("hora_ini","___")} – {r.get("hora_fim","___")}',
+                           'Calibrador:', r.get('calibrador','')))
+        story.append(_row2('Calibração inicial:', f'{r.get("cal_ini","")  or "___"} dB',
+                           'Calibração final:', f'{r.get("cal_fim","") or "___"} dB'))
+        story.append(Spacer(1, 4))
+
+        trabs = r.get('trabalhadores', [])
+        cab_r = ['#', 'Nome', 'Cargo / Função', 'Setor', 'Dosímetro', 'Início', 'Fim']
+        cw_r  = [W*0.04, W*0.22, W*0.18, W*0.16, W*0.14, W*0.13, W*0.13]
+        linhas_r = []
+        for i, t in enumerate(trabs, 1):
+            linhas_r.append([i, t.get('nome',''), t.get('cargo','') or t.get('funcao',''),
+                              t.get('setor',''), t.get('dosimetro','') or t.get('amostrador',''),
+                              t.get('hora_ini',''), t.get('hora_fim','')])
+        while len(linhas_r) < 6:
+            linhas_r.append([len(linhas_r)+1,'','','','','',''])
+        story.append(_tabela(cab_r, linhas_r, cw_r))
+        story.append(Spacer(1, 10))
+
+    # ── Seção Químico ─────────────────────────────────────────────────────
+    if 'quimico' in tipos:
+        agentes = d.get('quimico', {}).get('agentes', [])
+        story.append(_hdr('⚗️  AGENTES QUÍMICOS'))
+        story.append(Spacer(1, 4))
+        if not agentes:
+            story.append(Paragraph('(sem agentes informados)', _sty('Normal', fontSize=8,
+                         textColor=colors.grey, leftIndent=6)))
+        for idx, ag in enumerate(agentes, 1):
+            story.append(Paragraph(
+                f'<b>Agente {idx}:</b> {ag.get("func_nome","") or ag.get("agente","—")}   '
+                f'<b>Substâncias:</b> {ag.get("substancias","") or "—"}   '
+                f'<b>Fração:</b> {ag.get("fracao","") or "—"}',
+                norm))
+            amostr = ag.get('amostradores', [])
+            cab_q = ['#', 'Amostrador', 'Bomba / Modelo', 'S/N', 'Vazão (L/min)', 'Início', 'Fim']
+            cw_q  = [W*0.04, W*0.20, W*0.20, W*0.14, W*0.14, W*0.14, W*0.14]
+            linhas_q = []
+            for j, am in enumerate(amostr, 1):
+                linhas_q.append([j, am.get('codigo','') or am.get('amostrador',''),
+                                  am.get('bomba','') or am.get('bomba_modelo',''),
+                                  am.get('sn','') or am.get('bomba_sn',''),
+                                  am.get('vazao','') or am.get('vazao_calibrada',''),
+                                  am.get('hora_ini',''), am.get('hora_fim','')])
+            while len(linhas_q) < 4:
+                linhas_q.append([len(linhas_q)+1,'','','','','',''])
+            story.append(_tabela(cab_q, linhas_q, cw_q))
+            story.append(Spacer(1, 6))
+        story.append(Spacer(1, 4))
+
+    # ── Seção Vibração ────────────────────────────────────────────────────
+    if 'vibracao' in tipos:
+        v = d.get('vibracao', {})
+        sub_lbl = {'vci':'Corpo Inteiro (VCI)','vbma':'Mãos e Braços (VBMA)','ambos':'VCI + VBMA'}
+        apa_lbl = {'chrompack_1':'SmartVib — S/N 0779','chrompack_2':'SmartVib — S/N 1241'}
+        story.append(_hdr('〰️  VIBRAÇÃO'))
+        story.append(Spacer(1, 4))
+        story.append(_row2('Subtipo:', sub_lbl.get((v.get('subtipo','') or '').lower(), v.get('subtipo','')),
+                           'Aparelho:', apa_lbl.get((v.get('aparelho','') or '').lower(), v.get('aparelho',''))))
+        story.append(_row2('Acompanhante:', v.get('acomp',''),
+                           'Horário:', f'{v.get("hora_ini","___")} – {v.get("hora_fim","___")}'))
+        story.append(Spacer(1, 4))
+
+        pontos = v.get('pontos', [])
+        is_vmb = (v.get('subtipo','') or '').lower() in ('vbma','ambos')
+        if is_vmb:
+            cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Obs']
+            cw_v  = [W*0.04,W*0.22,W*0.17,W*0.14,W*0.12,W*0.12,W*0.19]
+        else:
+            cab_v = ['#','Trabalhador/Veículo','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Obs']
+            cw_v  = [W*0.04,W*0.20,W*0.14,W*0.12,W*0.10,W*0.10,W*0.14,W*0.16]
+        linhas_v = []
+        for i, p in enumerate(pontos, 1):
+            row = [i, p.get('nome',''), p.get('funcao','') or p.get('cargo',''),
+                   p.get('setor',''), p.get('tempo',''), p.get('tempo_nexp','')]
+            if not is_vmb:
+                row.append(p.get('trajeto',''))
+            row.append(p.get('obs',''))
+            linhas_v.append(row)
+        while len(linhas_v) < 5:
+            row = [len(linhas_v)+1,'','','','','']
+            if not is_vmb: row.append('')
+            row.append('')
+            linhas_v.append(row)
+        story.append(_tabela(cab_v, linhas_v, cw_v))
+        story.append(Spacer(1, 10))
+
+    # ── Assinaturas ───────────────────────────────────────────────────────
+    story.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
+    story.append(Spacer(1, 6))
+    img_tec  = _sig_img(sig_empresa)   # Técnico Ocupacional
+    img_resp = _sig_img(sig_avaliado)  # Responsável empresa
+    col_tec  = img_tec  if img_tec  else Paragraph('_________________________________', norm)
+    col_resp = img_resp if img_resp else Paragraph('_________________________________', norm)
+    assin = Table([
+        [col_tec, col_resp, Paragraph('_________________________________', norm)],
+        [Paragraph(f'<font size="7">Técnico da Ocupacional<br/>{tecnico}</font>', norm),
+         Paragraph('<font size="7">Responsável da Empresa / Acompanhante</font>', norm),
+         Paragraph(f'<font size="7">Data: {data_fmt}</font>', norm)],
+    ], colWidths=[W/3, W/3, W/3])
+    assin.setStyle(TableStyle([('ALIGN',(0,0),(-1,-1),'CENTER'),
+        ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4)]))
+    story.append(assin)
+    story.append(Spacer(1, 4))
+
+    story.append(Paragraph(
+        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        _sty('Normal', fontSize=6.5, textColor=colors.HexColor('#94A3B8'), alignment=TA_CENTER)))
+
+    story.extend(_fotos_pdf_flowables(base.get('fotos') or [], W))
+
+    doc.build(story)
+    buf.seek(0)
+    nome_safe = re.sub(r'[^\w-]', '_', empresa_nome)[:35]
+    data_safe = data_fmt.replace('/', '-')
+    return send_file(buf, as_attachment=True,
+        download_name=f'planilha_campo_{nome_safe}_{data_safe}.pdf',
+        mimetype='application/pdf')
+
+
 # ── Relatório PDF de Ruído ────────────────────────────────────────────
 @controle_bp.route('/relatorio/ruido', methods=['POST'])
 def gerar_relatorio_ruido():

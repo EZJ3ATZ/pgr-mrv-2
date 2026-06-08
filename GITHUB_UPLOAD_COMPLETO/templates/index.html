@@ -15079,56 +15079,57 @@ async function nvGerarRelatorioCampo() {
     return;
   }
 
-  // Múltiplos tipos: browsers bloqueiam auto-downloads em série após await.
-  // Solução: buscar todos os PDFs, exibir botões — cada clique é gesto do usuário.
-  const _blobs = []; const _erros = [];
-  for (const tipo of _tiposRel) {
-    const cfg = _relConfig(tipo);
-    if (!cfg) continue;
-    if (st) st.innerHTML = `<span style="color:var(--blue);">⏳ Preparando ${_lblTipo[tipo]||tipo} (${_blobs.length+_erros.length+1}/${_tiposRel.length})...</span>`;
-    try {
-      const r = await fetch(cfg.endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg.payload) });
-      if (!r.ok) { const e = await r.json().catch(()=>({erro:r.statusText})); throw new Error(e.erro||r.statusText); }
-      const blob = await r.blob();
-      _blobs.push({ tipo, url: URL.createObjectURL(blob), fname: cfg.fname });
-    } catch(e) {
-      _erros.push(`${_lblTipo[tipo]||tipo}: ${e.message}`);
-    }
-  }
-
-  if (!st) return;
-  st.innerHTML = '';
-  const _panel = document.createElement('div');
-  _panel.style.cssText = 'background:var(--surface2,#f0f4f8);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px;margin-top:4px;';
-  if (_erros.length) {
-    const _ed = document.createElement('div');
-    _ed.style.cssText = 'color:var(--red,#dc2626);font-size:.75rem;margin-bottom:8px;';
-    _ed.textContent = '⚠️ ' + _erros.join(' · ');
-    _panel.appendChild(_ed);
-  }
-  if (_blobs.length) {
-    const _th = document.createElement('div');
-    _th.style.cssText = 'font-size:.74rem;color:var(--text3,#64748b);margin-bottom:8px;';
-    _th.textContent = `${_blobs.length} planilha(s) prontas — clique para baixar cada uma:`;
-    _panel.appendChild(_th);
-    _blobs.forEach(({tipo, url, fname}) => {
-      const _a = document.createElement('a');
-      _a.href = url; _a.download = fname;
-      _a.style.cssText = 'display:block;background:var(--blue,#2563eb);color:#fff;text-decoration:none;padding:10px 14px;border-radius:6px;font-size:.84rem;font-weight:600;text-align:center;margin-bottom:6px;cursor:pointer;';
-      _a.textContent = `📄 Baixar ${_lblTipo[tipo]||tipo}`;
-      _a.addEventListener('click', () => { setTimeout(() => { URL.revokeObjectURL(url); _a.style.opacity='0.4'; _a.style.pointerEvents='none'; _a.textContent = `✅ ${_lblTipo[tipo]||tipo} baixado`; }, 2000); });
-      _panel.appendChild(_a);
+  // Múltiplos tipos: endpoint combinado → UM único PDF com todas as seções
+  if (st) st.innerHTML = `<span style="color:var(--blue);">⏳ Gerando planilha completa (${_tiposRel.join(' + ')})...</span>`;
+  const itemVib = (window._ctrlNvItens||[]).find(it => it.tipo === 'vibracao') || {};
+  const _payload = {
+    tipos:   _tiposRel,
+    base,
+    ruido: {
+      ...base,
+      acomp:       document.getElementById('nv-cr-acomp')?.value||'',
+      cargo_acomp: document.getElementById('nv-cr-cargo-acomp')?.value||'',
+      hora_ini:    document.getElementById('nv-cr-hora-ini')?.value||'',
+      hora_fim:    document.getElementById('nv-cr-hora-fim')?.value||'',
+      calibrador:  document.getElementById('nv-cr-calibrador')?.value||'',
+      cal_ini:     document.getElementById('nv-cr-cal-ini')?.value||'',
+      cal_fim:     document.getElementById('nv-cr-cal-fim')?.value||'',
+      trabalhadores: _nvCrTrabs,
+    },
+    quimico: {
+      ...base,
+      agentes: _nvCqAgentes,
+    },
+    vibracao: {
+      ...base,
+      acomp:    document.getElementById('nv-gen-acomp')?.value||'',
+      hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
+      hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
+      subtipo:  itemVib.subtipo  || itemVib.vib_subtipo  || '',
+      aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
+      pontos:   window._nvVibrPontos || [],
+    },
+    sig_avaliado: nvSigGetData('nv-sig-avaliado'),
+    sig_empresa:  nvSigGetData('nv-sig-empresa'),
+  };
+  try {
+    const r = await fetch('/controle/relatorio/campo-completo', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(_payload)
     });
-    // Auto-revoga depois de 15 min caso o usuário não clique
-    setTimeout(() => _blobs.forEach(b => { try { URL.revokeObjectURL(b.url); } catch(_){} }), 900000);
-  } else {
-    st.innerHTML = `<span style="color:var(--red);">❌ Nenhuma planilha gerada: ${_erros.join('; ')}</span>`;
-    _showToast('Erro ao gerar planilhas: ' + _erros.join('; '), 'err');
-    return;
+    if (!r.ok) { const e = await r.json().catch(()=>({erro:r.statusText})); throw new Error(e.erro||r.statusText); }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const _slug2 = (base.empresa_nome||'empresa').replace(/\s/g,'_');
+    a.href = url; a.download = `planilha_campo_${_slug2}.pdf`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    if (st) st.innerHTML = `<span style="color:var(--green);">✅ Planilha completa (${_tiposRel.map(t=>_lblTipo[t]||t).join(' + ')}) gerada!</span>`;
+    _showToast('✅ Planilha de campo gerada!', 'ok');
+  } catch(e) {
+    if (st) st.innerHTML = `<span style="color:var(--red);">❌ Erro ao gerar planilha: ${e.message}</span>`;
+    _showToast('Erro: ' + e.message, 'err');
   }
-  st.appendChild(_panel);
-  if (_erros.length) _showToast(`⚠️ ${_blobs.length} gerada(s), erro em: ${_erros.join('; ')}`, 'warn');
-  else _showToast(`✅ ${_blobs.length} planilha(s) prontas para download!`, 'ok');
 }
 
 // Mantém compatibilidade com chamadas antigas
