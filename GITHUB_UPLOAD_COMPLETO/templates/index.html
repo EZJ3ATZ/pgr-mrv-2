@@ -13798,11 +13798,17 @@ function nvShowStep3() {
     if (calEl && !calEl.value && itR.calibrador_ruido_serie) calEl.value = itR.calibrador_ruido_serie;
     // 1 linha de trabalhador por dosímetro selecionado no plano
     const dosim = itR.dosim_ruido || [];
-    if (dosim.length && !_nvCrTrabs.length) {
+    if (!_nvCrTrabs.length) {
       const parts = (itR.funcao || '').split('/');
       const cargo = (parts[0] || '').trim();
       const setor = (parts[1] || '').trim();
-      dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', almoco_fim:''}));
+      if (dosim.length) {
+        dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', almoco_fim:''}));
+      } else {
+        // #8: sem dosímetro no plano → cria 1 trabalhador por qtd planejada
+        const _qr = Math.max(parseInt(itR.qtd || itR.qtd_pessoas || 1, 10) || 1, 1);
+        for (let _k = 0; _k < _qr; _k++) _nvCrTrabs.push({sn:'', nome:'', cargo, setor, pausa:'', almoco_fim:''});
+      }
       nvCrRenderTrabs();
     }
     window._nvRuidoHerdado = true;
@@ -13814,6 +13820,8 @@ function nvShowStep3() {
     const itens = (window._ctrlNvItens || []).filter(it => (it.tipo || 'quimico') === 'quimico');
     if (itens.length > 0) {
       itens.forEach(item => {
+        const _q = Math.max(parseInt(item.qtd || 1, 10) || 1, 1);  // #8: ×N agentes
+        for (let _k = 0; _k < _q; _k++) {
         const ag = nvCqNewAgente();
         ag.substancias = item.agente_nome || item.agente || '';
         ag.bomba       = item.bomba_modelo_id || '';
@@ -13843,6 +13851,7 @@ function nvShowStep3() {
           ag.func_setor  = parts[1] ? parts[1].trim() : '';
         }
         _nvCqAgentes.push(ag);
+        }
       });
       nvCqRenderAgentes();
     } else { nvCqAddAgente(); }
