@@ -3920,41 +3920,62 @@ def gerar_relatorio_vibracao():
         ('BOTTOMPADDING',(0,0),(-1,-1),4),('LEFTPADDING',(0,0),(-1,-1),5)]))
     elements.append(info_tbl); elements.append(Spacer(1, 10))
 
-    # Tabela de medições (linhas em branco p/ preencher em campo)
+    # ── Veículo (VCI) / Ferramenta (VMB) avaliado ──
+    _sub = (subtipo or '').lower()
+    is_vmb = _sub in ('vbma', 'vmb')
+    if is_vmb:
+        _vlbl = 'FERRAMENTA / EQUIPAMENTO AVALIADO'
+        _vfields = [('Equipamento', d.get('equipamento', '')), ('Modelo', d.get('modelo', '')), ('Ano', d.get('ano', ''))]
+    else:
+        _vlbl = 'VEÍCULO AVALIADO'
+        _vfields = [('Placa', d.get('placa', '')), ('Modelo', d.get('modelo', '')), ('Ano', d.get('ano', ''))]
+    elements.append(Paragraph(f'<font size="7" color="#64748B"><b>{_vlbl}</b></font>', cell_reg))
+    _veic_tbl = Table([[_info(l, v) for l, v in _vfields]], colWidths=[W/3, W/3, W/3])
+    _veic_tbl.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.4,BORDA),('VALIGN',(0,0),(-1,-1),'TOP'),
+        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),5)]))
+    elements.append(_veic_tbl); elements.append(Spacer(1, 10))
+
+    # Tabela de medições (linhas em branco p/ preencher em campo) — colunas conforme VCI x VMB
     cell_bold7 = sty('Normal', fontSize=7, fontName='Helvetica-Bold', textColor=PRETO)
     cell_reg7  = sty('Normal', fontSize=7, fontName='Helvetica', textColor=PRETO)
-    med_head = [Paragraph('#', cell_bold7), Paragraph('Trabalhador', cell_bold7),
-                Paragraph('Função', cell_bold7), Paragraph('Setor', cell_bold7),
-                Paragraph('Eixo', cell_bold7), Paragraph('aren (m/s²)', cell_bold7),
-                Paragraph('VDVexp (m/s¹·⁷⁵)', cell_bold7),
-                Paragraph('T. exp. (h)', cell_bold7), Paragraph('T. não exp. (h)', cell_bold7),
-                Paragraph('Trajeto', cell_bold7), Paragraph('Tipo de terreno', cell_bold7)]
+    if is_vmb:
+        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'Eixo', 'aren (m/s²)', 'T. exp. (h)', 'T. não exp. (h)']
+        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'eixo', 'aren', 'tempo', 'tempo_nexp']
+        _colw  = [W*0.04, W*0.24, W*0.18, W*0.16, W*0.08, W*0.12, W*0.09, W*0.09]
+    else:
+        _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'Eixo', 'aren (m/s²)', 'VDVexp (m/s^1,75)', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno']
+        _keys  = [None, 'nome', ('funcao', 'cargo'), 'setor', 'eixo', 'aren', 'vdv', 'tempo', 'tempo_nexp', 'trajeto', 'terreno']
+        _colw  = [W*0.03, W*0.15, W*0.11, W*0.10, W*0.055, W*0.085, W*0.10, W*0.065, W*0.07, W*0.13, W*0.115]
+    med_head = [Paragraph(h, cell_bold7) for h in _heads]
     med_rows = [med_head]
     pts = list(pontos) if pontos else []
     while len(pts) < 6:
         pts.append({})
     for i, p in enumerate(pts, 1):
-        med_rows.append([
-            Paragraph(str(i), cell_reg7),
-            Paragraph(p.get('nome','') or '', cell_reg7),
-            Paragraph(p.get('funcao','') or p.get('cargo','') or '', cell_reg7),
-            Paragraph(p.get('setor','') or '', cell_reg7),
-            Paragraph(p.get('eixo','') or '', cell_reg7),
-            Paragraph(p.get('aren','') or '', cell_reg7),
-            Paragraph(p.get('vdv','') or '', cell_reg7),
-            Paragraph(p.get('tempo','') or '', cell_reg7),
-            Paragraph(p.get('tempo_nexp','') or '', cell_reg7),
-            Paragraph(p.get('trajeto','') or '', cell_reg7),
-            Paragraph(p.get('terreno','') or '', cell_reg7),
-        ])
-    med_tbl = Table(med_rows, colWidths=[W*0.03, W*0.15, W*0.11, W*0.10, W*0.055, W*0.085,
-                                         W*0.10, W*0.065, W*0.07, W*0.13, W*0.115], repeatRows=1)
+        row = []
+        for k in _keys:
+            if k is None:
+                row.append(Paragraph(str(i), cell_reg7))
+            elif isinstance(k, tuple):
+                row.append(Paragraph(p.get(k[0], '') or p.get(k[1], '') or '', cell_reg7))
+            else:
+                row.append(Paragraph(p.get(k, '') or '', cell_reg7))
+        med_rows.append(row)
+    med_tbl = Table(med_rows, colWidths=_colw, repeatRows=1)
     med_tbl.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
         ('GRID',(0,0),(-1,-1),0.4,BORDA),('FONTSIZE',(0,0),(-1,-1),7),
         ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),14),
         ('LEFTPADDING',(0,0),(-1,-1),3),('RIGHTPADDING',(0,0),(-1,-1),3),
         ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA])]))
     elements.append(med_tbl); elements.append(Spacer(1, 8))
+
+    # Registro fotográfico — marcar em campo (igual aos formulários oficiais VCI/VMB)
+    if is_vmb:
+        _fotos = 'Foto do equipamento ( )      Foto do equipamento + acelerômetro ( )      Foto do funcionário executando a atividade ( )'
+    else:
+        _fotos = 'Foto do veículo ( )      Foto do equipamento posicionado ( )      Foto do documento do veículo ( )'
+    elements.append(Paragraph(f'<font size="7" color="#64748B"><b>REGISTRO FOTOGRÁFICO (marcar)</b></font><br/>{_fotos}', cell_reg))
+    elements.append(Spacer(1, 10))
 
     if obs:
         elements.append(Paragraph(f'<font size="7" color="#64748B">OBSERVAÇÕES DE CAMPO</font><br/>{obs}', cell_reg))
