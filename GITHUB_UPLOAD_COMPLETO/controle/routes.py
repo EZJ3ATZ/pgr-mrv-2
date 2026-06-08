@@ -1543,7 +1543,7 @@ def api_empresas_busca():
         limit = 10
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT id, nome, cnpj FROM empresas WHERE LOWER(COALESCE(nome,'')) LIKE LOWER(?) "
+            "SELECT id, nome, cnpj, cidade, unidade FROM empresas WHERE LOWER(COALESCE(nome,'')) LIKE LOWER(?) "
             "ORDER BY nome LIMIT ?", (f'%{q}%', limit)).fetchall()
     return jsonify([row_to_dict(r) for r in rows])
 

@@ -8156,8 +8156,8 @@ async function loadTecnicos() {
       });
     }
 
-    // IDs dos selects que devem listar técnicos
-    const selectIds = ['r-tecnico', 'plan-tecnico', 'cr-tecnico'];
+    // IDs dos selects que devem listar técnicos (auto-seleciona o usuário logado)
+    const selectIds = ['r-tecnico', 'plan-tecnico', 'cr-tecnico', 'ctrl-nv-avaliador'];
 
     selectIds.forEach(id => {
       const sel = document.getElementById(id);
@@ -10906,6 +10906,14 @@ async function ctrlNvVincularPlanejamento(pid) {
       window._ctrlNvEmpresa = { id: p.empresa_id, nome: p.empresa_nome || '' };
       const statusEl = document.getElementById('ctrl-nv-empresa-status');
       if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);font-size:.78rem;">✓ Empresa vinculada do planejamento</span>`;
+      // Puxa cidade/unidade do cadastro da empresa (evita redigitar)
+      try {
+        const _emp = await ctrlFetch('/controle/empresa/' + p.empresa_id);
+        if (_emp && !_emp.erro) {
+          const _ci = document.getElementById('nv-cidade');  if (_ci && !_ci.value && _emp.cidade)  _ci.value = _emp.cidade;
+          const _un = document.getElementById('nv-unidade'); if (_un && !_un.value && _emp.unidade) _un.value = _emp.unidade;
+        }
+      } catch(_) {}
     }
 
     // ── Preencher OS ──
@@ -10983,6 +10991,7 @@ async function ctrlNvVincularPlanejamento(pid) {
     const agentes = window._nvAgentesPlano;
     if (agentes.length > 0) {
       const tipoMap = {ruido:'nv-tipo-ruido', quimico:'nv-tipo-quimico', calor:'nv-tipo-calor',
+                       particulado:'nv-tipo-quimico', poeira:'nv-tipo-quimico', metais:'nv-tipo-quimico', gases:'nv-tipo-quimico',
                        vibracao:'nv-tipo-vibracao', vibracao_vci:'nv-tipo-vibracao', vibracao_vbma:'nv-tipo-vibracao'};
       agentes.forEach(a => {
         const elId = tipoMap[a.tipo];
@@ -11123,6 +11132,7 @@ async function ctrlNvOsChange(val) {
       const agentes = j.agentes || [];
       // ── Auto-selecionar chips de tipo de medição com base nos agentes da OS ──
       const tipoMap = {ruido:'nv-tipo-ruido', quimico:'nv-tipo-quimico', calor:'nv-tipo-calor',
+                       particulado:'nv-tipo-quimico', poeira:'nv-tipo-quimico', metais:'nv-tipo-quimico', gases:'nv-tipo-quimico',
                        vibracao:'nv-tipo-vibracao', vibracao_vci:'nv-tipo-vibracao', vibracao_vbma:'nv-tipo-vibracao'};
       if (agentes.length > 0) {
         agentes.forEach(a => {
@@ -11159,6 +11169,7 @@ async function ctrlNvBuscarEmpresa(q) {
           style="margin-left:8px; background:#0a7; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:.75rem; cursor:pointer;">+ Cadastrar "${q.slice(0,40)}"</button>`;
       return;
     }
+    window._ctrlNvEmpresasBusca = empresas;   // guarda p/ puxar cidade/unidade na seleção
     list.innerHTML = empresas.slice(0, 8).map(e =>
       `<div onclick="ctrlNvSelecionarEmpresa(${e.id}, '${(e.nome||'').replace(/'/g,"\\'")}', '${e.cnpj||''}', '${(e.contato||'').replace(/'/g,"\\'")}')"
         style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border); font-size:.85rem;"
@@ -11175,6 +11186,12 @@ async function ctrlNvSelecionarEmpresa(id, nome, cnpj, contato) {
   window._ctrlNvEmpresa = { id, nome, cnpj, contato };
   document.getElementById('ctrl-nv-empresa').value = nome;
   document.getElementById('ctrl-nv-empresa-list').style.display = 'none';
+  // Puxa cidade/unidade do cadastro da empresa (evita redigitar)
+  const _emp = (window._ctrlNvEmpresasBusca || []).find(x => x.id === id);
+  if (_emp) {
+    const _ci = document.getElementById('nv-cidade');  if (_ci && !_ci.value && _emp.cidade)  _ci.value = _emp.cidade;
+    const _un = document.getElementById('nv-unidade'); if (_un && !_un.value && _emp.unidade) _un.value = _emp.unidade;
+  }
   // Verificar se já tem demanda aberta
   try {
     const dems = await ctrlFetch('/controle/operacional?empresa=' + encodeURIComponent(nome));
@@ -13904,8 +13921,9 @@ function nvShowStep3() {
 
   // Inicializar agentes químicos a partir do planejamento
   if (temQuimico && !_nvCqAgentes.length) {
-    // Só itens químicos viram agente químico (evita criar fichas vazias p/ ruído/calor/vibração)
-    const itens = (window._ctrlNvItens || []).filter(it => (it.tipo || 'quimico') === 'quimico');
+    // Só itens da família química viram agente químico (inclui particulado/poeira/metais/gases)
+    const _quimFam = ['quimico','particulado','poeira','metais','gases'];
+    const itens = (window._ctrlNvItens || []).filter(it => _quimFam.includes((it.tipo || 'quimico').toLowerCase()));
     if (itens.length > 0) {
       itens.forEach(item => {
         const _q = Math.max(parseInt(item.qtd || 1, 10) || 1, 1);  // #8: ×N agentes
@@ -14114,7 +14132,8 @@ function nvReset() {
   ['ctrl-nv-empresa','ctrl-nv-os','ctrl-nv-data','nv-unidade','nv-cidade',
    'nv-resp-empresa','nv-prazo'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
   const t = document.getElementById('nv-tipo'); if(t) t.value='';
-  const avt = document.getElementById('ctrl-nv-avaliador'); if(avt) avt.value='Matheus Costa';
+  const avt = document.getElementById('ctrl-nv-avaliador');
+  if(avt) avt.value = (window._me && window._me.nome) || window._currentUserNome || '';
   nvGotoStep(1);
   const lv = document.getElementById('ctrl-nv-lista');
   if(lv) lv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:14px;font-size:.84rem;">Nenhum agente adicionado.</div>';
