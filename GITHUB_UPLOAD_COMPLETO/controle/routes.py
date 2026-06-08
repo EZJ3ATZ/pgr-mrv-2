@@ -4295,7 +4295,7 @@ def gerar_relatorio_quimico():
                     ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2)]
         tbl_rows = [[
             Paragraph('#', bold), Paragraph('ID Amostrador', bold),
-            Paragraph('Tipo', bold), Paragraph('Vi\n(L/min)', bold),
+            Paragraph('Vi\n(L/min)', bold),
             Paragraph('Vf\n(L/min)', bold), Paragraph('Início', bold),
             Paragraph('Final', bold), Paragraph('Intervalos', bold),
             Paragraph('t\n(min)', bold), Paragraph('Vm\n(L/min)', bold),
@@ -4337,7 +4337,6 @@ def gerar_relatorio_quimico():
                 tbl_rows.append([
                     Paragraph(str(ai+1), norm),
                     Paragraph(_fmt(id_am), norm),
-                    Paragraph(_fmt(tipo_a), norm),
                     Paragraph(_fmt(am.get('vi') if am.get('vi') not in (None,'') else (vi or '')), norm),
                     Paragraph(_fmt(am.get('vf') if am.get('vf') not in (None,'') else (vf or '')), norm),
                     Paragraph(_fmt(inicio), norm),
@@ -4349,11 +4348,11 @@ def gerar_relatorio_quimico():
                     Paragraph(_fmt(dv), norm),
                 ])
         else:
-            tbl_rows.append([Paragraph('—', ctr)]*12)
+            tbl_rows.append([Paragraph('—', ctr)]*11)
 
         pw = 17.4*cm
-        col_ws = [0.5*cm, 2.2*cm, 1.8*cm, 1.3*cm, 1.3*cm, 1.3*cm,
-                  1.3*cm, 1.8*cm, 1.3*cm, 1.3*cm, 1.3*cm, 1.3*cm]
+        col_ws = [0.5*cm, 2.6*cm, 1.5*cm, 1.5*cm, 1.4*cm,
+                  1.4*cm, 1.9*cm, 1.4*cm, 1.5*cm, 1.5*cm, 1.5*cm]
         story.append(Table(tbl_rows, colWidths=col_ws,
             style=TableStyle(th_style)))
 

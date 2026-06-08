@@ -14260,7 +14260,7 @@ function nvCqRenderAmostrTable(idx) {
   const tb = document.getElementById('nv-cqa-amostr-' + idx);
   if (!tb) return;
   const ams = _nvCqAgentes[idx]?.amostradores || [];
-  if (!ams.length) { tb.innerHTML = '<tr><td colspan="13" style="padding:10px;text-align:center;color:var(--text3);">Nenhum amostrador.</td></tr>'; return; }
+  if (!ams.length) { tb.innerHTML = '<tr><td colspan="12" style="padding:10px;text-align:center;color:var(--text3);">Nenhum amostrador.</td></tr>'; return; }
   const inp = 'background:var(--surface2);border:none;border-radius:4px;padding:4px 5px;color:var(--text);font-size:.76rem;';
   tb.innerHTML = ams.map((am, ai) => {
     const vi=parseFloat(am.vazao_inicial)||0, vf=parseFloat(am.vazao_final)||0;
@@ -14272,8 +14272,7 @@ function nvCqRenderAmostrTable(idx) {
     const dvS=dv>5?'color:#92400e;font-weight:700;background:#2a1500;':dv>0?'color:#065f46;':'';
     return `<tr>
       <td style="padding:4px;border:1px solid var(--border);text-align:center;">${ai+1}</td>
-      <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" placeholder="ID" style="${inp}width:75px;" onchange="nvCqUpdateAmostr(${idx},${ai},'id_amostrador',this.value)"></td>
-      <td style="padding:2px;border:1px solid var(--border);"><select style="${inp}width:65px;" onchange="nvCqUpdateAmostr(${idx},${ai},'tipo_amostrador',this.value)">${['TCP','FMD','IOM','MCE','PVC','OVM'].map(tp=>`<option${am.tipo_amostrador===tp?' selected':''}>${tp}</option>`).join('')}</select></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" placeholder="ID" style="${inp}width:90px;" onchange="nvCqUpdateAmostr(${idx},${ai},'id_amostrador',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" placeholder="0.150" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_inicial',parseFloat(this.value)||0)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" placeholder="0.150" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_final',parseFloat(this.value)||0)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_inicio||''}" style="${inp}width:78px;" onchange="nvCqUpdateAmostr(${idx},${ai},'hora_inicio',this.value)"></td>
@@ -14375,7 +14374,6 @@ function nvCqRenderAgentes() {
           <thead><tr style="background:var(--surface3);">
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">#</th>
             <th style="padding:6px 4px;border:1px solid var(--border);">ID Amostrador</th>
-            <th style="padding:6px 4px;border:1px solid var(--border);">Tipo</th>
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">Vi (L/min)</th>
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">Vf (L/min)</th>
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">Início</th>
@@ -14388,7 +14386,7 @@ function nvCqRenderAgentes() {
             <th style="padding:6px 4px;border:1px solid var(--border);"></th>
           </tr></thead>
           <tbody id="nv-cqa-amostr-${idx}">
-            <tr><td colspan="13" style="padding:10px;text-align:center;color:var(--text3);">Nenhum amostrador.</td></tr>
+            <tr><td colspan="12" style="padding:10px;text-align:center;color:var(--text3);">Nenhum amostrador.</td></tr>
           </tbody>
         </table>
       </div>
