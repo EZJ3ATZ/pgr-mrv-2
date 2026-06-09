@@ -10926,11 +10926,13 @@ async function ctrlNvVincularPlanejamento(pid) {
     const osEl = document.getElementById('ctrl-nv-os');
     if (osEl && p.numero_os) { osEl.value = p.numero_os; ctrlNvOsChange(p.numero_os); }
 
-    // ── Preencher técnico ──
+    // ── Preencher técnico (cabeçalho + "Técnico Ocupacional" do ruído, p/ não divergir) ──
     const tecEl = document.getElementById('ctrl-nv-avaliador');
     if (tecEl && p.tecnico) {
       [...tecEl.options].forEach(o => { if (o.text.includes(p.tecnico.split(' ')[0])) tecEl.value = o.value; });
     }
+    const tecRuido = document.getElementById('nv-cr-tecnico');
+    if (tecRuido && p.tecnico) tecRuido.value = p.tecnico;
 
     // ── Preencher data prevista ──
     if (p.data_prevista) {
@@ -14364,21 +14366,33 @@ function _nvColetarTrabalhadores(excluir) {
 function nvCrPuxarTrabs() {
   const lista = _nvColetarTrabalhadores('ruido');
   if (!lista.length) { _showToast('Nenhum trabalhador digitado em outras medições ainda.', 'warn'); return; }
-  const existentes = new Set((_nvCrTrabs||[]).map(t => (t.nome||'').toLowerCase().trim()));
+  const existentes = new Set((_nvCrTrabs||[]).filter(t => (t.nome||'').trim()).map(t => t.nome.toLowerCase().trim()));
   let n = 0;
-  lista.forEach(w => { if (existentes.has(w.nome.toLowerCase())) return;
-    _nvCrTrabs.push({sn:'', nome:w.nome, cargo:w.cargo, setor:w.setor, pausa:'', almoco_fim:''}); n++; });
+  lista.forEach(w => {
+    if (existentes.has(w.nome.toLowerCase())) return;
+    // 1º preenche uma linha vazia (ex.: slot de dosímetro sem nome); só cria nova se não houver
+    const vazia = _nvCrTrabs.find(t => !(t.nome||'').trim());
+    if (vazia) { vazia.nome = w.nome; vazia.cargo = w.cargo; vazia.setor = w.setor; }
+    else { _nvCrTrabs.push({sn:'', nome:w.nome, cargo:w.cargo, setor:w.setor, pausa:'', almoco_fim:''}); }
+    existentes.add(w.nome.toLowerCase()); n++;
+  });
   nvCrRenderTrabs();
   _showToast(n ? `✅ ${n} trabalhador(es) importado(s).` : 'Todos já estavam na lista.', n ? 'ok' : 'warn');
 }
 function nvVibrPuxarTrabs() {
   const lista = _nvColetarTrabalhadores('vibracao');
   if (!lista.length) { _showToast('Nenhum trabalhador digitado em outras medições ainda.', 'warn'); return; }
-  const existentes = new Set((window._nvVibrPontos||[]).map(p => (p.nome||'').toLowerCase().trim()));
+  window._nvVibrPontos = window._nvVibrPontos || [];
+  const existentes = new Set(window._nvVibrPontos.filter(p => (p.nome||'').trim()).map(p => p.nome.toLowerCase().trim()));
   let n = 0;
-  lista.forEach(w => { if (existentes.has(w.nome.toLowerCase())) return;
-    window._nvVibrPontos.push({nome:w.nome, funcao:w.cargo, setor:w.setor, tipo:_nvVibrTipoPadrao(),
-      tempo:'', tempo_nexp:'', trajeto:'', terreno:'', obs:''}); n++; });
+  lista.forEach(w => {
+    if (existentes.has(w.nome.toLowerCase())) return;
+    const vazio = window._nvVibrPontos.find(p => !(p.nome||'').trim());
+    if (vazio) { vazio.nome = w.nome; vazio.funcao = w.cargo; vazio.setor = w.setor; }
+    else { window._nvVibrPontos.push({nome:w.nome, funcao:w.cargo, setor:w.setor, tipo:_nvVibrTipoPadrao(),
+      tempo:'', tempo_nexp:'', trajeto:'', terreno:'', obs:''}); }
+    existentes.add(w.nome.toLowerCase()); n++;
+  });
   nvVibrRenderPontos();
   _showToast(n ? `✅ ${n} trabalhador(es) importado(s).` : 'Todos já estavam na lista.', n ? 'ok' : 'warn');
 }
