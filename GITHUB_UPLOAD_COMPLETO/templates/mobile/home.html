@@ -31,7 +31,7 @@
   </div>
 
   <div class="content" id="content">
-    <div class="section-title">Visitas de hoje</div>
+    <div class="section-title">Visitas pendentes</div>
 
     {% if planejamentos %}
       {% for p in planejamentos %}
@@ -39,7 +39,7 @@
         <div class="card-header">
           <div>
             <div class="card-title">{{ p.empresa_nome or 'Empresa não vinculada' }}</div>
-            <div class="card-sub">OS {{ p.numero_os or '—' }}</div>
+            <div class="card-sub">OS {{ p.numero_os or '—' }}{% if p.data_prevista %} · {{ p.data_prevista[:10] }}{% endif %}</div>
           </div>
           <span class="badge {% if p.status == 'concluido' %}badge-green{% elif p.status == 'em_execucao' %}badge-blue{% else %}badge-yellow{% endif %}">
             {% if p.status == 'concluido' %}✓ Concluído
@@ -60,7 +60,7 @@
     {% else %}
       <div class="empty">
         <div class="empty-icon">📅</div>
-        <div class="empty-text">Nenhuma visita planejada para hoje</div>
+        <div class="empty-text">Nenhuma visita pendente</div>
       </div>
     {% endif %}
 

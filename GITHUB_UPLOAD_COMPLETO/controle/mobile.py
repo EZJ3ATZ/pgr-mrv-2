@@ -92,13 +92,25 @@ def instalar():
 def home():
     try:
         init_db()
+        from datetime import timedelta
         hoje = _hoje()
+        ini = (date.today() - timedelta(days=30)).isoformat()  # janela de atrasados
         todos = list_planejamentos({})
-        planejamentos = [
-            p for p in todos
-            if (p.get('data_prevista') or '')[:10] == hoje
-            or p.get('status') == 'em_execucao'
-        ]
+        def _mostra(p):
+            d  = (p.get('data_prevista') or '')[:10]
+            st = (p.get('status') or '')
+            if st in ('concluido', 'cancelado'):
+                return False
+            if st == 'em_execucao':
+                return True            # em execução: sempre aparece
+            if d == hoje:
+                return True            # planejado p/ hoje (qualquer status)
+            if st == 'confirmado' and d and ini <= d < hoje:
+                return True            # atrasado (confirmado, últimos 30 dias)
+            return False
+        planejamentos = [p for p in todos if _mostra(p)]
+        # atrasados primeiro, depois hoje (data crescente)
+        planejamentos.sort(key=lambda p: (p.get('data_prevista') or '9999-12-31')[:10])
     except Exception as e:
         import traceback; traceback.print_exc()
         planejamentos = []
@@ -146,16 +158,20 @@ def api_empresas():
     try:
         with get_db() as conn:
             like = f'%{q}%'
+            # Mostra empresas confirmadas E pendentes QUE TÊM demanda (reais, vindas do
+            # Planner — ex.: LCA). Esconde só fantasmas puros (pendente sem demanda).
+            cond_real = ("(e.pendente IS NULL OR e.pendente=0 "
+                         "OR EXISTS (SELECT 1 FROM demandas d WHERE d.empresa_id = e.id))")
             if _use_pg():
                 rows = conn.execute(
-                    'SELECT id, nome FROM empresas WHERE nome ILIKE ? '
-                    'AND (pendente IS NULL OR pendente=0) ORDER BY nome LIMIT ?',
+                    'SELECT e.id, e.nome, e.pendente FROM empresas e WHERE e.nome ILIKE ? '
+                    'AND ' + cond_real + ' ORDER BY e.nome LIMIT ?',
                     (like, limit)
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    'SELECT id, nome FROM empresas WHERE LOWER(nome) LIKE LOWER(?) '
-                    'AND (pendente IS NULL OR pendente=0) ORDER BY nome LIMIT ?',
+                    'SELECT e.id, e.nome, e.pendente FROM empresas e WHERE LOWER(e.nome) LIKE LOWER(?) '
+                    'AND ' + cond_real + ' ORDER BY e.nome LIMIT ?',
                     (like, limit)
                 ).fetchall()
         return jsonify([row_to_dict(r) for r in rows])
