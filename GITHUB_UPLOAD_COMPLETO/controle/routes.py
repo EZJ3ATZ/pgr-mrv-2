@@ -3348,8 +3348,9 @@ def api_salvar_medicao_wizard():
             'regime':       d.get('regime') or gen.get('regime', ''),
             'tipo_vibr':    d.get('tipo_vibr') or gen.get('tipo_vibr', ''),
             'fonte_vibr':   d.get('fonte_vibr') or gen.get('fonte_vibr', ''),
-            # IBUTG setores (calor)
-            'dados_json':   _json.dumps({'ibutg_setores': ibutg_setores}, ensure_ascii=False) if ibutg_setores else None,
+            # Dados detalhados da medição → viram extras em dados_json (save_coleta_outros)
+            'ibutg_setores': ibutg_setores,                 # calor: TBS/TBN/TG/IBUTG por setor
+            'vibr_pontos':   gen.get('vibr_pontos', []),    # vibração: trabalhadores/pontos
         }
         if _coleta_duplicada(tipo, d.get('demanda_id'), d.get('data')):
             _lbl = 'de vibração' if tipo.startswith('vibracao') else 'de calor'
