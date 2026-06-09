@@ -1169,7 +1169,9 @@ def busca_demandas():
         rows = conn.execute(
             '''SELECT d.numero_os, d.titulo, e.nome AS empresa_nome, d.id
                FROM demandas d LEFT JOIN empresas e ON e.id = d.empresa_id
-               WHERE (d.numero_os LIKE ? OR d.titulo LIKE ? OR e.nome LIKE ?)
+               WHERE (LOWER(COALESCE(d.numero_os,'')) LIKE LOWER(?)
+                      OR LOWER(COALESCE(d.titulo,'')) LIKE LOWER(?)
+                      OR LOWER(COALESCE(e.nome,'')) LIKE LOWER(?))
                  AND d.numero_os IS NOT NULL AND d.numero_os != ''
                ORDER BY d.criado_em DESC
                LIMIT ?''',
@@ -1457,7 +1459,7 @@ def get_empresas():
     sql = "SELECT * FROM empresas WHERE 1=1"
     params = []
     if q:
-        sql += " AND (nome LIKE ? OR cnpj LIKE ?)"
+        sql += " AND (LOWER(COALESCE(nome,'')) LIKE LOWER(?) OR COALESCE(cnpj,'') LIKE ?)"
         params.extend([f'%{q}%', f'%{q}%'])
     sql += f" ORDER BY nome LIMIT {limit}"
     with get_db() as conn:
@@ -3277,27 +3279,37 @@ def api_salvar_medicao_wizard():
 
     elif tipo == 'quimico':
         cq = d.get('campo_quimico') or {}
+        # IMPORTANTE: as chaves abaixo precisam casar com as COLUNAS lidas por
+        # save_coleta_quimico (db.py). Antes vinha func_nome/avaliador → gravava NULL.
         payload_q = {
-            'empresa_id':    d.get('empresa_id'),
-            'empresa_nome':  d.get('empresa_nome', ''),
-            'demanda_id':    d.get('demanda_id'),
-            'avaliador':     d.get('avaliador', ''),
-            'tecnico_login': tecnico_login,
-            'data_coleta':   d.get('data', ''),
-            'status':        'concluida',
-            'func_nome':     cq.get('func_nome', ''),
-            'func_funcao':   cq.get('func_funcao', ''),
-            'func_setor':    cq.get('func_setor', ''),
-            'func_jornada':  cq.get('func_jornada', ''),
-            'ventilacao':    cq.get('ventilacao', ''),
-            'ambiente':      cq.get('ambiente', ''),
-            'temperatura':   cq.get('temperatura', ''),
-            'umidade':       cq.get('umidade', ''),
-            'bomba':         cq.get('bomba', ''),
-            'id_bomba':      cq.get('id_bomba', ''),
-            'substancias':   cq.get('substancias', ''),
-            'fracao':        cq.get('fracao', ''),
-            'amostradores':  cq.get('amostradores', []),
+            'empresa_id':         d.get('empresa_id'),
+            'empresa_nome':       d.get('empresa_nome', ''),
+            'demanda_id':         d.get('demanda_id'),
+            'responsavel_coleta': d.get('avaliador', ''),
+            'tecnico_login':      tecnico_login,
+            'cidade':             d.get('cidade', ''),
+            'unidade':            d.get('unidade', ''),
+            'data_coleta':        d.get('data', ''),
+            'status':             'concluida',
+            'nome_funcionario':   cq.get('func_nome', ''),
+            'funcao':             cq.get('func_funcao', ''),
+            'setor':              cq.get('func_setor', ''),
+            'jornada':            cq.get('func_jornada', ''),
+            'local_atividade':    cq.get('func_local', ''),
+            'atividade':          cq.get('func_atv', ''),
+            'ventilacao':         cq.get('ventilacao', ''),
+            'ambiente':           cq.get('ambiente', ''),
+            'condicoes_meteo':    cq.get('meteo', ''),
+            'temperatura':        cq.get('temperatura', ''),
+            'umidade':            cq.get('umidade', ''),
+            'outras_condicoes':   cq.get('outras_cond', ''),
+            'bomba':              cq.get('bomba', ''),
+            'id_bomba':           cq.get('id_bomba', ''),
+            'data_cal_bomba':     cq.get('cal_bomba', ''),
+            'id_calibrador':      cq.get('calibrador', ''),
+            'substancias':        cq.get('substancias', ''),
+            'fracao':             cq.get('fracao', ''),
+            'amostradores':       cq.get('amostradores', []),
         }
         if _coleta_duplicada('quimico', d.get('demanda_id'), d.get('data'), cq.get('substancias', '')):
             return jsonify({'ok': False, 'duplicada': True,
@@ -5210,7 +5222,7 @@ def graph_debug_empresa_titulos():
                 ).fetchall()
             elif search:
                 rows = conn.execute(
-                    "SELECT d.id, d.titulo, d.empresa_id, e.nome empresa_nome, d.origem FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id WHERE d.titulo LIKE ? OR e.nome LIKE ? LIMIT 20",
+                    "SELECT d.id, d.titulo, d.empresa_id, e.nome empresa_nome, d.origem FROM demandas d LEFT JOIN empresas e ON e.id=d.empresa_id WHERE LOWER(COALESCE(d.titulo,'')) LIKE LOWER(?) OR LOWER(COALESCE(e.nome,'')) LIKE LOWER(?) LIMIT 20",
                     (f'%{search}%', f'%{search}%')
                 ).fetchall()
             else:

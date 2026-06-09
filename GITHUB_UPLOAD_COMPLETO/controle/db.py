@@ -1427,9 +1427,9 @@ def list_amostradores(filtros=None):
     if f.get('tipo'):
         sql += ' AND a.tipo = ?'; params.append(f['tipo'])
     if f.get('codigo'):
-        sql += ' AND a.codigo LIKE ?'; params.append(f'%{f["codigo"]}%')
+        sql += " AND LOWER(COALESCE(a.codigo,'')) LIKE LOWER(?)"; params.append(f'%{f["codigo"]}%')
     if f.get('empresa'):
-        sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
+        sql += " AND LOWER(COALESCE(e.nome,'')) LIKE LOWER(?)"; params.append(f'%{f["empresa"]}%')
     sql += ' ORDER BY a.atualizado_em DESC LIMIT 2000'
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
@@ -1454,9 +1454,9 @@ def list_demandas(filtros=None):
     if f.get('status'):
         sql += ' AND d.status = ?'; params.append(f['status'])
     if f.get('empresa'):
-        sql += ' AND e.nome LIKE ?'; params.append(f'%{f["empresa"]}%')
+        sql += " AND LOWER(COALESCE(e.nome,'')) LIKE LOWER(?)"; params.append(f'%{f["empresa"]}%')
     if f.get('os'):
-        sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
+        sql += " AND LOWER(COALESCE(d.numero_os,'')) LIKE LOWER(?)"; params.append(f'%{f["os"]}%')
     if f.get('urgencia') == 'atrasada':
         if USE_PG:
             sql += (" AND d.status != 'concluida'"
