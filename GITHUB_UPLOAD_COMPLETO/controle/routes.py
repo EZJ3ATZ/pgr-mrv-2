@@ -77,10 +77,14 @@ def _int_arg(nome, default=None):
 
 @controle_bp.before_request
 def _require_login():
-    # Só exige login para ações que alteram dados
-    if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
-        if not current_user.is_authenticated:
-            return jsonify({'erro': 'Login necessário', 'redirect': '/auth/login'}), 401
+    # Toda rota do controle exige login — leitura e escrita.
+    # Dados operacionais (empresas, OS, coletas) não são públicos.
+    if not current_user.is_authenticated:
+        return jsonify({'erro': 'Login necessário', 'redirect': '/auth/login'}), 401
+    # Rotas administrativas exigem role admin
+    if request.path.startswith('/controle/admin') or request.path.startswith('/controle/reset'):
+        if getattr(current_user, 'role', '') != 'admin':
+            return jsonify({'erro': 'Apenas administradores'}), 403
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────
@@ -5412,6 +5416,10 @@ def api_vincular_empresa_pendente(pend_id):
     d = request.json or {}
     with get_db() as conn:
         if d.get('excluir'):
+            uso = _empresa_uso(conn, pend_id)
+            if uso['total'] > 0:
+                return jsonify({'erro': f"Empresa tem {uso['total']} registro(s) vinculado(s) — "
+                                        "vincule a uma empresa existente em vez de excluir"}), 409
             conn.execute('DELETE FROM empresas WHERE id=? AND pendente=1', (pend_id,))
             return jsonify({'ok': True, 'acao': 'excluida'})
         elif 'empresa_id' in d:
@@ -5419,10 +5427,24 @@ def api_vincular_empresa_pendente(pend_id):
                 destino = int(d['empresa_id'])
             except (ValueError, TypeError):
                 return jsonify({'erro': 'empresa_id inválido'}), 400
-            # Remapear demandas da pendente para a real
-            conn.execute('UPDATE demandas SET empresa_id=? WHERE empresa_id=?', (destino, pend_id))
+            if destino == pend_id:
+                return jsonify({'erro': 'destino é a própria empresa pendente'}), 400
+            alvo = conn.execute('SELECT id FROM empresas WHERE id=?', (destino,)).fetchone()
+            if not alvo:
+                return jsonify({'erro': f'empresa destino {destino} não existe'}), 404
+            # Remapear TODOS os vínculos da pendente para a real (não só demandas —
+            # amostradores, coletas, visitas, planejamentos e contatos também)
+            remapeados = {}
+            for t in _EMPRESA_TABELAS_USO:
+                try:
+                    cur = conn.execute(f'UPDATE {t} SET empresa_id=? WHERE empresa_id=?',
+                                       (destino, pend_id))
+                    remapeados[t] = getattr(cur, 'rowcount', 0)
+                except Exception:
+                    remapeados[t] = 0
             conn.execute('DELETE FROM empresas WHERE id=?', (pend_id,))
-            return jsonify({'ok': True, 'acao': 'remapeada', 'empresa_id': destino})
+            return jsonify({'ok': True, 'acao': 'remapeada', 'empresa_id': destino,
+                            'remapeados': remapeados})
         elif d.get('confirmar'):
             conn.execute('UPDATE empresas SET pendente=0 WHERE id=?', (pend_id,))
             return jsonify({'ok': True, 'acao': 'confirmada'})

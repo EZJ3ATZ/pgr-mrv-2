@@ -289,6 +289,9 @@
         _dados = _dados.filter(e => e.id !== _modalPendId);
         atualizarStats(); renderizar();
         showToast('✓ Empresa vinculada!');
+      } else {
+        const e = await r.json().catch(() => ({}));
+        showToast('✗ ' + (e.erro || `Falha ao vincular (HTTP ${r.status})`));
       }
     }
 
@@ -303,6 +306,9 @@
         _dados = _dados.filter(e => e.id !== _modalPendId);
         atualizarStats(); renderizar();
         showToast('✓ Empresa confirmada como nova!');
+      } else {
+        const e = await r.json().catch(() => ({}));
+        showToast('✗ ' + (e.erro || `Falha ao confirmar (HTTP ${r.status})`));
       }
     }
 
@@ -315,6 +321,9 @@
         _dados = _dados.filter(e => e.id !== id);
         atualizarStats(); renderizar();
         showToast('✓ Confirmada como nova empresa!');
+      } else {
+        const e = await r.json().catch(() => ({}));
+        showToast('✗ ' + (e.erro || `Falha ao confirmar (HTTP ${r.status})`));
       }
     }
 
@@ -324,11 +333,13 @@
         method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ excluir: true })
       });
-      // Fallback: confirma e então seria necessário outro endpoint. Aqui só remove do array visual:
       if (r.ok) {
         _dados = _dados.filter(e => e.id !== id);
         atualizarStats(); renderizar();
         showToast('Removida.');
+      } else {
+        const e = await r.json().catch(() => ({}));
+        showToast('✗ ' + (e.erro || `Não foi possível excluir (HTTP ${r.status})`));
       }
     }
 
