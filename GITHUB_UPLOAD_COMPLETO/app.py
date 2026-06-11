@@ -895,6 +895,15 @@ def favicon():
     return send_from_directory('static', 'icon-192.png', mimetype='image/png')
 
 
+# Marcador de build — atualizar a cada push para conferir qual versão está no ar
+BUILD_MARK = '2026-06-11-r2-sem-redirect-mobile'
+
+
+@app.route('/healthz')
+def healthz():
+    return jsonify({'ok': True, 'build': BUILD_MARK})
+
+
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
