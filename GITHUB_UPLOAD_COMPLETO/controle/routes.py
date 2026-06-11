@@ -3682,20 +3682,27 @@ def gerar_relatorio_campo_completo():
             return _glob_vmb
         vci_p = [p for p in pontos if not _pt_vmb(p)]
         vmb_p = [p for p in pontos if _pt_vmb(p)]
+        def _equip_full(p):
+            # Equipamento/marca/ano por trabalhador (Helbert 11/06); legado: obs
+            full = ' / '.join(x for x in (
+                str(p.get('equip') or '').strip(),
+                str(p.get('marca') or '').strip(),
+                str(p.get('ano') or '').strip()) if x)
+            return full or p.get('obs', '')
         def _tab_vib(is_vmb_t, pts_t, titulo=None):
             if is_vmb_t:
-                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Obs']
-                cw_v  = [W*0.04,W*0.22,W*0.17,W*0.14,W*0.12,W*0.12,W*0.19]
+                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Equipamento / Marca / Ano']
+                cw_v  = [W*0.04,W*0.20,W*0.15,W*0.12,W*0.11,W*0.11,W*0.27]
             else:
-                cab_v = ['#','Trabalhador/Veículo','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Obs']
-                cw_v  = [W*0.04,W*0.20,W*0.14,W*0.12,W*0.10,W*0.10,W*0.14,W*0.16]
+                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Veículo / Modelo / Ano']
+                cw_v  = [W*0.04,W*0.17,W*0.12,W*0.11,W*0.09,W*0.09,W*0.14,W*0.24]
             linhas_v = []
             for i, p in enumerate(pts_t, 1):
                 row = [i, p.get('nome',''), p.get('funcao','') or p.get('cargo',''),
                        p.get('setor',''), p.get('tempo',''), p.get('tempo_nexp','')]
                 if not is_vmb_t:
                     row.append(p.get('trajeto',''))
-                row.append(p.get('obs',''))
+                row.append(_equip_full(p))
                 linhas_v.append(row)
             while len(linhas_v) < 4:
                 row = [len(linhas_v)+1,'','','','','']
@@ -4232,36 +4239,46 @@ def gerar_relatorio_vibracao():
         if t == 'vci': return False
         return _glob_vmb
     pts_all = list(pontos) if pontos else []
+    # Veículo/equipamento por trabalhador (equip/marca/ano) — coluna combinada
+    for _p in pts_all:
+        if isinstance(_p, dict):
+            _p['equip_full'] = ' / '.join(x for x in (
+                str(_p.get('equip') or '').strip(),
+                str(_p.get('marca') or '').strip(),
+                str(_p.get('ano') or '').strip()) if x)
     vci_pts = [p for p in pts_all if not _pt_is_vmb(p)]
     vmb_pts = [p for p in pts_all if _pt_is_vmb(p)]
     has_vci = bool(vci_pts) or (not pts_all and not _glob_vmb)
     has_vmb = bool(vmb_pts) or (not pts_all and _glob_vmb)
 
-    # ── Veículo (VCI) e/ou Ferramenta (VMB) avaliado ──
+    # ── Veículo/Ferramenta global — só legado (planilhas novas trazem
+    #    equipamento POR TRABALHADOR; bloco não aparece se vazio) ──
     def _bloco_equip(lbl, campos):
         elements.append(Paragraph(f'<font size="7" color="#64748B"><b>{lbl}</b></font>', cell_reg))
         t = Table([[_info(l, v) for l, v in campos]], colWidths=[W/3, W/3, W/3])
         t.setStyle(TableStyle([('GRID',(0,0),(-1,-1),0.4,BORDA),('VALIGN',(0,0),(-1,-1),'TOP'),
             ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),8),('LEFTPADDING',(0,0),(-1,-1),5)]))
         elements.append(t); elements.append(Spacer(1, 8))
-    if has_vci:
+    _tem_glob = any(d.get(k) for k in ('placa', 'equipamento', 'modelo', 'ano'))
+    if _tem_glob and has_vci:
         _bloco_equip('VEÍCULO AVALIADO (VCI)', [('Placa', d.get('placa','')), ('Modelo', d.get('modelo','')), ('Ano', d.get('ano',''))])
-    if has_vmb:
+    if _tem_glob and has_vmb:
         _bloco_equip('FERRAMENTA / EQUIPAMENTO AVALIADO (VMB)', [('Equipamento', d.get('equipamento','')), ('Modelo', d.get('modelo','')), ('Ano', d.get('ano',''))])
     elements.append(Spacer(1, 4))
 
-    # Tabela de medições — uma por tipo presente (VCI tem trajeto/terreno; VMB não)
+    # Tabela de medições — uma por tipo presente (VCI tem trajeto/terreno; VMB não).
+    # Equipamento/marca/ano por trabalhador (pedido Helbert 11/06).
     cell_bold7 = sty('Normal', fontSize=7, fontName='Helvetica-Bold', textColor=PRETO)
     cell_reg7  = sty('Normal', fontSize=7, fontName='Helvetica', textColor=PRETO)
     def _vibr_med_tbl(is_vmb_t, pts_t):
         if is_vmb_t:
-            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Observação']
-            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', 'obs']
-            _colw  = [W*0.04, W*0.24, W*0.18, W*0.15, W*0.10, W*0.10, W*0.19]
+            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Equipamento / Marca / Ano']
+            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', ('equip_full','obs')]
+            _colw  = [W*0.04, W*0.22, W*0.16, W*0.13, W*0.09, W*0.09, W*0.27]
         else:
-            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno', 'Observação']
-            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', 'obs']
-            _colw  = [W*0.04, W*0.18, W*0.13, W*0.12, W*0.08, W*0.08, W*0.12, W*0.12, W*0.13]
+            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno', 'Veículo / Modelo / Ano']
+            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', ('equip_full','obs')]
+            _colw  = [W*0.04, W*0.16, W*0.12, W*0.10, W*0.08, W*0.08, W*0.11, W*0.11, W*0.20]
         rows = [[Paragraph(h, cell_bold7) for h in _heads]]
         pl = list(pts_t)
         while len(pl) < 6:

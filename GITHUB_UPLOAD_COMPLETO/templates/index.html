@@ -4351,15 +4351,9 @@
       </div>
 
       <!-- Dados da Avaliação — Vibração (só aparece quando tipo=vibracao) -->
+      <!-- Planilha ÚNICA: VMB e VCI na mesma planilha, tipo escolhido por trabalhador.
+           Equipamento/marca/ano por trabalhador (pedido do Helbert 11/06). -->
       <div id="nv-vibr-pontos-section" style="display:none;margin-top:12px;">
-        <div class="nv-card" style="margin-bottom:12px;">
-          <div class="nv-card-title" style="margin:0 0 10px;">🚛 Veículo / Equipamento Avaliado</div>
-          <div class="nv-g3 nv-f">
-            <div><label>Placa / ID do Equipamento</label><input type="text" id="nv-vibr-veic-ident" placeholder="Ex: ABC-1D23 ou Martelete" oninput="(window._nvVibrVeic=window._nvVibrVeic||{}).ident=this.value"></div>
-            <div><label>Modelo</label><input type="text" id="nv-vibr-veic-modelo" placeholder="Ex: Volvo FH / Bosch GBH" oninput="(window._nvVibrVeic=window._nvVibrVeic||{}).modelo=this.value"></div>
-            <div><label>Ano</label><input type="text" id="nv-vibr-veic-ano" placeholder="Ex: 2021" oninput="(window._nvVibrVeic=window._nvVibrVeic||{}).ano=this.value"></div>
-          </div>
-        </div>
         <div class="nv-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div class="nv-card-title" style="margin:0;">📳 Dados da Avaliação — Vibração</div>
@@ -4368,7 +4362,7 @@
               <button onclick="nvVibrAddPonto()" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Trabalhador</button>
             </div>
           </div>
-          <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada trabalhador avaliado: nome, cargo/função, setor, tempo de exposição e trajeto. Os resultados (aren / VDV) saem do histograma do aparelho — não se preenche aqui.</div>
+          <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Planilha única — escolha VMB ou VCI em cada trabalhador. Para cada avaliado: nome, cargo/função, setor, tempo de exposição e o equipamento/veículo (marca e ano). Os resultados (aren / VDV) saem do histograma do aparelho — não se preenche aqui.</div>
           <div id="nv-vibr-pontos"></div>
         </div>
       </div>
@@ -13864,10 +13858,11 @@ function nvShowStep3() {
     const apaLbl = {chrompack_1:'SmartVib — S/N 0779', chrompack_2:'SmartVib — S/N 1241', chrompack_ibutg:'Chrompack IBUTG'};
     const linhas = [];
     if (_nvTipos.includes('vibracao')) {
-      const it = (window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {};
-      const sub = it.subtipo || it.vib_subtipo;
-      const apa = it.aparelho || it.vib_aparelho;
-      if (sub || apa) linhas.push(`〰️ <b>Vibração planejada:</b> ${subLbl[sub]||sub||'—'} · aparelho ${apaLbl[apa]||apa||'—'}`);
+      // Planilha única: lista TODAS as avaliações de vibração do plano (VCI e/ou VMB)
+      const itsV = (window._ctrlNvItens||[]).filter(x => x.tipo === 'vibracao');
+      const subs = [...new Set(itsV.map(x => x.subtipo || x.vib_subtipo).filter(Boolean))];
+      const apa  = (itsV[0]||{}).aparelho || (itsV[0]||{}).vib_aparelho;
+      if (subs.length || apa) linhas.push(`〰️ <b>Vibração planejada:</b> ${subs.length ? subs.map(s=>subLbl[s]||s).join(' + ') : '—'} · aparelho ${apaLbl[apa]||apa||'—'} <span style="color:var(--text3);">(planilha única — tipo por trabalhador)</span>`);
     }
     if (_nvTipos.includes('calor')) {
       const it = (window._ctrlNvItens||[]).find(x => x.tipo === 'calor') || {};
@@ -13887,15 +13882,17 @@ function nvShowStep3() {
   if (vibrSec) {
     vibrSec.style.display = _nvTipos.includes('vibracao') ? '' : 'none';
     if (_nvTipos.includes('vibracao') && !window._nvVibrPontos?.length) {
-      const itV = (window._ctrlNvItens || []).find(x => x.tipo === 'vibracao') || {};
-      // VCI (corpo inteiro) → eixo Z · VBMA (mãos/braços) → Resultante
-      const sub = itV.subtipo || itV.vib_subtipo || '';
-      const eixo = (sub === 'vbma') ? 'Resultante' : 'Z';
-      const parts = (itV.funcao || '').split('/');
-      const seed = { funcao: (parts[0]||'').trim(), setor: (parts[1]||'').trim(), eixo };
-      // Cria 1 ponto por trabalhador previsto no plano (qtd), senão 1
-      const n = Math.max(parseInt(itV.qtd || 1, 10) || 1, 1);
-      for (let k = 0; k < n; k++) nvVibrAddPonto(seed);
+      // Planilha única: cria trabalhadores de TODAS as avaliações de vibração
+      // do plano (VCI e VMB juntas), com o tipo certo em cada um.
+      const itensV = (window._ctrlNvItens || []).filter(x => x.tipo === 'vibracao');
+      (itensV.length ? itensV : [{}]).forEach(itV => {
+        const sub = (itV.subtipo || itV.vib_subtipo || '').toLowerCase();
+        const tipoPt = (sub === 'vbma' || sub === 'vmb') ? 'vmb' : 'vci';
+        const parts = (itV.funcao || '').split('/');
+        const seed = { funcao: (parts[0]||'').trim(), setor: (parts[1]||'').trim(), tipo: tipoPt };
+        const n = Math.max(parseInt(itV.qtd || 1, 10) || 1, 1);
+        for (let k = 0; k < n; k++) nvVibrAddPonto(seed);
+      });
     }
   }
 
@@ -14271,12 +14268,24 @@ function _nvVibrTipoPadrao() {
   const sub = (((window._ctrlNvItens||[]).find(x => x.tipo === 'vibracao') || {}).subtipo || '').toLowerCase();
   return (sub === 'vbma' || sub === 'vmb') ? 'vmb' : 'vci';
 }
+// Subtipo da PLANILHA derivado dos trabalhadores: VCI, VBMA ou ambos.
+// (Planilha única — Diretriz item 15 + pedido do Helbert 11/06)
+function _nvVibrSubtipoCalc(itemVib) {
+  const pts = window._nvVibrPontos || [];
+  const hasVci = pts.some(p => ((p.tipo||'vci').toLowerCase() === 'vci'));
+  const hasVmb = pts.some(p => ['vmb','vbma'].includes((p.tipo||'').toLowerCase()));
+  if (hasVci && hasVmb) return 'ambos';
+  if (hasVmb) return 'vbma';
+  if (hasVci) return 'vci';
+  return (itemVib||{}).subtipo || (itemVib||{}).vib_subtipo || '';
+}
 function nvVibrAddPonto(seed) {
   seed = seed || {};
   window._nvVibrPontos.push({
     nome: '', funcao: seed.funcao || '', setor: seed.setor || '',
     tipo: seed.tipo || _nvVibrTipoPadrao(),
-    tempo: '', tempo_nexp: '', trajeto: '', terreno: '', obs: '',
+    tempo: '', tempo_nexp: '', trajeto: '', terreno: '',
+    equip: '', marca: '', ano: '',
   });
   nvVibrRenderPontos();
 }
@@ -14330,7 +14339,7 @@ function nvVibrRenderPontos() {
         <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
           style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8">
       </div>
-      <div style="display:grid;grid-template-columns:repeat(${isVmb?'2':'4'},1fr);gap:8px;margin-top:8px;">
+      <div style="display:grid;grid-template-columns:repeat(${isVmb?'1':'3'},1fr);gap:8px;margin-top:8px;">
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo não exposto (h)</label>
           <input type="number" step="0.1" value="${p.tempo_nexp}" oninput="window._nvVibrPontos[${i}].tempo_nexp=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="0"></div>
@@ -14340,9 +14349,17 @@ function nvVibrRenderPontos() {
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tipo de terreno</label>
           <input value="${_esc(p.terreno)}" oninput="window._nvVibrPontos[${i}].terreno=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Asfalto / Terra"></div>`}
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Observação</label>
-          <input value="${_esc(p.obs||'')}" oninput="window._nvVibrPontos[${i}].obs=this.value"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Observação do trabalhador"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">${isVmb?'Equipamento avaliado':'Veículo (placa / ID)'}</label>
+          <input value="${_esc(p.equip||'')}" oninput="window._nvVibrPontos[${i}].equip=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="${isVmb?'Ex: Martelete':'Ex: ABC-1D23'}"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">${isVmb?'Marca':'Modelo'}</label>
+          <input value="${_esc(p.marca||'')}" oninput="window._nvVibrPontos[${i}].marca=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="${isVmb?'Ex: Bosch':'Ex: Volvo FH'}"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Ano</label>
+          <input value="${_esc(p.ano||'')}" oninput="window._nvVibrPontos[${i}].ano=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: 2021"></div>
       </div>
     </div>
   `;
@@ -14390,7 +14407,7 @@ function nvVibrPuxarTrabs() {
     const vazio = window._nvVibrPontos.find(p => !(p.nome||'').trim());
     if (vazio) { vazio.nome = w.nome; vazio.funcao = w.cargo; vazio.setor = w.setor; }
     else { window._nvVibrPontos.push({nome:w.nome, funcao:w.cargo, setor:w.setor, tipo:_nvVibrTipoPadrao(),
-      tempo:'', tempo_nexp:'', trajeto:'', terreno:'', obs:''}); }
+      tempo:'', tempo_nexp:'', trajeto:'', terreno:'', equip:'', marca:'', ano:''}); }
     existentes.add(w.nome.toLowerCase()); n++;
   });
   nvVibrRenderPontos();
@@ -15188,13 +15205,9 @@ async function nvGerarRelatorioCampo() {
           hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
           hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
           obs:      document.getElementById('nv-gen-obs')?.value||'',
-          subtipo:  itemVib.subtipo  || itemVib.vib_subtipo  || '',
+          subtipo:  _nvVibrSubtipoCalc(itemVib),
           aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
           pontos:   window._nvVibrPontos || [],
-          placa:        (window._nvVibrVeic||{}).ident  || '',
-          equipamento:  (window._nvVibrVeic||{}).ident  || '',
-          modelo:       (window._nvVibrVeic||{}).modelo || '',
-          ano:          (window._nvVibrVeic||{}).ano    || '',
           itens:    window._ctrlNvItens||[],
           sig_empresa:  nvSigGetData('nv-sig-empresa'),
           sig_avaliado: nvSigGetData('nv-sig-avaliado') } };
@@ -15258,7 +15271,7 @@ async function nvGerarRelatorioCampo() {
       acomp:    document.getElementById('nv-gen-acomp')?.value||'',
       hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
       hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
-      subtipo:  itemVib.subtipo  || itemVib.vib_subtipo  || '',
+      subtipo:  _nvVibrSubtipoCalc(itemVib),
       aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
       pontos:   window._nvVibrPontos || [],
     },
