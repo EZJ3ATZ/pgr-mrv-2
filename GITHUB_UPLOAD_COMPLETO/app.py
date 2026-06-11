@@ -899,6 +899,12 @@ def favicon():
 def index():
     if not current_user.is_authenticated:
         return render_template('landing.html')
+    # Celular → app de campo direto (o desktop tem ~900KB de HTML).
+    # ?desktop=1 força a versão completa no celular quando necessário.
+    ua = request.headers.get('User-Agent') or ''
+    if ('Mobi' in ua or 'Android' in ua) and request.args.get('desktop') != '1':
+        from flask import redirect
+        return redirect('/mobile/')
     return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
 
 
