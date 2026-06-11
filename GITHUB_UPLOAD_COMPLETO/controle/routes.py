@@ -6199,6 +6199,12 @@ def relatorio_visita_html(vid):
             'SELECT tipo, data_coleta, avaliador, status FROM coletas_outros WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
             (v.get('demanda_id') or 0,)
         ).fetchall()
+        try:
+            fotos_rows = conn.execute(
+                'SELECT categoria, data, legenda FROM visita_fotos WHERE visita_id=? ORDER BY id', (vid,)
+            ).fetchall()
+        except Exception:
+            fotos_rows = []
 
     import json as _json
     def _fmt_date(s):
@@ -6221,6 +6227,62 @@ def relatorio_visita_html(vid):
         cols = dict(c) if hasattr(c, 'keys') else {}
         tipo = cols.get('tipo') or cols.get('tipo_avaliacao') or '—'
         coletas_rows += f'<tr><td>{tipo}</td><td>{_fmt_date(cols.get("data_coleta"))}</td><td>{cols.get("avaliador","—")}</td><td><span style="color:{resultado_cores.get(cols.get("status",""),"#6b7280")}">{cols.get("status","—")}</span></td></tr>'
+
+    # ── Fotos (ambiente / atividade / equipamentos) ───────────────────
+    _CAT_LABEL = {'ambiente': '🏭 Ambiente', 'atividade': '👷 Atividade', 'equipamentos': '🔧 Equipamentos'}
+    fotos_html = ''
+    if fotos_rows:
+        por_cat = {}
+        for fr in fotos_rows:
+            fd = dict(fr) if hasattr(fr, 'keys') else {}
+            por_cat.setdefault(fd.get('categoria') or 'ambiente', []).append(fd)
+        blocos = ''
+        for cat, items in por_cat.items():
+            imgs = ''.join(
+                f'<figure style="margin:0"><img src="{f.get("data","")}" '
+                f'style="width:100%;border-radius:8px;border:1px solid #2a2d3e">'
+                + (f'<figcaption style="font-size:.72rem;color:#94a3b8;margin-top:3px">{(f.get("legenda") or "")}</figcaption>' if f.get('legenda') else '')
+                + '</figure>'
+                for f in items)
+            blocos += (f'<div style="margin-bottom:12px"><div style="font-size:.78rem;color:#94a3b8;'
+                       f'margin-bottom:6px;font-weight:600">{_CAT_LABEL.get(cat, cat)}</div>'
+                       f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">{imgs}</div></div>')
+        fotos_html = f'<div class="card"><h2>Registro Fotográfico</h2>{blocos}</div>'
+
+    # ── Imprevisto / justificativa ────────────────────────────────────
+    _IMPREV_LABEL = {'culpa_empresa': 'Responsabilidade da empresa', 'culpa_equipe': 'Responsabilidade da equipe',
+                     'clima': 'Condições climáticas', 'ausencia_trabalhador': 'Ausência de trabalhador',
+                     'indisponibilidade': 'Indisponibilidade operacional', 'outros': 'Outros'}
+    imprev_html = ''
+    if v.get('imprevisto_tipo') or v.get('justificativa'):
+        imprev_html = ('<div class="card"><h2>Impedimentos / Justificativa</h2>'
+                       + (f'<div class="row"><span class="lbl">Imprevisto</span><span class="val" style="color:#f59e0b">{_IMPREV_LABEL.get(v.get("imprevisto_tipo",""), v.get("imprevisto_tipo") or "—")}</span></div>' if v.get('imprevisto_tipo') else '')
+                       + (f'<p style="color:#cbd5e1;line-height:1.6;margin:6px 0 0">{v.get("justificativa")}</p>' if v.get('justificativa') else '')
+                       + '</div>')
+
+    # ── Assinaturas + termo de ciência ────────────────────────────────
+    sig_html = ''
+    sig_tec = v.get('assinatura') or ''
+    sig_emp = v.get('assinatura_empresa') or ''
+    if sig_tec or sig_emp or v.get('sem_assinatura_motivo'):
+        partes = ''
+        if sig_tec.startswith('data:image/'):
+            partes += (f'<div style="margin-bottom:14px"><div class="lbl" style="margin-bottom:4px">Técnico (Ocupacional)</div>'
+                       f'<img src="{sig_tec}" style="width:100%;max-width:340px;background:#fff;border-radius:8px">'
+                       f'<div class="val" style="margin-top:4px">{v.get("tecnico","")}</div></div>')
+        if sig_emp.startswith('data:image/'):
+            ass_quando = _fmt_date(v.get('assinado_em')) if v.get('assinado_em') else _fmt_date(v.get('data_visita'))
+            partes += (f'<div><div class="lbl" style="margin-bottom:4px">Responsável da empresa</div>'
+                       f'<img src="{sig_emp}" style="width:100%;max-width:340px;background:#fff;border-radius:8px">'
+                       f'<div class="val" style="margin-top:4px">{v.get("assinante_nome") or v.get("acompanhante") or "—"}'
+                       + (f' · {v.get("assinante_cargo")}' if v.get('assinante_cargo') else '')
+                       + f' · {ass_quando}</div>'
+                       + (f'<p style="font-size:.72rem;color:#94a3b8;line-height:1.5;margin:8px 0 0;font-style:italic">“{v.get("ciencia_texto")}”</p>' if v.get('ciencia_texto') else '')
+                       + '</div>')
+        elif v.get('sem_assinatura_motivo'):
+            partes += (f'<div><div class="lbl" style="margin-bottom:4px">Responsável da empresa</div>'
+                       f'<div class="val" style="color:#f59e0b">Sem assinatura — {v.get("sem_assinatura_motivo")}</div></div>')
+        sig_html = f'<div class="card"><h2>Assinaturas</h2>{partes}</div>'
 
     html = f'''<!DOCTYPE html>
 <html lang="pt-BR">
@@ -6265,6 +6327,12 @@ def relatorio_visita_html(vid):
 {("<div class='card'><h2>Coletas Registradas</h2><table><tr><th>Tipo</th><th>Data</th><th>Avaliador</th><th>Status</th></tr>" + coletas_rows + "</table></div>") if coletas_rows else ""}
 
 {"<div class='card'><h2>Observações</h2><p style='color:#cbd5e1;line-height:1.6'>" + v.get("observacao_geral","—") + "</p></div>" if v.get("observacao_geral") else ""}
+
+{imprev_html}
+
+{fotos_html}
+
+{sig_html}
 
 <div class="logo">Ocupacional Medicina e Segurança do Trabalho · Sistema SST</div>
 </body>
@@ -6368,15 +6436,18 @@ def api_concluir_visita(vid):
     d = request.json or {}
     resultado = d.get('resultado', 'concluido')
 
-    # Justificativa obrigatória para não-conclusão
-    if resultado != 'concluido' and not d.get('justificativa_causa'):
-        return jsonify({
-            'erro': 'justificativa_causa obrigatória quando resultado não é concluido',
-            'causas_validas': [
-                'cliente', 'funcionario_ausente', 'setor_interditado',
-                'clima', 'equipamento', 'tempo', 'tecnico', 'outro'
-            ]
-        }), 400
+    # Justificativa obrigatória para não-conclusão E para agente não executado
+    # (Diretriz Mestra: justificativa imediata, não divergência posterior)
+    nao_exec = d.get('agentes_nao_executados') or []
+    if resultado != 'concluido' or nao_exec:
+        if not (d.get('justificativa_causa') or d.get('justificativa')):
+            return jsonify({
+                'erro': 'justificativa obrigatória: visita não concluída ou há agentes não executados',
+                'causas_validas': [
+                    'culpa_empresa', 'culpa_equipe', 'clima',
+                    'ausencia_trabalhador', 'indisponibilidade', 'outros'
+                ]
+            }), 400
 
     try:
         concluir_visita(vid, d)

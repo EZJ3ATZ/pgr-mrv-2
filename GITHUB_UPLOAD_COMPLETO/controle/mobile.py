@@ -181,11 +181,43 @@ def api_empresas():
 
 # ── API: salvar visita ────────────────────────────────────────────────
 
+# Texto de ciência exibido junto à assinatura do responsável (Diretriz Mestra)
+CIENCIA_TEXTO = ('Declaro estar ciente das atividades realizadas, atividades não '
+                 'realizadas, observações registradas e eventuais impedimentos '
+                 'descritos neste relatório.')
+
+IMPREVISTOS_VALIDOS = ('culpa_empresa', 'culpa_equipe', 'clima',
+                       'ausencia_trabalhador', 'indisponibilidade', 'outros')
+
+
 @mobile_bp.route('/api/visita', methods=['POST'])
 def api_salvar_visita():
     try:
         init_db()
         data = request.get_json(force=True) or {}
+
+        # ── Relatório de Visita é OBRIGATÓRIO (Diretriz Mestra) ──────────
+        resultado = data.get('resultado', 'concluido')
+        nao_exec  = _parse_lista(data.get('agentes_nao_executados')) or []
+
+        # Visita não concluída ou com agente não executado → justificativa
+        # + tipo de imprevisto NA HORA (não vira divergência depois).
+        if resultado != 'concluido' or nao_exec:
+            if not (data.get('justificativa') or '').strip():
+                return jsonify({'ok': False, 'erro': 'Justificativa obrigatória: visita não '
+                                'concluída ou há agentes não executados.'}), 400
+            if (data.get('imprevisto_tipo') or '') not in IMPREVISTOS_VALIDOS:
+                return jsonify({'ok': False, 'erro': 'Informe o tipo de imprevisto.',
+                                'tipos_validos': list(IMPREVISTOS_VALIDOS)}), 400
+
+        # Assinatura do responsável da empresa: ou assina (com nome), ou
+        # registra o motivo da ausência. Sem isso a visita não fecha.
+        tem_sig = bool(str(data.get('assinatura_empresa_data_url') or '').startswith('data:image/'))
+        if tem_sig and not (data.get('assinante_nome') or '').strip():
+            return jsonify({'ok': False, 'erro': 'Informe o nome de quem assinou pela empresa.'}), 400
+        if not tem_sig and not (data.get('sem_assinatura_motivo') or '').strip():
+            return jsonify({'ok': False, 'erro': 'Colete a assinatura do responsável da empresa '
+                            'ou informe o motivo da ausência de assinatura.'}), 400
 
         # Resolve empresa: se não veio empresa_id mas veio o nome (visita avulsa
         # onde o técnico digitou mas não selecionou da lista), tenta casar pelo
@@ -220,6 +252,7 @@ def api_salvar_visita():
         concluir_visita(vid, {
             'resultado':              data.get('resultado', 'concluido'),
             'justificativa':          data.get('justificativa'),
+            'imprevisto_tipo':        data.get('imprevisto_tipo'),
             'hora_termino':           data.get('hora_termino'),
             'agentes_executados':     _parse_lista(data.get('agentes_executados')),
             'agentes_nao_executados': _parse_lista(data.get('agentes_nao_executados')),
@@ -234,7 +267,11 @@ def api_salvar_visita():
         })
 
         _salvar_assinatura(vid, data.get('assinatura_data_url'),
-                           data.get('assinatura_empresa_data_url'))
+                           data.get('assinatura_empresa_data_url'),
+                           assinante_nome=data.get('assinante_nome'),
+                           assinante_cargo=data.get('assinante_cargo') or data.get('cargo_acompanhante'),
+                           sem_assinatura_motivo=data.get('sem_assinatura_motivo'))
+        _salvar_fotos(vid, data.get('fotos'))
         return jsonify({'ok': True, 'visita_id': vid})
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -266,12 +303,15 @@ def _parse_lista(v):
         return [x.strip() for x in str(v).split(',') if x.strip()]
 
 
-def _salvar_assinatura(visita_id, data_url, data_url_empresa=None):
+def _salvar_assinatura(visita_id, data_url, data_url_empresa=None,
+                       assinante_nome=None, assinante_cargo=None,
+                       sem_assinatura_motivo=None):
     """Persiste as assinaturas da visita NO BANCO.
     - assinatura          → técnico Ocupacional (mapeia p/ sig_avaliado no laudo)
     - assinatura_empresa  → responsável da empresa (sig_empresa)
-    Guarda a data-URL base64 inteira — o filesystem do Railway é efêmero e
-    apagava a evidência a cada redeploy."""
+    Junto com a assinatura da empresa grava: nome/cargo de quem assinou,
+    data-hora e o texto de ciência (Diretriz Mestra). Guarda a data-URL
+    base64 inteira — o filesystem do Railway é efêmero."""
     if not visita_id:
         return
     def _ok(u):
@@ -282,9 +322,45 @@ def _salvar_assinatura(visita_id, data_url, data_url_empresa=None):
                 conn.execute("UPDATE visitas_tecnicas SET assinatura=? WHERE id=?",
                              (data_url, visita_id))
             if _ok(data_url_empresa):
-                conn.execute("UPDATE visitas_tecnicas SET assinatura_empresa=? WHERE id=?",
-                             (data_url_empresa, visita_id))
+                conn.execute(
+                    "UPDATE visitas_tecnicas SET assinatura_empresa=?, assinante_nome=?, "
+                    "assinante_cargo=?, assinado_em=CURRENT_TIMESTAMP, ciencia_texto=? WHERE id=?",
+                    (data_url_empresa, (assinante_nome or '').strip() or None,
+                     (assinante_cargo or '').strip() or None, CIENCIA_TEXTO, visita_id))
+            elif sem_assinatura_motivo:
+                conn.execute("UPDATE visitas_tecnicas SET sem_assinatura_motivo=? WHERE id=?",
+                             (str(sem_assinatura_motivo).strip(), visita_id))
     except Exception as e:
+        import traceback; traceback.print_exc()
+
+
+def _salvar_fotos(visita_id, fotos):
+    """Persiste fotos da visita no banco (visita_fotos).
+    fotos: [{categoria: ambiente|atividade|equipamentos, data: dataURL, legenda}]"""
+    if not visita_id or not fotos:
+        return
+    if isinstance(fotos, str):
+        try:
+            fotos = json.loads(fotos)
+        except Exception:
+            return
+    if not isinstance(fotos, list):
+        return
+    try:
+        with get_db() as conn:
+            for f in fotos[:30]:  # teto de sanidade por visita
+                if not isinstance(f, dict):
+                    continue
+                data = str(f.get('data') or '')
+                if not data.startswith('data:image/'):
+                    continue
+                cat = f.get('categoria') or 'ambiente'
+                if cat not in ('ambiente', 'atividade', 'equipamentos'):
+                    cat = 'ambiente'
+                conn.execute(
+                    'INSERT INTO visita_fotos (visita_id, categoria, data, legenda) VALUES (?,?,?,?)',
+                    (visita_id, cat, data, (f.get('legenda') or '')[:300]))
+    except Exception:
         import traceback; traceback.print_exc()
 
 

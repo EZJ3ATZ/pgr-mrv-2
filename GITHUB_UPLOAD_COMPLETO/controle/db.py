@@ -951,6 +951,31 @@ def _migrate(conn):
     # Assinatura do responsável da empresa (mobile envia 2 assinaturas)
     _add_col(conn, 'visitas_tecnicas', 'assinatura_empresa', 'TEXT DEFAULT NULL')
 
+    # Relatório de Visita obrigatório (Diretriz Mestra 11/06/2026):
+    # assinatura com identificação + texto de ciência + carimbo de hora,
+    # tipo de imprevisto padronizado e motivo quando não há assinatura.
+    _add_col(conn, 'visitas_tecnicas', 'assinante_nome',        'TEXT DEFAULT NULL')
+    _add_col(conn, 'visitas_tecnicas', 'assinante_cargo',       'TEXT DEFAULT NULL')
+    _add_col(conn, 'visitas_tecnicas', 'assinado_em',           'TEXT DEFAULT NULL')
+    _add_col(conn, 'visitas_tecnicas', 'ciencia_texto',         'TEXT DEFAULT NULL')
+    _add_col(conn, 'visitas_tecnicas', 'imprevisto_tipo',       'TEXT DEFAULT NULL')
+    _add_col(conn, 'visitas_tecnicas', 'sem_assinatura_motivo', 'TEXT DEFAULT NULL')
+
+    # Fotos da visita persistidas NO BANCO (filesystem do Railway é efêmero).
+    # categoria: ambiente | atividade | equipamentos
+    _pk_vf = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS visita_fotos (
+            id         {_pk_vf},
+            visita_id  INTEGER NOT NULL,
+            categoria  TEXT DEFAULT 'ambiente',
+            data       TEXT NOT NULL,
+            legenda    TEXT,
+            criado_em  TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_vfotos_visita ON visita_fotos(visita_id)')
+
     # Tabela de inventário de equipamentos (Phase 1 — Jun 2026)
     _pk_equip = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
     conn.execute(f'''
@@ -2783,10 +2808,12 @@ def concluir_visita(vid: int, data: dict) -> bool:
             UPDATE visitas_tecnicas
             SET resultado=?, justificativa=?, hora_termino=COALESCE(hora_termino,?),
                 acompanhante=?, cargo_acompanhante=?,
+                imprevisto_tipo=COALESCE(?, imprevisto_tipo),
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?
         ''', (resultado, data.get('justificativa'), data.get('hora_termino'),
-              data.get('acompanhante'), data.get('cargo_acompanhante'), vid))
+              data.get('acompanhante'), data.get('cargo_acompanhante'),
+              data.get('imprevisto_tipo'), vid))
 
         row = conn.execute('SELECT planejamento_id FROM visitas_tecnicas WHERE id=?', (vid,)).fetchone()
         plan_id = row['planejamento_id'] if row else None

@@ -80,15 +80,64 @@
         </div>
         <div class="form-group">
           <label>Resultado</label>
-          <select name="resultado">
+          <select name="resultado" onchange="atualizarJustificativa()">
             <option value="concluido">✅ Concluída</option>
             <option value="parcial">⚠ Parcial</option>
             <option value="reagendar">🔄 Reagendar</option>
           </select>
         </div>
+        <div class="form-group" id="grpJustificativa" style="display:none">
+          <label>Justificativa <span style="color:#f87171">*</span></label>
+          <textarea name="justificativa" placeholder="Descreva o motivo..."></textarea>
+        </div>
+        <div class="form-group" id="grpImprevisto" style="display:none">
+          <label>Tipo de imprevisto <span style="color:#f87171">*</span></label>
+          <select name="imprevisto_tipo">
+            <option value="">Selecione...</option>
+            <option value="culpa_empresa">Responsabilidade da empresa</option>
+            <option value="culpa_equipe">Responsabilidade da equipe</option>
+            <option value="clima">Condições climáticas</option>
+            <option value="ausencia_trabalhador">Ausência de trabalhador</option>
+            <option value="indisponibilidade">Indisponibilidade operacional</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Observações</label>
           <textarea name="observacao" placeholder="Anotações do campo..."></textarea>
+        </div>
+      </div>
+
+      <div class="section-title">Assinatura do responsável da empresa</div>
+      <div class="card">
+        <div style="display:flex; gap:12px">
+          <div class="form-group" style="flex:2">
+            <label>Nome de quem assina <span style="color:#f87171">*</span></label>
+            <input type="text" name="assinante_nome" id="assinanteNome" placeholder="Nome do responsável">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Cargo</label>
+            <input type="text" name="assinante_cargo" placeholder="Cargo">
+          </div>
+        </div>
+        <p style="font-size:.72rem;color:var(--muted);line-height:1.5;font-style:italic;
+                  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+                  padding:8px 10px;margin:0 0 8px">
+          “Declaro estar ciente das atividades realizadas, atividades não realizadas,
+          observações registradas e eventuais impedimentos descritos neste relatório.”
+        </p>
+        <div class="sig-wrap">
+          <canvas id="sigCanvasEmp" height="160"></canvas>
+        </div>
+        <div class="sig-actions">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="sigEmp.clear();document.getElementById('assinaturaEmpInput').value=''">Limpar</button>
+          <span id="sigStatusEmp" style="font-size:.75rem; color:var(--muted); align-self:center; margin-left:4px">Não assinado</span>
+        </div>
+        <input type="hidden" name="assinatura_empresa_data_url" id="assinaturaEmpInput">
+        <div class="form-group" id="grpSemAssinatura" style="display:none;margin-top:10px">
+          <label>Motivo da ausência de assinatura <span style="color:#f87171">*</span></label>
+          <input type="text" name="sem_assinatura_motivo" id="semAssinaturaMotivo"
+                 placeholder="Ex: responsável ausente no encerramento">
         </div>
       </div>
 
@@ -134,11 +183,71 @@ function selecionarEmpresa(id, nome) {
   document.getElementById('listaEmpresas').innerHTML = '';
 }
 
+// ── Justificativa + imprevisto quando resultado != concluído ──────────
+function atualizarJustificativa() {
+  const show = document.querySelector('[name=resultado]').value !== 'concluido' ? 'block' : 'none';
+  document.getElementById('grpJustificativa').style.display = show;
+  document.getElementById('grpImprevisto').style.display = show;
+}
+
+// ── Assinatura do responsável (canvas touch) ──────────────────────────
+function initSig(canvasId, statusId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx    = canvas.getContext('2d');
+  const pad    = { canvas, ctx, drawing: false, hasSig: false };
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  canvas.width  = rect.width * dpr;
+  canvas.height = 160 * dpr;
+  canvas.style.height = '160px';
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const s = e.touches ? e.touches[0] : e;
+    return { x: s.clientX - r.left, y: s.clientY - r.top };
+  }
+  canvas.addEventListener('pointerdown', e => { pad.drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+  canvas.addEventListener('pointermove', e => { if (!pad.drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); pad.hasSig = true; document.getElementById(statusId).textContent = 'Assinado ✓'; e.preventDefault(); });
+  canvas.addEventListener('pointerup',   () => { pad.drawing = false; });
+  canvas.addEventListener('pointerleave',() => { pad.drawing = false; });
+  pad.clear = function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pad.hasSig = false;
+    document.getElementById(statusId).textContent = 'Não assinado';
+  };
+  return pad;
+}
+const sigEmp = initSig('sigCanvasEmp', 'sigStatusEmp');
+
 // ── Salvar ─────────────────────────────────────────────────────────────
 async function salvarNova(e) {
   e.preventDefault();
   const btn = document.getElementById('btnSalvar');
+
+  // Relatório de visita é obrigatório — valida antes de enviar
+  if (document.querySelector('[name=resultado]').value !== 'concluido') {
+    if (!document.querySelector('[name=justificativa]').value.trim()) {
+      showToast('⚠ Justificativa obrigatória quando a visita não é concluída'); return;
+    }
+    if (!document.querySelector('[name=imprevisto_tipo]').value) {
+      showToast('⚠ Informe o tipo de imprevisto'); return;
+    }
+  }
+  if (sigEmp.hasSig && !document.getElementById('assinanteNome').value.trim()) {
+    showToast('⚠ Informe o nome de quem assinou pela empresa'); return;
+  }
+  if (!sigEmp.hasSig) {
+    const grp = document.getElementById('grpSemAssinatura');
+    grp.style.display = 'block';
+    if (!document.getElementById('semAssinaturaMotivo').value.trim()) {
+      showToast('⚠ Colete a assinatura do responsável ou informe o motivo da ausência');
+      grp.scrollIntoView({behavior:'smooth'}); return;
+    }
+  }
+
   btn.disabled = true; btn.textContent = '⏳ Salvando...';
+  if (sigEmp.hasSig) document.getElementById('assinaturaEmpInput').value = sigEmp.canvas.toDataURL('image/png');
 
   const fd = new FormData(document.getElementById('formNova'));
   const body = {};
