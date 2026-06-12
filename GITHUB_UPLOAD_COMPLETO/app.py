@@ -896,7 +896,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-12-r2-assinatura-telacheia-paraopeba'
+BUILD_MARK = '2026-06-12-r3-fixes-geradores'
 
 
 @app.route('/healthz')
@@ -1037,7 +1037,10 @@ def _xe(s):
     return _h.escape(str(s))
 
 def _rr(bxml, label, val, nth=1):
-    """Replace last cell of nth table row containing label text."""
+    """Replace o valor da célula SEGUINTE à célula do label (nth ocorrência).
+    Antes escrevia sempre na ÚLTIMA célula da linha — em linhas com dois pares
+    label/valor (ex.: 'Data da coleta' + 'Data da análise') o primeiro valor
+    caía na célula errada e era sobrescrito pelo segundo."""
     pos = -1
     for _ in range(nth):
         nxt = bxml.find(f'>{label}</', pos + 1)
@@ -1048,7 +1051,13 @@ def _rr(bxml, label, val, nth=1):
     row  = bxml[tr_s:tr_e]
     tcs  = [m.start() for m in re.finditer('<w:tc>', row)]
     if len(tcs) < 2: return bxml
-    lts = tcs[-1]; lte = row.rfind('</w:tc>') + 7
+    lbl_off = pos - tr_s
+    nxt_tcs = [t for t in tcs if t > lbl_off]
+    if nxt_tcs:
+        lts = nxt_tcs[0]
+        lte = row.find('</w:tc>', lts) + 7
+    else:
+        lts = tcs[-1]; lte = row.rfind('</w:tc>') + 7
     vc  = row[lts:lte]
     def g(pat, default=''):
         m = re.search(pat, vc, re.DOTALL); return m.group(0) if m else default
@@ -1751,8 +1760,11 @@ def gerar_quimico_bytes(d):
             b = _rr(b, 'Concentração (PPM)', conc, nth=1)
             b = _rr(b, 'Concentração (PPM)', conc, nth=2)
             b = _rr(b, 'Concentração (PPM)', conc, nth=3)
-        new_conc = ev.get('conclusao', '') or OLD_CONC
-        b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
+        new_conc = ev.get('conclusao', '')
+        if new_conc:
+            b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
+        # sem conclusão custom: mantém OLD_CONC como está (já é XML escapado —
+        # re-escapar gerava "&amp;lt;" e o cliente via "C &lt; LT" literal)
         b = re.sub(r'w14:paraId="([0-9A-Fa-f]{8})"',
                    lambda m, ii=i: f'w14:paraId="{(int(m.group(1),16)+(ii+1)*0x10000)&0xFFFFFFFE:08X}"',
                    b)
@@ -2600,9 +2612,30 @@ def gerar_ruido_bytes(d):
             doc_xml = doc_xml.replace(_r_esc(old), _r_esc(new))
 
     # ── Substitui responsável técnica ─────────────────────────────────
-    doc_xml = doc_xml.replace('Sued Iagor', tec['nome'].title())
-    doc_xml = doc_xml.replace('SUED IAGOR', tec['nome'].upper())
-    doc_xml = doc_xml.replace('0065338-MG', tec['mte'])
+    # Nome completo do template PRIMEIRO (senão "Sued Iagor" vira o nome novo
+    # e o resto do sobrenome do template fica colado: "Matheus Costa de
+    # Mimrop Rodrigues da Silva")
+    _tec_t, _tec_u = tec['nome'].title(), tec['nome'].upper()
+    for _full in ('Sued Iagor de Mimrop Rodrigues da Silva',
+                  'Sued Iagor Rodrigues da Silva'):
+        doc_xml = doc_xml.replace(_full, _tec_t)
+        doc_xml = doc_xml.replace(_full.upper(), _tec_u)
+    doc_xml = doc_xml.replace('Sued Iagor', _tec_t)
+    doc_xml = doc_xml.replace('SUED IAGOR', _tec_u)
+    # Limpa resto de sobrenome do template que tenha sobrado colado ao nome
+    for _sobra in (' de Mimrop Rodrigues da Silva', ' Rodrigues da Silva',
+                   ' DE MIMROP RODRIGUES DA SILVA', ' RODRIGUES DA SILVA'):
+        doc_xml = doc_xml.replace(_tec_t + _sobra, _tec_t)
+        doc_xml = doc_xml.replace(_tec_u + _sobra, _tec_u)
+    # MTE: no XML o template pode quebrar "0065338-MG" em runs ("0065338- MG");
+    # substitui o número e a UF separadamente para sobreviver às quebras.
+    _mte = (tec.get('mte') or '').strip()
+    if _mte:
+        _mte_num = _mte.split('-')[0].strip()
+        _mte_uf  = _mte.split('-')[1].strip() if '-' in _mte else 'MG'
+        doc_xml = doc_xml.replace('0065338-MG', _mte)
+        doc_xml = doc_xml.replace('0065338- MG', f'{_mte_num}- {_mte_uf}')
+        doc_xml = doc_xml.replace('0065338', _mte_num)
 
     # ── Monta seção de avaliações ─────────────────────────────────────
     aval_xml = ''

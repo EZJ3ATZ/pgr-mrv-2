@@ -3665,9 +3665,12 @@ def gerar_relatorio_campo_completo():
             story.append(Paragraph('(sem agentes informados)', _sty('Normal', fontSize=8,
                          textColor=colors.grey, leftIndent=6)))
         for idx, ag in enumerate(agentes, 1):
+            # Título: a substância é o agente; funcionário vem depois
+            _sub_q = (ag.get('substancias') or ag.get('agente') or '').strip()
+            _fn_q  = (ag.get('func_nome') or '').strip()
+            _tit_q = (_sub_q + (f' — {_fn_q}' if _fn_q else '')) if _sub_q else (_fn_q or '—')
             story.append(Paragraph(
-                f'<b>Agente {idx}:</b> {ag.get("func_nome","") or ag.get("agente","—")}   '
-                f'<b>Substâncias:</b> {ag.get("substancias","") or "—"}   '
+                f'<b>Agente {idx}:</b> {_tit_q}   '
                 f'<b>Fração:</b> {ag.get("fracao","") or "—"}',
                 norm))
             amostr = ag.get('amostradores', [])
@@ -3675,11 +3678,20 @@ def gerar_relatorio_campo_completo():
             cw_q  = [W*0.04, W*0.20, W*0.20, W*0.14, W*0.14, W*0.14, W*0.14]
             linhas_q = []
             for j, am in enumerate(amostr, 1):
-                linhas_q.append([j, am.get('codigo','') or am.get('amostrador',''),
-                                  am.get('bomba','') or am.get('bomba_modelo',''),
-                                  am.get('sn','') or am.get('bomba_sn',''),
-                                  am.get('vazao','') or am.get('vazao_calibrada',''),
-                                  am.get('hora_ini',''), am.get('hora_fim','')])
+                # Chaves do wizard: id_amostrador, vazao_inicial/final, hora_inicio/final;
+                # bomba e S/N ficam no nível do agente — cair para lá quando faltar
+                _vz = am.get('vazao') or am.get('vazao_calibrada') or ''
+                if _vz in ('', None):
+                    vi_, vf_ = am.get('vazao_inicial'), am.get('vazao_final')
+                    if vi_ not in (None, '') or vf_ not in (None, ''):
+                        _vz = f"{vi_ if vi_ not in (None, '') else '—'} / {vf_ if vf_ not in (None, '') else '—'}"
+                linhas_q.append([j,
+                                  am.get('codigo') or am.get('amostrador') or am.get('id_amostrador', ''),
+                                  am.get('bomba') or am.get('bomba_modelo') or ag.get('bomba', ''),
+                                  am.get('sn') or am.get('bomba_sn') or ag.get('id_bomba', ''),
+                                  _vz,
+                                  am.get('hora_ini') or am.get('hora_inicio', ''),
+                                  am.get('hora_fim') or am.get('hora_final', '')])
             while len(linhas_q) < 4:
                 linhas_q.append([len(linhas_q)+1,'','','','','',''])
             story.append(_tabela(cab_q, linhas_q, cw_q))
@@ -4530,10 +4542,16 @@ def gerar_relatorio_quimico():
         if idx > 0:
             story.append(PageBreak())
 
-        ag_titulo = ag.get('func_nome') or f'Agente {idx+1}'
+        # Título: substância amostrada primeiro (é o agente), funcionário depois
+        _subst    = (ag.get('substancias') or '').strip()
+        _func_nm  = (ag.get('func_nome') or '').strip()
         ag_func   = ag.get('func_funcao','')
-        if ag_func:
-            ag_titulo += f' — {ag_func}'
+        if _subst and _func_nm:
+            ag_titulo = f'{_subst} — {_func_nm}' + (f' ({ag_func})' if ag_func else '')
+        elif _subst:
+            ag_titulo = _subst
+        else:
+            ag_titulo = (_func_nm or f'Agente {idx+1}') + (f' — {ag_func}' if ag_func else '')
         story.append(Paragraph(f'AGENTE {idx+1}: {ag_titulo}', _s('Heading1',
             fontSize=10, textColor=AZUL, spaceBefore=6, spaceAfter=4)))
 
@@ -4551,10 +4569,10 @@ def gerar_relatorio_quimico():
                           ('BOTTOMPADDING',(0,0),(-1,-1),2),('BOX',(0,0),(-1,-1),0.3,BORDA),
                           ('INNERGRID',(0,0),(-1,-1),0.3,BORDA)])))
 
-        story.append(_row2('Turno:', ag.get('func_jornada',''), 'Nome do Funcionário:', ag.get('func_nome','')))
+        story.append(_row2('Turno:', ag.get('turno') or ag.get('func_turno',''), 'Nome do Funcionário:', ag.get('func_nome','')))
         story.append(_row2('Função:', ag.get('func_funcao',''), 'Setor:', ag.get('func_setor','')))
-        story.append(_row2('Local específico:', ag.get('func_local',''), 'Jornada de Trabalho:', ag.get('func_jornada','')))
-        story.append(Table([[Paragraph(f'<b>Atividade de Trabalho:</b> {ag.get("func_atv","") or "___________"}', norm)]],
+        story.append(_row2('Local específico:', ag.get('local') or ag.get('func_local',''), 'Jornada de Trabalho:', ag.get('jornada') or ag.get('func_jornada','')))
+        story.append(Table([[Paragraph(f'<b>Atividade de Trabalho:</b> {ag.get("atividade") or ag.get("func_atv","") or "___________"}', norm)]],
             colWidths=['*'], style=TableStyle([('LEFTPADDING',(0,0),(-1,-1),4),
                 ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
                 ('BOX',(0,0),(-1,-1),0.3,BORDA)])))
@@ -4590,9 +4608,16 @@ def gerar_relatorio_quimico():
         story.append(_hdr_tbl('EQUIPAMENTOS UTILIZADOS PARA AMOSTRAGEM'))
 
         bomba_nome = ag.get('bomba','')
-        # Tenta match nos modelos padrão; se não encontrar, mostra como texto livre
+        # Match por palavra-chave: o wizard manda ids curtos ('bdx', 'gilian',
+        # 'skc'...) — o match antigo exigia o rótulo INTEIRO dentro do valor
+        # e nunca marcava o checkbox.
         bombas_todos = ['BDX–II–GILLIAN','AIRLITE–SKC','FORMIS–TURAM','INLITE–VENTUSPRO']
-        bomba_sel = [b for b in bombas_todos if bomba_nome and _norm(b) in _norm(bomba_nome)]
+        _BOMBA_KEYS = {'BDX–II–GILLIAN': ('bdx','gilian','gillian'),
+                       'AIRLITE–SKC': ('skc','airlite'),
+                       'FORMIS–TURAM': ('formis','turam'),
+                       'INLITE–VENTUSPRO': ('inlite','ventus')}
+        _bn = _norm(bomba_nome) if bomba_nome else ''
+        bomba_sel = [b for b in bombas_todos if _bn and any(k in _bn for k in _BOMBA_KEYS[b])]
         bomba_outro = bomba_nome if (bomba_nome and not bomba_sel) else ''
         story.append(Table([[
             Paragraph(f'<b>Bomba Utilizada:</b><br/>{_chk(bombas_todos, bomba_sel)}'
@@ -4692,6 +4717,15 @@ def gerar_relatorio_quimico():
                 if t_min in (None, ''):
                     a, b = _hhmm_to_min(inicio), _hhmm_to_min(fim)
                     t_min = (b - a) if (a is not None and b is not None and b >= a) else ''
+                    # Subtrai os intervalos — a legenda do PDF define
+                    # t = final − inicial − intervalos; antes não subtraía e o
+                    # Vol (= Vm × t) saía superestimado.
+                    if t_min != '':
+                        try:
+                            _itv = str(am.get('intervalos') or '0').replace(',', '.').strip()
+                            t_min = max(0, t_min - int(float(_itv))) if _itv else t_min
+                        except Exception:
+                            pass
                 vm = am.get('vm')
                 if vm in (None, ''):
                     vm = round((vi + vf) / 2, 3) if (vi or vf) else ''
