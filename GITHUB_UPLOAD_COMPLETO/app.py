@@ -590,6 +590,12 @@ def adapt_ruido(db_val, nivel, acima_acao, acima_lt):
                       'O valor de ruído avaliado está abaixo do nível de ação. Manter monitoramento periódico.')
         t = t.replace(ORIG["ruido_rec"],
                       'Manter boas práticas de higiene ocupacional. Monitorar periodicamente os níveis de ruído.')
+    else:
+        # Acima do nível de ação porém ABAIXO do LT — o boilerplate do template
+        # ("ter ultrapassado o LT de 85 dB(A)") estaria errado aqui
+        t = t.replace('ter ultrapassado o limite de tolerância (LT) de 85 dB(A).',
+                      'não ter ultrapassado o limite de tolerância (LT) de 85 dB(A), '
+                      'porém ter atingido o nível de ação.')
     return t
 
 def adapt_quant(nome_ag, grupo, lt_val, na_val, medicao, nivel_risco, acima_na):
@@ -707,11 +713,20 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         t = t.replace('Vale das Acácias', xs(bairro) or 'A definir')
         t = t.replace('RIBEIRÃO DAS NEVES - MG</w:t>', f'{xs(cidade).upper()} - {xs(uf).upper()}</w:t>')
         t = t.replace('Setor: Ribeirão das Neves - MG</w:t>', f'Setor: {xs(cidade)} - {xs(uf)}</w:t>')
-        t = t.replace('>Pedreiro<', f'>{xs(cargos[0])}<')
         t = t.replace(f'>{ORIG["data"]}<', f'>{data_atual}<')
         return t
     p1 = subst(part1)
     p3 = subst(part3)
+    # Tabela "Setor / Cargo / Nº de Funcionários": a linha do template (cargo
+    # "Pedreiro") é o MOLDE — clona uma linha por cargo selecionado
+    _ci = p1.find('>Pedreiro<')
+    if _ci != -1:
+        _trs = max(p1.rfind('<w:tr ', 0, _ci), p1.rfind('<w:tr>', 0, _ci))
+        _tre = p1.find('</w:tr>', _ci) + len('</w:tr>')
+        _molde = p1[_trs:_tre]
+        p1 = (p1[:_trs] +
+              ''.join(_molde.replace('>Pedreiro<', f'>{xs(c)}<') for c in cargos) +
+              p1[_tre:])
     # Índice dinâmico
     tpl_idx = load_tpl('indice_cargo')
     idx_novo = ''
@@ -1078,6 +1093,27 @@ def _ri(bxml, label, val):
     rpr  = m.group(0) if m else ''
     nr   = f'<w:r>{rpr}<w:t xml:space="preserve">{_xe(val)}</w:t></w:r>'
     return bxml[:re_e] + nr + bxml[pe:]
+
+def _rp(bxml, label, val):
+    """Replace o conteúdo do PARÁGRAFO seguinte ao parágrafo do label.
+    Usado quando o template tem o label e o valor em parágrafos separados
+    da mesma célula (ex.: 'Vazão Média (L/min): ' seguido de '0,19550')."""
+    pos = bxml.find(f'>{label}</')
+    if pos == -1: return bxml
+    p_end = bxml.find('</w:p>', pos) + 6
+    np_m  = re.search(r'<w:p[ >]', bxml[p_end:])
+    if not np_m: return bxml
+    np_s  = p_end + np_m.start()
+    np_e  = bxml.find('</w:p>', np_s) + 6
+    para  = bxml[np_s:np_e]
+    r_m   = re.search(r'<w:r[ >]', para)
+    if not r_m: return bxml
+    r_s   = r_m.start()
+    m     = re.search(r'<w:rPr>.*?</w:rPr>', para[r_s:], re.DOTALL)
+    rpr   = m.group(0) if m else ''
+    return (bxml[:np_s] + para[:r_s] +
+            f'<w:r>{rpr}<w:t xml:space="preserve">{_xe(val)}</w:t></w:r></w:p>' +
+            bxml[np_e:])
 
 # ══════════════════════════════════════════════════════════════════
 # Quimico — constants & helpers
@@ -1730,6 +1766,19 @@ def gerar_quimico_bytes(d):
     eval_tpl = xml[tbl1_s:tbl2_s]
     OLD_CONC = ('concluímos que C &lt; LT, a concentração é menor que o LT.'
                 ' Logo a situação é considerada regular em função da baixa concentração.')
+    OLD_BRIEF = ('Como a concentração está abaixo do nível de ação e do limite de '
+                 'tolerância, não há necessidade de cálculo para o BRIEF &amp; SCALA.')
+    NEW_BRIEF = ('Como a concentração ultrapassou o limite de tolerância, recomenda-se '
+                 'a adoção imediata de medidas de controle e nova avaliação após '
+                 'implementação.')
+
+    def _qf(v):
+        # Mesma conversão usada em _build_ix_xml (quadro resumo IX) —
+        # garante que VI e IX classifiquem REGULAR/IRREGULAR do mesmo jeito
+        try:
+            return float(str(v).split()[0].replace(',', '.'))
+        except Exception:
+            return None
 
     blocks = []
     for i, ev in enumerate(evals):
@@ -1750,6 +1799,23 @@ def gerar_quimico_bytes(d):
         b = _ri(b, 'Tempo de exposição ao agente durante a jornada de trabalho: ',
                 ev.get('tempoExposicao', ''))
         b = _ri(b, 'Acessórios utilizados: ',  ev.get('acessorios', ''))
+        # Vazão média / variação — só substitui se o payload tiver os dados
+        _vi = _qf(ev.get('vazaoInicial'))
+        _vf = _qf(ev.get('vazaoFinal'))
+        _vm = _qf(ev.get('vazao'))
+        if _vm is None and _vi is not None and _vf is not None:
+            _vm = (_vi + _vf) / 2
+        if _vm is not None:
+            b = _rp(b, 'Vazão Média (L/min): ', f'{_vm:.5f}'.replace('.', ','))
+            if _vi is not None and _vf is not None and _vm:
+                _var = abs(_vi - _vf) / _vm * 100
+                b = _ri(b, 'Variação da vazão (%): ', f'{_var:.1f}'.replace('.', ','))
+        # Bomba da tabela de amostragem — usa a bomba da avaliação (ou da config)
+        _bk = ev.get('bomba') or pump
+        _bsn = ev.get('bombaSN') or pump_sn
+        if _bk and _bsn:
+            _bnome = ev.get('bombaLabel') or _PUMP_NAMES.get(_bk, _bk)
+            b = _ri(b, 'Bomba Gravimétrica da marca ', f'{_bnome} {_bsn}')
         if ev.get('ltNR15'):  b = _rr(b, 'Limite de Tolerância ', ev['ltNR15'], nth=1)
         if ev.get('naNR15'):  b = _rr(b, 'Nível de Ação ',        ev['naNR15'], nth=1)
         if ev.get('ltTWA'):   b = _rr(b, 'Limite de Tolerância ', ev['ltTWA'],  nth=2)
@@ -1760,6 +1826,12 @@ def gerar_quimico_bytes(d):
             b = _rr(b, 'Concentração (PPM)', conc, nth=1)
             b = _rr(b, 'Concentração (PPM)', conc, nth=2)
             b = _rr(b, 'Concentração (PPM)', conc, nth=3)
+        # BRIEF & SCALA: a frase do template só vale quando C < LT.
+        # Se a concentração ULTRAPASSOU o limite, troca pela recomendação de controle.
+        _cv  = _qf(conc) if conc not in ('', 'N.D.') else None
+        _ltv = _qf(ev.get('ltNR15', '') or ev.get('ltTWA', ''))
+        if _cv is not None and _ltv is not None and _cv >= _ltv:
+            b = b.replace(OLD_BRIEF, _xe(NEW_BRIEF))
         new_conc = ev.get('conclusao', '')
         if new_conc:
             b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
@@ -2588,11 +2660,15 @@ def gerar_ruido_bytes(d):
         'Helisul Taxi Aéreo LTDA':       razao,
         'HELISUL TAXI AERIO LTDA':       razao_upper,
         # Variações sem LTDA (texto quebrado em runs pelo Word)
-        'Helisul Taxi Aéreo ':           razao_curta + ' ',
+        # OBS: no template, o run seguinte é " LTDA" (com espaço à esquerda) —
+        # não acrescentar espaço aqui, senão a razão social sai com espaço duplo
+        'Helisul Taxi Aéreo ':           razao_curta,
         'HELISUL TAXI AERIO ':           razao_curta_upper + ' ',
         'HELISUL TAXI AERIO':            razao_curta_upper,
         # Alt-text de imagens (descr=)
         'Helisul Taxi Aereo':            razao_curta,
+        # Carta de apresentação (placeholder literal do template)
+        'NOME DA EMPRESA':               (emp.get('razaoSocial') or emp.get('nomeFantasia') or '').upper(),
         # Outros campos
         'Rua Gardênia N.º 165':          emp.get('endereco', ''),
         '11.483.174/0004-11':            emp.get('cnpj', ''),
@@ -2718,6 +2794,52 @@ def gerar_ruido_bytes(d):
     else:
         # Fallback: appende antes do </w:body>
         doc_xml = doc_xml.replace('</w:body>', aval_xml + cert_imgs_xml + sig_xml + '</w:body>')
+
+    # ── QUADRO RESUMO DAS AVALIAÇÕES (geral) ──────────────────────────
+    # O template tem uma linha-exemplo ("Coordenador (a) de base" / 80,5 dB)
+    # que servia só de molde. Substitui por uma linha por avaliação.
+    _qi = doc_xml.find('Coordenador (a) de base')
+    if _qi != -1:
+        _qtrs = max(doc_xml.rfind('<w:tr ', 0, _qi), doc_xml.rfind('<w:tr>', 0, _qi))
+        _qtre = doc_xml.find('</w:tr>', _qi) + len('</w:tr>')
+
+        def _qg_color(v):
+            try:
+                f = float(str(v).replace(',', '.'))
+            except Exception:
+                return '000000'
+            if f >= 85: return 'FF0000'
+            if f >= 80: return 'FFC000'
+            return '00B050'
+
+        def _qg_cell(w, text, bullet=None):
+            runs = ''
+            if bullet:
+                runs += ('<w:r><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana"/>'
+                         f'<w:color w:val="{bullet}"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>'
+                         '<w:t xml:space="preserve">● </w:t></w:r>')
+            runs += ('<w:r><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana"/><w:b/>'
+                     '<w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>'
+                     f'<w:t xml:space="preserve">{_r_esc(text)}</w:t></w:r>')
+            return (f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>'
+                    '<w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/>'
+                    '<w:vAlign w:val="center"/></w:tcPr>'
+                    f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr>{runs}</w:p></w:tc>')
+
+        _qrows = ''
+        for av in avals:
+            _lavg = str(av.get('lavgQ5') or av.get('lavgQ3') or '').strip()
+            _nen  = str(av.get('nenQ5') or av.get('nenQ3') or '').strip()
+            _qrows += ('<w:tr><w:trPr><w:trHeight w:val="362"/></w:trPr>'
+                       + _qg_cell(2195, av.get('setor', '') or '-')
+                       + _qg_cell(2195, av.get('cargo', ''))
+                       + _qg_cell(2023, f'{_lavg} dB(A)' if _lavg else '-',
+                                  _qg_color(_lavg) if _lavg else None)
+                       + _qg_cell(2024, f'{_nen} dB(A)' if _nen else '-',
+                                  _qg_color(_nen) if _nen else None)
+                       + '</w:tr>')
+        # Mesmo sem avaliações, remove a linha-fantasma do template
+        doc_xml = doc_xml[:_qtrs] + _qrows + doc_xml[_qtre:]
 
     # ── Adiciona relacionamentos das imagens geradas ───────────────────
     for rid, target in extra_rels.items():
