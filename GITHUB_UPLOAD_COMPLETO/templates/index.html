@@ -9770,12 +9770,23 @@ function planContratoPick(i) {
   _planSetEmpresaContrato(e.id, e.nome, e.cnpj || '');
   _showToast('Empresa de contrato selecionada — adicione os agentes e salve', 'success');
 }
-async function planContratoCriar() {
+async function planContratoCriar(force) {
   const nome = (window._planContratoQuery || '').trim();
   if (!nome) return;
   try {
-    const r = await fetch('/controle/empresas', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nome})});
+    const r = await fetch('/controle/empresas', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(force ? {nome, force:true} : {nome})});
     const j = await r.json();
+    // Empresa parecida já existe (ex: criar "(005 - Usina)" quando a matriz existe):
+    // oferecer usar a existente ANTES de duplicar.
+    if (r.status === 409 && j.requer_confirmacao) {
+      if (confirm(`${j.erro}\n\nOK = usar "${j.similar}" (recomendado)\nCancelar = criar "${nome}" como empresa separada`)) {
+        _planSetEmpresaContrato(j.id_existente, j.similar, '');
+        _showToast(`Empresa existente selecionada: ${j.similar}`, 'success');
+      } else {
+        return planContratoCriar(true);
+      }
+      return;
+    }
     const id = j.id || j.id_existente;
     if (!id) { _showToast('Erro ao criar: ' + (j.erro||''), 'error'); return; }
     _planSetEmpresaContrato(id, nome, '');
@@ -11237,9 +11248,20 @@ async function ctrlNvSalvarCadEmpresa() {
     });
     const data = await r.json();
     if (r.status === 409) {
-      if (confirm(`${data.erro}\n\nUsar a empresa existente?`)) {
-        await ctrlNvSelecionarEmpresa(data.id_existente, payload.nome, payload.cnpj, payload.contato);
+      if (confirm(`${data.erro}\n\nOK = usar a empresa existente\nCancelar = ${data.requer_confirmacao ? 'criar como empresa separada (filial/unidade)' : 'voltar'}`)) {
+        await ctrlNvSelecionarEmpresa(data.id_existente, data.similar || payload.nome, payload.cnpj, payload.contato);
         ctrlNvFecharCadEmpresa();
+      } else if (data.requer_confirmacao) {
+        const r2 = await fetch('/controle/empresas', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({...payload, force: true})
+        });
+        const d2 = await r2.json();
+        if (r2.ok && d2.id) {
+          await ctrlNvSelecionarEmpresa(d2.id, payload.nome, payload.cnpj, payload.contato);
+          ctrlNvFecharCadEmpresa();
+          _showToast(`✓ Empresa "${payload.nome}" cadastrada`, 'success');
+        } else { alert('Erro: ' + (d2.erro || r2.status)); }
       }
       return;
     }

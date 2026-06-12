@@ -1529,6 +1529,26 @@ def cria_empresa():
             (nome,)).fetchone()
         if similar:
             return jsonify({'erro': f'Nome ja cadastrado: "{similar["nome"]}"', 'id_existente': similar['id']}), 409
+        # Fuzzy: "Paraopeba (005 - Usina)" vs "Paraopeba" — avisa antes de duplicar.
+        # force=true cria mesmo assim (unidade/filial intencional).
+        if not d.get('force'):
+            try:
+                from .empresa_match import normalizar_nome, similaridade
+                base_novo = normalizar_nome(nome)
+                for r in conn.execute('SELECT id, nome FROM empresas WHERE pendente=0').fetchall():
+                    rn = r['nome'] if hasattr(r, '__getitem__') else r[1]
+                    rid = r['id'] if hasattr(r, '__getitem__') else r[0]
+                    if not rn:
+                        continue
+                    base_ex = normalizar_nome(rn)
+                    if base_ex and (similaridade(base_novo, base_ex) >= 0.85
+                                    or base_novo.startswith(base_ex) or base_ex.startswith(base_novo)):
+                        return jsonify({
+                            'erro': f'Empresa parecida já existe: "{rn}". Se for unidade/filial '
+                                    'diferente, confirme a criação.',
+                            'id_existente': rid, 'similar': rn, 'requer_confirmacao': True}), 409
+            except Exception:
+                pass
     eid = upsert_empresa(cnpj, nome,
         contato=d.get('contato'), telefone=d.get('telefone'),
         email=d.get('email'), cidade=d.get('cidade'), uf=d.get('uf'))
@@ -2562,6 +2582,18 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
     Fecha planejamento quando coleta concluída.
     Não reverte demandas já concluídas.
     """
+    # Fechar planejamento ao concluir a coleta — ANTES do guard de demanda.
+    # Visita sem OS (ex.: Paraopeba) tem planejamento mas demanda_id=NULL;
+    # o return abaixo deixava o planejamento aberto para sempre.
+    if planejamento_id and coleta_status in ('concluida', 'concluido'):
+        try:
+            with get_db() as conn:
+                conn.execute(
+                    "UPDATE planejamentos SET status='concluido', atualizado_em=CURRENT_TIMESTAMP "
+                    "WHERE id=? AND status != 'cancelado'",
+                    (planejamento_id,))
+        except Exception as e:
+            log.warning('[coleta] erro ao fechar planejamento %s: %s', planejamento_id, e)
     if not demanda_id:
         return
     try:
@@ -2587,12 +2619,6 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
                 f"UPDATE demandas SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                 (novo, demanda_id)
             )
-            # Fechar planejamento ao concluir a coleta
-            if planejamento_id and coleta_status in ('concluida', 'concluido'):
-                conn.execute(
-                    "UPDATE planejamentos SET status='concluido' WHERE id=? AND status != 'cancelado'",
-                    (planejamento_id,)
-                )
     except Exception as e:
         log.warning('[coleta] erro ao atualizar demanda %s: %s', demanda_id, e)
 

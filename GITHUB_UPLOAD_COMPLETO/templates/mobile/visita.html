@@ -258,6 +258,7 @@
         </div>
         <div class="sig-actions">
           <button type="button" class="btn btn-ghost btn-sm" onclick="limparAssinatura('tec')">Limpar</button>
+          <button type="button" class="btn btn-sm" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35);color:#60a5fa;" onclick="sigFullAbrir('tec')">⛶ Tela cheia</button>
           <span id="sigStatus" style="font-size:.75rem; color:var(--muted); align-self:center; margin-left:4px">Não assinado</span>
         </div>
         <input type="hidden" name="assinatura_data_url" id="assinaturaInput">
@@ -286,6 +287,7 @@
         </div>
         <div class="sig-actions">
           <button type="button" class="btn btn-ghost btn-sm" onclick="limparAssinatura('emp')">Limpar</button>
+          <button type="button" class="btn btn-sm" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35);color:#60a5fa;" onclick="sigFullAbrir('emp')">⛶ Tela cheia</button>
           <span id="sigStatusEmp" style="font-size:.75rem; color:var(--muted); align-self:center; margin-left:4px">Não assinado</span>
         </div>
         <input type="hidden" name="assinatura_empresa_data_url" id="assinaturaEmpInput">
@@ -303,6 +305,21 @@
       </div>
     </form>
 
+  </div>
+</div>
+
+<!-- Assinatura em TELA CHEIA (pedido dos técnicos — canvas pequeno no celular) -->
+<div id="sigFull" style="display:none;position:fixed;inset:0;background:#0f172a;z-index:9999;flex-direction:column;">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;gap:8px;">
+    <span id="sigFullTitle" style="font-size:.8rem;color:#cbd5e1;font-weight:700;">Assinatura</span>
+    <div style="display:flex;gap:8px;">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="sigFullLimpar()">Limpar</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="sigFullFechar()">Cancelar</button>
+      <button type="button" class="btn btn-success btn-sm" onclick="sigFullSalvar()">✓ Salvar</button>
+    </div>
+  </div>
+  <div id="sigFullArea" style="flex:1;margin:0 10px 14px;border:1.5px dashed #475569;border-radius:10px;overflow:hidden;background:#1e293b;">
+    <canvas id="sigFullCanvas" style="width:100%;height:100%;touch-action:none;"></canvas>
   </div>
 </div>
 
@@ -488,7 +505,7 @@ function initSig(canvasId, statusId) {
     return { x: src.clientX - rect.left, y: src.clientY - rect.top };
   }
 
-  canvas.addEventListener('pointerdown', e => { pad.drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+  canvas.addEventListener('pointerdown', e => { pad.drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); const inp = document.getElementById(statusId === 'sigStatusEmp' ? 'assinaturaEmpInput' : 'assinaturaInput'); if (inp) inp.value = ''; e.preventDefault(); });
   canvas.addEventListener('pointermove', e => { if (!pad.drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); pad.hasSig = true; document.getElementById(statusId).textContent = 'Assinado ✓'; e.preventDefault(); });
   canvas.addEventListener('pointerup',   () => { pad.drawing = false; });
   canvas.addEventListener('pointerleave',() => { pad.drawing = false; });
@@ -507,6 +524,65 @@ const sigEmp = initSig('sigCanvasEmp', 'sigStatusEmp');
 function limparAssinatura(qual) {
   if (qual === 'emp') { sigEmp.clear(); document.getElementById('assinaturaEmpInput').value = ''; }
   else                { sigTec.clear(); document.getElementById('assinaturaInput').value = ''; }
+}
+
+// ── Assinatura em TELA CHEIA ───────────────────────────────────────────
+let _sigFullPad = null, _sigFullTarget = null;
+function sigFullAbrir(qual) {
+  _sigFullTarget = qual;
+  document.getElementById('sigFullTitle').textContent =
+    qual === 'emp' ? '✍ Responsável da empresa' : '✍ Técnico (Ocupacional)';
+  const ov = document.getElementById('sigFull');
+  ov.style.display = 'flex';
+  const canvas = document.getElementById('sigFullCanvas');
+  const ctx = canvas.getContext('2d');
+  const rect = document.getElementById('sigFullArea').getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (!_sigFullPad) {
+    const pad = { canvas, ctx, drawing: false, hasSig: false };
+    const getPos = e => { const r = canvas.getBoundingClientRect(); const s = e.touches ? e.touches[0] : e; return { x: s.clientX - r.left, y: s.clientY - r.top }; };
+    canvas.addEventListener('pointerdown', e => { pad.drawing = true; const p = getPos(e); pad.ctx.beginPath(); pad.ctx.moveTo(p.x, p.y); e.preventDefault(); });
+    canvas.addEventListener('pointermove', e => { if (!pad.drawing) return; const p = getPos(e); pad.ctx.lineTo(p.x, p.y); pad.ctx.stroke(); pad.hasSig = true; e.preventDefault(); });
+    canvas.addEventListener('pointerup',   () => { pad.drawing = false; });
+    _sigFullPad = pad;
+  } else { _sigFullPad.ctx = ctx; _sigFullPad.hasSig = false; }
+  // Melhor esforço: girar para paisagem (mais espaço pra assinar)
+  try { document.documentElement.requestFullscreen().catch(()=>{}); } catch(_) {}
+  try { screen.orientation.lock('landscape').catch(()=>{}); } catch(_) {}
+}
+function sigFullLimpar() {
+  if (!_sigFullPad) return;
+  const c = _sigFullPad.canvas;
+  _sigFullPad.ctx.clearRect(0, 0, c.width, c.height);
+  _sigFullPad.hasSig = false;
+}
+function sigFullFechar() {
+  document.getElementById('sigFull').style.display = 'none';
+  try { screen.orientation.unlock(); } catch(_) {}
+  try { if (document.fullscreenElement) document.exitFullscreen().catch(()=>{}); } catch(_) {}
+}
+function sigFullSalvar() {
+  if (!_sigFullPad || !_sigFullPad.hasSig) { showToast('⚠ Assine antes de salvar'); return; }
+  const target = _sigFullTarget === 'emp' ? sigEmp : sigTec;
+  const src = _sigFullPad.canvas;
+  const tc = target.canvas, tctx = tc.getContext('2d');
+  // Copia com aspecto preservado (contain) para o pad pequeno
+  tctx.save(); tctx.setTransform(1, 0, 0, 1, 0, 0);
+  tctx.clearRect(0, 0, tc.width, tc.height);
+  const sc = Math.min(tc.width / src.width, tc.height / src.height);
+  const dw = src.width * sc, dh = src.height * sc;
+  tctx.drawImage(src, (tc.width - dw) / 2, (tc.height - dh) / 2, dw, dh);
+  tctx.restore();
+  target.hasSig = true;
+  // Guarda a versão em ALTA resolução (tela cheia) no input
+  const input = document.getElementById(_sigFullTarget === 'emp' ? 'assinaturaEmpInput' : 'assinaturaInput');
+  input.value = src.toDataURL('image/png');
+  document.getElementById(_sigFullTarget === 'emp' ? 'sigStatusEmp' : 'sigStatus').textContent = 'Assinado ✓';
+  sigFullFechar();
+  showToast('✓ Assinatura capturada');
 }
 
 // ── Salvar visita ──────────────────────────────────────────────────────
@@ -545,8 +621,9 @@ async function salvarVisita(e) {
   btn.disabled    = true;
   btn.textContent = '⏳ Salvando...';
 
-  if (sigTec.hasSig) document.getElementById('assinaturaInput').value = sigTec.canvas.toDataURL('image/png');
-  if (sigEmp.hasSig) document.getElementById('assinaturaEmpInput').value = sigEmp.canvas.toDataURL('image/png');
+  // Não sobrescrever assinatura feita em tela cheia (alta resolução) com o pad pequeno
+  if (sigTec.hasSig && !document.getElementById('assinaturaInput').value)    document.getElementById('assinaturaInput').value = sigTec.canvas.toDataURL('image/png');
+  if (sigEmp.hasSig && !document.getElementById('assinaturaEmpInput').value) document.getElementById('assinaturaEmpInput').value = sigEmp.canvas.toDataURL('image/png');
   coletarTrabalhadores();
 
   const fd   = new FormData(document.getElementById('formCampo'));

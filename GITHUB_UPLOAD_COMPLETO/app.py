@@ -896,7 +896,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-12-r1-busca-global-e-numeros'
+BUILD_MARK = '2026-06-12-r2-assinatura-telacheia-paraopeba'
 
 
 @app.route('/healthz')
