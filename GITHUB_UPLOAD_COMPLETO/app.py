@@ -911,7 +911,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-12-r5-campo-completo-rico'
+BUILD_MARK = '2026-06-12-r6-planilhas-fluxo-campo-logo'
 
 
 @app.route('/healthz')

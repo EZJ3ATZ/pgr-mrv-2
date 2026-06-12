@@ -3511,6 +3511,65 @@ def _fotos_pdf_flowables(fotos, W=None):
     return out
 
 
+def _pdf_header(W, titulo, sub_norma=''):
+    """Cabeçalho padrão das planilhas de campo PDF.
+    Logo Ocupacional à esquerda (com subtítulo "Medicina e Segurança do
+    Trabalho") e título do documento à direita. Se o PNG do logo não
+    existir, cai no texto "OCUPACIONAL"."""
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import Table, TableStyle, Paragraph
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_RIGHT
+    AZUL = colors.HexColor('#1E3A8A')
+    _base = getSampleStyleSheet()['Normal']
+    sty_esq = ParagraphStyle('_pdfhdr_l', parent=_base, fontSize=10,
+                             fontName='Helvetica-Bold', textColor=AZUL)
+    sty_dir = ParagraphStyle('_pdfhdr_r', parent=_base, fontSize=10,
+                             fontName='Helvetica-Bold', textColor=AZUL,
+                             alignment=TA_RIGHT)
+    esq = None
+    try:
+        import os as _os
+        logo_path = _os.path.join(
+            _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+            'static', 'logo-ocupacional-print.png')
+        if _os.path.exists(logo_path):
+            from reportlab.platypus import Image as RLImage
+            _h = 0.85 * cm
+            _w = (1152.0 / 224.0) * _h     # proporção do PNG (1152x224)
+            logo = RLImage(logo_path, width=_w, height=_h)
+            logo.hAlign = 'LEFT'
+            sub_p = Paragraph('<font size="7" color="#64748B">Medicina e '
+                              'Segurança do Trabalho</font>', _base)
+            esq = Table([[logo], [sub_p]], colWidths=[_w])
+            esq.setStyle(TableStyle([
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ]))
+    except Exception:
+        esq = None
+    if esq is None:
+        esq = Paragraph('<b>OCUPACIONAL</b><br/><font size="7" '
+                        'color="#64748B">Medicina e Segurança do '
+                        'Trabalho</font>', sty_esq)
+    dir_txt = f'<b>{titulo}</b>'
+    if sub_norma:
+        dir_txt += f'<br/><font size="7">{sub_norma}</font>'
+    t = Table([[esq, Paragraph(dir_txt, sty_dir)]],
+              colWidths=[W * 0.55, W * 0.45])
+    t.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LINEBELOW', (0, 0), (-1, -1), 1.5, AZUL),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (0, 0), 0),
+    ]))
+    return t
+
+
 # ── Planilha de Campo Completa (multi-tipo: ruído + químico + vibração) ──
 @controle_bp.route('/relatorio/campo-completo', methods=['POST'])
 def gerar_relatorio_campo_completo():
@@ -3625,15 +3684,8 @@ def gerar_relatorio_campo_completo():
     tecnico_disp = f'{tecnico} — MTE {tecnico_mte}' if tecnico_mte else tecnico
 
     # Cabeçalho — padronizado com as planilhas individuais
-    hdr_cp = Table([[
-        Paragraph('<b>OCUPACIONAL ENGENHARIA</b><br/><font size="7" color="#64748B">Higiene Ocupacional e Segurança do Trabalho</font>',
-                  _sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL)),
-        Paragraph('<b>PLANILHA DE CAMPO</b><br/><font size="7">Multi-tipo: Ruído / Químicos / Vibração</font>',
-                  _sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_RIGHT)),
-    ]], colWidths=[W*0.55, W*0.45])
-    hdr_cp.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-        ('LINEBELOW',(0,0),(-1,-1),1.5,AZUL),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
-    story.append(hdr_cp)
+    story.append(_pdf_header(W, 'PLANILHA DE CAMPO',
+                             'Multi-tipo: Ruído / Químicos / Vibração'))
     story.append(Spacer(1, 6))
     story.append(_row2('Empresa:', empresa_nome, 'OS Nº:', os_num))
     story.append(_row2('Data:', data_fmt, 'Técnico:', tecnico_disp))
@@ -3668,6 +3720,9 @@ def gerar_relatorio_campo_completo():
                 _st_txt, _st_clr = '—', '#000000'
             story.append(_row2('Desvio:', f'{_dsv_r} dB',
                                'Status:', f'<font color="{_st_clr}"><b>{_st_txt}</b></font>'))
+        else:
+            # Calibração final ainda não medida — preencher na volta do campo
+            story.append(_row2('Desvio:', '____', 'Status:', '____'))
         story.append(Spacer(1, 4))
 
         trabs = r.get('trabalhadores', [])
@@ -3681,19 +3736,6 @@ def gerar_relatorio_campo_completo():
         while len(linhas_r) < 6:
             linhas_r.append([len(linhas_r)+1,'','','','','',''])
         story.append(_tabela(cab_r, linhas_r, cw_r))
-        story.append(Spacer(1, 6))
-
-        # Resultados das medições — preencher em campo após leitura dos dosímetros
-        story.append(Paragraph('RESULTADOS DAS MEDIÇÕES (preencher após leitura)', sec))
-        story.append(Spacer(1, 2))
-        cab_res = ['#', 'Nome', 'Dose (%)', 'Nível Eq. dB(A)', 'Lavg dB(A)', 'Critério']
-        cw_res  = [W*0.04, W*0.30, W*0.13, W*0.17, W*0.16, W*0.20]
-        linhas_res = []
-        for i, t in enumerate(trabs, 1):
-            linhas_res.append([i, t.get('nome',''), '', '', '', '100% / 85 dB(A)'])
-        while len(linhas_res) < 6:
-            linhas_res.append([len(linhas_res)+1, '', '', '', '', '100% / 85 dB(A)'])
-        story.append(_tabela(cab_res, linhas_res, cw_res))
         story.append(Spacer(1, 10))
 
     # ── Seção Químico ─────────────────────────────────────────────────────
@@ -3741,10 +3783,15 @@ def gerar_relatorio_campo_completo():
                           am.get('codigo') or am.get('amostrador') or '')
                 inicio = am.get('inicio') or am.get('hora_inicio') or am.get('hora_ini') or ''
                 fim    = am.get('fim')    or am.get('hora_final')  or am.get('hora_fim') or ''
-                try:    vi = float(am.get('vi') if am.get('vi') not in (None,'') else am.get('vazao_inicial') or 0)
-                except Exception: vi = 0
-                try:    vf = float(am.get('vf') if am.get('vf') not in (None,'') else am.get('vazao_final') or 0)
-                except Exception: vf = 0
+                # Vazões: na planilha de campo o técnico só traz a vazão
+                # inicial calibrada; Vf/horas/derivadas vêm depois.
+                _vi_raw = am.get('vi') if am.get('vi') not in (None, '') else am.get('vazao_inicial')
+                _vf_raw = am.get('vf') if am.get('vf') not in (None, '') else am.get('vazao_final')
+                try:    vi = float(str(_vi_raw).replace(',', '.')) if _vi_raw not in (None, '') else None
+                except Exception: vi = None
+                try:    vf = float(str(_vf_raw).replace(',', '.')) if _vf_raw not in (None, '') else None
+                except Exception: vf = None
+                # t (min): SOMENTE se início E fim presentes
                 t_min = am.get('t')
                 if t_min in (None, ''):
                     a, b = _hhmm_to_min_cc(inicio), _hhmm_to_min_cc(fim)
@@ -3756,21 +3803,23 @@ def gerar_relatorio_campo_completo():
                             t_min = max(0, t_min - int(float(_itv))) if _itv else t_min
                         except Exception:
                             pass
+                # Vm: SOMENTE se Vi E Vf presentes (>0); senão fica em branco
                 vm = am.get('vm')
                 if vm in (None, ''):
-                    vm = round((vi + vf) / 2, 3) if (vi or vf) else ''
+                    vm = round((vi + vf) / 2, 3) if (vi and vf) else ''
                 vol = am.get('vol')
                 if vol in (None, '') and vm not in (None, '') and t_min not in (None, ''):
                     try: vol = round(float(vm) * float(t_min), 1)
                     except Exception: vol = ''
+                # ΔV%: SOMENTE se Vi E Vf presentes (senão sairia 100% errado)
                 dv = am.get('dv')
-                if dv in (None, '') and vi:
+                if dv in (None, '') and vi and vf:
                     dv = f'{abs(vi - vf) / vi * 100:.1f}'
                 _fmt = lambda x: ('' if x in (None, '') else str(x))
                 rows_q.append([Paragraph(_fmt(x), sml_q) for x in (
                     j, id_am,
-                    am.get('vi') if am.get('vi') not in (None,'') else (vi or ''),
-                    am.get('vf') if am.get('vf') not in (None,'') else (vf or ''),
+                    _vi_raw if _vi_raw not in (None, '') else '',
+                    _vf_raw if _vf_raw not in (None, '') else '',
                     inicio, fim, am.get('intervalos',''), t_min, vm, vol, dv)])
             while len(rows_q) < 3:   # pelo menos 2 linhas (1 em branco p/ campo)
                 rows_q.append([Paragraph(str(len(rows_q)), sml_q)] +
@@ -3915,7 +3964,7 @@ def gerar_relatorio_campo_completo():
     if 'vibracao' in tipos: _normas_cc.append('Vibração: NR-15 Anexo 8 · NHO-09/NHO-10')
     _normas_txt = ('Normas: ' + ' | '.join(_normas_cc) + ' — FUNDACENTRO | ') if _normas_cc else ''
     story.append(Paragraph(
-        f'{_normas_txt}Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        f'{_normas_txt}Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional — Medicina e Segurança do Trabalho',
         _sty('Normal', fontSize=6.5, textColor=colors.HexColor('#94A3B8'), alignment=TA_CENTER)))
 
     story.extend(_fotos_pdf_flowables(base.get('fotos') or [], W))
@@ -4035,17 +4084,8 @@ def gerar_relatorio_ruido():
     elements = []
 
     # ─── Cabeçalho ─────────────────────────────────────────────────
-    hdr_data = [[
-        Paragraph('<b>OCUPACIONAL ENGENHARIA</b><br/><font size="7" color="#64748B">Higiene Ocupacional e Segurança do Trabalho</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL)),
-        Paragraph('<b>PLANILHA DE CAMPO — RUÍDO</b><br/><font size="7">Dosimetria de Ruído | NR-15 Anexo 1 | NHO-01 FUNDACENTRO</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_RIGHT)),
-    ]]
-    hdr_tbl = Table(hdr_data, colWidths=[W*0.55, W*0.45])
-    hdr_tbl.setStyle(TableStyle([
-        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-        ('LINEBELOW',(0,0),(-1,-1),1.5,AZUL),
-        ('BOTTOMPADDING',(0,0),(-1,-1),6),
-    ]))
-    elements.append(hdr_tbl)
+    elements.append(_pdf_header(W, 'PLANILHA DE CAMPO — RUÍDO',
+        'Dosimetria de Ruído | NR-15 Anexo 1 | NHO-01 FUNDACENTRO'))
     elements.append(Spacer(1, 8))
 
     # ─── Identificação da Empresa ───────────────────────────────────
@@ -4106,10 +4146,11 @@ def gerar_relatorio_ruido():
             status_cal_txt = ('✓ APROVADA' if ok_cal else '✗ REPROVADA') + f' (Δ = {desvio} dB)'
             status_cal_color = VERDE if ok_cal else LARANJA
         except:
-            status_cal_txt = str(status_cal) or '—'
+            status_cal_txt = str(status_cal) or '____'
             status_cal_color = PRETO
     else:
-        status_cal_txt = status_cal or '—'
+        # Calibração final ainda não medida — preencher na volta do campo
+        status_cal_txt = status_cal or '____'
         status_cal_color = PRETO
 
     cal_rows = [
@@ -4119,7 +4160,7 @@ def gerar_relatorio_ruido():
         [Paragraph(str(calibrador) or '—', cell_reg),
          Paragraph(str(cal_ini) or '—', cell_reg),
          Paragraph(str(cal_fim) or '—', cell_reg),
-         Paragraph(str(desvio) if desvio != '' else '—', cell_reg),
+         Paragraph(str(desvio) if desvio != '' else '____', cell_reg),
          Paragraph(f'<font color="{status_cal_color.hexval() if hasattr(status_cal_color,"hexval") else "#16A34A"}">{status_cal_txt}</font>', cell_reg)],
     ]
     cal_tbl = Table(cal_rows, colWidths=[W*0.28, W*0.18, W*0.18, W*0.14, W*0.22])
@@ -4188,52 +4229,8 @@ def gerar_relatorio_ruido():
     elements.append(trab_tbl)
     elements.append(Spacer(1, 8))
 
-    # ─── Resultados (a preencher em campo / após leitura) ────────────
-    elements.append(sec_label('5. RESULTADOS DAS MEDIÇÕES (Preencher após leitura dos dosímetros)'))
-    elements.append(Spacer(1, 2))
-
-    res_head = [
-        Paragraph('<b>N°</b>', cell_bold),
-        Paragraph('<b>Nome</b>', cell_bold),
-        Paragraph('<b>Dose (%)</b>', cell_bold),
-        Paragraph('<b>Nível Eq. dB(A)</b>', cell_bold),
-        Paragraph('<b>Lavg dB(A)</b>', cell_bold),
-        Paragraph('<b>Critério NR-15</b>', cell_bold),
-        Paragraph('<b>Classificação</b>', cell_bold),
-    ]
-    res_rows = [res_head]
-    for i in range(1, len(trabs_fill)+1):
-        nm = trabs_fill[i-1].get('nome','') if i-1 < len(trabs_fill) else ''
-        res_rows.append([
-            Paragraph(str(i), cell_reg),
-            Paragraph(nm or '', cell_sml),
-            Paragraph('', cell_reg),
-            Paragraph('', cell_reg),
-            Paragraph('', cell_reg),
-            Paragraph('100% / 85 dB(A)', cell_sml),
-            Paragraph('', cell_reg),
-        ])
-    res_tbl = Table(res_rows, colWidths=[W*0.04, W*0.22, W*0.10, W*0.14, W*0.14, W*0.18, W*0.18],
-                    repeatRows=1)
-    res_tbl.setStyle(TableStyle([
-        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
-        ('GRID',(0,0),(-1,-1),0.4,BORDA),
-        ('FONTSIZE',(0,0),(-1,-1),8),
-        ('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),
-        ('LEFTPADDING',(0,0),(-1,-1),4),
-        ('ALIGN',(0,0),(0,-1),'CENTER'),
-        ('ALIGN',(2,0),(5,-1),'CENTER'),
-        ('ROWBACKGROUNDS',(0,1),(-1,-1),[BRANCO, CINZA]),
-    ]))
-    elements.append(res_tbl)
-    elements.append(Spacer(1, 4))
-    elements.append(Paragraph(
-        '<font size="7" color="#475569">Critério NR-15 Anexo 1 (Portaria 3214/78): '
-        'Limite 85 dB(A) para 8h/dia — Dose = 100%. '
-        'NHO-01 FUNDACENTRO: Nível de Ação 80 dB(A) (NA), Limite de Tolerância 85 dB(A) (LT). '
-        'Classificação: ≤ 80 dB(A) = Baixo | 80–85 = Moderado (NA) | > 85 = Alto (LT).</font>',
-        cell_reg))
-    elements.append(Spacer(1, 8))
+    # (Seção "5. Resultados das medições" removida da planilha de campo —
+    #  o resultado só existe depois, no escritório, via histograma.)
 
     # (Seção "Termo de Responsabilidade — Dosímetros" removida da planilha
     #  de campo a pedido. O input de entrega/devolução no wizard segue existindo.)
@@ -4288,7 +4285,7 @@ def gerar_relatorio_ruido():
     elements.append(Paragraph(
         'Normas: NR-15 Anexo 1 (Portaria 3214/78) — NHO-01 FUNDACENTRO '
         '— ABNT NBR 10151 — Portaria MTb 1.297/2017 | '
-        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional — Medicina e Segurança do Trabalho',
         footer_sty))
 
     doc.build(elements)
@@ -4384,13 +4381,9 @@ def gerar_relatorio_vibracao():
     elements = []
 
     # Cabeçalho
-    hdr = Table([[
-        Paragraph('<b>OCUPACIONAL ENGENHARIA</b><br/><font size="7" color="#64748B">Higiene Ocupacional e Segurança do Trabalho</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL)),
-        Paragraph('<b>PLANILHA DE CAMPO — VIBRAÇÃO</b><br/><font size="7">NR-15 Anexo 8 | NHO-09 (VCI) / NHO-10 (VBMA) FUNDACENTRO</font>', sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_RIGHT)),
-    ]], colWidths=[W*0.55, W*0.45])
-    hdr.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-        ('LINEBELOW',(0,0),(-1,-1),1.5,AZUL),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
-    elements.append(hdr); elements.append(Spacer(1, 8))
+    elements.append(_pdf_header(W, 'PLANILHA DE CAMPO — VIBRAÇÃO',
+        'NR-15 Anexo 8 | NHO-09 (VCI) / NHO-10 (VBMA) FUNDACENTRO'))
+    elements.append(Spacer(1, 8))
 
     # Bloco de dados
     def _info(lbl, val):
@@ -4538,7 +4531,7 @@ def gerar_relatorio_vibracao():
     elements.append(Paragraph(
         'Normas: NR-15 Anexo 8 — NHO-09 (Corpo Inteiro) / NHO-10 (Mãos e Braços) FUNDACENTRO '
         '— ISO 2631 / ISO 5349 | '
-        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional — Medicina e Segurança do Trabalho',
         footer_sty))
 
     doc.build(elements)
@@ -4663,10 +4656,8 @@ def gerar_relatorio_quimico():
     story = []
 
     # ─── Capa / Cabeçalho geral ──────────────────────────────────────
-    story.append(Paragraph('RELATÓRIO DE CAMPO — AGENTES QUÍMICOS', _s('Heading1',
-        fontSize=13, textColor=AZUL, alignment=TA_CENTER, spaceAfter=4)))
-    story.append(Paragraph('NR-15 Anexo 13 · NHO-03 FUNDACENTRO', _s('Normal',
-        fontSize=8, alignment=TA_CENTER, textColor=colors.HexColor('#555'))))
+    story.append(_pdf_header(17.4*cm, 'RELATÓRIO DE CAMPO — AGENTES QUÍMICOS',
+                             'NR-15 Anexo 13 · NHO-03 FUNDACENTRO'))
     story.append(Spacer(1, 8))
 
     # Identificação da empresa (seção comum)
@@ -4847,11 +4838,15 @@ def gerar_relatorio_quimico():
                 tipo_a = am.get('tipo')       or am.get('tipo_amostrador') or ''
                 inicio = am.get('inicio')     or am.get('hora_inicio') or ''
                 fim    = am.get('fim')        or am.get('hora_final') or ''
-                try:    vi = float(am.get('vi') if am.get('vi') not in (None,'') else am.get('vazao_inicial') or 0)
-                except Exception: vi = 0
-                try:    vf = float(am.get('vf') if am.get('vf') not in (None,'') else am.get('vazao_final') or 0)
-                except Exception: vf = 0
-                # Colunas derivadas: calcula se o front não mandou
+                # Vazões: na planilha de campo o técnico só traz a vazão
+                # inicial calibrada; Vf/horas/derivadas vêm depois.
+                _vi_raw = am.get('vi') if am.get('vi') not in (None, '') else am.get('vazao_inicial')
+                _vf_raw = am.get('vf') if am.get('vf') not in (None, '') else am.get('vazao_final')
+                try:    vi = float(str(_vi_raw).replace(',', '.')) if _vi_raw not in (None, '') else None
+                except Exception: vi = None
+                try:    vf = float(str(_vf_raw).replace(',', '.')) if _vf_raw not in (None, '') else None
+                except Exception: vf = None
+                # t (min): SOMENTE se início E fim presentes
                 t_min = am.get('t')
                 if t_min in (None, ''):
                     a, b = _hhmm_to_min(inicio), _hhmm_to_min(fim)
@@ -4865,22 +4860,24 @@ def gerar_relatorio_quimico():
                             t_min = max(0, t_min - int(float(_itv))) if _itv else t_min
                         except Exception:
                             pass
+                # Vm: SOMENTE se Vi E Vf presentes (>0); senão fica em branco
                 vm = am.get('vm')
                 if vm in (None, ''):
-                    vm = round((vi + vf) / 2, 3) if (vi or vf) else ''
+                    vm = round((vi + vf) / 2, 3) if (vi and vf) else ''
                 vol = am.get('vol')
                 if vol in (None, '') and vm not in (None, '') and t_min not in (None, ''):
                     try: vol = round(float(vm) * float(t_min), 1)
                     except Exception: vol = ''
+                # ΔV%: SOMENTE se Vi E Vf presentes (senão sairia 100% errado)
                 dv = am.get('dv')
-                if dv in (None, '') and vi:
+                if dv in (None, '') and vi and vf:
                     dv = f'{abs(vi - vf) / vi * 100:.1f}'
                 _fmt = lambda x: ('' if x in (None, '') else str(x))
                 tbl_rows.append([
                     Paragraph(str(ai+1), norm),
                     Paragraph(_fmt(id_am), norm),
-                    Paragraph(_fmt(am.get('vi') if am.get('vi') not in (None,'') else (vi or '')), norm),
-                    Paragraph(_fmt(am.get('vf') if am.get('vf') not in (None,'') else (vf or '')), norm),
+                    Paragraph(_fmt(_vi_raw if _vi_raw not in (None, '') else ''), norm),
+                    Paragraph(_fmt(_vf_raw if _vf_raw not in (None, '') else ''), norm),
                     Paragraph(_fmt(inicio), norm),
                     Paragraph(_fmt(fim), norm),
                     Paragraph(_fmt(am.get('intervalos','')), norm),
