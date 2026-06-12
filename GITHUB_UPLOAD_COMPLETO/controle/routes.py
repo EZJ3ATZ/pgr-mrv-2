@@ -3522,7 +3522,7 @@ def gerar_relatorio_campo_completo():
         from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
                                         Table, TableStyle, HRFlowable, KeepTogether)
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     except ImportError:
         return jsonify({'erro': 'reportlab nao instalado'}), 500
 
@@ -3621,12 +3621,22 @@ def gerar_relatorio_campo_completo():
 
     story = []
 
-    # Cabeçalho
-    story.append(Paragraph('OCUPACIONAL — Medicina e Segurança do Trabalho', sub))
-    story.append(Paragraph('PLANILHA DE CAMPO', tit))
+    # Nome do técnico exibido (com MTE quando houver) — usado no cabeçalho e na assinatura
+    tecnico_disp = f'{tecnico} — MTE {tecnico_mte}' if tecnico_mte else tecnico
+
+    # Cabeçalho — padronizado com as planilhas individuais
+    hdr_cp = Table([[
+        Paragraph('<b>OCUPACIONAL ENGENHARIA</b><br/><font size="7" color="#64748B">Higiene Ocupacional e Segurança do Trabalho</font>',
+                  _sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL)),
+        Paragraph('<b>PLANILHA DE CAMPO</b><br/><font size="7">Multi-tipo: Ruído / Químicos / Vibração</font>',
+                  _sty('Normal', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, alignment=TA_RIGHT)),
+    ]], colWidths=[W*0.55, W*0.45])
+    hdr_cp.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('LINEBELOW',(0,0),(-1,-1),1.5,AZUL),('BOTTOMPADDING',(0,0),(-1,-1),6)]))
+    story.append(hdr_cp)
     story.append(Spacer(1, 6))
     story.append(_row2('Empresa:', empresa_nome, 'OS Nº:', os_num))
-    story.append(_row2('Data:', data_fmt, 'Técnico:', f'{tecnico}{"  —  MTE " + tecnico_mte if tecnico_mte else ""}'))
+    story.append(_row2('Data:', data_fmt, 'Técnico:', tecnico_disp))
     story.append(_row2('Unidade / Obra:', unidade, 'Cidade:', cidade))
     story.append(_row2('Responsável empresa:', resp_empresa, '', ''))
     story.append(Spacer(1, 8))
@@ -3641,6 +3651,23 @@ def gerar_relatorio_campo_completo():
                            'Calibrador:', r.get('calibrador','')))
         story.append(_row2('Calibração inicial:', f'{r.get("cal_ini","")  or "___"} dB',
                            'Calibração final:', f'{r.get("cal_fim","") or "___"} dB'))
+        # Desvio e status da calibração (critério da planilha individual: |Δ| ≤ 0.5 dB)
+        _dsv_r = r.get('desvio_calibracao', '')
+        if _dsv_r in ('', None) and r.get('cal_ini') not in ('', None) and r.get('cal_fim') not in ('', None):
+            try:
+                _dsv_r = round(float(str(r.get('cal_fim')).replace(',', '.')) -
+                               float(str(r.get('cal_ini')).replace(',', '.')), 2)
+            except Exception:
+                _dsv_r = ''
+        if _dsv_r not in ('', None):
+            try:
+                _ok_cal = abs(float(str(_dsv_r).replace(',', '.'))) <= 0.5
+                _st_txt = ('✓ APROVADA' if _ok_cal else '✗ REPROVADA') + f' (Δ = {_dsv_r} dB)'
+                _st_clr = '#16A34A' if _ok_cal else '#D97706'
+            except Exception:
+                _st_txt, _st_clr = '—', '#000000'
+            story.append(_row2('Desvio:', f'{_dsv_r} dB',
+                               'Status:', f'<font color="{_st_clr}"><b>{_st_txt}</b></font>'))
         story.append(Spacer(1, 4))
 
         trabs = r.get('trabalhadores', [])
@@ -3654,6 +3681,19 @@ def gerar_relatorio_campo_completo():
         while len(linhas_r) < 6:
             linhas_r.append([len(linhas_r)+1,'','','','','',''])
         story.append(_tabela(cab_r, linhas_r, cw_r))
+        story.append(Spacer(1, 6))
+
+        # Resultados das medições — preencher em campo após leitura dos dosímetros
+        story.append(Paragraph('RESULTADOS DAS MEDIÇÕES (preencher após leitura)', sec))
+        story.append(Spacer(1, 2))
+        cab_res = ['#', 'Nome', 'Dose (%)', 'Nível Eq. dB(A)', 'Lavg dB(A)', 'Critério']
+        cw_res  = [W*0.04, W*0.30, W*0.13, W*0.17, W*0.16, W*0.20]
+        linhas_res = []
+        for i, t in enumerate(trabs, 1):
+            linhas_res.append([i, t.get('nome',''), '', '', '', '100% / 85 dB(A)'])
+        while len(linhas_res) < 6:
+            linhas_res.append([len(linhas_res)+1, '', '', '', '', '100% / 85 dB(A)'])
+        story.append(_tabela(cab_res, linhas_res, cw_res))
         story.append(Spacer(1, 10))
 
     # ── Seção Químico ─────────────────────────────────────────────────────
@@ -3669,32 +3709,91 @@ def gerar_relatorio_campo_completo():
             _sub_q = (ag.get('substancias') or ag.get('agente') or '').strip()
             _fn_q  = (ag.get('func_nome') or '').strip()
             _tit_q = (_sub_q + (f' — {_fn_q}' if _fn_q else '')) if _sub_q else (_fn_q or '—')
+            _bomba_q = ag.get('bomba', '') or ''
+            _sn_q    = ag.get('id_bomba', '') or ag.get('bomba_sn', '') or ''
             story.append(Paragraph(
                 f'<b>Agente {idx}:</b> {_tit_q}   '
-                f'<b>Fração:</b> {ag.get("fracao","") or "—"}',
+                f'<b>Fração:</b> {ag.get("fracao","") or "—"}   '
+                f'<b>Bomba:</b> {_bomba_q or "—"}   '
+                f'<b>S/N:</b> {_sn_q or "—"}',
                 norm))
+            story.append(Spacer(1, 2))
             amostr = ag.get('amostradores', [])
-            cab_q = ['#', 'Amostrador', 'Bomba / Modelo', 'S/N', 'Vazão (L/min)', 'Início', 'Fim']
-            cw_q  = [W*0.04, W*0.20, W*0.20, W*0.14, W*0.14, W*0.14, W*0.14]
-            linhas_q = []
+
+            # Tabela 11 colunas com derivadas (t, Vm, Vol, ΔV) — mesma lógica da individual
+            def _hhmm_to_min_cc(s):
+                try:
+                    h, m = str(s).split(':')[:2]
+                    return int(h) * 60 + int(m)
+                except Exception:
+                    return None
+            sml_q  = _sty('Normal', fontSize=6.5, fontName='Helvetica', textColor=colors.black)
+            smlb_q = _sty('Normal', fontSize=6.5, fontName='Helvetica-Bold', textColor=colors.white)
+            cab_q  = ['#', 'ID Amostrador', 'Vi (L/min)', 'Vf (L/min)', 'Início',
+                      'Final', 'Intervalos', 't (min)', 'Vm (L/min)', 'Vol (L)', 'ΔV%']
+            cw_q   = [W*0.030, W*0.160, W*0.090, W*0.090, W*0.082,
+                      W*0.082, W*0.110, W*0.084, W*0.094, W*0.090, W*0.088]
+            rows_q = [[Paragraph(h, smlb_q) for h in cab_q]]
             for j, am in enumerate(amostr, 1):
-                # Chaves do wizard: id_amostrador, vazao_inicial/final, hora_inicio/final;
-                # bomba e S/N ficam no nível do agente — cair para lá quando faltar
-                _vz = am.get('vazao') or am.get('vazao_calibrada') or ''
-                if _vz in ('', None):
-                    vi_, vf_ = am.get('vazao_inicial'), am.get('vazao_final')
-                    if vi_ not in (None, '') or vf_ not in (None, ''):
-                        _vz = f"{vi_ if vi_ not in (None, '') else '—'} / {vf_ if vf_ not in (None, '') else '—'}"
-                linhas_q.append([j,
-                                  am.get('codigo') or am.get('amostrador') or am.get('id_amostrador', ''),
-                                  am.get('bomba') or am.get('bomba_modelo') or ag.get('bomba', ''),
-                                  am.get('sn') or am.get('bomba_sn') or ag.get('id_bomba', ''),
-                                  _vz,
-                                  am.get('hora_ini') or am.get('hora_inicio', ''),
-                                  am.get('hora_fim') or am.get('hora_final', '')])
-            while len(linhas_q) < 4:
-                linhas_q.append([len(linhas_q)+1,'','','','','',''])
-            story.append(_tabela(cab_q, linhas_q, cw_q))
+                # Chaves do wizard (id_amostrador, vazao_inicial/final, hora_inicio/final,
+                # intervalos) com fallback nas chaves antigas
+                id_am  = (am.get('id_amostr') or am.get('id_amostrador') or
+                          am.get('codigo') or am.get('amostrador') or '')
+                inicio = am.get('inicio') or am.get('hora_inicio') or am.get('hora_ini') or ''
+                fim    = am.get('fim')    or am.get('hora_final')  or am.get('hora_fim') or ''
+                try:    vi = float(am.get('vi') if am.get('vi') not in (None,'') else am.get('vazao_inicial') or 0)
+                except Exception: vi = 0
+                try:    vf = float(am.get('vf') if am.get('vf') not in (None,'') else am.get('vazao_final') or 0)
+                except Exception: vf = 0
+                t_min = am.get('t')
+                if t_min in (None, ''):
+                    a, b = _hhmm_to_min_cc(inicio), _hhmm_to_min_cc(fim)
+                    t_min = (b - a) if (a is not None and b is not None and b >= a) else ''
+                    # t = hora final − hora inicial − intervalos (igual à individual)
+                    if t_min != '':
+                        try:
+                            _itv = str(am.get('intervalos') or '0').replace(',', '.').strip()
+                            t_min = max(0, t_min - int(float(_itv))) if _itv else t_min
+                        except Exception:
+                            pass
+                vm = am.get('vm')
+                if vm in (None, ''):
+                    vm = round((vi + vf) / 2, 3) if (vi or vf) else ''
+                vol = am.get('vol')
+                if vol in (None, '') and vm not in (None, '') and t_min not in (None, ''):
+                    try: vol = round(float(vm) * float(t_min), 1)
+                    except Exception: vol = ''
+                dv = am.get('dv')
+                if dv in (None, '') and vi:
+                    dv = f'{abs(vi - vf) / vi * 100:.1f}'
+                _fmt = lambda x: ('' if x in (None, '') else str(x))
+                rows_q.append([Paragraph(_fmt(x), sml_q) for x in (
+                    j, id_am,
+                    am.get('vi') if am.get('vi') not in (None,'') else (vi or ''),
+                    am.get('vf') if am.get('vf') not in (None,'') else (vf or ''),
+                    inicio, fim, am.get('intervalos',''), t_min, vm, vol, dv)])
+            while len(rows_q) < 3:   # pelo menos 2 linhas (1 em branco p/ campo)
+                rows_q.append([Paragraph(str(len(rows_q)), sml_q)] +
+                              [Paragraph('', sml_q) for _ in range(10)])
+            tq = Table(rows_q, colWidths=cw_q, repeatRows=1)
+            tq.setStyle(TableStyle([
+                ('BACKGROUND',(0,0),(-1,0),AZUL),
+                ('GRID',(0,0),(-1,-1),0.3,BORDA),
+                ('FONTSIZE',(0,0),(-1,-1),6.5),
+                ('ALIGN',(0,0),(-1,-1),'CENTER'),
+                ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+                ('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),6),
+                ('LEFTPADDING',(0,0),(-1,-1),2),('RIGHTPADDING',(0,0),(-1,-1),2),
+                ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white, CINZA]),
+            ]))
+            story.append(tq)
+            story.append(Spacer(1, 2))
+            story.append(Paragraph(
+                '* t = hora final − hora inicial − intervalos (min) &nbsp;&nbsp;'
+                '** Vm = (Vi+Vf)/2 &nbsp;&nbsp;'
+                '*** Vol = Vm × t &nbsp;&nbsp;'
+                '**** ΔV = |Vi−Vf|/Vi × 100 (máx ±5%)',
+                _sty('Normal', fontSize=6.5, textColor=colors.HexColor('#555555'))))
             story.append(Spacer(1, 6))
         story.append(Spacer(1, 4))
 
@@ -3732,21 +3831,19 @@ def gerar_relatorio_campo_completo():
                 cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Equipamento / Marca / Ano']
                 cw_v  = [W*0.04,W*0.20,W*0.15,W*0.12,W*0.11,W*0.11,W*0.27]
             else:
-                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Veículo / Modelo / Ano']
-                cw_v  = [W*0.04,W*0.17,W*0.12,W*0.11,W*0.09,W*0.09,W*0.14,W*0.24]
+                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Tipo de terreno','Veículo / Modelo / Ano']
+                cw_v  = [W*0.04,W*0.16,W*0.12,W*0.10,W*0.08,W*0.08,W*0.11,W*0.11,W*0.20]
             linhas_v = []
             for i, p in enumerate(pts_t, 1):
                 row = [i, p.get('nome',''), p.get('funcao','') or p.get('cargo',''),
                        p.get('setor',''), p.get('tempo',''), p.get('tempo_nexp','')]
                 if not is_vmb_t:
                     row.append(p.get('trajeto',''))
+                    row.append(p.get('terreno',''))
                 row.append(_equip_full(p))
                 linhas_v.append(row)
             while len(linhas_v) < 4:
-                row = [len(linhas_v)+1,'','','','','']
-                if not is_vmb_t: row.append('')
-                row.append('')
-                linhas_v.append(row)
+                linhas_v.append([len(linhas_v)+1] + [''] * (len(cab_v) - 1))
             if titulo:
                 story.append(Paragraph(f'<b>{titulo}</b>', bold)); story.append(Spacer(1, 2))
             story.append(_tabela(cab_v, linhas_v, cw_v)); story.append(Spacer(1, 6))
@@ -3755,7 +3852,33 @@ def gerar_relatorio_campo_completo():
             _tab_vib(False, vci_p, 'VCI — Corpo Inteiro' if _both else None)
         if vmb_p or (not pontos and _glob_vmb):
             _tab_vib(True, vmb_p, 'VMB — Mãos e Braços' if _both else None)
+
+        # Registro fotográfico — marcar em campo (igual à planilha individual)
+        _has_vci_cc = bool(vci_p) or (not pontos and not _glob_vmb)
+        _has_vmb_cc = bool(vmb_p) or (not pontos and _glob_vmb)
+        _fotos_cc = []
+        if _has_vci_cc:
+            _fotos_cc.append('<b>VCI:</b> Foto do veículo ( )   Foto do equipamento posicionado ( )   Foto do documento do veículo ( )')
+        if _has_vmb_cc:
+            _fotos_cc.append('<b>VMB:</b> Foto do equipamento ( )   Foto do equipamento + acelerômetro ( )   Foto do funcionário executando a atividade ( )')
+        if _fotos_cc:
+            story.append(Paragraph(
+                '<font size="7" color="#64748B"><b>REGISTRO FOTOGRÁFICO (marcar)</b></font><br/>'
+                + '<br/>'.join(_fotos_cc), norm))
         story.append(Spacer(1, 4))
+
+    # ── Observações de campo ──────────────────────────────────────────────
+    obs_campo = (base.get('obs') or base.get('observacoes') or
+                 d.get('obs') or d.get('observacoes') or '')
+    story.append(Paragraph('OBSERVAÇÕES DE CAMPO', sec))
+    story.append(Spacer(1, 2))
+    if obs_campo:
+        story.append(Paragraph(str(obs_campo), norm))
+    else:
+        story.append(Paragraph('_' * 110, norm))
+        story.append(Spacer(1, 4))
+        story.append(Paragraph('_' * 110, norm))
+    story.append(Spacer(1, 8))
 
     # ── Assinaturas ───────────────────────────────────────────────────────
     story.append(HRFlowable(width=W, thickness=0.5, color=BORDA))
@@ -3764,19 +3887,35 @@ def gerar_relatorio_campo_completo():
     img_resp = _sig_img(sig_avaliado)  # Responsável empresa
     col_tec  = img_tec  if img_tec  else Paragraph('_________________________________', norm)
     col_resp = img_resp if img_resp else Paragraph('_________________________________', norm)
+    _resp_nome = (resp_empresa or base.get('acomp') or
+                  (d.get('ruido') or {}).get('acomp') or
+                  (d.get('vibracao') or {}).get('acomp') or '')
     assin = Table([
         [col_tec, col_resp, Paragraph('_________________________________', norm)],
-        [Paragraph(f'<font size="7">Técnico da Ocupacional<br/>{tecnico}</font>', norm),
-         Paragraph('<font size="7">Responsável da Empresa / Acompanhante</font>', norm),
+        [Paragraph(f'<font size="7">Técnico da Ocupacional<br/>{tecnico_disp}</font>', norm),
+         Paragraph('<font size="7">Responsável da Empresa / Acompanhante</font>'
+                   + (f'<br/><font size="7">{_resp_nome}</font>' if _resp_nome else ''), norm),
          Paragraph(f'<font size="7">Data: {data_fmt}</font>', norm)],
     ], colWidths=[W/3, W/3, W/3])
     assin.setStyle(TableStyle([('ALIGN',(0,0),(-1,-1),'CENTER'),
         ('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),4)]))
     story.append(assin)
     story.append(Spacer(1, 4))
-
     story.append(Paragraph(
-        f'Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
+        'Declaro estar ciente das atividades realizadas, atividades não realizadas, '
+        'observações registradas e eventuais impedimentos descritos neste relatório.',
+        _sty('Normal', fontSize=6.5, fontName='Helvetica-Oblique',
+             textColor=colors.HexColor('#475569'), alignment=TA_CENTER)))
+    story.append(Spacer(1, 4))
+
+    # Rodapé — normas conforme as seções presentes
+    _normas_cc = []
+    if 'ruido' in tipos:    _normas_cc.append('Ruído: NR-15 Anexo 1 · NHO-01')
+    if 'quimico' in tipos:  _normas_cc.append('Químicos: NR-15 Anexo 13 · NHO-03')
+    if 'vibracao' in tipos: _normas_cc.append('Vibração: NR-15 Anexo 8 · NHO-09/NHO-10')
+    _normas_txt = ('Normas: ' + ' | '.join(_normas_cc) + ' — FUNDACENTRO | ') if _normas_cc else ''
+    story.append(Paragraph(
+        f'{_normas_txt}Gerado em: {agora_brt().strftime("%d/%m/%Y %H:%M")} | Ocupacional Engenharia',
         _sty('Normal', fontSize=6.5, textColor=colors.HexColor('#94A3B8'), alignment=TA_CENTER)))
 
     story.extend(_fotos_pdf_flowables(base.get('fotos') or [], W))

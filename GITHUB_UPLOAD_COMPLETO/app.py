@@ -911,7 +911,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-12-r4-geradores-docx-completos'
+BUILD_MARK = '2026-06-12-r5-campo-completo-rico'
 
 
 @app.route('/healthz')
