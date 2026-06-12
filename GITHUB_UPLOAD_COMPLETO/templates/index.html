@@ -5176,9 +5176,9 @@
   <!-- KPIs principais -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:28px;" id="ind-kpis">
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
-      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Total de Medições</div>
+      <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Medições nas OS</div>
       <div style="font-size:2rem;font-weight:800;color:var(--text);" id="ind-total-med">—</div>
-      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">realizadas no sistema</div>
+      <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">realizadas + pendentes (itens de OS)</div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;">
       <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;">Amostradores Ativos</div>
@@ -13642,7 +13642,7 @@ async function biLoad() {
       if (kpiEl && an.kpis) {
         const k = an.kpis;
         kpiEl.innerHTML = [
-          { label:'Total Medições',   val: k.total_medicoes,    color:'#60a5fa', sub:'coletas realizadas' },
+          { label:'Coletas Realizadas', val: k.total_medicoes,  color:'#60a5fa', sub:'planilhas de campo registradas' },
           { label:'OS Concluídas',    val: k.concluidas,        color:'#4ade80', sub:`${k.taxa_conclusao}% do total` },
           { label:'OS em Aberto',     val: k.total_demandas - k.concluidas, color:'#fb923c', sub:'pendentes' },
           { label:'Demandas Atrasadas',val: k.demandas_atrasadas, color:'#f87171', sub:'prazo vencido' },
@@ -15439,11 +15439,51 @@ async function gsSearch(q) {
     });
   }
 
-  // ── Empresas (já carregadas em _empData) ──
+  // ── Empresas (cache local, resposta instantânea quando já carregado) ──
   if (!isQuestion && window._empData && _empData.length) {
     _empData.filter(e => (e.empresa_nome||'').toLowerCase().includes(ql)).slice(0,5).forEach(e => {
       results.push({ icon:'🏢', label: e.empresa_nome, sub: `${e.total_demandas||0} demandas`, action: () => { goToTab('controle'); ctrlInit(); setTimeout(()=>{ const el=document.getElementById('emp-busca'); if(el){el.value=q; empFiltrar();} },300); } });
     });
+  }
+
+  // ── Empresas e OS direto na API — funciona mesmo sem ter visitado a aba
+  //    (antes "Coneo" dava "nenhum resultado" se _empData não estivesse carregado) ──
+  if (!isQuestion && q.length >= 2) {
+    clearTimeout(window._gsApiTimer);
+    const tok = (window._gsTok = (window._gsTok || 0) + 1);
+    window._gsApiTimer = setTimeout(async () => {
+      try {
+        const [emps, dems] = await Promise.all([
+          fetch(`/controle/empresas?q=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : []),
+          /\d{4,}/.test(q)
+            ? fetch(`/controle/demandas?os=${encodeURIComponent(q)}`).then(r => r.ok ? r.json() : [])
+            : Promise.resolve([])
+        ]);
+        if (tok !== window._gsTok) return; // usuário já digitou outra coisa
+        const merged = (window._gsResults || []).slice();
+        const visto = new Set(merged.map(r => r.label));
+        (Array.isArray(emps) ? emps : []).slice(0,5).forEach(e => {
+          if (visto.has(e.nome)) return; visto.add(e.nome);
+          merged.push({ icon:'🏢', label: e.nome, sub: e.cnpj ? `CNPJ ${e.cnpj}` : 'Empresa cadastrada',
+            action: () => { goToTab('empresas'); setTimeout(()=>{ const el=document.getElementById('emp-busca'); if(el){ el.value=e.nome; if(typeof empFiltrar==='function') empFiltrar(); } },350); } });
+        });
+        (Array.isArray(dems) ? dems : []).slice(0,5).forEach(dm => {
+          const lbl = `OS ${dm.numero_os||'—'} — ${dm.empresa_nome || dm.titulo || ''}`;
+          if (visto.has(lbl)) return; visto.add(lbl);
+          merged.push({ icon:'📌', label: lbl, sub: `${dm.status||''}${dm.planner_bucket ? ' · '+dm.planner_bucket : ''}`,
+            action: () => { goToTab('controle'); try { ctrlInit(); setTimeout(()=>ctrlSwitchSub('demand', null), 350); } catch(_){} } });
+        });
+        if (!merged.length) {
+          d.innerHTML = `<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;flex-direction:column;">
+            <div style="color:var(--text3);font-size:.83rem;text-align:center;">Nenhum resultado para "<b style="color:var(--text)">${_esc(q)}</b>"</div>
+            <button onclick="obOpen();gsHide();" style="background:rgba(27,107,107,.15);border:1px solid rgba(27,107,107,.3);border-radius:7px;padding:7px 14px;font-size:.78rem;color:var(--orange);cursor:pointer;font-family:inherit;">🗺️ Abrir guia de operação</button>
+          </div>`;
+          d.style.display = 'block';
+          return;
+        }
+        _gsRender(merged, q, d);
+      } catch(_) {}
+    }, 250);
   }
 
   // ── Agentes/amostradores ──
@@ -15477,9 +15517,14 @@ async function gsSearch(q) {
     }
   }
 
+  _gsRender(results, q, d);
+}
+
+function _gsRender(results, q, d) {
+  window._gsResults = results;
   if (!results.length) {
     d.innerHTML = `<div style="padding:14px 16px;display:flex;align-items:center;gap:10px;flex-direction:column;">
-      <div style="color:var(--text3);font-size:.83rem;text-align:center;">Nenhum resultado para "<b style="color:var(--text)">${_esc(q)}</b>"</div>
+      <div style="color:var(--text3);font-size:.83rem;text-align:center;">Buscando "<b style="color:var(--text)">${_esc(q)}</b>"...</div>
       <button onclick="obOpen();gsHide();" style="background:rgba(27,107,107,.15);border:1px solid rgba(27,107,107,.3);border-radius:7px;padding:7px 14px;font-size:.78rem;color:var(--orange);cursor:pointer;font-family:inherit;">🗺️ Abrir guia de operação</button>
     </div>`;
     d.style.display = 'block';
@@ -15497,7 +15542,6 @@ async function gsSearch(q) {
     </div>
   `).join('');
   d.style.display = 'block';
-  window._gsResults = results;
 }
 
 function gsSelect(i) {
