@@ -3536,13 +3536,16 @@ def _pdf_header(W, titulo, sub_norma=''):
             'static', 'logo-ocupacional-print.png')
         if _os.path.exists(logo_path):
             from reportlab.platypus import Image as RLImage
-            _h = 0.85 * cm
-            _w = (1152.0 / 224.0) * _h     # proporção do PNG (1152x224)
+            from reportlab.lib.utils import ImageReader
+            _iw, _ih = ImageReader(logo_path).getSize()   # proporção real do PNG
+            _h = 0.95 * cm
+            _w = (_iw / float(_ih)) * _h
             logo = RLImage(logo_path, width=_w, height=_h)
             logo.hAlign = 'LEFT'
             sub_p = Paragraph('<font size="7" color="#64748B">Medicina e '
                               'Segurança do Trabalho</font>', _base)
-            esq = Table([[logo], [sub_p]], colWidths=[_w])
+            # coluna mais larga que o logo p/ o subtítulo caber em 1 linha
+            esq = Table([[logo], [sub_p]], colWidths=[max(_w, 6.2 * cm)])
             esq.setStyle(TableStyle([
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
