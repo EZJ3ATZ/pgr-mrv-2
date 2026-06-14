@@ -2791,6 +2791,191 @@ def api_delete_coleta_outros(cid):
     return jsonify({'ok': True})
 
 
+# ── PONTE coleta → laudo (prefill) ────────────────────────────────────
+def _empresa_prefill(empresa_id):
+    """Dados da empresa para o cabeçalho do laudo. Campos que não existem na
+    tabela (endereco/cep/bairro/cnae/descricaoCnae) voltam como ''."""
+    base = {k: '' for k in ('razaoSocial', 'cnpj', 'cidade', 'uf', 'contato',
+                            'telefone', 'email', 'endereco', 'cep', 'bairro',
+                            'cnae', 'descricaoCnae')}
+    if not empresa_id:
+        return base
+    try:
+        with get_db() as conn:
+            row = conn.execute('SELECT * FROM empresas WHERE id=?', (empresa_id,)).fetchone()
+        if not row:
+            return base
+        e = row_to_dict(row)
+        base['razaoSocial'] = e.get('nome') or ''
+        base['cnpj']        = e.get('cnpj') or ''
+        base['cidade']      = e.get('cidade') or ''
+        base['uf']          = e.get('uf') or ''
+        base['contato']     = e.get('contato') or ''
+        base['telefone']    = e.get('telefone') or ''
+        base['email']       = e.get('email') or ''
+        # campos que podem ter sido adicionados por migração futura
+        for k in ('endereco', 'cep', 'bairro', 'cnae', 'descricaoCnae'):
+            if e.get(k):
+                base[k] = e.get(k)
+    except Exception:
+        pass
+    return base
+
+
+def _prefill_ruido(cid):
+    c = get_coleta_ruido(cid)
+    if not c:
+        return None, None
+    tecnico = (c.get('tecnico') or '').strip()
+    trabalhadores = []
+    for f in (c.get('trabalhadores') or []):
+        trabalhadores.append({
+            'nome':   f.get('nome') or '',
+            'cargo':  f.get('cargo') or '',
+            'setor':  f.get('setor') or '',
+            'serie':  f.get('serie_dosimetro') or '',
+            'almoco': bool(f.get('almoco')),
+        })
+    dados = {
+        'os':              c.get('os') or '',
+        'unidade':         c.get('unidade') or '',
+        'cidade':          c.get('cidade') or '',
+        'resp_empresa':    c.get('resp_empresa') or '',
+        'dataColeta':      c.get('data_coleta') or '',
+        'horaInicio':      c.get('hora_inicio') or '',
+        'horaFim':         c.get('hora_termino') or '',
+        'calibrador':      c.get('calibrador') or '',
+        'calIni':          c.get('calibracao_inicial'),
+        'calFim':          c.get('calibracao_final'),
+        'desvioCalib':     c.get('desvio_calibracao'),
+        'statusCalib':     c.get('status_calibracao') or '',
+        'tecnico':         tecnico,
+        'tecnicoMte':      _mte_do_tecnico(tecnico),
+        'acompanhante':    c.get('acompanhante') or '',
+        'cargoAcompanhante': c.get('cargo_acompanhante') or '',
+        'trabalhadores':   trabalhadores,
+    }
+    faltam = ['Dose %, Lavg, NEN e histograma por trabalhador — '
+              'importar o PDF do dosímetro no escritório']
+    return c, ('ruido', dados, faltam)
+
+
+def _prefill_quimico(cid):
+    c = get_coleta_quimico(cid)
+    if not c:
+        return None, None
+    config = {
+        'bomba':      c.get('bomba') or '',
+        'bombaSN':    c.get('id_bomba') or '',
+        'calibrador': c.get('id_calibrador') or '',
+    }
+    avaliacoes = []
+    for am in (c.get('amostradores') or []):
+        avaliacoes.append({
+            'cargo':         c.get('funcao') or '',
+            'trabalhador':   c.get('nome_funcionario') or '',
+            'setor':         c.get('setor') or '',
+            'jornada':       c.get('jornada') or '',
+            'dataColeta':    c.get('data_coleta') or '',
+            'agente':        am.get('substancia') or '',
+            'filtroNumero':  am.get('id_amostrador') or '',
+            'vazaoInicial':  am.get('vazao_inicial'),
+            'vazaoFinal':    am.get('vazao_final'),
+            'vazao':         am.get('vazao_media'),
+            'tempoColeta':   am.get('tempo_min'),
+            'volume':        am.get('volume_L'),
+            'tempoExposicao': c.get('tempo_exposto') or '',
+            'acessorios':    c.get('acessorios') or '',
+        })
+    dados = {'config': config, 'avaliacoes': avaliacoes}
+    faltam = ['Concentração e data de análise (vêm do e-mail do laboratório)',
+              'PDF do laudo do laboratório']
+    return c, ('quimico', dados, faltam)
+
+
+def _prefill_outros(cid):
+    from .db import get_coleta_outros
+    c = get_coleta_outros(cid)
+    if not c:
+        return None, None
+    try:
+        extras = json.loads(c.get('dados_json') or '{}') or {}
+    except Exception:
+        extras = {}
+    tipo = (c.get('tipo') or '').strip().lower()
+    horario = ' – '.join([x for x in (c.get('hora_inicio') or '', c.get('hora_termino') or '') if x])
+    if tipo.startswith('vibracao'):
+        faltam = ['Vibração não tem laudo Word — use a planilha de campo']
+        return c, ('vibracao', {}, faltam)
+    # calor: cada item de ibutg_setores vira um setor com 1 ponto
+    setores = []
+    for s in (extras.get('ibutg_setores') or []):
+        if not isinstance(s, dict):
+            continue
+        nome = s.get('setor') or ''
+        ponto = {
+            'local':     nome,
+            'tempo':     s.get('duracao') or '',
+            'tbn':       s.get('tbn'),
+            'tbs':       s.get('tbs'),
+            'tg':        s.get('tg'),
+            'M':         s.get('M'),
+            'atividade': s.get('regime') or '',
+        }
+        setores.append({
+            'nome':       nome,
+            'horario':    horario,
+            'vestimenta': '',
+            'pontos':     [ponto],
+        })
+    dados = {
+        'dataAvaliacao': c.get('data_coleta') or '',
+        'cidadeCarta':   '',   # preenchido com a cidade da empresa pelo caller
+        'setores':       setores,
+    }
+    faltam = ['Equipamento/certificado/calibração do termo-higrômetro',
+              'ART', 'Logo (se houver)', 'Fotos por setor']
+    return c, ('calor', dados, faltam)
+
+
+@controle_bp.route('/laudo/prefill')
+def api_laudo_prefill():
+    """PONTE coleta → laudo. Devolve os dados de uma coleta finalizada já
+    mapeados para o formato que o formulário de laudo (ruído/químico/calor)
+    espera, mais a lista do que ainda falta (vem do escritório/laboratório)."""
+    init_db()
+    cid = _int_arg('coleta_id')
+    tabela = (request.args.get('tabela') or '').strip().lower()
+    if cid is None:
+        return jsonify({'erro': 'coleta_id inválido'}), 404
+    if tabela not in ('ruido', 'quimico', 'outros'):
+        return jsonify({'erro': 'tabela inválida (use ruido|quimico|outros)'}), 400
+
+    if tabela == 'ruido':
+        coleta, res = _prefill_ruido(cid)
+    elif tabela == 'quimico':
+        coleta, res = _prefill_quimico(cid)
+    else:
+        coleta, res = _prefill_outros(cid)
+
+    if not coleta or not res:
+        return jsonify({'erro': 'Coleta não encontrada'}), 404
+
+    tipo, dados, faltam = res
+    empresa = _empresa_prefill(coleta.get('empresa_id'))
+    # calor: a cidade da carta de apresentação usa a cidade da empresa
+    if tipo == 'calor' and isinstance(dados, dict) and not dados.get('cidadeCarta'):
+        dados['cidadeCarta'] = empresa.get('cidade') or coleta.get('cidade') or ''
+
+    return jsonify({
+        'ok': True,
+        'tipo': tipo,
+        'empresa': empresa,
+        'dados': dados,
+        'faltam': faltam,
+    })
+
+
 # ── Fichas de Campo (HTML print) ─────────────────────────────────────
 _FICHA_CSS = """
 <style>

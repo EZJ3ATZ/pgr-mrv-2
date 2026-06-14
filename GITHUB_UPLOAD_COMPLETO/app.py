@@ -911,7 +911,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-14-r8-planilha-calor-paridade'
+BUILD_MARK = '2026-06-14-r9-ponte-coleta-laudo'
 
 
 @app.route('/healthz')
@@ -1665,7 +1665,32 @@ def gerar_calor():
                     empresa_id = eid
                 except Exception:
                     pass
-            import json as _j
+            # Achata setores/pontos do laudo na MESMA estrutura `ibutg_setores`
+            # que o wizard de campo usa (1 item por ponto). Passar como chave
+            # EXTRA — save_coleta_outros só persiste o que não é coluna fixa.
+            # (Antes mandava 'dados_json' pré-serializado, que o save IGNORA →
+            #  a coleta gravava dados_json NULO.)
+            ibutg_setores = []
+            for _s in (data.get('setores') or []):
+                _nome = _s.get('nome') or ''
+                for _p in (_s.get('pontos') or []):
+                    try:
+                        _tbn = float(_p.get('tbn') or 0)
+                        _tg  = float(_p.get('tg') or 0)
+                        _ibu = round(0.7 * _tbn + 0.3 * _tg, 1)
+                    except Exception:
+                        _ibu = ''
+                    ibutg_setores.append({
+                        'setor':         _nome or (_p.get('local') or ''),
+                        'duracao':       _p.get('tempo') or '',
+                        'tbs':           _p.get('tbs'),
+                        'tbn':           _p.get('tbn'),
+                        'tg':            _p.get('tg'),
+                        'ibutg_interno': _ibu,
+                        'ibutg_externo': '',
+                        'M':             _p.get('M'),
+                        'regime':        _p.get('atividade') or '',
+                    })
             save_coleta_outros({
                 'tipo': 'calor',
                 'empresa_id': empresa_id,
@@ -1676,10 +1701,10 @@ def gerar_calor():
                 'unidade': emp.get('unidade', '') or '',
                 'observacao': data.get('observacao', '') or '',
                 'status': 'concluida',
-                'dados_json': _j.dumps({
-                    'setores': data.get('setores', []),
-                    'config': data.get('config', {}),
-                }),
+                # chaves EXTRA → save_coleta_outros serializa em dados_json
+                'ibutg_setores': ibutg_setores,
+                'setores': data.get('setores', []),
+                'config': data.get('config', {}),
             })
         except Exception as _db_err:
             import traceback; traceback.print_exc()

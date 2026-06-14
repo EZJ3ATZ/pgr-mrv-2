@@ -3104,6 +3104,16 @@
     <div class="page-sub sec-sub">Preencha os dados da empresa, da avaliação e os setores medidos.</div>
   </div>
 
+  <!-- 📋 Gerar a partir de coleta salva (ponte coleta→laudo) -->
+  <div style="margin:0 0 14px;padding:12px 14px;background:rgba(0,150,255,.06);border-left:3px solid #06f;border-radius:8px;">
+    <label style="display:block;font-size:.74rem;color:var(--text2);margin-bottom:6px;font-weight:600;">📋 Gerar a partir de coleta salva</label>
+    <select id="calor-prefill-sel" onchange="calorPrefillCarregar(this.value)" onfocus="laudoPrefillPopular('calor')"
+      style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.85rem;outline:none;cursor:pointer;">
+      <option value="">— selecione uma coleta concluída —</option>
+    </select>
+    <div style="font-size:.74rem;color:var(--text3);margin-top:5px;">Pré-preenche empresa, setores e pontos medidos em campo. Equipamento, certificado e ART ficam para você preencher.</div>
+  </div>
+
   <!-- Importar Empresa -->
   <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <div style="position:relative;flex:1;min-width:220px;">
@@ -3221,6 +3231,16 @@
     <div class="page-sub sec-sub">Importe o PDF do dosímetro CHROMPACK SmartdB para cada avaliação e gere o laudo completo.</div>
   </div>
 
+  <!-- 📋 Gerar a partir de coleta salva (ponte coleta→laudo) -->
+  <div style="margin:0 0 14px;padding:12px 14px;background:rgba(0,150,255,.06);border-left:3px solid #06f;border-radius:8px;">
+    <label style="display:block;font-size:.74rem;color:var(--text2);margin-bottom:6px;font-weight:600;">📋 Gerar a partir de coleta salva</label>
+    <select id="ruido-prefill-sel" onchange="ruidoPrefillCarregar(this.value)" onfocus="laudoPrefillPopular('ruido')"
+      style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.85rem;outline:none;cursor:pointer;">
+      <option value="">— selecione uma coleta concluída —</option>
+    </select>
+    <div style="font-size:.74rem;color:var(--text3);margin-top:5px;">Pré-preenche empresa, trabalhadores e dados de campo. Importe o PDF do dosímetro em cada avaliação para preencher dose/Lavg/NEN.</div>
+  </div>
+
   <!-- Empresa -->
   <div class="card">
     <div class="card-header">
@@ -3325,6 +3345,16 @@
     <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
     <div class="page-title sec-title">Análise Química — NR-15 Agentes Químicos</div>
     <div class="page-sub sec-sub">Preencha os dados, selecione o equipamento e adicione as avaliações.</div>
+  </div>
+
+  <!-- 📋 Gerar a partir de coleta salva (ponte coleta→laudo) -->
+  <div style="margin:0 0 14px;padding:12px 14px;background:rgba(0,150,255,.06);border-left:3px solid #06f;border-radius:8px;">
+    <label style="display:block;font-size:.74rem;color:var(--text2);margin-bottom:6px;font-weight:600;">📋 Gerar a partir de coleta salva</label>
+    <select id="quim-prefill-sel" onchange="quimPrefillCarregar(this.value)" onfocus="laudoPrefillPopular('quimico')"
+      style="width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:.85rem;outline:none;cursor:pointer;">
+      <option value="">— selecione uma coleta concluída —</option>
+    </select>
+    <div style="font-size:.74rem;color:var(--text3);margin-top:5px;">Pré-preenche empresa, equipamento e avaliações de campo. Concentração e data da análise vêm do laboratório — ficam para depois.</div>
   </div>
 
   <!-- Equipamento -->
@@ -6116,7 +6146,9 @@ function goToTab(name) {
   if (name === 'planilhas') planilhasLoad();
   if (name === 'diario') diarioLoad();
   if (name === 'configuracoes') cfgCarregarPerfil();
-  if (name === 'ruido') { nvSigInit('r-sig-avaliado'); nvSigInit('r-sig-empresa'); }
+  if (name === 'ruido') { nvSigInit('r-sig-avaliado'); nvSigInit('r-sig-empresa'); if (typeof laudoPrefillPopular === 'function') laudoPrefillPopular('ruido'); }
+  if (name === 'quimico' && typeof laudoPrefillPopular === 'function') laudoPrefillPopular('quimico');
+  if (name === 'calor'   && typeof laudoPrefillPopular === 'function') laudoPrefillPopular('calor');
   if (name === 'pops') popsLoad();
 }
 
@@ -7802,6 +7834,288 @@ function showRuidoStatus(msg, type) {
 // Init ruído
 rAvals.push(rNewAval());
 rRenderAvals();
+
+/* ════════════════════════════════════════════════════════════════════
+   PONTE COLETA → LAUDO  (pré-preenche o form a partir de coleta salva)
+   Fontes (backend pronto): GET /controle/coletas/feitas
+                            GET /controle/laudo/prefill?coleta_id=&tabela=
+   ════════════════════════════════════════════════════════════════════ */
+
+// tipo do laudo → tabela usada pelo endpoint /laudo/prefill
+const _LAUDO_TABELA = { ruido:'ruido', quimico:'quimico', calor:'outros' };
+const _LAUDO_SEL_ID = { ruido:'ruido-prefill-sel', quimico:'quim-prefill-sel', calor:'calor-prefill-sel' };
+
+function _laudoEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Popula o <select> de uma das 3 telas com as coletas concluídas do tipo.
+async function laudoPrefillPopular(tipo) {
+  const sel = document.getElementById(_LAUDO_SEL_ID[tipo]);
+  if (!sel) return;
+  const atual = sel.value;
+  try {
+    const lista = await ctrlFetch('/controle/coletas/feitas');
+    const arr = (Array.isArray(lista) ? lista : []).filter(c => c && c.tipo === tipo);
+    if (!arr.length) {
+      sel.innerHTML = '<option value="">— nenhuma coleta concluída —</option>';
+      return;
+    }
+    const opts = arr.map(c =>
+      `<option value="${_laudoEsc(c.id)}">OS ${_laudoEsc(c.os)} — ${_laudoEsc(c.empresa_nome)} — ${_laudoEsc(c.data_coleta)}</option>`
+    ).join('');
+    sel.innerHTML = '<option value="">— selecione uma coleta concluída —</option>' + opts;
+    if (atual && arr.some(c => String(c.id) === String(atual))) sel.value = atual;
+  } catch (e) {
+    console.warn('laudoPrefillPopular:', e);
+    sel.innerHTML = '<option value="">— erro ao carregar coletas —</option>';
+  }
+}
+
+// Busca o contrato de pré-preenchimento de uma coleta.
+async function _laudoPrefillFetch(tipo, coletaId) {
+  const tabela = _LAUDO_TABELA[tipo];
+  return await ctrlFetch(`/controle/laudo/prefill?coleta_id=${encodeURIComponent(coletaId)}&tabela=${encodeURIComponent(tabela)}`);
+}
+
+// Preenche os inputs de empresa de um prefixo (ruido/quim/calor) SEM sobrescrever com vazio.
+function _laudoSetEmpresa(prefix, emp) {
+  if (!emp) return;
+  const F = EMPRESA_FIELDS[prefix] || {};
+  const put = (id, v) => { if (id && v) _setVal(id, v); };
+  put(F.nome,     emp.razaoSocial);
+  put(F.fantasia, emp.razaoSocial);   // ruído: fantasia (cabeçalho) — só se vier algo
+  put(F.titulo,   emp.razaoSocial);   // químico: título/fantasia
+  put(F.cnpj,     emp.cnpj);
+  put(F.cep,      emp.cep);
+  put(F.end,      emp.endereco);
+  put(F.rua,      emp.endereco);
+  put(F.bairro,   emp.bairro);
+  put(F.cidade,   emp.cidade);
+  put(F.cnae,     emp.cnae);
+  put(F.cnaeDesc, emp.descricaoCnae);
+  if (F.uf && emp.uf) { const el = document.getElementById(F.uf); if (el) el.value = emp.uf; }
+}
+
+// Aviso amigável com a lista `faltam` do contrato.
+function _laudoFaltamMsg(faltam) {
+  if (!faltam || !faltam.length) return '';
+  return ' Faltam (preencher depois): ' + faltam.join('; ') + '.';
+}
+
+// ── RUÍDO ─────────────────────────────────────────────────────────────
+async function ruidoPrefillCarregar(coletaId) {
+  if (!coletaId) return;
+  try {
+    const r = await _laudoPrefillFetch('ruido', coletaId);
+    if (!r || !r.ok) throw new Error('Contrato inválido');
+    const d = r.dados || {};
+    _laudoSetEmpresa('ruido', r.empresa);
+
+    // Cabeçalho / responsável (campos do form de ruído)
+    if (d.cidade)       _setVal('r-cidade', d.cidade);
+    if (d.unidade)      _setVal('r-fantasia', d.unidade);   // unidade aparece no cabeçalho
+    if (d.resp_empresa) _setVal('r-responsavel', d.resp_empresa);
+
+    // Técnico: o select usa value JSON {nome,mte}. Tenta casar pelo nome; senão injeta opção.
+    if (d.tecnico) {
+      const selT = document.getElementById('r-tecnico');
+      if (selT) {
+        const alvo = String(d.tecnico).trim().toLowerCase();
+        let casou = false;
+        Array.from(selT.options).forEach(o => {
+          let nm = '';
+          try { nm = (JSON.parse(o.value).nome || '').trim().toLowerCase(); } catch(_) { nm = (o.textContent||'').split('—')[0].trim().toLowerCase(); }
+          if (!casou && nm && nm === alvo) { selT.value = o.value; casou = true; }
+        });
+        if (!casou) {
+          const opt = document.createElement('option');
+          opt.value = JSON.stringify({ nome: d.tecnico, mte: d.tecnicoMte || '' });
+          opt.textContent = d.tecnicoMte ? `${d.tecnico} — MTE ${d.tecnicoMte}` : d.tecnico;
+          opt.selected = true;
+          selT.appendChild(opt);
+        }
+      }
+    }
+
+    // Uma avaliação por trabalhador (campos de campo; dose/Lavg/NEN/histograma ficam VAZIOS)
+    const trabs = Array.isArray(d.trabalhadores) ? d.trabalhadores : [];
+    if (trabs.length) {
+      rAvals = trabs.map(t => {
+        const av = rNewAval();
+        av.trabalhador = t.nome  || '';
+        av.cargo       = t.cargo || '';
+        av.setor       = t.setor || '';
+        av.serie       = t.serie || '';
+        if (t.almoco) av.jornada = av.jornada || '';   // almoço informativo; não há campo dedicado
+        // dados de campo compartilhados pela coleta
+        av.dataColeta  = d.dataColeta || '';
+        av.horaInicio  = d.horaInicio || '';
+        av.horaFim     = d.horaFim    || '';
+        av.calIni      = d.calIni     || '';
+        av.calFin      = d.calFim     || '';
+        if (d.desvioCalib) av.desvioCalib = d.desvioCalib;
+        if (d.statusCalib) av.statusCalib = d.statusCalib;
+        // dose/Lavg/NEN/histograma intencionalmente em branco (vêm do dosímetro)
+        return av;
+      });
+      rRenderAvals();
+    }
+
+    _showToast('✓ Coleta carregada no laudo de ruído.' + _laudoFaltamMsg(r.faltam), 'success');
+    showRuidoStatus('✓ Pré-preenchido pela coleta. Importe o PDF do dosímetro em cada avaliação (dose/Lavg/NEN).' + _laudoFaltamMsg(r.faltam), 'ok');
+  } catch (e) {
+    console.warn('ruidoPrefillCarregar:', e);
+    _showToast('Erro ao carregar coleta: ' + e.message, 'error');
+  }
+}
+
+// ── QUÍMICO ───────────────────────────────────────────────────────────
+async function quimPrefillCarregar(coletaId) {
+  if (!coletaId) return;
+  try {
+    const r = await _laudoPrefillFetch('quimico', coletaId);
+    if (!r || !r.ok) throw new Error('Contrato inválido');
+    const d = r.dados || {};
+    _laudoSetEmpresa('quim', r.empresa);
+
+    // Config (bomba / SN / calibrador)
+    const cfg = d.config || {};
+    if (cfg.bomba) {
+      const selB = document.getElementById('q-bomba');
+      if (selB) {
+        let model = '';
+        const raw = String(cfg.bomba).trim();
+        if (_Q_BOMBA_LABELS[raw]) model = raw;                               // já é a chave (bdx/airlite/...)
+        else if (typeof _CQ_BOMBA_MAP !== 'undefined' && _CQ_BOMBA_MAP[raw]) model = _CQ_BOMBA_MAP[raw];
+        else {
+          const up = raw.toUpperCase();
+          for (const [k, lbl] of Object.entries(_Q_BOMBA_LABELS)) {
+            if (lbl.toUpperCase().replace(/\s|–|-/g,'').includes(up.replace(/\s|–|-/g,'')) ||
+                up.replace(/\s|–|-/g,'').includes(lbl.toUpperCase().replace(/\s|–|-/g,''))) { model = k; break; }
+          }
+        }
+        if (model) {
+          selB.value = model;
+          qUpdateBombaSN();   // recarrega lista de S/N do modelo
+          if (cfg.bombaSN) {
+            const selSN = document.getElementById('q-bomba-sn');
+            setTimeout(() => {
+              if (selSN) {
+                if (!Array.from(selSN.options).some(o => o.value === cfg.bombaSN)) {
+                  const o = document.createElement('option'); o.value = cfg.bombaSN; o.textContent = cfg.bombaSN; selSN.appendChild(o);
+                }
+                selSN.value = cfg.bombaSN;
+              }
+            }, 400);
+          }
+        }
+      }
+    }
+    if (cfg.calibrador) {
+      const radios = document.getElementsByName('q-calib');
+      Array.from(radios).forEach(rb => { if (rb.value === cfg.calibrador) rb.checked = true; });
+    }
+
+    // Uma avaliação por item de avaliacoes[] (concentracao/dataAnalise ficam VAZIOS)
+    const avs = Array.isArray(d.avaliacoes) ? d.avaliacoes : [];
+    if (avs.length) {
+      qAvals = avs.map(a => {
+        const av = qNewAval();
+        av.cargo          = a.cargo          || '';
+        av.trabalhador    = a.trabalhador    || '';
+        av.setor          = a.setor          || '';
+        av.jornada        = a.jornada        || av.jornada;
+        av.dataColeta     = a.dataColeta     || '';
+        av.filtroNumero   = a.filtroNumero   || '';
+        av.vazaoInicial   = a.vazaoInicial   || av.vazaoInicial;
+        av.vazaoFinal     = a.vazaoFinal     || av.vazaoFinal;
+        av.tempoColeta    = a.tempoColeta    || av.tempoColeta;
+        av.volume         = a.volume         || av.volume;
+        av.tempoExposicao = a.tempoExposicao || av.tempoExposicao;
+        av.acessorios     = a.acessorios     || av.acessorios;
+        av.agente         = a.agente         || '';
+        // concentracao e dataAnalise intencionalmente em branco (vêm do laboratório)
+        return av;
+      });
+      qRenderAvals();
+      // Após render, dispara qAgenteChange p/ cada agente → limites LT/NA vêm da tabela
+      qAvals.forEach((av, i) => { if (av.agente) qAgenteChange(i, av.agente); });
+      qRenderAvals();
+    }
+
+    _showToast('✓ Coleta carregada na análise química.' + _laudoFaltamMsg(r.faltam), 'success');
+    showQStatus('✓ Pré-preenchido pela coleta. Concentração e Data da Análise vêm do laboratório.' + _laudoFaltamMsg(r.faltam), 'ok');
+  } catch (e) {
+    console.warn('quimPrefillCarregar:', e);
+    _showToast('Erro ao carregar coleta: ' + e.message, 'error');
+  }
+}
+
+// ── CALOR ─────────────────────────────────────────────────────────────
+async function calorPrefillCarregar(coletaId) {
+  if (!coletaId) return;
+  try {
+    const r = await _laudoPrefillFetch('calor', coletaId);
+    if (!r || !r.ok) throw new Error('Contrato inválido');
+    const d = r.dados || {};
+    const emp = r.empresa || {};
+
+    // Empresa (#c-*) — só sobrescreve quando vier valor
+    const putC = (id, v) => { if (v) _setVal(id, v); };
+    putC('c-nome',      emp.razaoSocial);
+    putC('c-cnpj',      emp.cnpj);
+    putC('c-cep',       emp.cep);
+    putC('c-end',       emp.endereco);
+    putC('c-bairro',    emp.bairro);
+    putC('c-cidade',    emp.cidade);
+    putC('c-cnae',      emp.cnae);
+    putC('c-cnae-desc', emp.descricaoCnae);
+    putC('c-contato',   emp.contato);
+    putC('c-tel',       emp.telefone);
+    putC('c-email',     emp.email);
+    if (emp.uf) { const el = document.getElementById('c-uf'); if (el) el.value = emp.uf; }
+
+    // Avaliação
+    if (d.dataAvaliacao) _setVal('c-data', d.dataAvaliacao);
+    if (d.cidadeCarta)   _setVal('c-carta', d.cidadeCarta);
+
+    // Setores (já vêm no shape esperado por gerarCalor / renderSetores)
+    const setrs = Array.isArray(d.setores) ? d.setores : [];
+    if (setrs.length) {
+      setores = setrs.map(s => ({
+        nome: s.nome || '',
+        horario: s.horario || '',
+        vestimenta: s.vestimenta || 'Uniforme de Trabalho (0)',
+        pontos: (Array.isArray(s.pontos) ? s.pontos : []).map(p => ({
+          local: p.local || '',
+          tempo: (p.tempo === '' || p.tempo == null) ? 60 : +p.tempo,
+          tbn: p.tbn != null ? p.tbn : '',
+          tbs: p.tbs != null ? p.tbs : '',
+          tg:  p.tg  != null ? p.tg  : '',
+          atividade: p.atividade || 'Trabalho Moderado – De pé, com os braços e tronco',
+          M: (p.M === '' || p.M == null) ? 198 : +p.M,
+          fotos: [null, null, null]
+        }))
+      }));
+      if (typeof window !== 'undefined') window.setores = setores;
+      renderSetores();
+      setores.forEach((_, si) => recalcSetor(si));
+    }
+
+    _showToast('✓ Coleta carregada no laudo de calor.' + _laudoFaltamMsg(r.faltam), 'success');
+    showCalorStatus('✓ Pré-preenchido pela coleta. Equipamento, certificado e ART ficam manuais.' + _laudoFaltamMsg(r.faltam), 'ok');
+  } catch (e) {
+    console.warn('calorPrefillCarregar:', e);
+    _showToast('Erro ao carregar coleta: ' + e.message, 'error');
+  }
+}
+
+window.laudoPrefillPopular  = laudoPrefillPopular;
+window.ruidoPrefillCarregar = ruidoPrefillCarregar;
+window.quimPrefillCarregar  = quimPrefillCarregar;
+window.calorPrefillCarregar = calorPrefillCarregar;
 
 /* ════════════════════════════════════════════════════════════════════
    AUTOMAÇÕES — BrasilAPI, Cache de Empresas, Calor M auto, Preview
