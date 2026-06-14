@@ -7365,7 +7365,7 @@ function qUpdateAvalBombaSN(i, model) {
 function qAddAval() { qAvals.push(qNewAval()); qRenderAvals(); }
 function qRemoveAval(i) { qAvals.splice(i,1); qRenderAvals(); }
 function qEsc(s) {
-  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // When agent is selected, auto-fill from guia de métodos
@@ -7674,7 +7674,7 @@ function rAddCerts(i) {
 function rRemCert(i, ci) { rAvals[i].certImgs.splice(ci, 1); rRenderAvals(); }
 
 function rEsc(s) {
-  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function rRenderAvals() {
