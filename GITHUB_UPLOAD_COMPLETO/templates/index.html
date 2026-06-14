@@ -2100,6 +2100,7 @@
   </div>
 </header>
 <script>
+  window._dataBR = function(s){ if(!s) return '—'; const p=String(s).slice(0,10).split('-'); return p.length===3 && p[0].length===4 ? p[2]+'/'+p[1]+'/'+p[0] : String(s); };
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('user-menu');
     if (menu && !e.target.closest('.header-user')) menu.classList.remove('open');
@@ -7179,10 +7180,6 @@ async function quim_importarBaixas() {
     // Pré-preenche empresa se disponível
     if (baixas[0].empresa_nome && !document.getElementById('q-razao').value)
       document.getElementById('q-razao').value = baixas[0].empresa_nome;
-    if (baixas[0].data_medicao && !document.getElementById('q-data-ini')?.value) {
-      const el = document.getElementById('q-data-ini');
-      if (el) el.value = baixas[0].data_medicao;
-    }
     _showToast(`${baixas.length} baixa(s) encontrada(s) para OS ${os_num}. Verifique e ajuste os campos.`, 'success');
   } catch(e) { _showToast('Erro ao buscar baixas', 'error'); }
 }
@@ -7863,7 +7860,7 @@ async function laudoPrefillPopular(tipo) {
       return;
     }
     const opts = arr.map(c =>
-      `<option value="${_laudoEsc(c.id)}">OS ${_laudoEsc(c.os)} — ${_laudoEsc(c.empresa_nome)} — ${_laudoEsc(c.data_coleta)}</option>`
+      `<option value="${_laudoEsc(c.id)}">OS ${_laudoEsc(c.os)} — ${_laudoEsc(c.empresa_nome)} — ${_laudoEsc(window._dataBR(c.data_coleta))}</option>`
     ).join('');
     sel.innerHTML = '<option value="">— selecione uma coleta concluída —</option>' + opts;
     if (atual && arr.some(c => String(c.id) === String(atual))) sel.value = atual;
@@ -8910,7 +8907,7 @@ async function ctrlLoadVencendo() {
         <td><b>${a.tipo||'—'}</b></td>
         <td>${a.codigo||'—'}</td>
         <td>${_esc(a.empresa_nome||'—')}</td>
-        <td>${(a.data_envio_lab||'').slice(0,10)} <div style="color:var(--text3); font-size:.7rem;">há ${a.dias_no_lab||0}d</div></td>
+        <td>${window._dataBR(a.data_envio_lab)} <div style="color:var(--text3); font-size:.7rem;">há ${a.dias_no_lab||0}d</div></td>
         <td>${a.dias_validade||45}d</td>
         <td style="color:var(--text3); font-size:.75rem;">${ctrlCalcDataVenc(a.data_envio_lab, a.dias_validade)}</td>
         <td><span style="color:${cor}; font-weight:600; font-size:.78rem;">${lbl}</span></td>
@@ -11947,10 +11944,10 @@ async function ctrlLoadAmostr() {
         <td><span class="ctrl-badge ${st}">${_amostrStatusLabel(a.status)}</span></td>
         <td><b>${a.tipo||'—'}</b></td>
         <td style="font-family:monospace; font-size:.82rem;">${a.codigo||'—'}</td>
-        <td style="font-size:.78rem;">${(a.data_entrada||'').slice(0,10)||'—'}</td>
+        <td style="font-size:.78rem;">${window._dataBR(a.data_entrada)}</td>
         <td style="font-size:.82rem; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(a.empresa_nome||'').replace(/"/g,'&quot;')}">${_esc(a.empresa_nome||'—')}</td>
         <td style="font-size:.78rem;">${a.avaliador||'—'}</td>
-        <td style="font-size:.78rem;">${(a.data_medicao||'').slice(0,10)||'—'}</td>
+        <td style="font-size:.78rem;">${window._dataBR(a.data_medicao)}</td>
         <td style="color:${corParado}; font-size:.78rem; font-weight:600;">${lblParado}</td>
         <td>${acoes}</td>
       </tr>`;
@@ -13177,7 +13174,7 @@ function empRenderPainel() {
           <div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
             <div style="flex:1;">
               <div style="font-size:.8rem;font-weight:600;color:var(--text);">${a.codigo}</div>
-              <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${a.data_medicao||'—'}</div>
+              <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${window._dataBR(a.data_medicao)}</div>
             </div>
             <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='disponivel'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='disponivel'?'var(--green)':'var(--blue)'};">${_amostrStatusLabel(a.status)}</span>
           </div>`).join('')}
@@ -13235,7 +13232,7 @@ function empRenderPainel() {
           <div style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
             <div style="flex:1;">
               <div style="font-size:.8rem;font-weight:600;color:var(--text);">${a.codigo}</div>
-              <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${a.data_medicao||'—'}</div>
+              <div style="font-size:.68rem;color:var(--text3);">${a.tipo} · ${window._dataBR(a.data_medicao)}</div>
             </div>
             <span style="font-size:.68rem;padding:2px 8px;border-radius:10px;background:${a.status==='disponivel'?'rgba(16,185,129,.1)':'rgba(96,165,250,.1)'};color:${a.status==='disponivel'?'var(--green)':'var(--blue)'};">${_amostrStatusLabel(a.status)}</span>
           </div>`).join('')}
@@ -13512,7 +13509,7 @@ function biAtrasadaDrill(i) {
 }
 function biLabDrill(i) {
   var a = (window._biLabItems||[])[i]; if (!a) return;
-  var rows = [['Código',a.codigo],['Tipo',a.tipo],['Empresa',a.empresa_nome],['Status',a.status],['Agente',a.agente],['Entrada',a.data_entrada],['Medição',a.data_medicao],['Envio Lab',a.data_envio_lab],['Resultado',a.data_resultado],['Tempo parado',a.tempo_parado!=null?a.tempo_parado+'d':null]].filter(function(r){return r[1];});
+  var rows = [['Código',a.codigo],['Tipo',a.tipo],['Empresa',a.empresa_nome],['Status',a.status],['Agente',a.agente],['Entrada',window._dataBR(a.data_entrada)],['Medição',window._dataBR(a.data_medicao)],['Envio Lab',window._dataBR(a.data_envio_lab)],['Resultado',window._dataBR(a.data_resultado)],['Tempo parado',a.tempo_parado!=null?a.tempo_parado+'d':null]].filter(function(r){return r[1];});
   var html = '<div style="background:#18181b;border:1px solid #27272a;border-radius:8px;overflow:hidden;">';
   rows.forEach(function(r) { html += '<div style="display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #27272a;"><span style="font-size:.72rem;color:#71717a;">'+r[0]+'</span><span style="font-size:.72rem;color:#e4e4e7;font-weight:500;">'+r[1]+'</span></div>'; });
   html += '</div>';

@@ -75,6 +75,15 @@ def _int_arg(nome, default=None):
         return default
 
 
+def _iso_br(s):
+    """Converte data ISO (yyyy-mm-dd, com ou sem hora) para dd/mm/aaaa.
+    Já-BR ou vazio passam intactos. Usado para nunca vazar ISO ao cliente."""
+    s = (s or '').strip()
+    if len(s) >= 10 and s[4] == '-' and s[7] == '-':
+        return f'{s[8:10]}/{s[5:7]}/{s[0:4]}'
+    return s
+
+
 @controle_bp.before_request
 def _require_login():
     # Toda rota do controle exige login — leitura e escrita.
@@ -2841,7 +2850,7 @@ def _prefill_ruido(cid):
         'unidade':         c.get('unidade') or '',
         'cidade':          c.get('cidade') or '',
         'resp_empresa':    c.get('resp_empresa') or '',
-        'dataColeta':      c.get('data_coleta') or '',
+        'dataColeta':      _iso_br(c.get('data_coleta')),
         'horaInicio':      c.get('hora_inicio') or '',
         'horaFim':         c.get('hora_termino') or '',
         'calibrador':      c.get('calibrador') or '',
@@ -2876,7 +2885,7 @@ def _prefill_quimico(cid):
             'trabalhador':   c.get('nome_funcionario') or '',
             'setor':         c.get('setor') or '',
             'jornada':       c.get('jornada') or '',
-            'dataColeta':    c.get('data_coleta') or '',
+            'dataColeta':    _iso_br(c.get('data_coleta')),
             'agente':        am.get('substancia') or '',
             'filtroNumero':  am.get('id_amostrador') or '',
             'vazaoInicial':  am.get('vazao_inicial'),
@@ -2929,7 +2938,7 @@ def _prefill_outros(cid):
             'pontos':     [ponto],
         })
     dados = {
-        'dataAvaliacao': c.get('data_coleta') or '',
+        'dataAvaliacao': _iso_br(c.get('data_coleta')),
         'cidadeCarta':   '',   # preenchido com a cidade da empresa pelo caller
         'setores':       setores,
     }
@@ -3277,6 +3286,7 @@ def ficha_coleta_ruido(cid):
     if not c:
         return 'Coleta não encontrada', 404
     c.setdefault('funcionarios', [])
+    c['data_coleta'] = _iso_br(c.get('data_coleta'))
     html = _FICHA_RUIDO_HTML.replace('{{ css }}', _FICHA_CSS)
     return render_template_string(html, c=c)
 
@@ -3288,6 +3298,7 @@ def ficha_coleta_quimico(cid):
     if not c:
         return 'Coleta não encontrada', 404
     c.setdefault('amostradores', [])
+    c['data_coleta'] = _iso_br(c.get('data_coleta'))
     html = _FICHA_QUIMICO_HTML.replace('{{ css }}', _FICHA_CSS)
     return render_template_string(html, c=c)
 
@@ -3385,6 +3396,7 @@ def ficha_coleta_outros(cid):
     except Exception:
         extras = {}
     c['os']        = c.get('numero_os') or ''
+    c['data_coleta'] = _iso_br(c.get('data_coleta'))
     c['regime']    = extras.get('regime') or ''
     c['pontos']    = extras.get('pontos') or ''
     c['tipo_vibr'] = extras.get('tipo_vibr') or ''
@@ -4134,7 +4146,7 @@ def gerar_relatorio_campo_completo():
             data_fmt = _dd.strftime('%d/%m/%Y')
             dia_semana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][_dd.weekday()]
         except Exception:
-            data_fmt = data_coleta
+            data_fmt = _iso_br(data_coleta)
     else:
         data_fmt = data_coleta or '___/___/______'
 
@@ -4505,7 +4517,7 @@ def gerar_relatorio_ruido():
         try:
             from datetime import datetime as _dt
             data_fmt = _dt.strptime(data_coleta, '%Y-%m-%d').strftime('%d/%m/%Y')
-        except: data_fmt = data_coleta
+        except: data_fmt = _iso_br(data_coleta)
     else:
         data_fmt = data_coleta or '___/___/______'
 
@@ -4814,7 +4826,7 @@ def gerar_relatorio_vibracao():
             from datetime import datetime as _dt
             data_fmt = _dt.strptime(data_coleta, '%Y-%m-%d').strftime('%d/%m/%Y')
         except Exception:
-            data_fmt = data_coleta
+            data_fmt = _iso_br(data_coleta)
     else:
         data_fmt = data_coleta or '___/___/______'
 
@@ -5064,7 +5076,7 @@ def gerar_relatorio_calor_pdf(d):
             from datetime import datetime as _dt
             data_fmt = _dt.strptime(data_coleta, '%Y-%m-%d').strftime('%d/%m/%Y')
         except Exception:
-            data_fmt = data_coleta
+            data_fmt = _iso_br(data_coleta)
     else:
         data_fmt = data_coleta or '___/___/______'
 
@@ -5233,7 +5245,7 @@ def gerar_relatorio_quimico():
             data_fmt     = _d.strftime('%d/%m/%Y')
             dia_semana   = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][_d.weekday()]
         except:
-            data_fmt   = data_coleta
+            data_fmt   = _iso_br(data_coleta)
             dia_semana = ''
     else:
         data_fmt   = data_coleta or '___/___/______'
