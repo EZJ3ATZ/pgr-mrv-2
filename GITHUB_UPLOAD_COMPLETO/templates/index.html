@@ -4250,7 +4250,6 @@
         <div class="nv-g3 nv-f" style="margin-bottom:12px;">
           <div><label>Acompanhante da Inspeção</label><input type="text" id="nv-cr-acomp" placeholder="Nome"></div>
           <div><label>Cargo do Acompanhante</label><input type="text" id="nv-cr-cargo-acomp" placeholder="Cargo"></div>
-          <div><label>Técnico Ocupacional</label><input type="text" id="nv-cr-tecnico" value=""></div>
         </div>
         <div class="nv-g2 nv-f">
           <div><label>Hora de Início</label><input type="time" id="nv-cr-hora-ini"></div>
@@ -4294,18 +4293,6 @@
           </table>
         </div>
         <div style="margin-top:9px;font-size:.7rem;color:var(--text3);line-height:1.5;">⚠ Monitoramento conforme Anexo 01 NR-15 (Portaria 3214/78 MTE) e NHO-01 FUNDACENTRO.</div>
-      </div>
-
-      <div class="nv-card">
-        <div class="nv-card-title">Termo de Responsabilidade de Equipamentos</div>
-        <div style="font-size:.78rem;color:var(--text3);margin-bottom:12px;">Colaboradores que recebem os equipamentos e assinarão na devolução</div>
-        <div style="overflow-x:auto;">
-          <table class="nv-trab-tbl">
-            <thead><tr><th>#</th><th>Nome</th><th>Função</th><th>Data Entrega</th><th>Data Devolução</th><th></th></tr></thead>
-            <tbody id="nv-cr-termo-tbody"><tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Nenhum colaborador</td></tr></tbody>
-          </table>
-        </div>
-        <button onclick="nvCrAddTermo()" style="margin-top:10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.79rem;font-family:inherit;">+ Colaborador</button>
       </div>
     </div>
 
@@ -8148,14 +8135,6 @@ async function loadTecnicos() {
     const me = meRes;
     window._me = me;  // cache global (usado p/ pré-preencher MTE no relatório)
 
-    // Preenche inputs de texto com nome do usuário logado
-    if (me) {
-      ['nv-cr-tecnico'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && !el.value) el.value = me.nome;
-      });
-    }
-
     // IDs dos selects que devem listar técnicos (auto-seleciona o usuário logado)
     const selectIds = ['r-tecnico', 'plan-tecnico', 'cr-tecnico', 'ctrl-nv-avaliador'];
 
@@ -10931,13 +10910,11 @@ async function ctrlNvVincularPlanejamento(pid) {
     const osEl = document.getElementById('ctrl-nv-os');
     if (osEl && p.numero_os) { osEl.value = p.numero_os; ctrlNvOsChange(p.numero_os); }
 
-    // ── Preencher técnico (cabeçalho + "Técnico Ocupacional" do ruído, p/ não divergir) ──
+    // ── Preencher técnico (cabeçalho) ──
     const tecEl = document.getElementById('ctrl-nv-avaliador');
     if (tecEl && p.tecnico) {
       [...tecEl.options].forEach(o => { if (o.text.includes(p.tecnico.split(' ')[0])) tecEl.value = o.value; });
     }
-    const tecRuido = document.getElementById('nv-cr-tecnico');
-    if (tecRuido && p.tecnico) tecRuido.value = p.tecnico;
 
     // ── Preencher data prevista ──
     if (p.data_prevista) {
@@ -13752,7 +13729,6 @@ let _nvStep  = 1;
 let _nvTipo  = '';      // compatibilidade — primeiro tipo selecionado
 let _nvTipos = [];      // array com todos os tipos selecionados
 let _nvCrTrabs  = [];
-let _nvCrTermos = [];
 let _nvCqAgentes = [];  // multi-agente químico
 
 function nvTipoChange() {
@@ -13804,7 +13780,7 @@ function nvDraftSave() {
     localStorage.setItem(_NV_DRAFT_KEY, JSON.stringify({
       ts: Date.now(), tipos: _nvTipos, tipo: _nvTipo, step: _nvStep,
       fields: _nvCollectFields(),
-      trabs: _nvCrTrabs || [], crTermos: _nvCrTermos || [], cq: _nvCqAgentes || [],
+      trabs: _nvCrTrabs || [], cq: _nvCqAgentes || [],
       vibr: window._nvVibrPontos || [], vibrVeic: window._nvVibrVeic || {},
       calor: window._nvCalorSetores || [],
       itens: window._ctrlNvItens || [], planId: window._nvPlanejamentoId || null,
@@ -13817,7 +13793,7 @@ function nvDraftRestore() {
   let d; try { d = JSON.parse(localStorage.getItem(_NV_DRAFT_KEY) || 'null'); } catch (e) { return false; }
   if (!d || !d.tipos || !d.tipos.length) return false;
   _nvTipos = d.tipos.slice(); _nvTipo = d.tipo || _nvTipos[0] || '';
-  _nvCrTrabs = d.trabs || []; _nvCrTermos = d.crTermos || []; _nvCqAgentes = d.cq || [];
+  _nvCrTrabs = d.trabs || []; _nvCqAgentes = d.cq || [];
   window._nvVibrPontos = d.vibr || []; window._nvVibrVeic = d.vibrVeic || {};
   window._nvCalorSetores = d.calor || [];
   window._ctrlNvItens = d.itens || []; window._nvPlanejamentoId = d.planId || null;
@@ -13921,10 +13897,6 @@ function nvShowStep3() {
   // ── Ruído: herdar do planejamento (técnico, calibrador, dosímetros) ──
   if (temRuido && window._nvPlanejamentoId && !window._nvRuidoHerdado) {
     const itR = (window._ctrlNvItens || []).find(it => (it.tipo || '') === 'ruido') || {};
-    // Técnico Ocupacional ← técnico responsável (Etapa 1)
-    const tecEl = document.getElementById('nv-cr-tecnico');
-    const tecResp = document.getElementById('ctrl-nv-avaliador');
-    if (tecEl && !tecEl.value && tecResp && tecResp.value) tecEl.value = tecResp.value;
     // Calibrador / N° Série ← calibrador de ruído do plano
     const calEl = document.getElementById('nv-cr-calibrador');
     if (calEl && !calEl.value && itR.calibrador_ruido_serie) calEl.value = itR.calibrador_ruido_serie;
@@ -14147,7 +14119,7 @@ function nvReset() {
     const el = document.getElementById('nv-tipo-' + v);
     if (el) el.checked = false;
   });
-  _nvCrTrabs = []; _nvCrTermos = []; _nvCqAgentes = [];
+  _nvCrTrabs = []; _nvCqAgentes = [];
   window._nvRuidoHerdado = false;
   window._ctrlNvEmpresa = null;
   window._ctrlNvItens   = [];
@@ -14456,24 +14428,6 @@ function nvCrRenderTrabs() {
   </tr>`).join('');
 }
 
-// ── Termo de Responsabilidade ─────────────────────────────────────────
-function nvCrAddTermo() {
-  _nvCrTermos.push({nome:'',funcao:'',entrega:'',devolucao:''});
-  nvCrRenderTermos();
-}
-function nvCrRenderTermos() {
-  const tb = document.getElementById('nv-cr-termo-tbody'); if(!tb) return;
-  if (!_nvCrTermos.length) { tb.innerHTML='<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3);">Nenhum colaborador</td></tr>'; return; }
-  tb.innerHTML = _nvCrTermos.map((t,i) => `<tr>
-    <td style="text-align:center;padding:5px;">${i+1}</td>
-    <td><input value="${t.nome||''}" placeholder="Nome" style="width:140px;" onchange="_nvCrTermos[${i}].nome=this.value"></td>
-    <td><input value="${t.funcao||''}" placeholder="Função" style="width:110px;" onchange="_nvCrTermos[${i}].funcao=this.value"></td>
-    <td><input type="date" value="${t.entrega||''}" style="width:120px;" onchange="_nvCrTermos[${i}].entrega=this.value"></td>
-    <td><input type="date" value="${t.devolucao||''}" style="width:120px;" onchange="_nvCrTermos[${i}].devolucao=this.value"></td>
-    <td style="text-align:center;"><button onclick="_nvCrTermos.splice(${i},1);nvCrRenderTermos();" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
-  </tr>`).join('');
-}
-
 // Infere a fração amostrada pelo nome da substância (p/ pré-preencher do plano)
 function _nvInferirFracao(s) {
   const t = (s || '').toLowerCase();
@@ -14500,7 +14454,7 @@ function _nvTipoAmostrador(meio) {
 // ── Agentes Químicos — multi-agente ──────────────────────────────────
 function nvCqNewAgente() {
   return {
-    func_nome:'', func_jornada:'', func_funcao:'', func_setor:'', func_local:'', func_atv:'',
+    func_nome:'', func_jornada:'', turno:'', func_funcao:'', func_setor:'', func_local:'', func_atv:'',
     ventilacao:'', ambiente:'', meteo:'', temperatura:'', umidade:'', outras_cond:'',
     bomba:'', id_bomba:'', cal_bomba:'', calibrador:'DEFENDER 510M S/N:126958',
     amostrador_codigo:'', vazao_calibrada:'', tipo_coleta:'pessoal',
@@ -14545,6 +14499,13 @@ function nvCqSet(idx, field, value) {
 }
 function nvCqSetBool(idx, field, value) {
   if (_nvCqAgentes[idx]) _nvCqAgentes[idx][field] = value;
+}
+// Calibrador de Fluxo: presets diretos; "Outro" libera um campo de texto
+function nvCqSetCalibrador(idx, value) {
+  if (!_nvCqAgentes[idx]) return;
+  // "Outro" zera o valor e re-renderiza p/ exibir o input de texto livre
+  _nvCqAgentes[idx].calibrador = (value === 'Outro') ? '' : value;
+  nvCqRenderAgentes();
 }
 function nvCqAddAmostr(idx) {
   if (!_nvCqAgentes[idx]) return;
@@ -14600,11 +14561,15 @@ function nvCqRenderAgentes() {
     const bodyD = ag.expanded ? '' : 'display:none;';
     const chk = (f) => ag[f] ? 'checked' : '';
     const bombaOpts = [['','-- Selecionar --'],['BDX-II GILLIAN','BDX-II – GILLIAN'],['AIRLITE SKC','AIRLITE – SKC'],['FORMIS TURAM','FORMIS – TURAM'],['INLITE VENTUSPRO','INLITE – VENTUSPRO']].map(([v,l])=>`<option value="${v}"${ag.bomba===v?' selected':''}>${l}</option>`).join('');
-    const calOpts = ['DEFENDER 510M S/N:126958','TSI 4143F – 414332019013','Outro'].map(c=>`<option${ag.calibrador===c?' selected':''}>${c}</option>`).join('');
+    const _calPresets = ['DEFENDER 510M S/N:126958','TSI 4143F – 414332019013'];
+    // Se o calibrador não é um dos presets, está em modo "Outro" (texto livre)
+    const _calOutro = !!(ag.calibrador && !_calPresets.includes(ag.calibrador));
+    const calOpts = [..._calPresets,'Outro'].map(c=>{ const sel = (c==='Outro') ? _calOutro : (ag.calibrador===c); return `<option${sel?' selected':''}>${c}</option>`; }).join('');
     const fracOpts = ['','Total','Respirável','Torácica','Inalável'].map(f=>`<option${ag.fracao===f?' selected':''}>${f}</option>`).join('');
     const ventOpts = ['','Natural','Motor','Refrigerada'].map(v=>`<option${ag.ventilacao===v?' selected':''}>${v}</option>`).join('');
     const ambOpts  = ['','Aberto','Fechado','Semi-aberto'].map(v=>`<option${ag.ambiente===v?' selected':''}>${v}</option>`).join('');
     const metOpts  = ['','Sol','Chuva','Nublado'].map(v=>`<option${ag.meteo===v?' selected':''}>${v}</option>`).join('');
+    const turnoOpts = [['','-- Selecionar --'],['Diurno','Diurno'],['Noturno','Noturno'],['Revezamento','Revezamento']].map(([v,l])=>`<option value="${v}"${ag.turno===v?' selected':''}>${l}</option>`).join('');
     return `
 <div class="nv-card" style="border-left:3px solid var(--orange);margin-bottom:14px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${ag.expanded?'14px':'0'};">
@@ -14618,9 +14583,10 @@ function nvCqRenderAgentes() {
   <div id="nv-cqa-body-${idx}" style="${bodyD}">
     <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:10px;">
       <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px;">Funcionário</div>
-      <div class="nv-g2 nv-f" style="margin-bottom:8px;">
+      <div class="nv-g3 nv-f" style="margin-bottom:8px;">
         <div><label>Nome do Funcionário</label><input type="text" value="${ag.func_nome||''}" placeholder="Nome completo" style="${inp}" oninput="nvCqSet(${idx},'func_nome',this.value)"></div>
         <div><label>Jornada de Trabalho</label><input type="text" value="${ag.func_jornada||''}" placeholder="Ex: 08:00 às 17:00" style="${inp}" oninput="nvCqSet(${idx},'func_jornada',this.value)"></div>
+        <div><label>Turno</label><select style="${inp}" onchange="nvCqSet(${idx},'turno',this.value)">${turnoOpts}</select></div>
       </div>
       <div class="nv-g3 nv-f" style="margin-bottom:8px;">
         <div><label>Função</label><input type="text" value="${ag.func_funcao||''}" placeholder="Cargo" style="${inp}" oninput="nvCqSet(${idx},'func_funcao',this.value)"></div>
@@ -14650,7 +14616,8 @@ function nvCqRenderAgentes() {
       </div>
       <div class="nv-g2 nv-f" style="margin-bottom:8px;">
         <div><label>Data Calibração Bomba</label><input type="date" value="${ag.cal_bomba||''}" style="${inp}" onchange="nvCqSet(${idx},'cal_bomba',this.value)"></div>
-        <div><label>Calibrador de Fluxo</label><select style="${inp}" onchange="nvCqSet(${idx},'calibrador',this.value)">${calOpts}</select></div>
+        <div><label>Calibrador de Fluxo</label><select style="${inp}" onchange="nvCqSetCalibrador(${idx},this.value)">${calOpts}</select>
+          ${_calOutro ? `<input type="text" value="${ag.calibrador||''}" placeholder="Informe o calibrador" style="${inp}margin-top:6px;" oninput="nvCqSet(${idx},'calibrador',this.value)">` : ''}</div>
       </div>
       <div class="nv-f"><label>Acessórios</label>
         <div style="display:flex;flex-wrap:wrap;gap:9px;margin-top:5px;">
@@ -15075,10 +15042,10 @@ async function nvSalvarMedicao() {
     //  multi-tipo eram descartados silenciosamente.)
     const campoRuido = {
       acomp:document.getElementById('nv-cr-acomp')?.value||'', cargo_acomp:document.getElementById('nv-cr-cargo-acomp')?.value||'',
-      tecnico:document.getElementById('nv-cr-tecnico')?.value||'', hora_ini:document.getElementById('nv-cr-hora-ini')?.value||'',
+      tecnico:document.getElementById('ctrl-nv-avaliador')?.value||'', hora_ini:document.getElementById('nv-cr-hora-ini')?.value||'',
       hora_fim:document.getElementById('nv-cr-hora-fim')?.value||'', calibrador:document.getElementById('nv-cr-calibrador')?.value||'',
       cal_ini:document.getElementById('nv-cr-cal-ini')?.value||'', cal_fim:document.getElementById('nv-cr-cal-fim')?.value||'',
-      trabalhadores:_nvCrTrabs, termos:_nvCrTermos
+      trabalhadores:_nvCrTrabs
     };
     const campoGenerico = {
       acomp:       document.getElementById('nv-gen-acomp')?.value||'',
@@ -15214,7 +15181,6 @@ async function nvGerarRelatorioCampo() {
           cal_ini:      document.getElementById('nv-cr-cal-ini')?.value||'',
           cal_fim:      document.getElementById('nv-cr-cal-fim')?.value||'',
           trabalhadores:_nvCrTrabs,
-          termos:       _nvCrTermos,
           itens:        window._ctrlNvItens||[],
           sig_avaliado: nvSigGetData('nv-sig-avaliado'),
           sig_empresa:  nvSigGetData('nv-sig-empresa') } };
@@ -15233,18 +15199,29 @@ async function nvGerarRelatorioCampo() {
           itens:    window._ctrlNvItens||[],
           sig_empresa:  nvSigGetData('nv-sig-empresa'),
           sig_avaliado: nvSigGetData('nv-sig-avaliado') } };
+    } else if (tipo === 'calor') {
+      return { endpoint:'/controle/relatorio/calor',
+        fname:`planilha_calor_${_slug}.pdf`,
+        payload:{ ...base,
+          acomp:    document.getElementById('nv-gen-acomp')?.value||'',
+          hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
+          hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
+          obs:      document.getElementById('nv-gen-obs')?.value||'',
+          setores:  (window._nvCalorSetores||[]).map(s=>({setor:s.setor,duracao:s.duracao,tbs:s.tbs,tbn:s.tbn,tg:s.tg,ibutg_interno:s.ibutg_interno,ibutg_externo:s.ibutg_externo,M:s.M,regime:s.regime})),
+          sig_avaliado: nvSigGetData('nv-sig-avaliado'),
+          sig_empresa:  nvSigGetData('nv-sig-empresa') } };
     }
     return null;
   }
 
   const _tiposRel = ((_nvTipos && _nvTipos.length) ? _nvTipos : (_nvTipo ? [_nvTipo] : []))
-                      .filter(t => ['ruido','quimico','vibracao'].includes(t));
+                      .filter(t => ['ruido','quimico','vibracao','calor'].includes(t));
   if (!_tiposRel.length) {
-    if (st) st.innerHTML = '<span style="color:var(--text3);">Relatório de Campo disponível para Ruído, Químico e Vibração.</span>';
+    if (st) st.innerHTML = '<span style="color:var(--text3);">Relatório de Campo disponível para Ruído, Químico, Vibração e Calor.</span>';
     return;
   }
 
-  const _lblTipo = { ruido:'🔊 Ruído', quimico:'⚗️ Químico', vibracao:'〰️ Vibração' };
+  const _lblTipo = { ruido:'🔊 Ruído', quimico:'⚗️ Químico', vibracao:'〰️ Vibração', calor:'🌡️ Calor' };
 
   // Tipo único: auto-download direto (sem bloqueio de browser)
   if (_tiposRel.length === 1) {
@@ -15293,9 +15270,19 @@ async function nvGerarRelatorioCampo() {
       acomp:    document.getElementById('nv-gen-acomp')?.value||'',
       hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
       hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
+      obs:      document.getElementById('nv-gen-obs')?.value||'',
       subtipo:  _nvVibrSubtipoCalc(itemVib),
       aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
       pontos:   window._nvVibrPontos || [],
+      itens:    window._ctrlNvItens||[],
+    },
+    calor: {
+      ...base,
+      acomp:    document.getElementById('nv-gen-acomp')?.value||'',
+      hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
+      hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
+      obs:      document.getElementById('nv-gen-obs')?.value||'',
+      setores:  (window._nvCalorSetores||[]).map(s=>({setor:s.setor,duracao:s.duracao,tbs:s.tbs,tbn:s.tbn,tg:s.tg,ibutg_interno:s.ibutg_interno,ibutg_externo:s.ibutg_externo,M:s.M,regime:s.regime})),
     },
     sig_avaliado: nvSigGetData('nv-sig-avaliado'),
     sig_empresa:  nvSigGetData('nv-sig-empresa'),
