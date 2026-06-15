@@ -8951,7 +8951,8 @@ async function ctrlLoadVencendo() {
       if (sr) {
         const nErr = Object.keys(sr.fetch_erros||{}).length;
         const quando = sr.quando ? (' · ' + String(sr.quando).slice(0,16).replace('T',' ')) : '';
-        syncLine = `<div style="font-size:.72rem;color:var(--text3);margin-bottom:6px;">🔎 Última varredura: <b style="color:var(--text2);">${sr.mailboxes_lidas||0}</b> caixa(s) dos técnicos · ${sr.resultados_total||0} resultado(s)${nErr?` · <span style="color:var(--yellow);">${nErr} caixa(s) sem acesso</span>`:''}${quando}</div>`;
+        const envio = sr.envio_auto_datados ? ` · <b style="color:var(--green);">${sr.envio_auto_datados}</b> envio(s) datado(s) automático` : '';
+        syncLine = `<div style="font-size:.72rem;color:var(--text3);margin-bottom:6px;">🔎 Última varredura: <b style="color:var(--text2);">${sr.mailboxes_lidas||0}</b> caixa(s) dos técnicos · ${sr.resultados_total||0} resultado(s)${envio}${nErr?` · <span style="color:var(--yellow);">${nErr} caixa(s) sem acesso</span>`:''}${quando}</div>`;
       }
       if (rs.length) {
         resBox.innerHTML = syncLine + `<div style="background:rgba(16,185,129,.07);border-left:3px solid var(--green);border-radius:6px;padding:10px 14px;font-size:.82rem;">

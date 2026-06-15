@@ -126,6 +126,32 @@ def _fetch_lab_emails(boxes, top=150):
     return out, erros
 
 
+def _fetch_sent_to_lab(boxes, top=40):
+    """E-mails ENVIADOS por cada caixa PARA o laboratório (cadeia de custódia).
+    Retorna [{data, codigos, caixa}] — a data REAL do envio + códigos extraídos
+    do assunto+corpo. (Códigos só-no-anexo não são pegos aqui — ver Fase 2.)"""
+    out = []
+    for box in boxes:
+        try:
+            data = graph_get(
+                f"/users/{box}/mailFolders/sentitems/messages"
+                f"?$top={top}&$orderby=sentDateTime desc"
+                f"&$select=subject,toRecipients,sentDateTime,body")
+        except Exception:
+            continue
+        for m in data.get('value', []):
+            tos = [(((t or {}).get('emailAddress') or {}).get('address') or '').lower()
+                   for t in (m.get('toRecipients') or [])]
+            if not any(LAB_DOM in t for t in tos):
+                continue
+            body = (m.get('body') or {}).get('content', '')
+            codigos = _codes(((m.get('subject', '') or '') + ' ' + body))
+            if codigos:
+                out.append({'data': (m.get('sentDateTime') or '')[:10],
+                            'codigos': codigos, 'caixa': box})
+    return out
+
+
 def _kv_set(conn, chave, valor):
     """Grava em ms_sync_state (cria a tabela se preciso)."""
     conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
@@ -190,6 +216,28 @@ def sincronizar_lab(apply=False, top=60):
             plano.append({'id': amos['id'], 'codigo': amos.get('codigo'),
                           'de': amos.get('status'), 'para': alvo, 'fonte_data': data})
 
+    # ── ENVIO ao lab (data REAL) — lê os e-mails ENVIADOS com a cadeia de custódia.
+    #    Pega a MENOR data por amostrador (1º envio) e só preenche quem ainda NÃO
+    #    tem data_envio_lab (não sobrescreve o que foi lançado à mão). ──
+    envio_por_id = {}   # amostrador id -> menor data de envio detectada
+    for se in _fetch_sent_to_lab(boxes):
+        for c in se['codigos']:
+            amos = look.get(c)
+            if not amos:
+                continue
+            aid, dt = amos['id'], se['data']
+            if dt and (aid not in envio_por_id or dt < envio_por_id[aid]):
+                envio_por_id[aid] = dt
+    envio_faltam = []   # ids sem data_envio_lab → candidatos a auto-preencher
+    if envio_por_id:
+        _ids = list(envio_por_id.keys())
+        _ph = ','.join(['?'] * len(_ids))
+        with get_db() as conn:
+            envio_faltam = [row_to_dict(r)['id'] for r in conn.execute(
+                f"SELECT id FROM amostradores WHERE id IN ({_ph}) "
+                f"AND (data_envio_lab IS NULL OR data_envio_lab='')", _ids).fetchall()]
+    auto_envio = len(envio_faltam)
+
     aplicadas = 0
     if apply:
         with get_db() as conn:
@@ -197,6 +245,9 @@ def sincronizar_lab(apply=False, top=60):
                 conn.execute("UPDATE amostradores SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                              (p['para'], p['id']))
                 aplicadas += 1
+            for rid in envio_faltam:   # auto-data o envio (só quem estava sem data)
+                conn.execute("UPDATE amostradores SET data_envio_lab=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                             (envio_por_id[rid], rid))
             if pendentes is not None:
                 _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
             if resultados:
@@ -204,6 +255,7 @@ def sincronizar_lab(apply=False, top=60):
             _kv_set(conn, 'lab_sync_result', json.dumps({
                 'mailboxes_lidas': len(boxes),
                 'aplicadas': aplicadas,
+                'envio_auto_datados': auto_envio,
                 'resultados_total': len(resultados),
                 'por_categoria': cat_count,
                 'fetch_erros': fetch_erros,
@@ -220,6 +272,8 @@ def sincronizar_lab(apply=False, top=60):
         'mudancas_de_status': plano if not apply else aplicadas,
         'total_mudancas': len(plano),
         'aplicadas': aplicadas,
+        'envio_auto_datados': auto_envio,
+        'envio_detectado': len(envio_por_id),
         'codigos_fora_do_sistema': sorted(fora)[:30],
         'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],
