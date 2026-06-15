@@ -4023,18 +4023,16 @@
   <!-- Lista de planejamentos existentes -->
   <div class="plan-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div class="plan-card-title" style="margin:0">Planejamentos Recentes</div>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div class="plan-card-title" style="margin:0" id="plan-lista-titulo">Planejamentos Ativos</div>
+      <div style="display:flex;gap:10px;align-items:center;">
         <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2);cursor:pointer;">
           <input type="checkbox" id="plan-filtro-meu" onchange="planCarregarLista()" style="accent-color:var(--green);">
           <span>Apenas meus</span>
         </label>
-        <select id="plan-filtro-status" onchange="planCarregarLista()" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:.78rem;font-family:inherit;">
-          <option value="">Todos status</option>
-          <option value="planejada">Planejada</option>
-          <option value="concluido">Concluída</option>
-          <option value="cancelado">Cancelada</option>
-        </select>
+        <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+          <button id="plan-aba-ativos" onclick="planSetAba('ativos')" style="background:var(--blue);color:#fff;border:none;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">📋 Ativos</button>
+          <button id="plan-aba-concluidos" onclick="planSetAba('concluidos')" style="background:transparent;color:var(--text2);border:none;padding:6px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">✅ Concluídos</button>
+        </div>
       </div>
     </div>
     <div id="plan-lista-loading" style="color:var(--text3);font-size:.83rem;">Carregando...</div>
@@ -9941,21 +9939,50 @@ function _planVazaoAplicarTipo(i, tipo) {
   _planRenderizarAgentes();
 }
 
+window._planAba = 'ativos';
+function planSetAba(aba) {
+  window._planAba = aba;
+  _planSyncAbaBtns();
+  const t = document.getElementById('plan-lista-titulo');
+  if (t) t.textContent = aba === 'concluidos' ? 'Planejamentos Concluídos' : 'Planejamentos Ativos';
+  planCarregarLista();
+}
+function _planSyncAbaBtns() {
+  const aba = window._planAba || 'ativos';
+  const a = document.getElementById('plan-aba-ativos'), c = document.getElementById('plan-aba-concluidos');
+  if (a) { a.style.background = aba === 'ativos' ? 'var(--blue)' : 'transparent'; a.style.color = aba === 'ativos' ? '#fff' : 'var(--text2)'; }
+  if (c) { c.style.background = aba === 'concluidos' ? 'var(--green)' : 'transparent'; c.style.color = aba === 'concluidos' ? '#fff' : 'var(--text2)'; }
+}
+async function planReabrir(pid) {
+  if (!confirm('Reabrir este planejamento? Ele volta para os Ativos.')) return;
+  try {
+    await ctrlFetch('/controle/planejamentos/' + pid + '/status', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: 'confirmado'})
+    });
+    _showToast('↩ Planejamento reaberto', 'success');
+    planCarregarLista();
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
+}
+
 async function planCarregarLista() {
   const loading = document.getElementById('plan-lista-loading');
   const lista   = document.getElementById('plan-lista');
   if (loading) loading.style.display = 'block';
   if (lista)   lista.innerHTML = '';
   try {
-    const filtroMeu    = document.getElementById('plan-filtro-meu')?.checked;
-    const filtroStatus = document.getElementById('plan-filtro-status')?.value || '';
-    let url = '/controle/planejamentos?limit=50';
+    const filtroMeu = document.getElementById('plan-filtro-meu')?.checked;
+    const aba = window._planAba || 'ativos';
+    let url = '/controle/planejamentos?limit=100';
     if (filtroMeu && window._currentUserNome) url += `&tecnico=${encodeURIComponent(window._currentUserNome)}`;
-    if (filtroStatus) url += `&status=${filtroStatus}`;
-    const res = await ctrlFetch(url);
+    const todos = await ctrlFetch(url);
+    // Aba Concluídos = status 'concluido'; Ativos = tudo menos concluído/cancelado.
+    const res = (todos || []).filter(p => aba === 'concluidos'
+      ? p.status === 'concluido'
+      : (p.status !== 'concluido' && p.status !== 'cancelado'));
     if (loading) loading.style.display = 'none';
     if (!res || res.length === 0) {
-      if (lista) lista.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Nenhum planejamento criado ainda.</div>';
+      if (lista) lista.innerHTML = `<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">${aba === 'concluidos' ? 'Nenhum planejamento concluído ainda.' : 'Nenhum planejamento ativo.'}</div>`;
       return;
     }
     const cores = {rascunho:'rgba(156,163,175,.15)', confirmado:'rgba(57,153,255,.15)', em_execucao:'rgba(245,158,11,.15)', concluido:'rgba(34,197,94,.15)', cancelado:'rgba(239,68,68,.15)'};
@@ -9988,7 +10015,9 @@ async function planCarregarLista() {
         ${p.status !== 'concluido' && p.status !== 'cancelado'
           ? `<button class="plan-btn-campo" onclick="planIrParaCampo(${p.id})">📍 Ir para Campo</button>
              <button onclick="planEditar(${p.id})" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Editar</button>`
-          : ''}
+          : (p.status === 'concluido'
+            ? `<button onclick="planReabrir(${p.id})" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">↩ Reabrir</button>`
+            : '')}
         </div>
       </div>`;
     }).join('');
@@ -11138,6 +11167,20 @@ async function planSalvar(status) {
     if (semJust.length) {
       _showToast(`⚠ ${semJust.length} agente(s) com vazão fora da faixa sem justificativa. Justifique antes de confirmar.`, 'err');
       return;
+    }
+    // Agente químico sem bomba/amostrador/vazão → a planilha de campo sai em branco.
+    // Avisa e deixa confirmar mesmo assim (ex.: amostrador definido só no campo).
+    const incompletos = (window._planAgentes || []).filter(a => {
+      if (a.tipo !== 'quimico') return false;
+      const passivo = a.vazao_faixa && a.vazao_faixa.passivo;
+      const semBomba  = !passivo && !(a.id_bomba || a.bomba_sn);
+      const semVazao  = !passivo && !String(a.vazao_real || '').trim();
+      const semAmostr = !String(a.amostrador_codigo || '').trim();
+      return semBomba || semVazao || semAmostr;
+    });
+    if (incompletos.length) {
+      const nomes = incompletos.map(a => a.agente || a.tipo).join(', ');
+      if (!confirm(`⚠ ${incompletos.length} agente(s) químico(s) sem bomba, amostrador ou vazão:\n${nomes}\n\nSem isso, a planilha de campo do técnico sai com esses campos EM BRANCO (não puxa nada). Quer confirmar mesmo assim?`)) return;
     }
   }
 
