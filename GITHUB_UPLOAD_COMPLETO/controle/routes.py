@@ -84,6 +84,21 @@ def _iso_br(s):
     return s
 
 
+def _sanitize_rl(obj):
+    """Escapa & < > em TODO texto de usuário (recursivo) antes de ir pro PDF.
+    O reportlab trata o conteúdo do Paragraph como mini-HTML — um nome/campo
+    com '<', '&' ou '<b>' quebrava o laudo (HTTP 500) ou injetava marcação.
+    A marcação própria do gerador (<b>, <font>) é adicionada no código, em
+    torno destes valores já escapados, então continua funcionando."""
+    if isinstance(obj, str):
+        return obj.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    if isinstance(obj, dict):
+        return {k: _sanitize_rl(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_rl(v) for v in obj]
+    return obj
+
+
 @controle_bp.before_request
 def _require_login():
     # Toda rota do controle exige login — leitura e escrita.
@@ -4123,7 +4138,7 @@ def gerar_relatorio_campo_completo():
     except ImportError:
         return jsonify({'erro': 'reportlab nao instalado'}), 500
 
-    d = request.json or {}
+    d = _sanitize_rl(request.json or {})
     tipos   = [t for t in d.get('tipos', []) if t in ('ruido', 'quimico', 'vibracao', 'calor')]
     base    = d.get('base', d)   # compatibilidade: base pode vir no topo
 
@@ -4481,6 +4496,8 @@ def gerar_relatorio_ruido():
             d = coleta
             d['trabalhadores'] = coleta.get('trabalhadores', [])
 
+    d = _sanitize_rl(d)   # escapa &<> em todo texto (anti-quebra/injeção reportlab)
+
     # Extrair campos
     empresa_nome   = d.get('empresa_nome', d.get('empresa', {}).get('nome', '—'))
     cnpj           = d.get('cnpj', d.get('empresa', {}).get('cnpj', ''))
@@ -4791,7 +4808,7 @@ def gerar_relatorio_vibracao():
     except ImportError:
         return jsonify({'erro': 'reportlab nao instalado'}), 500
 
-    d = request.json or {}
+    d = _sanitize_rl(request.json or {})
     empresa_nome = d.get('empresa_nome', d.get('empresa', {}).get('nome', '—') if isinstance(d.get('empresa'), dict) else '—')
     cnpj         = d.get('cnpj', '')
     unidade      = d.get('unidade', '')
@@ -5044,6 +5061,7 @@ def gerar_relatorio_calor():
 
 def gerar_relatorio_calor_pdf(d):
     """Implementação do PDF de calor (separada da rota p/ testes/reuso)."""
+    d = _sanitize_rl(d or {})
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
     from reportlab.lib import colors
@@ -5222,7 +5240,7 @@ def gerar_relatorio_quimico():
     except ImportError:
         return jsonify({'erro': 'reportlab nao instalado'}), 500
 
-    d = request.json or {}
+    d = _sanitize_rl(request.json or {})
     agentes        = d.get('agentes', [])
     empresa_nome   = d.get('empresa_nome', '—')
     unidade        = d.get('unidade', '')
