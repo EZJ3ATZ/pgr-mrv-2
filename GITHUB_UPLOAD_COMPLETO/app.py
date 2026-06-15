@@ -911,7 +911,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r15-dv-vermelho'
+BUILD_MARK = '2026-06-15-r16-calor-M-calibrador'
 
 
 @app.route('/healthz')

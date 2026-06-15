@@ -14485,9 +14485,21 @@ window._nvCalorSetores = [];
 
 function nvCalorAddSetor() {
   window._nvCalorSetores.push({
-    setor: '', tbs: '', tbn: '', tg: '', regime: 'Trabalho Moderado', M: 198,
+    setor: '', tbs: '', tbn: '', tg: '',
+    regime: 'Trabalho Moderado – De pé, com os braços e tronco', M: 198,
     ibutg_interno: '', ibutg_externo: '', duracao: '',
   });
+  nvCalorRenderSetores();
+}
+
+// Atividade (NR-15 Anexo 3) define a taxa metabólica M — sugere o valor da
+// tabela, mas o técnico pode ajustar o W manualmente (não fixa).
+function nvCalorSetAtividade(i, label) {
+  const s = window._nvCalorSetores[i];
+  if (!s) return;
+  s.regime = label;
+  const it = (window.ATIVIDADES_NR15 || []).find(a => a.label === label);
+  if (it) s.M = it.M;
   nvCalorRenderSetores();
 }
 
@@ -14503,11 +14515,7 @@ function nvCalorRenderSetores() {
     el.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Clique em "+ Setor" para adicionar medições.</div>';
     return;
   }
-  const regimes = [
-    'Trabalho Leve','Trabalho Moderado','Trabalho Pesado',
-    'Trabalho Leve — De pé','Trabalho Moderado — De pé',
-    'Trabalho Pesado — De pé, com tronco inclinado',
-  ];
+  // Atividade/M vêm da tabela canônica window.ATIVIDADES_NR15 (NR-15 Anexo 3)
   el.innerHTML = window._nvCalorSetores.map((s, i) => `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -14543,9 +14551,9 @@ function nvCalorRenderSetores() {
           <input type="number" value="${s.M}" oninput="window._nvCalorSetores[${i}].M=+this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;"></div>
       </div>
-      <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Regime de Trabalho</label>
-        <select oninput="window._nvCalorSetores[${i}].regime=this.value" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;">
-          ${regimes.map(r => `<option value="${r}" ${s.regime===r?'selected':''}>${r}</option>`).join('')}
+      <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Atividade / Regime (NR-15 Anexo 3) <span style="color:var(--text3);">— preenche a taxa metabólica</span></label>
+        <select onchange="nvCalorSetAtividade(${i}, this.value)" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;">
+          ${(window.ATIVIDADES_NR15||[]).map(a => `<option value="${_esc(a.label)}" ${s.regime===a.label?'selected':''}>${a.M} W — ${_esc(a.label)}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -14790,7 +14798,7 @@ function nvCqNewAgente() {
   return {
     func_nome:'', func_jornada:'', turno:'', func_funcao:'', func_setor:'', func_local:'', func_atv:'',
     ventilacao:'', ambiente:'', meteo:'', temperatura:'', umidade:'', outras_cond:'',
-    bomba:'', id_bomba:'', cal_bomba:'', calibrador:'DEFENDER 510M S/N:126958',
+    bomba:'', id_bomba:'', cal_bomba:'', calibrador:'',
     amostrador_codigo:'', vazao_calibrada:'', tipo_coleta:'pessoal',
     ac_ciclone_al:false, ac_ciclone_ny:false, ac_redutor:false, ac_iom:false, ac_termo:false, ac_supcass:false,
     substancias:'', fracao:'', tempo_exp:'',
@@ -14898,7 +14906,8 @@ function nvCqRenderAgentes() {
     const _calPresets = ['DEFENDER 510M S/N:126958','TSI 4143F – 414332019013'];
     // Se o calibrador não é um dos presets, está em modo "Outro" (texto livre)
     const _calOutro = !!(ag.calibrador && !_calPresets.includes(ag.calibrador));
-    const calOpts = [..._calPresets,'Outro'].map(c=>{ const sel = (c==='Outro') ? _calOutro : (ag.calibrador===c); return `<option${sel?' selected':''}>${c}</option>`; }).join('');
+    const calOpts = `<option value=""${!ag.calibrador ? ' selected' : ''}>— Selecione o calibrador —</option>` +
+      [..._calPresets,'Outro'].map(c=>{ const sel = (c==='Outro') ? _calOutro : (ag.calibrador===c); return `<option${sel?' selected':''}>${c}</option>`; }).join('');
     const fracOpts = ['','Total','Respirável','Torácica','Inalável'].map(f=>`<option${ag.fracao===f?' selected':''}>${f}</option>`).join('');
     const ventOpts = ['','Natural','Motor','Refrigerada'].map(v=>`<option${ag.ventilacao===v?' selected':''}>${v}</option>`).join('');
     const ambOpts  = ['','Aberto','Fechado','Semi-aberto'].map(v=>`<option${ag.ambiente===v?' selected':''}>${v}</option>`).join('');
@@ -15658,9 +15667,6 @@ async function nvGerarRelatorioCampo() {
     _showToast('Erro: ' + e.message, 'err');
   }
 }
-
-// Mantém compatibilidade com chamadas antigas
-async function nvGerarLaudo() { return nvGerarRelatorioCampo(); }
 
 // Valida a planilha ANTES de finalizar: bloqueia o essencial vazio; avisa
 // (com confirmação) o que está fora da norma. (auditoria 15/06 — antes nada bloqueava)
