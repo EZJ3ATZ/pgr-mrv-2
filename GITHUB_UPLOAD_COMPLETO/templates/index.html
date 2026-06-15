@@ -15669,10 +15669,10 @@ function nvValidarFinalizacao() {
   const tipos = (typeof _nvTipos !== 'undefined' && _nvTipos.length) ? _nvTipos : (typeof _nvTipo !== 'undefined' && _nvTipo ? [_nvTipo] : []);
   const val = id => (document.getElementById(id)?.value || '').trim();
   // ── Essencial (BLOQUEIA) ──
-  if (tipos.includes('ruido') && !(window._nvCrTrabs||[]).filter(t => (t.nome||'').trim()).length)
+  if (tipos.includes('ruido') && !(_nvCrTrabs||[]).filter(t => (t.nome||'').trim()).length)
     erros.push('Ruído: adicione ao menos um trabalhador avaliado.');
   if (tipos.includes('quimico')) {
-    const ags = (window._nvCqAgentes||[]).filter(a => (a.substancias||'').trim());
+    const ags = (_nvCqAgentes||[]).filter(a => (a.substancias||'').trim());
     if (!ags.length) erros.push('Químico: informe ao menos um agente (substância).');
     else if (!ags.some(a => (a.amostradores||[]).length)) erros.push('Químico: cada agente precisa de ao menos um amostrador.');
   }
@@ -15690,7 +15690,7 @@ function nvValidarFinalizacao() {
     if (!val('nv-cr-hora-ini') || !val('nv-cr-hora-fim')) avisos.push('Ruído: horário de início/término não informado.');
   }
   if (tipos.includes('quimico'))
-    (window._nvCqAgentes||[]).forEach((a,ai) => (a.amostradores||[]).forEach((am,mi) => {
+    (_nvCqAgentes||[]).forEach((a,ai) => (a.amostradores||[]).forEach((am,mi) => {
       const vi = parseFloat(am.vazao_inicial), vf = parseFloat(am.vazao_final);
       if (!isNaN(vi) && !isNaN(vf) && vi>0 && Math.abs(vi-vf)/vi*100 > 5) avisos.push(`Químico — agente ${ai+1}, amostrador ${mi+1}: variação de vazão acima de ±5%.`);
     }));
