@@ -6118,8 +6118,7 @@ def graph_debug_anexo():
             if vistos >= limite:
                 break
             vistos += 1
-            atts = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments"
-                             f"?$select=name,contentType,size,contentBytes")
+            atts = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments")
             anexos_info = []
             for a in atts.get('value', []):
                 nome, ct, size = a.get('name', ''), a.get('contentType', ''), a.get('size', 0)
