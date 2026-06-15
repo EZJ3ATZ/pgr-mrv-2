@@ -8946,8 +8946,15 @@ async function ctrlLoadVencendo() {
     const resBox = document.getElementById('ctrl-venc-resultados');
     if (resBox) {
       const rs = data.lab_resultados || [];
+      const sr = data.lab_sync_result;
+      let syncLine = '';
+      if (sr) {
+        const nErr = Object.keys(sr.fetch_erros||{}).length;
+        const quando = sr.quando ? (' · ' + String(sr.quando).slice(0,16).replace('T',' ')) : '';
+        syncLine = `<div style="font-size:.72rem;color:var(--text3);margin-bottom:6px;">🔎 Última varredura: <b style="color:var(--text2);">${sr.mailboxes_lidas||0}</b> caixa(s) dos técnicos · ${sr.resultados_total||0} resultado(s)${nErr?` · <span style="color:var(--yellow);">${nErr} caixa(s) sem acesso</span>`:''}${quando}</div>`;
+      }
       if (rs.length) {
-        resBox.innerHTML = `<div style="background:rgba(16,185,129,.07);border-left:3px solid var(--green);border-radius:6px;padding:10px 14px;font-size:.82rem;">
+        resBox.innerHTML = syncLine + `<div style="background:rgba(16,185,129,.07);border-left:3px solid var(--green);border-radius:6px;padding:10px 14px;font-size:.82rem;">
           <b style="color:var(--green);">📥 ${rs.length} resultado(s)/laudo(s) recebido(s) do laboratório</b>
           <span style="color:var(--text3);">(últimos e-mails de RA — confira o laudo no Outlook e lance no relatório)</span>
           <div style="margin-top:6px;max-height:160px;overflow:auto;">
@@ -8958,7 +8965,7 @@ async function ctrlLoadVencendo() {
           </div>
         </div>`;
       } else {
-        resBox.innerHTML = '';
+        resBox.innerHTML = syncLine;
       }
     }
     const faixa = document.getElementById('ctrl-fv-faixa').value;

@@ -256,3 +256,19 @@ def get_resultados_salvos():
     except Exception:
         pass
     return []
+
+
+def get_sync_result_salvo():
+    """Lê o resumo da última varredura (caixas lidas, resultados, erros + quando)."""
+    try:
+        with get_db() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
+            row = conn.execute("SELECT valor, atualizado_em FROM ms_sync_state WHERE chave='lab_sync_result'").fetchone()
+        if row:
+            d = row_to_dict(row)
+            out = json.loads(d.get('valor') or '{}')
+            out['quando'] = d.get('atualizado_em')
+            return out
+    except Exception:
+        pass
+    return None
