@@ -114,7 +114,9 @@ def _fetch_lab_emails(boxes, top=150):
             continue
         for m in data.get('value', []):
             frm = (((m.get('from') or {}).get('emailAddress') or {}).get('address') or '').lower()
-            if LAB_DOM not in frm:
+            # Mantém e-mails do lab + RAs ENCAMINHADOS (ENC:) por técnicos: o
+            # remetente vira interno, mas o assunto ainda classifica como resultado.
+            if LAB_DOM not in frm and not _classificar(frm, m.get('subject', '')):
                 continue
             out.append({
                 'id': m.get('id'),
@@ -136,7 +138,7 @@ def _codigo_do_anexo_ra(nome):
     return parts[2].strip() if len(parts) >= 3 else ''
 
 
-def _fetch_sent_to_lab(boxes, look, top=80, max_anexo_mb=8, max_downloads=70, parse_anexos=True):
+def _fetch_sent_to_lab(boxes, look, top=110, max_anexo_mb=8, max_downloads=90, parse_anexos=True):
     """E-mails ENVIADOS por cada caixa PARA o laboratório (cadeia de custódia).
     Casa os códigos do inventário no CORPO; se o corpo não tiver, baixa os
     anexos-documento (PDF/xlsx) e casa lá (Fase 2). Retorna [{data, codigos, caixa}]
@@ -264,7 +266,7 @@ def _use_pg():
     return bool(os.environ.get('DATABASE_URL'))
 
 
-def sincronizar_lab(apply=False, top=60, parse_anexos=True):
+def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     """Lê os e-mails do lab (em TODAS as caixas dos técnicos + a oficial) e
     reconcilia. apply=False → só simula (preview). top = e-mails recentes por caixa.
     parse_anexos=False → varredura LEVE (só corpo+inbox, não baixa anexos)."""
