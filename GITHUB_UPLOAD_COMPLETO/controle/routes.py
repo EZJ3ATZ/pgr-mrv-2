@@ -84,6 +84,27 @@ def _iso_br(s):
     return s
 
 
+def _parse_intervalos_min(s):
+    """Soma intervalos em minutos. Aceita 'mm', 'hh:mm' e vários separados por
+    vírgula/; (ex.: '0:30, 15'). Espelha o cálculo da tela do wizard — antes o
+    backend fazia int(float('1:30')) e estourava, NÃO descontava o intervalo,
+    e o t/Volume do PDF saíam maiores que na tela."""
+    total = 0
+    for tok in str(s or '').replace(';', ',').split(','):
+        tok = tok.strip()
+        if not tok:
+            continue
+        try:
+            if ':' in tok:
+                h, m = tok.split(':')[:2]
+                total += int(h) * 60 + int(m)
+            else:
+                total += int(round(float(tok.replace(',', '.'))))
+        except Exception:
+            pass
+    return total
+
+
 def _sanitize_rl(obj):
     """Escapa & < > em TODO texto de usuário (recursivo) antes de ir pro PDF.
     O reportlab trata o conteúdo do Paragraph como mini-HTML — um nome/campo
@@ -3551,6 +3572,21 @@ def api_salvar_medicao_wizard():
             'id_calibrador':      cq.get('calibrador', ''),
             'substancias':        cq.get('substancias', ''),
             'fracao':             cq.get('fracao', ''),
+            # Campos antes perdidos no banco (iam só pro PDF):
+            'turno':              cq.get('turno', ''),
+            'tempo_exposto':      cq.get('tempo_exp', ''),
+            'epc':                cq.get('epc', ''),
+            'observacao':         cq.get('obs', ''),
+            'acessorios':         ', '.join(lbl for k, lbl in (
+                ('ac_ciclone_al', 'Ciclone Alumínio'), ('ac_ciclone_ny', 'Ciclone Nylon'),
+                ('ac_redutor', 'Redutor de Vazão'), ('ac_iom', 'Suporte IOM'),
+                ('ac_termo', 'Termo-Higrômetro'), ('ac_supcass', 'Suporte Cassete'))
+                if cq.get(k)),
+            'epis':               ', '.join(lbl for k, lbl in (
+                ('epi_luvas', 'Luvas'), ('epi_oculos', 'Óculos'), ('epi_capacete', 'Capacete'),
+                ('epi_prot_auric', 'Protetor Auricular'), ('epi_resp', 'Respirador'),
+                ('epi_avental', 'Avental'), ('epi_macacao', 'Macacão'))
+                if cq.get(k)),
             'amostradores':       cq.get('amostradores', []),
         }
         if _coleta_duplicada('quimico', d.get('demanda_id'), d.get('data'), cq.get('substancias', '')):
@@ -4059,11 +4095,7 @@ def _quimico_agente_flowables(ag, idx, W, data_fmt='', dia_semana=''):
                 a, b = _hhmm_to_min(inicio), _hhmm_to_min(fim)
                 t_min = (b - a) if (a is not None and b is not None and b >= a) else ''
                 if t_min != '':
-                    try:
-                        _itv = str(am.get('intervalos') or '0').replace(',', '.').strip()
-                        t_min = max(0, t_min - int(float(_itv))) if _itv else t_min
-                    except Exception:
-                        pass
+                    t_min = max(0, t_min - _parse_intervalos_min(am.get('intervalos')))
             vm = am.get('vm')
             if vm in (None, ''):
                 vm = round((vi + vf) / 2, 3) if (vi and vf) else ''

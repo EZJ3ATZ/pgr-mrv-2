@@ -14088,7 +14088,7 @@ function nvDraftSave() {
   try {
     if (!_nvTipos || !_nvTipos.length) return;   // nada iniciado
     if (window._nvFinalizado) return;             // já finalizada
-    localStorage.setItem(_NV_DRAFT_KEY, JSON.stringify({
+    const core = {
       ts: Date.now(), tipos: _nvTipos, tipo: _nvTipo, step: _nvStep,
       fields: _nvCollectFields(),
       trabs: _nvCrTrabs || [], cq: _nvCqAgentes || [],
@@ -14096,7 +14096,16 @@ function nvDraftSave() {
       calor: window._nvCalorSetores || [],
       itens: window._ctrlNvItens || [], planId: window._nvPlanejamentoId || null,
       empresa: window._ctrlNvEmpresa || null, demandaId: window._nvDemandaId || null,
-    }));
+    };
+    // fotos + assinaturas (antes se perdiam ao recuperar rascunho)
+    const full = { ...core, fotos: window._nvFotos || [],
+      sigs: { avaliado: nvSigGetData('nv-sig-avaliado'), empresa: nvSigGetData('nv-sig-empresa') } };
+    try {
+      localStorage.setItem(_NV_DRAFT_KEY, JSON.stringify(full));
+    } catch (e) {
+      // estourou a cota (fotos grandes) → salva ao menos o núcleo, sem fotos/assinaturas
+      try { localStorage.setItem(_NV_DRAFT_KEY, JSON.stringify(core)); } catch (e2) {}
+    }
   } catch (e) {}
 }
 function nvDraftClear() { try { localStorage.removeItem(_NV_DRAFT_KEY); } catch (e) {} }
@@ -14107,6 +14116,7 @@ function nvDraftRestore() {
   _nvCrTrabs = d.trabs || []; _nvCqAgentes = d.cq || [];
   window._nvVibrPontos = d.vibr || []; window._nvVibrVeic = d.vibrVeic || {};
   window._nvCalorSetores = d.calor || [];
+  window._nvFotos = d.fotos || [];
   window._ctrlNvItens = d.itens || []; window._nvPlanejamentoId = d.planId || null;
   window._ctrlNvEmpresa = d.empresa || null; window._nvDemandaId = d.demandaId || null;
   ['ruido','quimico','calor','vibracao'].forEach(v => { const el = document.getElementById('nv-tipo-' + v); if (el) el.checked = _nvTipos.includes(v); });
@@ -14114,6 +14124,10 @@ function nvDraftRestore() {
   try { nvTipoChange(); } catch (e) {}
   ['nvCrRenderTrabs','nvCqRenderAgentes','nvVibrRenderPontos','nvCalorRenderSetores','nvFotosRender'].forEach(fn => { try { if (typeof window[fn] === 'function') window[fn](); } catch (e) {} });
   try { nvGotoStep(d.step || 1); } catch (e) {}
+  // assinaturas: redesenhar após a seção existir/inicializar (nvSigShowSection limpa no init)
+  if (d.sigs && (d.sigs.avaliado || d.sigs.empresa)) {
+    setTimeout(() => { nvSigSetData('nv-sig-avaliado', d.sigs.avaliado); nvSigSetData('nv-sig-empresa', d.sigs.empresa); }, 700);
+  }
   _showToast('✅ Rascunho da planilha recuperado', 'ok');
   return true;
 }
@@ -14550,19 +14564,28 @@ function nvCalorSetDuracao(i, el) {
 function nvCalorCalcIBUTG(i) {
   const s = window._nvCalorSetores[i];
   const tbs = parseFloat(s.tbs), tbn = parseFloat(s.tbn), tg = parseFloat(s.tg);
+  const elI = document.getElementById(`nv-cal-ibutg-i-${i}`);
+  const elE = document.getElementById(`nv-cal-ibutg-e-${i}`);
   if (!isNaN(tbn) && !isNaN(tg)) {
     // Interno: IBUTG = 0.7 TBN + 0.3 TG
     const ibutg_i = (0.7 * tbn + 0.3 * tg).toFixed(1);
     s.ibutg_interno = ibutg_i;
-    const elI = document.getElementById(`nv-cal-ibutg-i-${i}`);
     if (elI) elI.textContent = ibutg_i + ' °C';
     // Externo: IBUTG = 0.7 TBN + 0.2 TG + 0.1 TBS
     if (!isNaN(tbs)) {
       const ibutg_e = (0.7 * tbn + 0.2 * tg + 0.1 * tbs).toFixed(1);
       s.ibutg_externo = ibutg_e;
-      const elE = document.getElementById(`nv-cal-ibutg-e-${i}`);
       if (elE) elE.textContent = ibutg_e + ' °C';
+    } else {
+      // TBS apagado → não deixar IBUTG externo velho ir pro laudo
+      s.ibutg_externo = '';
+      if (elE) elE.textContent = '—';
     }
+  } else {
+    // TBN/TG apagados/inválidos → zera os IBUTG (antes ficava o valor velho no objeto e ia pro laudo)
+    s.ibutg_interno = ''; s.ibutg_externo = '';
+    if (elI) elI.textContent = '—';
+    if (elE) elE.textContent = '—';
   }
 }
 
@@ -15170,6 +15193,16 @@ function nvSigGetData(id) {
   return c.toDataURL('image/png');
 }
 
+// Redesenha uma assinatura salva (rascunho) no canvas
+function nvSigSetData(id, dataURL) {
+  if (!dataURL) return;
+  const c = document.getElementById(id);
+  if (!c) return;
+  const img = new Image();
+  img.onload = () => { try { c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); } catch (e) {} };
+  img.src = dataURL;
+}
+
 function nvSigShowSection() {
   const sec = document.getElementById('nv-sig-section');
   if (!sec) return;
@@ -15387,6 +15420,7 @@ async function nvSalvarMedicao() {
     let resp = {};
     let _primeiro = true;
     const _duplicadas = [];
+    window._nvAgentesFalhos = [];
     for (const tp of tiposSalvar) {
       const p = { ...base, tipo: tp };
       if (tp === 'ruido')        p.campo_ruido    = campoRuido;
@@ -15403,11 +15437,18 @@ async function nvSalvarMedicao() {
         window._nvSavedTipo = resp.tipo || tp;
         _primeiro = false;
       }
-      // Químico multi-agente: salvar cada agente adicional como coleta própria
+      // Químico multi-agente: salvar cada agente adicional como coleta própria.
+      // Antes o erro era engolido (.catch(()=>{})) e o técnico via "sucesso" tendo
+      // perdido agentes 2..N no banco. Agora coleta as falhas e avisa.
       if (tp === 'quimico' && _nvCqAgentes.length > 1) {
         for (let ai = 1; ai < _nvCqAgentes.length; ai++) {
           const extra = { ...base, tipo: 'quimico', campo_quimico: _nvCqAgentes[ai] };
-          await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(extra)}).catch(() => {});
+          try {
+            const re = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(extra)});
+            if (re && re.ok === false && !re.duplicada) throw new Error(re.erro || re.aviso || 'falha');
+          } catch (e) {
+            (window._nvAgentesFalhos = window._nvAgentesFalhos || []).push(_nvCqAgentes[ai].substancias || `agente ${ai+1}`);
+          }
         }
       }
     }
@@ -15621,9 +15662,57 @@ async function nvGerarRelatorioCampo() {
 // Mantém compatibilidade com chamadas antigas
 async function nvGerarLaudo() { return nvGerarRelatorioCampo(); }
 
+// Valida a planilha ANTES de finalizar: bloqueia o essencial vazio; avisa
+// (com confirmação) o que está fora da norma. (auditoria 15/06 — antes nada bloqueava)
+function nvValidarFinalizacao() {
+  const erros = [], avisos = [];
+  const tipos = (typeof _nvTipos !== 'undefined' && _nvTipos.length) ? _nvTipos : (typeof _nvTipo !== 'undefined' && _nvTipo ? [_nvTipo] : []);
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  // ── Essencial (BLOQUEIA) ──
+  if (tipos.includes('ruido') && !(window._nvCrTrabs||[]).filter(t => (t.nome||'').trim()).length)
+    erros.push('Ruído: adicione ao menos um trabalhador avaliado.');
+  if (tipos.includes('quimico')) {
+    const ags = (window._nvCqAgentes||[]).filter(a => (a.substancias||'').trim());
+    if (!ags.length) erros.push('Químico: informe ao menos um agente (substância).');
+    else if (!ags.some(a => (a.amostradores||[]).length)) erros.push('Químico: cada agente precisa de ao menos um amostrador.');
+  }
+  if (tipos.includes('calor')) {
+    const ss = (window._nvCalorSetores||[]);
+    if (!ss.length) erros.push('Calor: adicione ao menos um setor medido.');
+    else ss.forEach((s,i) => { if (!String(s.tbn||'').trim() || !String(s.tg||'').trim()) erros.push(`Calor: setor ${i+1} sem TBN/TG.`); });
+  }
+  if (tipos.includes('vibracao') && !(window._nvVibrPontos||[]).filter(p => (p.nome||'').trim()).length)
+    erros.push('Vibração: adicione ao menos um trabalhador avaliado.');
+  // ── Fora-da-norma (AVISA + confirma) ──
+  if (tipos.includes('ruido')) {
+    const ci = parseFloat(val('nv-cr-cal-ini').replace(',','.')), cf = parseFloat(val('nv-cr-cal-fim').replace(',','.'));
+    if (!isNaN(ci) && !isNaN(cf) && Math.abs(cf-ci) > 0.5) avisos.push(`Calibração do dosímetro fora de tolerância: desvio ${(cf-ci).toFixed(1)} dB (máx ±0,5).`);
+    if (!val('nv-cr-hora-ini') || !val('nv-cr-hora-fim')) avisos.push('Ruído: horário de início/término não informado.');
+  }
+  if (tipos.includes('quimico'))
+    (window._nvCqAgentes||[]).forEach((a,ai) => (a.amostradores||[]).forEach((am,mi) => {
+      const vi = parseFloat(am.vazao_inicial), vf = parseFloat(am.vazao_final);
+      if (!isNaN(vi) && !isNaN(vf) && vi>0 && Math.abs(vi-vf)/vi*100 > 5) avisos.push(`Químico — agente ${ai+1}, amostrador ${mi+1}: variação de vazão acima de ±5%.`);
+    }));
+  if (tipos.includes('calor'))
+    (window._nvCalorSetores||[]).forEach((s,i) => { const dd = parseFloat(s.duracao); if (!isNaN(dd) && dd > 60) avisos.push(`Calor: setor ${i+1} com duração ${dd} min (NHO-06 exige ≤60 por medição).`); });
+  if (tipos.includes('vibracao') && (!val('nv-gen-hora-ini') || !val('nv-gen-hora-fim')))
+    avisos.push('Vibração: horário de início/término não informado.');
+  return { erros, avisos };
+}
+
 async function nvConcluirOS() {
+  const _v = nvValidarFinalizacao();
+  if (_v.erros.length) {
+    alert('⛔ Não dá para finalizar — falta o essencial:\n\n• ' + _v.erros.join('\n• '));
+    return;
+  }
+  if (_v.avisos.length && !confirm('⚠️ Fora da norma:\n\n• ' + _v.avisos.join('\n• ') + '\n\nFinalizar mesmo assim?')) return;
   const resp = await nvSalvarMedicao();
   if (!resp) return;  // erro ao salvar — não prossegue
+  if ((window._nvAgentesFalhos||[]).length)
+    alert('⚠️ Alguns agentes químicos NÃO foram salvos: ' + window._nvAgentesFalhos.join(', ') +
+          '.\nRefaça esses agentes — o restante foi registrado.');
   const os  = document.getElementById('ctrl-nv-os')?.value || '';
   const jaExistia = !!(resp && resp.duplicada);
   // ANTES: "Finalizar planilha" só salvava no banco e NÃO gerava arquivo — o técnico
