@@ -5977,19 +5977,41 @@ def graph_lab_preview():
 
 @controle_bp.route('/graph/lab_sync', methods=['POST'])
 def graph_lab_sync():
-    """APLICA a ingestão dos e-mails do lab: atualiza status (remessa→disponível,
-    recebimento→devolvido, cronológico) e guarda a lista de pendentes p/ Vencimento."""
+    """APLICA a ingestão dos e-mails do lab em BACKGROUND (varre a caixa oficial +
+    a de cada técnico cadastrado; evita timeout do gunicorn). Atualiza status,
+    pendentes e resultados; o resumo fica em ms_sync_state['lab_sync_result']."""
     init_db()
-    from .lab_inbox import sincronizar_lab
     try:
-        r = sincronizar_lab(apply=True)
-        registrar_evento('sync_planner',
-                         f"Ingestão lab: {r.get('aplicadas', 0)} status atualizados, "
-                         f"{(r.get('pendentes_oficial') or {}).get('total', 0)} pendentes",
-                         None, 'amostrador',
-                         current_user.nome if current_user.is_authenticated else 'sistema',
-                         request.remote_addr)
-        return jsonify(r)
+        from .lab_inbox import sincronizar_lab
+        import threading
+        from flask import current_app
+        app = current_app._get_current_object()
+        quem = current_user.nome if current_user.is_authenticated else 'sistema'
+        ip = request.remote_addr
+
+        def _run():
+            with app.app_context():
+                try:
+                    r = sincronizar_lab(apply=True)
+                    registrar_evento('sync_planner',
+                                     f"Ingestão lab: {r.get('aplicadas', 0)} status, "
+                                     f"{r.get('resultados_total', 0)} resultados, "
+                                     f"{r.get('mailboxes_lidas', 0)} caixas varridas",
+                                     None, 'amostrador', quem, ip)
+                except Exception as ex:
+                    import logging, traceback
+                    logging.getLogger(__name__).error('[lab_sync] erro no background: %s', ex)
+                    try:
+                        with get_db() as c:
+                            c.execute("INSERT INTO ms_sync_state (chave,valor,atualizado_em) VALUES ('last_sync_error',?,CURRENT_TIMESTAMP) "
+                                      "ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, atualizado_em=EXCLUDED.atualizado_em",
+                                      (traceback.format_exc()[:2000],))
+                    except Exception:
+                        pass
+
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({'ok': True, 'async': True,
+                        'mensagem': 'Varredura iniciada em background — o painel atualiza em ~1 min.'})
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': str(e)}), 200

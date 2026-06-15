@@ -8894,16 +8894,17 @@ async function ctrlSalvarNovoAmostrador() {
 }
 
 async function ctrlSyncLab() {
-  if (!confirm('Sincronizar com os e-mails do laboratório?\n\nLê os e-mails recebidos e atualiza: remessa→disponível, recebimento→devolvido (o sinal mais recente de cada código vence) e a lista oficial de pendentes. Só age sobre códigos que já existem no inventário.')) return;
-  _showToast('⏳ Lendo e-mails do laboratório...', 'ok');
+  if (!confirm('Sincronizar com os e-mails do laboratório?\n\nVarre a caixa oficial + a caixa de cada técnico cadastrado (só e-mails do laboratório) e atualiza status, resultados/laudos recebidos e a lista oficial de pendentes. Roda em segundo plano (~1 min).')) return;
+  _showToast('⏳ Varredura iniciada — lendo as caixas do laboratório...', 'ok');
   try {
     const r = await ctrlFetch('/controle/graph/lab_sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
     if (r.erro) { _showToast('Erro: ' + r.erro, 'err'); return; }
-    const pend = (r.pendentes_oficial||{}).total || 0;
-    _showToast(`✓ ${r.aplicadas||0} status atualizados · ${pend} pendentes do lab`, 'ok');
-    _ctrlStatsCache = null;
-    ctrlLoadVencendo();
-    if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
+    _showToast('✓ Varredura rodando em segundo plano — atualizo o painel em ~1 min.', 'ok');
+    setTimeout(() => {
+      _ctrlStatsCache = null;
+      ctrlLoadVencendo();
+      if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
+    }, 60000);
   } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
 }
 

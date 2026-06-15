@@ -143,9 +143,9 @@ def _use_pg():
     return bool(os.environ.get('DATABASE_URL'))
 
 
-def sincronizar_lab(apply=False, top=150):
+def sincronizar_lab(apply=False, top=60):
     """Lê os e-mails do lab (em TODAS as caixas dos técnicos + a oficial) e
-    reconcilia. apply=False → só simula (preview)."""
+    reconcilia. apply=False → só simula (preview). top = e-mails recentes por caixa."""
     look = _sistema_lookup()
     boxes = _mailboxes()
     emails, fetch_erros = _fetch_lab_emails(boxes, top)
@@ -201,6 +201,13 @@ def sincronizar_lab(apply=False, top=150):
                 _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
             if resultados:
                 _kv_set(conn, 'lab_resultados', json.dumps(resultados[:30], ensure_ascii=False))
+            _kv_set(conn, 'lab_sync_result', json.dumps({
+                'mailboxes_lidas': len(boxes),
+                'aplicadas': aplicadas,
+                'resultados_total': len(resultados),
+                'por_categoria': cat_count,
+                'fetch_erros': fetch_erros,
+            }, ensure_ascii=False))
 
     return {
         'modo': 'APLICADO' if apply else 'PREVIEW (nada gravado)',
@@ -219,7 +226,7 @@ def sincronizar_lab(apply=False, top=150):
     }
 
 
-def preview(top=150):
+def preview(top=60):
     return sincronizar_lab(apply=False, top=top)
 
 
