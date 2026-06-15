@@ -152,6 +152,59 @@ def _fetch_sent_to_lab(boxes, top=40):
     return out
 
 
+def _extrair_texto_anexo(nome, content_type, content_b64):
+    """Texto de um anexo: PDF via pymupdf, xlsx via openpyxl. '' se imagem/erro/escaneado."""
+    if not content_b64:
+        return ''
+    import base64, io
+    low = (nome or '').lower(); ct = (content_type or '').lower()
+    try:
+        raw = base64.b64decode(content_b64)
+    except Exception:
+        return ''
+    try:
+        if low.endswith('.pdf') or 'pdf' in ct:
+            import fitz
+            doc = fitz.open(stream=raw, filetype='pdf')
+            txt = ' '.join(p.get_text() for p in doc); doc.close()
+            return txt
+        if low.endswith(('.xlsx', '.xlsm')) or 'spreadsheet' in ct:
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+            buf = []
+            for ws in wb.worksheets:
+                for row in ws.iter_rows(values_only=True):
+                    buf += [str(c) for c in row if c is not None]
+            wb.close()
+            return ' '.join(buf)
+    except Exception:
+        return ''
+    return ''
+
+
+def _codigos_no_texto(texto, look=None):
+    """REVERSO: procura os códigos do INVENTÁRIO dentro do texto (normalizado, sem
+    espaços). Robusto a códigos que começam com dígito (64U57) e a formatação com
+    espaço/células. Casa por tipo+codigo (específico) ou codigo. Retorna [codigo...]."""
+    if not texto:
+        return []
+    if look is None:
+        look = _sistema_lookup()
+    norm = re.sub(r'\s+', '', texto).upper()
+    achados, vistos = [], set()
+    for d in look.values():
+        aid = d.get('id')
+        if aid in vistos:
+            continue
+        cod, tp = _norm(d.get('codigo')), _norm(d.get('tipo'))
+        if not cod or len(cod) < 4:
+            continue
+        if (tp + cod) in norm or cod in norm:
+            vistos.add(aid)
+            achados.append(d.get('codigo'))
+    return achados
+
+
 def _kv_set(conn, chave, valor):
     """Grava em ms_sync_state (cria a tabela se preciso)."""
     conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")

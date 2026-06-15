@@ -6098,10 +6098,9 @@ def graph_debug_anexo():
     os códigos (PDF via pymupdf, xlsx via openpyxl). Mostra se dá p/ parsear."""
     init_db()
     from .graph import graph_get
-    from .lab_inbox import LAB_DOM, _codes
-    import base64, io as _io
+    from .lab_inbox import LAB_DOM, _norm, _extrair_texto_anexo, _codigos_no_texto
     mailbox = request.args.get('mailbox', 'engenharia7@ocupacional.com.br')
-    limite = int(request.args.get('limite', 4))
+    limite = int(request.args.get('limite', 2))
     try:
         data = graph_get(
             f"/users/{mailbox}/mailFolders/sentitems/messages"
@@ -6118,35 +6117,25 @@ def graph_debug_anexo():
             if vistos >= limite:
                 break
             vistos += 1
-            atts = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments")
+            # Lista anexos SEM baixar o conteúdo (rápido); baixa só o documento.
+            metas = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments"
+                              f"?$select=id,name,contentType,size").get('value', [])
             anexos_info = []
-            for a in atts.get('value', []):
-                nome, ct, size = a.get('name', ''), a.get('contentType', ''), a.get('size', 0)
-                texto, cb = '', a.get('contentBytes')
-                try:
-                    if cb:
-                        raw = base64.b64decode(cb)
-                        low = nome.lower()
-                        if low.endswith('.pdf') or 'pdf' in ct:
-                            import fitz
-                            doc = fitz.open(stream=raw, filetype='pdf')
-                            texto = ' '.join(p.get_text() for p in doc); doc.close()
-                        elif low.endswith(('.xlsx', '.xlsm')) or 'spreadsheet' in ct:
-                            import openpyxl
-                            wb = openpyxl.load_workbook(_io.BytesIO(raw), read_only=True, data_only=True)
-                            buf = []
-                            for ws in wb.worksheets:
-                                for row in ws.iter_rows(values_only=True):
-                                    buf += [str(c) for c in row if c is not None]
-                            texto = ' '.join(buf)
-                except Exception as ex:
-                    texto = f'[erro extrair: {ex}]'
-                cods = _codes(texto) if (texto and not texto.startswith('[erro')) else []
-                anexos_info.append({'nome': nome, 'tipo': ct, 'tamanho': size,
+            for meta in metas:
+                nome = meta.get('name', ''); ct = meta.get('contentType', ''); low = nome.lower()
+                if not (low.endswith(('.pdf', '.xlsx', '.xlsm')) or 'pdf' in ct or 'spreadsheet' in ct):
+                    continue  # pula imagens de assinatura
+                full = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments/{meta['id']}")
+                texto = _extrair_texto_anexo(nome, ct, full.get('contentBytes'))
+                cods = _codigos_no_texto(texto)  # casa contra o inventário (reverso)
+                anexos_info.append({'nome': nome, 'tipo': ct.split(';')[0],
+                                    'kb': round((meta.get('size', 0) or 0) / 1024),
                                     'texto_len': len(texto), 'qtd_codigos': len(cods),
-                                    'codigos': cods[:25], 'preview': texto[:220]})
-            out.append({'data': (m.get('sentDateTime') or '')[:10],
-                        'assunto': (m.get('subject') or '')[:60], 'anexos': anexos_info})
+                                    'codigos': cods[:25],
+                                    'excerto': re.sub(r'\s+', ' ', texto)[:1500]})
+            if anexos_info:
+                out.append({'data': (m.get('sentDateTime') or '')[:10],
+                            'assunto': (m.get('subject') or '')[:60], 'anexos': anexos_info})
         return jsonify({'mailbox': mailbox, 'emails_com_anexo': len(out), 'amostra': out})
     except Exception as e:
         import traceback; traceback.print_exc()
