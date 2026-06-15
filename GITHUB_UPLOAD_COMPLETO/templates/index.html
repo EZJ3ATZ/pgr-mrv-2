@@ -3823,6 +3823,7 @@
       </div>
       <div class="ctrl-stats" id="ctrl-venc-stats"></div>
       <div id="ctrl-venc-lab" style="margin:10px 0;"></div>
+      <div id="ctrl-venc-resultados" style="margin:10px 0;"></div>
       <div class="ctrl-filters">
         <select id="ctrl-fv-faixa" onchange="ctrlLoadVencendo()">
           <option value="">— Todos em posse —</option>
@@ -8933,6 +8934,25 @@ async function ctrlLoadVencendo() {
         </div>`;
       } else {
         labBox.innerHTML = `<div style="font-size:.74rem;color:var(--text3);">Lista oficial do lab ainda não sincronizada — clique em "🔄 Sincronizar com o lab".</div>`;
+      }
+    }
+    // Resultados/laudos (RA) já recebidos do laboratório — vindos dos e-mails
+    const resBox = document.getElementById('ctrl-venc-resultados');
+    if (resBox) {
+      const rs = data.lab_resultados || [];
+      if (rs.length) {
+        resBox.innerHTML = `<div style="background:rgba(16,185,129,.07);border-left:3px solid var(--green);border-radius:6px;padding:10px 14px;font-size:.82rem;">
+          <b style="color:var(--green);">📥 ${rs.length} resultado(s)/laudo(s) recebido(s) do laboratório</b>
+          <span style="color:var(--text3);">(últimos e-mails de RA — confira o laudo no Outlook e lance no relatório)</span>
+          <div style="margin-top:6px;max-height:160px;overflow:auto;">
+            ${rs.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--border);font-size:.76rem;">
+              <span style="color:var(--text2);">${_esc(r.assunto||'—')}</span>
+              <span style="color:var(--text3);white-space:nowrap;">${r.data?String(r.data).split('-').reverse().join('/'):'—'}</span>
+            </div>`).join('')}
+          </div>
+        </div>`;
+      } else {
+        resBox.innerHTML = '';
       }
     }
     const faixa = document.getElementById('ctrl-fv-faixa').value;

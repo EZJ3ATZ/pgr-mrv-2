@@ -190,3 +190,17 @@ def get_pendentes_salvos():
     except Exception:
         pass
     return None
+
+
+def get_resultados_salvos():
+    """Lê a última lista de resultados/laudos (RA) recebidos do lab (aba Vencimento)."""
+    try:
+        with get_db() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
+            row = conn.execute("SELECT valor FROM ms_sync_state WHERE chave='lab_resultados'").fetchone()
+        if row:
+            d = row_to_dict(row)
+            return json.loads(d.get('valor') or '[]')
+    except Exception:
+        pass
+    return []

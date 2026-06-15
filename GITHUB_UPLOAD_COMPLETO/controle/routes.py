@@ -663,11 +663,12 @@ def fix_data_entrada():
 def get_vencendo():
     init_db()
     try:
-        from .lab_inbox import get_pendentes_salvos
+        from .lab_inbox import get_pendentes_salvos, get_resultados_salvos
         return jsonify({
             'stats': contar_vencendo(),
             'amostradores': list_amostradores_vencendo(),
-            'lab_pendentes': get_pendentes_salvos()
+            'lab_pendentes': get_pendentes_salvos(),
+            'lab_resultados': get_resultados_salvos()
         })
     except Exception as e:
         import traceback; traceback.print_exc()
