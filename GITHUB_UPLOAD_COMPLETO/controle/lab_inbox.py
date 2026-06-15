@@ -108,7 +108,7 @@ def _fetch_lab_emails(boxes, top=150):
             data = graph_get(
                 f"/users/{box}/mailFolders/inbox/messages"
                 f"?$top={top}&$orderby=receivedDateTime desc"
-                f"&$select=id,subject,from,receivedDateTime,body")
+                f"&$select=id,subject,from,receivedDateTime,hasAttachments,body")
         except Exception as e:
             erros[box] = str(e)[:140]
             continue
@@ -117,13 +117,23 @@ def _fetch_lab_emails(boxes, top=150):
             if LAB_DOM not in frm:
                 continue
             out.append({
+                'id': m.get('id'),
                 'subject': m.get('subject', ''),
                 'from': frm,
                 'data': (m.get('receivedDateTime') or '')[:10],
+                'anexos': bool(m.get('hasAttachments')),
                 'body': (m.get('body') or {}).get('content', ''),
                 'caixa': box,
             })
     return out, erros
+
+
+def _codigo_do_anexo_ra(nome):
+    """Código do amostrador no NOME do laudo: '81959338-1-TCP4058AV2-EMP-...-Manifesto.pdf'
+    → 'TCP4058AV2' (3º segmento separado por '-')."""
+    base = (nome or '').rsplit('.', 1)[0]
+    parts = base.split('-')
+    return parts[2].strip() if len(parts) >= 3 else ''
 
 
 def _fetch_sent_to_lab(boxes, look, top=80, max_anexo_mb=8, max_downloads=70, parse_anexos=True):
@@ -270,6 +280,7 @@ def sincronizar_lab(apply=False, top=60, parse_anexos=True):
     pendentes = None
     resultados = []
     _res_vistos = set()   # dedupe de RA (mesmo laudo em 2 caixas não duplica)
+    resultado_por_id = {}  # amostrador id -> menor data de resultado (RA)
 
     for e in emails:
         cat = _classificar(e['from'], e['subject'])
@@ -279,6 +290,25 @@ def sincronizar_lab(apply=False, top=60, parse_anexos=True):
             if _k not in _res_vistos:
                 _res_vistos.add(_k)
                 resultados.append({'assunto': e['subject'], 'data': e['data'], 'caixa': e.get('caixa', '')})
+            # data_resultado por amostrador: o código vem no NOME do laudo (PDF).
+            # Só precisa LISTAR os anexos (leve) — não baixa o conteúdo.
+            if e.get('anexos') and e.get('id'):
+                try:
+                    metas = graph_get(f"/users/{e['caixa']}/messages/{e['id']}/attachments"
+                                      f"?$select=name").get('value', [])
+                except Exception:
+                    metas = []
+                for meta in metas:
+                    nome = meta.get('name', '')
+                    if not nome.lower().endswith('.pdf'):
+                        continue
+                    cod = _norm(_codigo_do_anexo_ra(nome))
+                    amos = look.get(cod) if cod else None
+                    if not amos:
+                        continue
+                    aid, dt = amos['id'], e['data']
+                    if dt and (aid not in resultado_por_id or dt < resultado_por_id[aid]):
+                        resultado_por_id[aid] = dt
             continue
         if cat not in ('remessa', 'recebimento', 'pendentes'):
             continue
@@ -324,6 +354,16 @@ def sincronizar_lab(apply=False, top=60, parse_anexos=True):
                 f"AND (data_envio_lab IS NULL OR data_envio_lab='')", _ids).fetchall()]
     auto_envio = len(envio_faltam)
 
+    resultado_faltam = []   # ids sem data_resultado → candidatos a auto-preencher
+    if resultado_por_id:
+        _rids = list(resultado_por_id.keys())
+        _rph = ','.join(['?'] * len(_rids))
+        with get_db() as conn:
+            resultado_faltam = [row_to_dict(r)['id'] for r in conn.execute(
+                f"SELECT id FROM amostradores WHERE id IN ({_rph}) "
+                f"AND (data_resultado IS NULL OR data_resultado='')", _rids).fetchall()]
+    auto_resultado = len(resultado_faltam)
+
     aplicadas = 0
     if apply:
         with get_db() as conn:
@@ -334,6 +374,9 @@ def sincronizar_lab(apply=False, top=60, parse_anexos=True):
             for rid in envio_faltam:   # auto-data o envio (só quem estava sem data)
                 conn.execute("UPDATE amostradores SET data_envio_lab=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                              (envio_por_id[rid], rid))
+            for rid in resultado_faltam:   # auto-data o resultado (RA) — pelo nome do laudo
+                conn.execute("UPDATE amostradores SET data_resultado=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                             (resultado_por_id[rid], rid))
             if pendentes is not None:
                 _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
             if resultados:
@@ -342,6 +385,7 @@ def sincronizar_lab(apply=False, top=60, parse_anexos=True):
                 'mailboxes_lidas': len(boxes),
                 'aplicadas': aplicadas,
                 'envio_auto_datados': auto_envio,
+                'resultado_auto_datados': auto_resultado,
                 'resultados_total': len(resultados),
                 'por_categoria': cat_count,
                 'fetch_erros': fetch_erros,
@@ -360,6 +404,8 @@ def sincronizar_lab(apply=False, top=60, parse_anexos=True):
         'aplicadas': aplicadas,
         'envio_auto_datados': auto_envio,
         'envio_detectado': len(envio_por_id),
+        'resultado_auto_datados': auto_resultado,
+        'resultado_detectado': len(resultado_por_id),
         'codigos_fora_do_sistema': sorted(fora)[:30],
         'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],
