@@ -14629,6 +14629,7 @@ function nvVibrAddPonto(seed) {
   window._nvVibrPontos.push({
     nome: '', funcao: seed.funcao || '', setor: seed.setor || '',
     tipo: seed.tipo || _nvVibrTipoPadrao(),
+    hora_inicio: '', hora_final: '',
     tempo: '', tempo_nexp: '', trajeto: '', terreno: '',
     equip: '', marca: '', ano: '',
   });
@@ -14636,6 +14637,19 @@ function nvVibrAddPonto(seed) {
 }
 function nvVibrSetTipo(i, v) {
   window._nvVibrPontos[i].tipo = v;
+  nvVibrRenderPontos();
+}
+// Início/fim por trabalhador → auto-calcula o tempo de exposição (h). Igual ao químico.
+function nvVibrSetHora(i, campo, val) {
+  const p = window._nvVibrPontos[i]; if (!p) return;
+  p[campo] = val;
+  if (p.hora_inicio && p.hora_final) {
+    const [h1, m1] = p.hora_inicio.split(':').map(Number);
+    const [h2, m2] = p.hora_final.split(':').map(Number);
+    let min = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (min < 0) min += 24 * 60; // cruza meia-noite
+    p.tempo = (min / 60).toFixed(1);
+  }
   nvVibrRenderPontos();
 }
 
@@ -14679,10 +14693,16 @@ function nvVibrRenderPontos() {
           <input value="${_esc(p.setor)}" oninput="window._nvVibrPontos[${i}].setor=this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;" placeholder="Ex: Pátio"></div>
       </div>
-      <div style="margin-bottom:8px;">
-        <label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo de exposição (h)</label>
-        <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
-          style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="8">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Hora início</label>
+          <input type="time" value="${p.hora_inicio||''}" onchange="nvVibrSetHora(${i},'hora_inicio',this.value)"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Hora fim</label>
+          <input type="time" value="${p.hora_final||''}" onchange="nvVibrSetHora(${i},'hora_final',this.value)"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;font-family:inherit;"></div>
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo exposição (h)</label>
+          <input type="number" step="0.1" value="${p.tempo}" oninput="window._nvVibrPontos[${i}].tempo=this.value"
+            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="auto"></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(${isVmb?'1':'3'},1fr);gap:8px;margin-top:8px;">
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Tempo não exposto (h)</label>
@@ -15722,8 +15742,11 @@ function nvValidarFinalizacao() {
     }));
   if (tipos.includes('calor'))
     (window._nvCalorSetores||[]).forEach((s,i) => { const dd = parseFloat(s.duracao); if (!isNaN(dd) && dd > 60) avisos.push(`Calor: setor ${i+1} com duração ${dd} min (NHO-06 exige ≤60 por medição).`); });
-  if (tipos.includes('vibracao') && (!val('nv-gen-hora-ini') || !val('nv-gen-hora-fim')))
-    avisos.push('Vibração: horário de início/término não informado.');
+  if (tipos.includes('vibracao'))
+    (window._nvVibrPontos||[]).filter(p => (p.nome||'').trim()).forEach((p,i) => {
+      if (!String(p.tempo||'').trim() && (!p.hora_inicio || !p.hora_final))
+        avisos.push(`Vibração: trabalhador ${i+1} sem tempo de exposição (informe início/fim ou o tempo em h).`);
+    });
   return { erros, avisos };
 }
 

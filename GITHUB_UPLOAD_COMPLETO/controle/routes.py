@@ -4948,6 +4948,9 @@ def gerar_relatorio_vibracao():
                 str(_p.get('equip') or '').strip(),
                 str(_p.get('marca') or '').strip(),
                 str(_p.get('ano') or '').strip()) if x)
+            # Horário de medição por trabalhador (início–fim)
+            _hi, _hf = str(_p.get('hora_inicio') or '').strip(), str(_p.get('hora_final') or '').strip()
+            _p['horario'] = (f'{_hi}–{_hf}' if (_hi and _hf) else (_hi or _hf or ''))
     vci_pts = [p for p in pts_all if not _pt_is_vmb(p)]
     vmb_pts = [p for p in pts_all if _pt_is_vmb(p)]
     has_vci = bool(vci_pts) or (not pts_all and not _glob_vmb)
@@ -4974,13 +4977,13 @@ def gerar_relatorio_vibracao():
     cell_reg7  = sty('Normal', fontSize=7, fontName='Helvetica', textColor=PRETO)
     def _vibr_med_tbl(is_vmb_t, pts_t):
         if is_vmb_t:
-            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Equipamento / Marca / Ano']
-            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', ('equip_full','obs')]
-            _colw  = [W*0.04, W*0.22, W*0.16, W*0.13, W*0.09, W*0.09, W*0.27]
+            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'Horário', 'T. exp. (h)', 'T. não exp. (h)', 'Equipamento / Marca / Ano']
+            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'horario', 'tempo', 'tempo_nexp', ('equip_full','obs')]
+            _colw  = [W*0.04, W*0.19, W*0.14, W*0.11, W*0.10, W*0.08, W*0.08, W*0.26]
         else:
-            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno', 'Veículo / Modelo / Ano']
-            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', ('equip_full','obs')]
-            _colw  = [W*0.04, W*0.16, W*0.12, W*0.10, W*0.08, W*0.08, W*0.11, W*0.11, W*0.20]
+            _heads = ['#', 'Trabalhador', 'Função', 'Setor', 'Horário', 'T. exp. (h)', 'T. não exp. (h)', 'Trajeto', 'Tipo de terreno', 'Veículo / Modelo / Ano']
+            _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'horario', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', ('equip_full','obs')]
+            _colw  = [W*0.04, W*0.14, W*0.11, W*0.09, W*0.10, W*0.07, W*0.07, W*0.10, W*0.10, W*0.18]
         rows = [[Paragraph(h, cell_bold7) for h in _heads]]
         pl = list(pts_t)
         while len(pl) < 6:
