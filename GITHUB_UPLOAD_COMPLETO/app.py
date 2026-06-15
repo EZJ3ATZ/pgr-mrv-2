@@ -169,8 +169,36 @@ def _start_planner_scheduler():
             max_instances=1,
         )
 
+        # Lab: varredura dos e-mails do lab (envio→data_envio_lab, RA→resultado).
+        # LEVE (só corpo+inbox, sem baixar anexos) a cada 3h; PESADA (com anexos
+        # das cadeias/laudos) 1x/dia às 05:30 UTC.
+        def _lab_job(parse_anexos):
+            if not graph_ok():
+                return
+            try:
+                from controle.lab_inbox import sincronizar_lab
+                r = sincronizar_lab(apply=True, parse_anexos=parse_anexos)
+                print(f'[scheduler] Lab sync (anexos={parse_anexos}): '
+                      f'{r.get("aplicadas",0)} status, {r.get("envio_auto_datados",0)} envios, '
+                      f'{r.get("resultado_auto_datados",0)} resultados, {r.get("mailboxes_lidas",0)} caixas')
+            except Exception as e:
+                print(f'[scheduler] Lab sync erro: {e}')
+
+        scheduler.add_job(
+            lambda: _lab_job(False),
+            trigger=IntervalTrigger(hours=3, start_date=_dt.now() + _td(minutes=8)),
+            id='lab_sync_leve', name='Lab Sync Leve (3h)',
+            replace_existing=True, max_instances=1,
+        )
+        scheduler.add_job(
+            lambda: _lab_job(True),
+            trigger=CronTrigger(hour=5, minute=30),
+            id='lab_sync_pesada', name='Lab Sync Pesada (diária, com anexos)',
+            replace_existing=True, max_instances=1,
+        )
+
         scheduler.start()
-        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos + consistência diária 06h iniciado')
+        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos + consistência diária 06h + lab leve 3h/pesada 05h30 iniciado')
     except ImportError:
         print('[scheduler] APScheduler nao instalado — sync automatico desabilitado')
     except Exception as e:
@@ -911,7 +939,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r33-envio-profundidade'
+BUILD_MARK = '2026-06-15-r34-result-pdf-sched'
 
 
 @app.route('/healthz')

@@ -6150,6 +6150,60 @@ def graph_debug_anexo():
         return jsonify({'erro': str(e)}), 200
 
 
+@controle_bp.route('/graph/debug_resultado')
+def graph_debug_resultado():
+    """DEBUG: pega e-mails de RESULTADO (RA) na inbox, baixa o PDF do laudo e
+    extrai texto p/ ver se dá p/ casar os códigos do amostrador e ler valores."""
+    init_db()
+    from .graph import graph_get
+    from .lab_inbox import _classificar, _extrair_texto_anexo, _codigos_no_texto
+    mailbox = request.args.get('mailbox', 'engenharia19@ocupacional.com.br')
+    limite = int(request.args.get('limite', 2))
+    try:
+        data = graph_get(
+            f"/users/{mailbox}/mailFolders/inbox/messages"
+            f"?$top=40&$orderby=receivedDateTime desc"
+            f"&$select=id,subject,from,receivedDateTime,hasAttachments")
+        out, vistos = [], 0
+        for m in data.get('value', []):
+            frm = (((m.get('from') or {}).get('emailAddress') or {}).get('address') or '').lower()
+            if _classificar(frm, m.get('subject', '')) != 'resultado' or not m.get('hasAttachments'):
+                continue
+            if vistos >= limite:
+                break
+            vistos += 1
+            metas = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments"
+                              f"?$select=id,name,contentType,size").get('value', [])
+            anexos = []
+            for meta in metas:
+                nome = meta.get('name', ''); ct = (meta.get('contentType') or ''); low = nome.lower()
+                if not (low.endswith('.pdf') or 'pdf' in ct):
+                    continue
+                if (meta.get('size', 0) or 0) > 12 * 1024 * 1024:
+                    continue
+                full = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments/{meta['id']}")
+                txt = _extrair_texto_anexo(nome, ct, full.get('contentBytes'))
+                cods = _codigos_no_texto(txt)
+                seen, cand = set(), []
+                for t in re.findall(r'[A-Za-z0-9]{4,14}', txt or ''):
+                    tu = t.upper()
+                    if tu in seen:
+                        continue
+                    if re.search(r'[A-Z]', tu) and re.search(r'\d', tu):
+                        seen.add(tu); cand.append(tu)
+                anexos.append({'nome': nome, 'kb': round((meta.get('size', 0) or 0) / 1024),
+                               'texto_len': len(txt), 'qtd_codigos': len(cods),
+                               'codigos': '|'.join(cods[:20]), 'alfanum': '|'.join(cand[:70]),
+                               'excerto': re.sub(r'\s+', ' ', txt)[:700]})
+            if anexos:
+                out.append({'data': (m.get('receivedDateTime') or '')[:10],
+                            'assunto': (m.get('subject') or '')[:70], 'de': frm, 'anexos': anexos})
+        return jsonify({'mailbox': mailbox, 'ra_com_pdf': len(out), 'amostra': out})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
 @controle_bp.route('/graph/users')
 def graph_list_users():
     """Lista usuários Microsoft da organização."""

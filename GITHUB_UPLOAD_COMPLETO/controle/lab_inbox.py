@@ -126,7 +126,7 @@ def _fetch_lab_emails(boxes, top=150):
     return out, erros
 
 
-def _fetch_sent_to_lab(boxes, look, top=80, max_anexo_mb=8, max_downloads=70):
+def _fetch_sent_to_lab(boxes, look, top=80, max_anexo_mb=8, max_downloads=70, parse_anexos=True):
     """E-mails ENVIADOS por cada caixa PARA o laboratório (cadeia de custódia).
     Casa os códigos do inventário no CORPO; se o corpo não tiver, baixa os
     anexos-documento (PDF/xlsx) e casa lá (Fase 2). Retorna [{data, codigos, caixa}]
@@ -152,7 +152,7 @@ def _fetch_sent_to_lab(boxes, look, top=80, max_anexo_mb=8, max_downloads=70):
                 continue
             body = (m.get('body') or {}).get('content', '')
             cods = _codigos_no_texto(((m.get('subject', '') or '') + ' ' + body), look)
-            if not cods and m.get('hasAttachments') and baixados < max_downloads:
+            if not cods and m.get('hasAttachments') and parse_anexos and baixados < max_downloads:
                 try:
                     metas = graph_get(f"/users/{box}/messages/{m['id']}/attachments"
                                       f"?$select=id,name,contentType,size").get('value', [])
@@ -254,9 +254,10 @@ def _use_pg():
     return bool(os.environ.get('DATABASE_URL'))
 
 
-def sincronizar_lab(apply=False, top=60):
+def sincronizar_lab(apply=False, top=60, parse_anexos=True):
     """Lê os e-mails do lab (em TODAS as caixas dos técnicos + a oficial) e
-    reconcilia. apply=False → só simula (preview). top = e-mails recentes por caixa."""
+    reconcilia. apply=False → só simula (preview). top = e-mails recentes por caixa.
+    parse_anexos=False → varredura LEVE (só corpo+inbox, não baixa anexos)."""
     look = _sistema_lookup()
     boxes = _mailboxes()
     emails, fetch_erros = _fetch_lab_emails(boxes, top)
@@ -305,7 +306,7 @@ def sincronizar_lab(apply=False, top=60):
     #    Pega a MENOR data por amostrador (1º envio) e só preenche quem ainda NÃO
     #    tem data_envio_lab (não sobrescreve o que foi lançado à mão). ──
     envio_por_id = {}   # amostrador id -> menor data de envio detectada
-    for se in _fetch_sent_to_lab(boxes, look):
+    for se in _fetch_sent_to_lab(boxes, look, parse_anexos=parse_anexos):
         for c in se['codigos']:
             amos = look.get(c)
             if not amos:

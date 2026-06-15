@@ -1074,6 +1074,8 @@ def _migrate(conn):
         'cert_laboratorio': 'TEXT', 'cert_arquivo': 'TEXT',
         # Fluxo de status (29/05/2026): data em que virou 'concluido' (cert recebido)
         'data_conclusao': 'TEXT',
+        # Data REAL do resultado/laudo (RA) lido do e-mail/PDF do lab (15/06/2026)
+        'data_resultado': 'TEXT',
         # Arquivamento automático: 30 dias após concluído (não deletar)
         'arquivado':    'INTEGER DEFAULT 0',
         'arquivado_em': 'TEXT',
