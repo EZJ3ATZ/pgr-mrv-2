@@ -4107,6 +4107,13 @@ def _quimico_agente_flowables(ag, idx, W, data_fmt='', dia_semana=''):
             if dv in (None, '') and vi and vf:
                 dv = f'{abs(vi - vf) / vi * 100:.1f}'
             _fmt = lambda x: ('' if x in (None, '') else str(x))
+            # ΔV fora de ±5% (NR/NHO) sai em vermelho + negrito no laudo
+            _dv_str = _fmt(dv)
+            try:
+                _dv_fora = _dv_str != '' and float(str(_dv_str).replace('%', '').replace(',', '.')) > 5
+            except Exception:
+                _dv_fora = False
+            _dv_cell = Paragraph(f'<font color="#C0142C"><b>{_dv_str}</b></font>' if _dv_fora else _dv_str, norm)
             tbl_rows.append([
                 Paragraph(str(ai + 1), norm),
                 Paragraph(_fmt(id_am), norm),
@@ -4118,7 +4125,7 @@ def _quimico_agente_flowables(ag, idx, W, data_fmt='', dia_semana=''):
                 Paragraph(_fmt(t_min), norm),
                 Paragraph(_fmt(vm), norm),
                 Paragraph(_fmt(vol), norm),
-                Paragraph(_fmt(dv), norm),
+                _dv_cell,
             ])
     else:
         tbl_rows.append([Paragraph('—', ctr)] * 11)
