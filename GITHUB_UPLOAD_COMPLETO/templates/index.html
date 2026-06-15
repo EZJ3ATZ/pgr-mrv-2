@@ -10,6 +10,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    // Tema (claro/escuro) — aplica ANTES de pintar para não dar flash
+    try { if (localStorage.getItem('oc-theme') === 'light') document.documentElement.setAttribute('data-theme','light'); } catch(e){}
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -29,6 +33,7 @@
       --surface:  #0F1117;
       --surface2: #161922;
       --surface3: #1C2030;
+      --grad-bottom: #0c0e15;
 
       /* Borders */
       --border:    rgba(255,255,255,0.06);
@@ -73,6 +78,39 @@
       /* Mono */
       --mono: 'JetBrains Mono', monospace;
     }
+
+    /* ══ MODO CLARO ══ sobrescreve só as variáveis; a UI é dirigida por var() */
+    html[data-theme="light"] {
+      --bg:          #EEF1F5;
+      --surface:     #FFFFFF;
+      --surface2:    #F5F7FA;
+      --surface3:    #E9EDF2;
+      --grad-bottom: #E4E9F0;
+
+      --border:    rgba(15,23,42,0.10);
+      --border2:   rgba(15,23,42,0.16);
+      --border3:   rgba(15,23,42,0.22);
+      --bd:        rgba(15,23,42,0.10);
+      --bd2:       rgba(15,23,42,0.16);
+      --bd-teal:   rgba(27,107,107,0.30);
+
+      --text:   #15181F;
+      --text2:  #475569;
+      --text3:  #74808F;
+      --text4:  #A9B2BE;
+
+      --shadow-sm: 0 1px 3px rgba(15,23,42,.08);
+      --shadow:    0 4px 20px rgba(15,23,42,.10);
+      --shadow-lg: 0 16px 40px rgba(15,23,42,.16);
+    }
+    /* Cantos de cor fixa que não seguem var() (painéis/drawer/menu por id) */
+    html[data-theme="light"] #notif-panel,
+    html[data-theme="light"] #user-menu,
+    html[data-theme="light"] #bi-drawer { background: var(--surface) !important; border-color: var(--border2) !important; }
+    html[data-theme="light"] #user-menu a { color: var(--text) !important; }
+    /* Hovers que eram clarear-no-escuro → escurecer-no-claro */
+    html[data-theme="light"] .tab:hover,
+    html[data-theme="light"] .sidebar-item:hover { background: rgba(15,23,42,.05); }
 
     html { scroll-behavior: smooth; }
 
@@ -252,7 +290,7 @@
 
     /* ═══ Card ══════════════════════════════════════════════════════ */
     .card {
-      background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+      background: linear-gradient(180deg, var(--surface) 0%, var(--grad-bottom) 100%);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 20px 24px;
@@ -1668,7 +1706,7 @@
 
 /* Card v2 */
 .card-v2 {
-  background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--grad-bottom) 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 22px 24px;
@@ -1888,7 +1926,7 @@
 .hv4-right { display: flex; flex-direction: column; gap: 14px; }
 .hv4-belowdash { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
 .hv4-panel {
-  background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--grad-bottom) 100%);
   border: 1px solid var(--border);
   border-radius: 14px; padding: 16px 18px;
   transition: border-color .2s;
@@ -1935,7 +1973,7 @@
 
 /* ── Fluxo V4 ── */
 .hv4-fluxo {
-  background: linear-gradient(180deg, var(--surface) 0%, #0c0e15 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--grad-bottom) 100%);
   border: 1px solid var(--border); border-radius: 18px;
   padding: 22px 28px; margin-bottom: 20px;
   position: relative; overflow: hidden;
@@ -2070,6 +2108,8 @@
       <div class="dot"></div>
       <span class="status-text">Online</span>
     </div>
+    <button id="theme-toggle" onclick="toggleTheme()" title="Mudar para modo claro"
+      style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;">☀️</button>
     <div class="header-notif" onclick="notifToggle(event)" title="Notificações">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -2101,6 +2141,21 @@
 </header>
 <script>
   window._dataBR = function(s){ if(!s) return '—'; const p=String(s).slice(0,10).split('-'); return p.length===3 && p[0].length===4 ? p[2]+'/'+p[1]+'/'+p[0] : String(s); };
+  // ── Tema claro/escuro ──
+  function toggleTheme() {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    if (light) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme','light');
+    try { localStorage.setItem('oc-theme', light ? 'dark' : 'light'); } catch(e){}
+    _syncThemeBtn();
+  }
+  function _syncThemeBtn() {
+    var b = document.getElementById('theme-toggle'); if (!b) return;
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    b.textContent = light ? '🌙' : '☀️';
+    b.title = light ? 'Mudar para modo escuro' : 'Mudar para modo claro';
+  }
+  _syncThemeBtn();
   document.addEventListener('click', function(e) {
     var menu = document.getElementById('user-menu');
     if (menu && !e.target.closest('.header-user')) menu.classList.remove('open');
@@ -11093,7 +11148,7 @@ async function planSalvar(status) {
       if (status === 'confirmado' && r.id) {
         const pid = r.id;
         const toastEl = document.createElement('div');
-        toastEl.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid var(--blue);color:var(--text);padding:14px 20px;border-radius:10px;z-index:9999;display:flex;align-items:center;gap:14px;box-shadow:0 4px 24px rgba(0,0,0,.5);';
+        toastEl.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--blue);color:var(--text);padding:14px 20px;border-radius:10px;z-index:9999;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);';
         toastEl.innerHTML = `<span>✅ Planejamento confirmado!</span><button onclick="planIrParaCampo(${pid});this.closest('div').remove();" style="background:var(--blue);color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-weight:700;font-family:inherit;">Ir para Campo →</button><button onclick="this.closest('div').remove();" style="background:transparent;color:var(--text2);border:none;cursor:pointer;font-size:1.1rem;">✕</button>`;
         document.body.appendChild(toastEl);
         setTimeout(() => toastEl.remove(), 8000);
@@ -14914,10 +14969,10 @@ function nvCqRenderAmostrTable(idx) {
       <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_inicio||''}" style="${inp}width:78px;" onchange="nvCqUpdateAmostr(${idx},${ai},'hora_inicio',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_final||''}" style="${inp}width:78px;" onchange="nvCqUpdateAmostr(${idx},${ai},'hora_final',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.intervalos||''}" placeholder="hh:mm" style="${inp}width:72px;" onchange="nvCqUpdateAmostr(${idx},${ai},'intervalos',this.value)"></td>
-      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:#0f1929;">${vm?vm.toFixed(3):'—'}</td>
-      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:#0f1929;">${t?t.toFixed(0):'—'}</td>
-      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:#0f1929;">${vol?vol.toFixed(3):'—'}</td>
-      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:#140f09;${dvS}">${dv?dv.toFixed(2)+'%'+(dv>5?' ⚠':''):'—'}</td>
+      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">${vm?vm.toFixed(3):'—'}</td>
+      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">${t?t.toFixed(0):'—'}</td>
+      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">${vol?vol.toFixed(3):'—'}</td>
+      <td style="padding:4px;border:1px solid var(--border);text-align:center;background:var(--surface3);${dvS}">${dv?dv.toFixed(2)+'%'+(dv>5?' ⚠':''):'—'}</td>
       <td style="padding:2px;border:1px solid var(--border);text-align:center;"><button onclick="nvCqRemAmostr(${idx},${ai})" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:.95rem;">✕</button></td>
     </tr>`;
   }).join('');
@@ -15022,10 +15077,10 @@ function nvCqRenderAgentes() {
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">Início</th>
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">Final</th>
             <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;">Intervalos</th>
-            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:#0f1929;">Vm</th>
-            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:#0f1929;">t(min)</th>
-            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:#0f1929;">Vol(L)</th>
-            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:#140f09;">ΔV%</th>
+            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">Vm</th>
+            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">t(min)</th>
+            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">Vol(L)</th>
+            <th style="padding:6px 4px;border:1px solid var(--border);text-align:center;background:var(--surface3);">ΔV%</th>
             <th style="padding:6px 4px;border:1px solid var(--border);"></th>
           </tr></thead>
           <tbody id="nv-cqa-amostr-${idx}">
