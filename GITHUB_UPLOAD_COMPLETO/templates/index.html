@@ -103,14 +103,22 @@
       --shadow:    0 4px 20px rgba(15,23,42,.10);
       --shadow-lg: 0 16px 40px rgba(15,23,42,.16);
     }
-    /* Cantos de cor fixa que não seguem var() (painéis/drawer/menu por id) */
-    html[data-theme="light"] #notif-panel,
-    html[data-theme="light"] #user-menu,
+    /* O cabeçalho é uma "ilha escura" nos dois temas (o logo é branco).
+       Redefinindo as variáveis SÓ dentro dele, todo o conteúdo (textos, busca,
+       menus, painel de notificações) volta ao visual escuro de uma vez. */
+    html[data-theme="light"] header {
+      --surface:  #0F1117; --surface2: #161922; --surface3: #1C2030;
+      --border: rgba(255,255,255,.06); --border2: rgba(255,255,255,.10);
+      --text: #E4E4E7; --text2: #A1A1AA; --text3: #8B93A0;
+    }
+    /* Drawer de BI (cor fixa) — fica FORA do header, então clareia */
     html[data-theme="light"] #bi-drawer { background: var(--surface) !important; border-color: var(--border2) !important; }
-    html[data-theme="light"] #user-menu a { color: var(--text) !important; }
     /* Hovers que eram clarear-no-escuro → escurecer-no-claro */
     html[data-theme="light"] .tab:hover,
     html[data-theme="light"] .sidebar-item:hover { background: rgba(15,23,42,.05); }
+    /* Insets escuros (rgba 7,9,14) que ficavam dentro de cards/tabelas claras */
+    html[data-theme="light"] .hv4-lab-card { background: var(--surface3); }
+    html[data-theme="light"] .tbl-v2 thead th { background: var(--surface2); }
 
     html { scroll-behavior: smooth; }
 
