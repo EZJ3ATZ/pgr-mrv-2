@@ -11224,7 +11224,16 @@ async function ctrlNvVincularPlanejamento(pid) {
     // ── Preencher técnico (cabeçalho) ──
     const tecEl = document.getElementById('ctrl-nv-avaliador');
     if (tecEl && p.tecnico) {
-      [...tecEl.options].forEach(o => { if (o.text.includes(p.tecnico.split(' ')[0])) tecEl.value = o.value; });
+      // Casar pelo nome COMPLETO (case-insensitive) primeiro; só cai no 1º nome
+      // se não houver match exato — evita pegar o técnico errado quando dois
+      // compartilham o primeiro nome.
+      const alvo = p.tecnico.trim().toLowerCase();
+      const opts = [...tecEl.options];
+      let hit = opts.find(o => o.text.trim().toLowerCase() === alvo)
+             || opts.find(o => o.text.trim().toLowerCase().startsWith(alvo))
+             || opts.find(o => o.text.toLowerCase().includes(alvo))
+             || opts.find(o => o.text.toLowerCase().includes(alvo.split(' ')[0]));
+      if (hit) tecEl.value = hit.value;
     }
 
     // ── Preencher data prevista ──
@@ -15128,7 +15137,12 @@ function _nvRunValidacoesCore(res) {
   const divs = [];
   if (tipos.includes('quimico') && _nvCqAgentes && _nvCqAgentes.length) {
     _nvCqAgentes.forEach((ag, idx) => {
-      const plan = window._ctrlNvItens[idx];
+      // Casar pelo NOME da substância (não por posição) — se a ordem dos agentes
+      // mudar, a comparação por índice apontava divergência no agente errado.
+      const _agn = (ag.substancias || '').trim().toLowerCase();
+      const plan = (_agn && (window._ctrlNvItens || []).find(it =>
+                      ((it.agente_nome || it.agente || '').trim().toLowerCase()) === _agn))
+                   || window._ctrlNvItens[idx];
       if (!plan) return;
       if (plan.bomba_modelo_id && ag.bomba && plan.bomba_modelo_id !== ag.bomba)
         divs.push({idx:idx+1, campo:'Bomba', plano:plan.bomba_modelo_id, real:ag.bomba});
@@ -15689,6 +15703,12 @@ function nvValidarFinalizacao() {
   }
   if (tipos.includes('vibracao') && !(window._nvVibrPontos||[]).filter(p => (p.nome||'').trim()).length)
     erros.push('Vibração: adicione ao menos um trabalhador avaliado.');
+  // Agente do plano marcado como NÃO medido exige causa (motivo) — antes era só texto "obrigatório"
+  (window._nvAgentesPlano||[]).forEach((ag,i) => {
+    const cb = document.getElementById('nv-ag-check-'+i);
+    if (cb && !cb.checked && !document.querySelector('input[name="nv-ag-causa-'+i+'"]:checked'))
+      erros.push('Agente não medido sem justificativa: ' + (ag.agente||ag.tipo||('agente '+(i+1))) + ' — selecione a causa.');
+  });
   // ── Fora-da-norma (AVISA + confirma) ──
   if (tipos.includes('ruido')) {
     const ci = parseFloat(val('nv-cr-cal-ini').replace(',','.')), cf = parseFloat(val('nv-cr-cal-fim').replace(',','.'));
