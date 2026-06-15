@@ -126,17 +126,18 @@ def _fetch_lab_emails(boxes, top=150):
     return out, erros
 
 
-def _fetch_sent_to_lab(boxes, top=40):
+def _fetch_sent_to_lab(boxes, look, top=30, max_anexo_mb=8):
     """E-mails ENVIADOS por cada caixa PARA o laboratório (cadeia de custódia).
-    Retorna [{data, codigos, caixa}] — a data REAL do envio + códigos extraídos
-    do assunto+corpo. (Códigos só-no-anexo não são pegos aqui — ver Fase 2.)"""
+    Casa os códigos do inventário no CORPO; se o corpo não tiver, baixa os
+    anexos-documento (PDF/xlsx) e casa lá (Fase 2). Retorna [{data, codigos, caixa}]
+    com codigos = chaves normalizadas de _sistema_lookup."""
     out = []
     for box in boxes:
         try:
             data = graph_get(
                 f"/users/{box}/mailFolders/sentitems/messages"
                 f"?$top={top}&$orderby=sentDateTime desc"
-                f"&$select=subject,toRecipients,sentDateTime,body")
+                f"&$select=id,subject,toRecipients,sentDateTime,hasAttachments,body")
         except Exception:
             continue
         for m in data.get('value', []):
@@ -144,11 +145,32 @@ def _fetch_sent_to_lab(boxes, top=40):
                    for t in (m.get('toRecipients') or [])]
             if not any(LAB_DOM in t for t in tos):
                 continue
+            dt = (m.get('sentDateTime') or '')[:10]
+            if not dt:
+                continue
             body = (m.get('body') or {}).get('content', '')
-            codigos = _codes(((m.get('subject', '') or '') + ' ' + body))
-            if codigos:
-                out.append({'data': (m.get('sentDateTime') or '')[:10],
-                            'codigos': codigos, 'caixa': box})
+            cods = _codigos_no_texto(((m.get('subject', '') or '') + ' ' + body), look)
+            if not cods and m.get('hasAttachments'):
+                try:
+                    metas = graph_get(f"/users/{box}/messages/{m['id']}/attachments"
+                                      f"?$select=id,name,contentType,size").get('value', [])
+                except Exception:
+                    metas = []
+                for meta in metas:
+                    nome = meta.get('name', ''); ct = (meta.get('contentType') or '')
+                    low = nome.lower()
+                    if not (low.endswith(('.pdf', '.xlsx', '.xlsm')) or 'pdf' in ct or 'spreadsheet' in ct):
+                        continue  # pula imagens de assinatura
+                    if (meta.get('size', 0) or 0) > max_anexo_mb * 1024 * 1024:
+                        continue
+                    try:
+                        full = graph_get(f"/users/{box}/messages/{m['id']}/attachments/{meta['id']}")
+                        txt = _extrair_texto_anexo(nome, ct, full.get('contentBytes'))
+                        cods += _codigos_no_texto(txt, look)
+                    except Exception:
+                        continue
+            if cods:
+                out.append({'data': dt, 'codigos': list(dict.fromkeys(cods)), 'caixa': box})
     return out
 
 
@@ -197,11 +219,16 @@ def _codigos_no_texto(texto, look=None):
         if aid in vistos:
             continue
         cod, tp = _norm(d.get('codigo')), _norm(d.get('tipo'))
-        if not cod or len(cod) < 4:
+        if not cod:
             continue
-        if (tp + cod) in norm or cod in norm:
+        # tipo+codigo (ex.: EC91943A) é específico → seguro. Codigo isolado só se
+        # for longo/distintivo (≥7), p/ não casar analito (FE2O3) nem pedaço de nº.
+        hit = bool(tp) and (tp + cod) in norm
+        if not hit and len(cod) >= 7:
+            hit = cod in norm
+        if hit:
             vistos.add(aid)
-            achados.append(d.get('codigo'))
+            achados.append(cod)   # chave normalizada (= chave de _sistema_lookup)
     return achados
 
 
@@ -273,7 +300,7 @@ def sincronizar_lab(apply=False, top=60):
     #    Pega a MENOR data por amostrador (1º envio) e só preenche quem ainda NÃO
     #    tem data_envio_lab (não sobrescreve o que foi lançado à mão). ──
     envio_por_id = {}   # amostrador id -> menor data de envio detectada
-    for se in _fetch_sent_to_lab(boxes):
+    for se in _fetch_sent_to_lab(boxes, look):
         for c in se['codigos']:
             amos = look.get(c)
             if not amos:
