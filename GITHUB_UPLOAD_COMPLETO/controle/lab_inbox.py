@@ -73,23 +73,57 @@ def _sistema_lookup():
     return look
 
 
-def _fetch_lab_emails(top=150):
-    data = graph_get(
-        f"/users/{MAILBOX}/mailFolders/inbox/messages"
-        f"?$top={top}&$orderby=receivedDateTime desc"
-        f"&$select=id,subject,from,receivedDateTime,body")
-    out = []
-    for m in data.get('value', []):
-        frm = (((m.get('from') or {}).get('emailAddress') or {}).get('address') or '').lower()
-        if LAB_DOM not in frm:
-            continue
-        out.append({
-            'subject': m.get('subject', ''),
-            'from': frm,
-            'data': (m.get('receivedDateTime') or '')[:10],
-            'body': (m.get('body') or {}).get('content', ''),
-        })
+def _mailboxes():
+    """Caixas a varrer: a oficial do lab + e-mail de cada técnico cadastrado
+    (todos @ocupacional.com.br). O app é App-only com Mail.Read.All tenant-wide,
+    então alcança todas sem vínculo/OAuth por usuário."""
+    boxes = [MAILBOX]
+    try:
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT email FROM usuarios "
+                "WHERE COALESCE(ativo,1)=1 AND email LIKE '%@ocupacional.com.br'"
+            ).fetchall()
+        for r in rows:
+            em = (row_to_dict(r).get('email') or '').strip().lower()
+            if em:
+                boxes.append(em)
+    except Exception:
+        pass
+    seen, out = set(), []
+    for b in boxes:                       # dedupe case-insensitive, preserva ordem
+        k = (b or '').lower()
+        if k and k not in seen:
+            seen.add(k); out.append(b)
     return out
+
+
+def _fetch_lab_emails(boxes, top=150):
+    """Lê e-mails do laboratório em VÁRIAS caixas. Só retorna os que vêm do
+    domínio do lab (LAB_DOM) — o resto da caixa do técnico é ignorado."""
+    out = []
+    erros = {}
+    for box in boxes:
+        try:
+            data = graph_get(
+                f"/users/{box}/mailFolders/inbox/messages"
+                f"?$top={top}&$orderby=receivedDateTime desc"
+                f"&$select=id,subject,from,receivedDateTime,body")
+        except Exception as e:
+            erros[box] = str(e)[:140]
+            continue
+        for m in data.get('value', []):
+            frm = (((m.get('from') or {}).get('emailAddress') or {}).get('address') or '').lower()
+            if LAB_DOM not in frm:
+                continue
+            out.append({
+                'subject': m.get('subject', ''),
+                'from': frm,
+                'data': (m.get('receivedDateTime') or '')[:10],
+                'body': (m.get('body') or {}).get('content', ''),
+                'caixa': box,
+            })
+    return out, erros
 
 
 def _kv_set(conn, chave, valor):
@@ -110,9 +144,12 @@ def _use_pg():
 
 
 def sincronizar_lab(apply=False, top=150):
-    """Lê os e-mails do lab e reconcilia. apply=False → só simula (preview)."""
+    """Lê os e-mails do lab (em TODAS as caixas dos técnicos + a oficial) e
+    reconcilia. apply=False → só simula (preview)."""
     look = _sistema_lookup()
-    emails = sorted(_fetch_lab_emails(top), key=lambda e: e['data'])  # cronológico (antigo→novo)
+    boxes = _mailboxes()
+    emails, fetch_erros = _fetch_lab_emails(boxes, top)
+    emails = sorted(emails, key=lambda e: e['data'])  # cronológico (antigo→novo)
 
     cat_count = {'remessa': 0, 'recebimento': 0, 'resultado': 0, 'pendentes': 0, 'ignorado': 0}
     fora = set()
@@ -120,12 +157,16 @@ def sincronizar_lab(apply=False, top=150):
     estado_final = {}   # codigo_sistema_key -> ('disponivel'|'devolvido', data)
     pendentes = None
     resultados = []
+    _res_vistos = set()   # dedupe de RA (mesmo laudo em 2 caixas não duplica)
 
     for e in emails:
         cat = _classificar(e['from'], e['subject'])
         cat_count[cat or 'ignorado'] += 1
         if cat == 'resultado':
-            resultados.append({'assunto': e['subject'], 'data': e['data']})
+            _k = ((e['subject'] or '').strip().lower(), e['data'])
+            if _k not in _res_vistos:
+                _res_vistos.add(_k)
+                resultados.append({'assunto': e['subject'], 'data': e['data'], 'caixa': e.get('caixa', '')})
             continue
         if cat not in ('remessa', 'recebimento', 'pendentes'):
             continue
@@ -163,13 +204,17 @@ def sincronizar_lab(apply=False, top=150):
 
     return {
         'modo': 'APLICADO' if apply else 'PREVIEW (nada gravado)',
-        'mailbox': MAILBOX,
+        'mailbox': MAILBOX,                 # legado
+        'mailboxes': boxes,                 # todas as caixas varridas
+        'mailboxes_lidas': len(boxes),
+        'fetch_erros': fetch_erros,         # caixas que falharam (ex.: 403 por policy)
         'emails_por_categoria': cat_count,
         'pendentes_oficial': pendentes,
         'mudancas_de_status': plano if not apply else aplicadas,
         'total_mudancas': len(plano),
         'aplicadas': aplicadas,
         'codigos_fora_do_sistema': sorted(fora)[:30],
+        'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],
     }
 
