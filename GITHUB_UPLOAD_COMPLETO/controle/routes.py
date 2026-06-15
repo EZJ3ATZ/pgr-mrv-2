@@ -6204,6 +6204,133 @@ def graph_debug_resultado():
         return jsonify({'erro': str(e)}), 200
 
 
+@controle_bp.route('/graph/auditoria_lab', methods=['GET', 'POST'])
+def graph_auditoria_lab():
+    """AUDITORIA: reconcilia o que o lab ENVIOU (RAs na inbox + cadeias nos enviados)
+    com o que o site CAPTUROU (data_resultado / data_envio_lab). GET lê o último
+    resultado; POST roda em background (varre todas as caixas) e persiste."""
+    init_db()
+    if request.method == 'GET':
+        try:
+            with get_db() as conn:
+                row = conn.execute("SELECT valor, atualizado_em FROM ms_sync_state WHERE chave='lab_auditoria'").fetchone()
+            if row:
+                d = row_to_dict(row); out = json.loads(d.get('valor') or '{}'); out['quando'] = d.get('atualizado_em')
+                return jsonify(out)
+            return jsonify({'status': 'nunca rodou — faça POST p/ gerar'})
+        except Exception as e:
+            return jsonify({'erro': str(e)}), 200
+
+    import threading
+    from flask import current_app
+    app = current_app._get_current_object()
+
+    def _run():
+        with app.app_context():
+            import json as _json
+            try:
+                from .lab_inbox import (_mailboxes, _sistema_lookup, _norm, _codigo_do_anexo_ra,
+                                        _extrair_texto_anexo, _codigos_no_texto, _classificar, LAB_DOM, _kv_set)
+                from .graph import graph_get
+                look = _sistema_lookup()
+                with get_db() as conn:
+                    rows = conn.execute("SELECT id, data_resultado, data_envio_lab FROM amostradores WHERE COALESCE(arquivado,0)=0").fetchall()
+                datas = {row_to_dict(r)['id']: row_to_dict(r) for r in rows}
+                boxes = _mailboxes()
+                ra_emails = ra_pdfs = 0; ra_cods = set(); ra_inv = set(); ra_fora = set(); ra_dated = set()
+                cad_emails = 0; cad_sem_cod = []; cad_cods = set(); cad_inv = set(); cad_dated = set()
+                for box in boxes:
+                    try:
+                        inbox = graph_get(f"/users/{box}/mailFolders/inbox/messages?$top=100&$orderby=receivedDateTime desc&$select=id,subject,from,hasAttachments").get('value', [])
+                    except Exception:
+                        inbox = []
+                    for m in inbox:
+                        frm = (((m.get('from') or {}).get('emailAddress') or {}).get('address') or '').lower()
+                        if _classificar(frm, m.get('subject', '')) != 'resultado' or not m.get('hasAttachments'):
+                            continue
+                        ra_emails += 1
+                        try:
+                            metas = graph_get(f"/users/{box}/messages/{m['id']}/attachments?$select=name").get('value', [])
+                        except Exception:
+                            metas = []
+                        for meta in metas:
+                            nome = meta.get('name', '')
+                            if not nome.lower().endswith('.pdf'):
+                                continue
+                            ra_pdfs += 1
+                            cod = _norm(_codigo_do_anexo_ra(nome))
+                            if not cod:
+                                continue
+                            ra_cods.add(cod)
+                            a = look.get(cod)
+                            if a:
+                                ra_inv.add(cod)
+                                if (datas.get(a['id']) or {}).get('data_resultado'):
+                                    ra_dated.add(cod)
+                            else:
+                                ra_fora.add(cod)
+                    try:
+                        sent = graph_get(f"/users/{box}/mailFolders/sentitems/messages?$top=100&$orderby=sentDateTime desc&$select=id,subject,toRecipients,sentDateTime,hasAttachments,body").get('value', [])
+                    except Exception:
+                        sent = []
+                    for m in sent:
+                        tos = [(((t or {}).get('emailAddress') or {}).get('address') or '').lower() for t in (m.get('toRecipients') or [])]
+                        if not any(LAB_DOM in t for t in tos):
+                            continue
+                        cad_emails += 1
+                        body = (m.get('body') or {}).get('content', '')
+                        cods = _codigos_no_texto(((m.get('subject', '') or '') + ' ' + body), look)
+                        if not cods and m.get('hasAttachments'):
+                            try:
+                                metas = graph_get(f"/users/{box}/messages/{m['id']}/attachments?$select=id,name,contentType,size").get('value', [])
+                            except Exception:
+                                metas = []
+                            for meta in metas:
+                                nome = meta.get('name', ''); ct = (meta.get('contentType') or ''); low = nome.lower()
+                                if not (low.endswith(('.pdf', '.xlsx', '.xlsm')) or 'pdf' in ct or 'spreadsheet' in ct):
+                                    continue
+                                if (meta.get('size', 0) or 0) > 8 * 1024 * 1024:
+                                    continue
+                                try:
+                                    full = graph_get(f"/users/{box}/messages/{m['id']}/attachments/{meta['id']}")
+                                    cods += _codigos_no_texto(_extrair_texto_anexo(nome, ct, full.get('contentBytes')), look)
+                                except Exception:
+                                    continue
+                        cods = list(dict.fromkeys(cods))
+                        if not cods:
+                            cad_sem_cod.append({'data': (m.get('sentDateTime') or '')[:10], 'assunto': (m.get('subject') or '')[:60]})
+                        for c in cods:
+                            cad_cods.add(c); a = look.get(c)
+                            if a:
+                                cad_inv.add(c)
+                                if (datas.get(a['id']) or {}).get('data_envio_lab'):
+                                    cad_dated.add(c)
+                out = {
+                    'resultados': {'ra_emails': ra_emails, 'ra_pdfs': ra_pdfs, 'codigos_distintos': len(ra_cods),
+                                   'no_inventario': len(ra_inv), 'datados': len(ra_dated),
+                                   'gap_inv_sem_data': sorted(ra_inv - ra_dated)[:60], 'fora_inventario': sorted(ra_fora)[:60]},
+                    'cadeias': {'emails_enviados': cad_emails, 'codigos_detectados': len(cad_cods),
+                                'no_inventario': len(cad_inv), 'datados': len(cad_dated),
+                                'gap_inv_sem_data': sorted(cad_inv - cad_dated)[:60],
+                                'fora_inventario': sorted(cad_cods - cad_inv)[:60], 'emails_sem_codigo': cad_sem_cod[:30]},
+                    'caixas': boxes,
+                }
+                with get_db() as conn:
+                    _kv_set(conn, 'lab_auditoria', _json.dumps(out, ensure_ascii=False))
+            except Exception as ex:
+                import traceback, logging
+                logging.getLogger(__name__).error('[auditoria_lab] %s', ex)
+                try:
+                    from .lab_inbox import _kv_set
+                    with get_db() as conn:
+                        _kv_set(conn, 'lab_auditoria', _json.dumps({'erro': traceback.format_exc()[:1200]}))
+                except Exception:
+                    pass
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({'ok': True, 'async': True, 'mensagem': 'Auditoria rodando em background — GET /controle/graph/auditoria_lab em ~1-2 min.'})
+
+
 @controle_bp.route('/graph/users')
 def graph_list_users():
     """Lista usuários Microsoft da organização."""
