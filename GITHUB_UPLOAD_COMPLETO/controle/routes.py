@@ -6057,6 +6057,41 @@ def graph_list_plans():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/graph/debug_envio')
+def graph_debug_envio():
+    """DEBUG: lista e-mails ENVIADOS (sentitems) de uma caixa PARA o laboratório,
+    p/ descobrir o formato da cadeia de custódia (data real do envio + códigos +
+    se vêm no texto ou só em anexo)."""
+    init_db()
+    from .graph import graph_get
+    from .lab_inbox import LAB_DOM, _codes
+    mailbox = request.args.get('mailbox', 'engenharia7@ocupacional.com.br')
+    try:
+        data = graph_get(
+            f"/users/{mailbox}/mailFolders/sentitems/messages"
+            f"?$top=40&$orderby=sentDateTime desc"
+            f"&$select=subject,toRecipients,sentDateTime,hasAttachments,bodyPreview,body")
+        out = []
+        for m in data.get('value', []):
+            tos = [(((t or {}).get('emailAddress') or {}).get('address') or '').lower()
+                   for t in (m.get('toRecipients') or [])]
+            if not any(LAB_DOM in t for t in tos):
+                continue
+            body_txt = (m.get('body') or {}).get('content', '')
+            out.append({
+                'subject': m.get('subject', ''),
+                'to': tos,
+                'data': (m.get('sentDateTime') or '')[:10],
+                'anexos': m.get('hasAttachments'),
+                'codigos_no_texto': _codes(((m.get('subject', '') or '') + ' ' + body_txt))[:25],
+                'preview': (m.get('bodyPreview') or '')[:180],
+            })
+        return jsonify({'mailbox': mailbox, 'enviados_ao_lab': len(out), 'amostra': out[:15]})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
 @controle_bp.route('/graph/users')
 def graph_list_users():
     """Lista usuários Microsoft da organização."""
