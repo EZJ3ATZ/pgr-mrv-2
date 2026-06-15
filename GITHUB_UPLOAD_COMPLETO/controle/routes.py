@@ -6128,11 +6128,19 @@ def graph_debug_anexo():
                 full = graph_get(f"/users/{mailbox}/messages/{m['id']}/attachments/{meta['id']}")
                 texto = _extrair_texto_anexo(nome, ct, full.get('contentBytes'))
                 cods = _codigos_no_texto(texto)  # casa contra o inventário (reverso)
+                # tokens alfanuméricos (letra+dígito) p/ ver como os códigos aparecem
+                seen, cand = set(), []
+                for t in re.findall(r'[A-Za-z0-9]{4,14}', texto or ''):
+                    tu = t.upper()
+                    if tu in seen:
+                        continue
+                    if re.search(r'[A-Z]', tu) and re.search(r'\d', tu):
+                        seen.add(tu); cand.append(tu)
                 anexos_info.append({'nome': nome, 'tipo': ct.split(';')[0],
                                     'kb': round((meta.get('size', 0) or 0) / 1024),
                                     'texto_len': len(texto), 'qtd_codigos': len(cods),
-                                    'codigos': cods[:25],
-                                    'excerto': re.sub(r'\s+', ' ', texto)[:1500]})
+                                    'codigos': '|'.join(cods[:30]),
+                                    'tokens': '|'.join(cand[:70])})
             if anexos_info:
                 out.append({'data': (m.get('sentDateTime') or '')[:10],
                             'assunto': (m.get('subject') or '')[:60], 'anexos': anexos_info})
