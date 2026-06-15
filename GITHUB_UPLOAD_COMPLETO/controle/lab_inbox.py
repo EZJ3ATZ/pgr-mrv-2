@@ -126,12 +126,14 @@ def _fetch_lab_emails(boxes, top=150):
     return out, erros
 
 
-def _fetch_sent_to_lab(boxes, look, top=30, max_anexo_mb=8):
+def _fetch_sent_to_lab(boxes, look, top=80, max_anexo_mb=8, max_downloads=70):
     """E-mails ENVIADOS por cada caixa PARA o laboratório (cadeia de custódia).
     Casa os códigos do inventário no CORPO; se o corpo não tiver, baixa os
     anexos-documento (PDF/xlsx) e casa lá (Fase 2). Retorna [{data, codigos, caixa}]
-    com codigos = chaves normalizadas de _sistema_lookup."""
+    com codigos = chaves normalizadas de _sistema_lookup. max_downloads limita o nº
+    de anexos baixados por varredura (evita pesar demais o background)."""
     out = []
+    baixados = 0
     for box in boxes:
         try:
             data = graph_get(
@@ -150,13 +152,15 @@ def _fetch_sent_to_lab(boxes, look, top=30, max_anexo_mb=8):
                 continue
             body = (m.get('body') or {}).get('content', '')
             cods = _codigos_no_texto(((m.get('subject', '') or '') + ' ' + body), look)
-            if not cods and m.get('hasAttachments'):
+            if not cods and m.get('hasAttachments') and baixados < max_downloads:
                 try:
                     metas = graph_get(f"/users/{box}/messages/{m['id']}/attachments"
                                       f"?$select=id,name,contentType,size").get('value', [])
                 except Exception:
                     metas = []
                 for meta in metas:
+                    if baixados >= max_downloads:
+                        break
                     nome = meta.get('name', ''); ct = (meta.get('contentType') or '')
                     low = nome.lower()
                     if not (low.endswith(('.pdf', '.xlsx', '.xlsm')) or 'pdf' in ct or 'spreadsheet' in ct):
@@ -165,6 +169,7 @@ def _fetch_sent_to_lab(boxes, look, top=30, max_anexo_mb=8):
                         continue
                     try:
                         full = graph_get(f"/users/{box}/messages/{m['id']}/attachments/{meta['id']}")
+                        baixados += 1
                         txt = _extrair_texto_anexo(nome, ct, full.get('contentBytes'))
                         cods += _codigos_no_texto(txt, look)
                     except Exception:
