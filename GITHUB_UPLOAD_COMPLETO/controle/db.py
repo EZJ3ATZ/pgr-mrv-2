@@ -2168,26 +2168,28 @@ def produtividade_por_tecnico(de=None, ate=None):
         cond += " WHERE substr(COALESCE(data_coleta,''),1,10) >= ?"; fparams.append(de10)
     if ate10:
         cond += (' AND' if cond else ' WHERE') + " substr(COALESCE(data_coleta,''),1,10) <= ?"; fparams.append(ate10)
-    # (sql, rotulo_tipo, coluna_tecnico_legado)
+    # (tabela, coluna_tecnico_legado, rotulo_tipo) — SELECT * p/ pegar empresa,
+    # data, OS e local sem quebrar se a coluna não existir (PG/SQLite).
     fontes = [
-        ("SELECT tecnico_login, tecnico AS leg, data_coleta, empresa_nome FROM coletas_ruido" + cond, 'ruido'),
-        ("SELECT tecnico_login, responsavel_coleta AS leg, data_coleta, empresa_nome FROM coletas_quimico" + cond, 'quimico'),
-        ("SELECT tecnico_login, avaliador AS leg, data_coleta, empresa_nome FROM coletas_outros" + cond, 'outros'),
+        ('coletas_ruido',   'tecnico',            'ruido'),
+        ('coletas_quimico', 'responsavel_coleta', 'quimico'),
+        ('coletas_outros',  'avaliador',          'outros'),
     ]
     agg = {}
     with get_db() as conn:
-        for sql, tipo in fontes:
+        for tbl, legcol, tipo in fontes:
             try:
-                rows = conn.execute(sql, fparams).fetchall()
+                rows = conn.execute(f"SELECT * FROM {tbl}" + cond, fparams).fetchall()
             except Exception:
                 rows = []
             for r in rows:
                 d = row_to_dict(r)
-                tec = (d.get('tecnico_login') or d.get('leg') or '').strip() or 'Sem técnico'
+                tec = (d.get('tecnico_login') or d.get(legcol) or '').strip() or 'Sem técnico'
                 a = agg.get(tec)
                 if not a:
                     a = {'tecnico': tec, 'total': 0, 'mes': 0,
-                         'ruido': 0, 'quimico': 0, 'outros': 0, 'empresas': set()}
+                         'ruido': 0, 'quimico': 0, 'outros': 0,
+                         'empresas': set(), 'medicoes': []}
                     agg[tec] = a
                 a['total'] += 1
                 a[tipo] += 1
@@ -2195,9 +2197,20 @@ def produtividade_por_tecnico(de=None, ate=None):
                     a['mes'] += 1
                 if d.get('empresa_nome'):
                     a['empresas'].add(d['empresa_nome'])
+                # Detalhe: o que foi medido, onde e quando
+                tipo_real = (d.get('tipo') or tipo) if tbl == 'coletas_outros' else tipo
+                a['medicoes'].append({
+                    'tipo':    tipo_real,
+                    'empresa': d.get('empresa_nome') or '',
+                    'data':    (d.get('data_coleta') or '')[:10],
+                    'os':      d.get('os') or d.get('numero_os') or '',
+                    'local':   d.get('unidade') or d.get('cidade') or d.get('setor') or '',
+                })
     out = []
     for a in agg.values():
         a['empresas'] = len(a['empresas'])
+        a['medicoes'].sort(key=lambda m: m.get('data') or '', reverse=True)
+        a['medicoes'] = a['medicoes'][:200]
         out.append(a)
     out.sort(key=lambda x: x['total'], reverse=True)
     return out

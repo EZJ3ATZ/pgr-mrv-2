@@ -111,8 +111,13 @@
       --border: rgba(255,255,255,.06); --border2: rgba(255,255,255,.10);
       --text: #E4E4E7; --text2: #A1A1AA; --text3: #8B93A0;
     }
-    /* Drawer de BI (cor fixa) — fica FORA do header, então clareia */
-    html[data-theme="light"] #bi-drawer { background: var(--surface) !important; border-color: var(--border2) !important; }
+    /* Drawer de BI — todo construído com cores escuras fixas (#0f1117/#e4e4e7).
+       Mantém como ilha escura nos dois temas (senão o texto some no claro). */
+    html[data-theme="light"] #bi-drawer {
+      --surface:  #0F1117; --surface2: #161922; --surface3: #1C2030;
+      --border: rgba(255,255,255,.06); --border2: rgba(255,255,255,.10);
+      --text: #E4E4E7; --text2: #A1A1AA; --text3: #8B93A0;
+    }
     /* Hovers que eram clarear-no-escuro → escurecer-no-claro */
     html[data-theme="light"] .tab:hover,
     html[data-theme="light"] .sidebar-item:hover { background: rgba(15,23,42,.05); }
@@ -13568,12 +13573,33 @@ function biProdDrill(idx) {
       <span style="font-size:.82rem;color:#e4e4e7;">${rotulo}</span>
       <span style="font-size:.95rem;font-weight:800;color:${cor};">${n||0}</span>
     </div>`;
-  const html =
+  let html =
     linha('Ruído', v.ruido, '#3b82f6') +
     linha('Químico', v.quimico, '#8b5cf6') +
     linha('Calor / Vibração (outros)', v.outros, '#fb923c') +
     linha('Medições este mês', v.mes, '#f59e0b') +
     linha('Empresas atendidas', v.empresas, '#60a5fa');
+  // Detalhamento: QUAIS medições, ONDE (empresa/local) e QUANDO (data)
+  const tipoMap = { ruido:['Ruído','#3b82f6'], quimico:['Químico','#8b5cf6'],
+    calor:['Calor','#fb923c'], vibracao:['Vibração','#fb923c'], outros:['Calor/Vibração','#fb923c'] };
+  const meds = v.medicoes || [];
+  if (meds.length) {
+    const grupos = {};
+    meds.forEach(m => { const k = (m.tipo||'outros').toLowerCase(); (grupos[k] = grupos[k] || []).push(m); });
+    html += `<div style="margin-top:18px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#71717a;">📋 Medições realizadas — onde e quando</div>`;
+    Object.keys(grupos).forEach(k => {
+      const [lbl, cor] = tipoMap[k] || [k, '#a1a1aa'];
+      html += `<div style="margin-top:12px;font-size:.72rem;font-weight:700;color:${cor};">${lbl} · ${grupos[k].length}</div>`;
+      html += grupos[k].map(m => `
+        <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #27272a;">
+          <div style="min-width:0;">
+            <div style="font-size:.8rem;color:#e4e4e7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(m.empresa||'—')}</div>
+            ${(m.local||m.os) ? `<div style="font-size:.68rem;color:#71717a;margin-top:1px;">${[_esc(m.local||''), m.os?('OS '+_esc(String(m.os))):''].filter(Boolean).join(' · ')}</div>` : ''}
+          </div>
+          <div style="font-size:.74rem;color:#a1a1aa;white-space:nowrap;flex-shrink:0;">${m.data ? m.data.split('-').reverse().join('/') : '—'}</div>
+        </div>`).join('');
+    });
+  }
   biDrawerOpen(`${tec} — ${v.total||0} medições`, html);
 }
 function biDrawerOpen(title, html) {
