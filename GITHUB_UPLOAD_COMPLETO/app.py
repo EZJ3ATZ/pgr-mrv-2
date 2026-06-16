@@ -939,7 +939,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r45-parse-cadeia-codigo'
+BUILD_MARK = '2026-06-15-r46-laudo-conclusao-excesso'
 
 
 @app.route('/healthz')
@@ -1952,7 +1952,15 @@ def gerar_quimico_bytes(d):
         new_conc = ev.get('conclusao', '')
         if new_conc:
             b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
-        # sem conclusão custom: mantém OLD_CONC como está (já é XML escapado —
+        elif _cv is not None and _ltv is not None and _cv >= _ltv:
+            # Sem conclusão custom E C >= LT: o texto padrão do template ("C < LT,
+            # regular") estaria ERRADO (ex.: chumbo acima do LT sairia "regular").
+            # Substitui pela conclusão de EXCESSO. (C < LT mantém OLD_CONC, correto.)
+            NEW_CONC = ('concluímos que C &gt; LT, a concentração é maior que o Limite de '
+                        'Tolerância. Logo a situação é considerada IRREGULAR, sendo necessária '
+                        'a adoção imediata de medidas de controle e reavaliação após implementação.')
+            b = b.replace(f'>{OLD_CONC}</', f'>{NEW_CONC}</')
+        # sem conclusão custom e C < LT: mantém OLD_CONC como está (já é XML escapado —
         # re-escapar gerava "&amp;lt;" e o cliente via "C &lt; LT" literal)
         b = re.sub(r'w14:paraId="([0-9A-Fa-f]{8})"',
                    lambda m, ii=i: f'w14:paraId="{(int(m.group(1),16)+(ii+1)*0x10000)&0xFFFFFFFE:08X}"',
