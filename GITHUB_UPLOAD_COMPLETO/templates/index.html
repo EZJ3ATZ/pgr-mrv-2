@@ -3540,14 +3540,18 @@
       <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
       <div style="flex:1"><div class="card-title">Resultados em massa</div><div class="card-desc">Lance Concentração e Data da Análise de todas as avaliações de uma vez — limites e conclusão preenchem sozinhos pelo agente.</div></div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+      <label class="btn-add" style="cursor:pointer;">
+        📋 Anexar cadeia(s) de custódia (Excel)
+        <input type="file" accept=".xlsx,.xls" multiple style="display:none;" onchange="qMassaImportCadeias(this.files)">
+      </label>
       <label class="btn-add" style="cursor:pointer;">
         📎 Anexar resultados do laboratório (PDF)
         <input type="file" accept=".pdf" multiple style="display:none;" onchange="qMassaImportLaudos(this.files)">
       </label>
-      <span style="font-size:.76rem;color:var(--text3);max-width:480px;">Lê concentração, limites e data da análise do RA da UniScientific e casa pelo nº do amostrador / trabalhador. Pode anexar vários de uma vez.</span>
       <span id="q-massa-import-status" style="font-size:.8rem;color:var(--text3);"></span>
     </div>
+    <div style="font-size:.74rem;color:var(--text3);margin-bottom:12px;max-width:660px;">A cadeia traz trabalhador, agente e dados de campo; o RA traz concentração e limites. Tudo é cruzado pelo <b>nº do amostrador</b> — então agentes iguais (mesmo trabalhador ou não) não se misturam.</div>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
       <div>
         <label style="display:block;font-size:.76rem;color:var(--text2);margin-bottom:4px;">Data da Análise — aplicar a todas</label>
@@ -7657,15 +7661,67 @@ function qMassaAplicarDataTodas() {
   qRenderAvals();   // re-render sincroniza grade + cards das avaliações
 }
 
-// Anexa vários RAs do laboratório de uma vez: lê concentração/limites/data,
-// casa por nº do amostrador ou nome, e insere as páginas na Seção X.
+// Remove chaves vazias p/ o merge não apagar dados já preenchidos.
+function _qSemVazios(o) {
+  const r = {};
+  for (const k in o) if (o[k] !== '' && o[k] != null) r[k] = o[k];
+  return r;
+}
+
+// Acha a avaliação correspondente. Chave principal = nº do amostrador (único por
+// amostra → diferencia agentes iguais, mesmo trabalhador). Senão: nome + agente.
+function qFindAvalByKey(filtro, nome, agente) {
+  const fn = (filtro || '').toUpperCase().trim();
+  if (fn) {
+    const t = qAvals.find(a => (a.filtroNumero || '').toUpperCase().trim() === fn);
+    if (t) return t;
+  }
+  const nm = (nome || '').toLowerCase().trim();
+  const ag = (agente || '').toLowerCase().trim();
+  if (nm) {
+    const t = qAvals.find(a => (a.trabalhador || '').toLowerCase().trim() === nm
+                            && (a.agente || '').toLowerCase().trim() === ag);
+    if (t) return t;
+    const mesmoNome = qAvals.filter(a => (a.trabalhador || '').toLowerCase().trim() === nm);
+    if (mesmoNome.length === 1 && !mesmoNome[0].agente) return mesmoNome[0];
+  }
+  return null;
+}
+
+// Anexa cadeia(s) de custódia em massa: cruza por nº do amostrador (atualiza a
+// avaliação existente) ou cria nova. A cadeia traz trabalhador/agente/campo.
+async function qMassaImportCadeias(files) {
+  if (!files || !files.length) return;
+  const st  = document.getElementById('q-massa-import-status');
+  const arr = Array.from(files);
+  let novas = 0, cruz = 0;
+  for (let n = 0; n < arr.length; n++) {
+    if (st) st.textContent = `Lendo cadeia ${n + 1}/${arr.length}...`;
+    const fd = new FormData(); fd.append('file', arr[n]);
+    try {
+      const r = await fetch('/api/parse_cadeia', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.erro || !Array.isArray(d.avaliacoes)) continue;
+      d.avaliacoes.forEach(ev => {
+        const t = qFindAvalByKey(ev.filtroNumero, ev.trabalhador, ev.agente);
+        if (t) { Object.assign(t, _qSemVazios(ev)); cruz++; }
+        else   { const a = qNewAval(); Object.assign(a, ev); qAvals.push(a); novas++; }
+      });
+    } catch (e) { /* arquivo com erro: ignora */ }
+  }
+  qRenderAvals();
+  if (st) st.textContent = `✓ cadeia: ${novas} nova(s)` + (cruz ? `, ${cruz} cruzada(s) por amostrador` : '') + '.';
+}
+
+// Anexa vários RAs do laboratório: lê concentração/limites/data, cruza por nº do
+// amostrador (ou nome+agente) e insere as páginas na Seção X.
 async function qMassaImportLaudos(files) {
   if (!files || !files.length) return;
   const st  = document.getElementById('q-massa-import-status');
   const arr = Array.from(files);
   let ok = 0, novas = 0, semConc = 0;
   for (let n = 0; n < arr.length; n++) {
-    if (st) st.textContent = `Lendo ${n + 1}/${arr.length}...`;
+    if (st) st.textContent = `Lendo RA ${n + 1}/${arr.length}...`;
     const fd = new FormData(); fd.append('file', arr[n]);
     try {
       const r = await fetch('/api/convert_laudo', { method: 'POST', body: fd });
@@ -7673,13 +7729,9 @@ async function qMassaImportLaudos(files) {
       if (d.erro) continue;
       const ex = d.dadosExtraidos || {};
       if (Array.isArray(d.paginas) && d.paginas.length) qLaudoImgs = qLaudoImgs.concat(d.paginas);
-      // casa: 1) nº do amostrador  2) nome do trabalhador  3) cria nova
-      const fn = (ex.filtroNumero || '').toUpperCase();
-      const nm = (ex.trabalhador  || '').toLowerCase();
-      let target = fn ? qAvals.find(a => (a.filtroNumero || '').toUpperCase() === fn) : null;
-      if (!target && nm) target = qAvals.find(a => (a.trabalhador || '').toLowerCase() === nm);
+      let target = qFindAvalByKey(ex.filtroNumero, ex.trabalhador, ex.agente);
       if (!target) { target = qNewAval(); qAvals.push(target); novas++; }
-      Object.assign(target, ex);   // não traz bomba → bomba por avaliação preservada
+      Object.assign(target, _qSemVazios(ex));   // não traz bomba → bomba por avaliação preservada
       if (!ex.concentracao) semConc++;
       if (ex.dataAnalise) {
         const dt = document.getElementById('q-massa-data-todas');
