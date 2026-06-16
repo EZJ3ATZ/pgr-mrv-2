@@ -379,6 +379,15 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             for rid in resultado_faltam:   # auto-data o resultado (RA) — pelo nome do laudo
                 conn.execute("UPDATE amostradores SET data_resultado=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                              (resultado_por_id[rid], rid))
+            # Reconciliação de status de ALTA CONFIANÇA (mantém o inventário confiável):
+            # 'reservado' não existe no fluxo (→ lab se enviado, senão disponível);
+            # laboratório com resultado → concluído. (disponivel+envio NÃO mexe — reuso.)
+            for rr in conn.execute("SELECT id, status, data_envio_lab, data_resultado FROM amostradores WHERE COALESCE(arquivado,0)=0").fetchall():
+                rd = row_to_dict(rr); _st = (rd.get('status') or '').strip()
+                _ev = (rd.get('data_envio_lab') or '').strip(); _rs = (rd.get('data_resultado') or '').strip()
+                _nv = ('laboratorio' if _ev else 'disponivel') if _st == 'reservado' else ('concluido' if (_st == 'laboratorio' and _rs) else None)
+                if _nv and _nv != _st:
+                    conn.execute("UPDATE amostradores SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?", (_nv, rd['id']))
             if pendentes is not None:
                 _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
             if resultados:
