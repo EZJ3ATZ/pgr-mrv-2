@@ -2195,8 +2195,11 @@ def api_convert_laudo():
         if _ms:
             setor = _ms.group(1).strip()
 
-        # Nº amostrador (ex: FL22335)
-        filtro = _g([r'\b([A-Z]{2}\d{5})\b'])
+        # Nº amostrador (ex: FL22335, EC81076A, TCP1671AV2) — token antes de "Nº do Branco de Campo"
+        filtro = _g([
+            r'\n([A-Z][A-Z0-9]{4,11})\s*\n+\s*N[^\n]*do Branco de Campo',
+            r'\b([A-Z]{2}\d{5}[A-Z]?\d?)\b',
+        ])
 
         # Data coleta: data na linha imediatamente anterior a "Tempo de Amostragem"
         data_col = _g([r'(\d{2}/\d{2}/\d{4})\s*\nTempo'])
@@ -2232,8 +2235,44 @@ def api_convert_laudo():
             except:
                 tempo_min = tempo_raw
 
-        # Agente: linha antes de "\nppm\n" na tabela de resultados
-        agente = _g([r'\n([^\n<>]+)\nppm\n'])
+        # ── Tabela de RESULTADO do lab (UniScientific RA) ───────────────
+        # Estrutura por linha na tabela de resultados:
+        #   <agente> \n <unidade> \n <resultado> \n
+        #   <NR15 MP 8h> \n <NR15 Teto> \n <ACGIH TWA> \n <ACGIH STEL> \n ...
+        _UNI = r'ppm|mg/m³|mg/m3|mg|µg|μg|f/cc'
+        agente = ''
+        concentracao = ''
+        lt_nr15 = lt_twa = lt_stel = ''
+        _mr = _re.search(
+            r'\n([^\n<>]+)\n(' + _UNI + r')\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)',
+            full_text, _re.IGNORECASE)
+        if _mr:
+            agente    = _mr.group(1).strip().strip('—–-').strip()
+            unidade   = _mr.group(2).strip()
+            resultado = _mr.group(3).strip().replace(' ', '')
+            concentracao = f'{resultado} {unidade}' if resultado else ''
+
+            def _lim(s):
+                s = (s or '').strip()
+                return s if _re.match(r'^[<>]?\s*[\d.,]+$', s) else ''
+            lt_nr15 = _lim(_mr.group(4))   # NR-15 MP 8h
+            lt_twa  = _lim(_mr.group(6))   # ACGIH TWA
+            lt_stel = _lim(_mr.group(7))   # ACGIH STEL
+        else:
+            agente = _g([r'\n([^\n<>]+)\n(?:' + _UNI + r')\n'])
+
+        # Nível de Ação = metade do LT (NR-09/PGR p/ agentes químicos)
+        def _na(lt):
+            try:
+                v = float(lt.replace(',', '.')) / 2
+                return '{:.4f}'.format(v).rstrip('0').rstrip('.').replace('.', ',')
+            except Exception:
+                return ''
+        na_nr15 = _na(lt_nr15)
+        na_twa  = _na(lt_twa)
+
+        # Data da análise (processamento) = data isolada logo após a emissão.
+        data_analise = _g([r'S[ãa]o Bernardo do Campo,\s*\d{2}/\d{2}/\d{4}\.\s*\n\s*(\d{2}/\d{2}/\d{4})'])
 
         dados = {k: v for k, v in {
             'filtroNumero': filtro,
@@ -2241,11 +2280,18 @@ def api_convert_laudo():
             'cargo':        cargo,
             'setor':        setor,
             'dataColeta':   data_col,
+            'dataAnalise':  data_analise,
             'vazaoInicial': vazao_fmt,
             'vazaoFinal':   vazao_fmt,
             'volume':       volume_fmt,
             'tempoColeta':  tempo_min,
             'agente':       agente,
+            'concentracao': concentracao,
+            'ltNR15':       lt_nr15,
+            'naNR15':       na_nr15,
+            'ltTWA':        lt_twa,
+            'naTWA':        na_twa,
+            'ltSTEL':       lt_stel,
         }.items() if v}
 
         return jsonify({'paginas': imgs, 'dadosExtraidos': dados})
