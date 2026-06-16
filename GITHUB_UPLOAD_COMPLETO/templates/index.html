@@ -3534,6 +3534,22 @@
     </div>
   </div>
 
+  <!-- Resultados em massa (laboratório) -->
+  <div class="card" id="card-q-massa">
+    <div class="card-header">
+      <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+      <div style="flex:1"><div class="card-title">Resultados em massa</div><div class="card-desc">Lance Concentração e Data da Análise de todas as avaliações de uma vez — limites e conclusão preenchem sozinhos pelo agente.</div></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+      <div>
+        <label style="display:block;font-size:.76rem;color:var(--text2);margin-bottom:4px;">Data da Análise — aplicar a todas</label>
+        <input type="text" id="q-massa-data-todas" placeholder="dd/mm/aaaa" style="width:150px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:7px 9px;font-family:inherit;font-size:.85rem;">
+      </div>
+      <button class="btn-add" onclick="qMassaAplicarDataTodas()">Aplicar a todas</button>
+    </div>
+    <div id="q-massa-list"></div>
+  </div>
+
   <!-- Avaliações -->
   <div class="card" id="card-q-avals">
     <div class="card-header">
@@ -7563,6 +7579,73 @@ function qRenderAvals() {
       </div>
     </div>
   `).join('');
+  qRenderResultadosMassa();
+}
+
+// ── Resultados em massa (grade) ────────────────────────────────────
+// Converte "0,4324 PPM" → 0.4324 (mesma leitura do backend _qf).
+function _qNum(v) {
+  const t = String(v == null ? '' : v).trim().split(/\s+/)[0].replace(',', '.');
+  const n = parseFloat(t);
+  return isNaN(n) ? null : n;
+}
+// Mesma regra do laudo: REGULAR se C < LT (NR-15, senão TWA); senão IRREGULAR.
+function qSituacao(av) {
+  const c = _qNum(av.concentracao);
+  if (c === null) return { txt: '—', cor: 'var(--text3)' };
+  const lt = _qNum(av.ltNR15 || av.ltTWA);
+  if (lt === null) return { txt: 'sem limite', cor: 'var(--yellow)' };
+  return c >= lt ? { txt: 'IRREGULAR', cor: 'var(--red)' }
+                 : { txt: 'REGULAR',   cor: 'var(--green)' };
+}
+
+function qRenderResultadosMassa() {
+  const c = document.getElementById('q-massa-list');
+  if (!c) return;
+  if (!qAvals.length) {
+    c.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:.85rem;">Nenhuma avaliação ainda. Adicione avaliações ou importe a cadeia de custódia.</div>';
+    return;
+  }
+  const INP = 'background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:6px 8px;font-family:inherit;font-size:.83rem;';
+  const TH  = 'padding:6px 8px;font-size:.7rem;color:var(--text3);font-weight:600;white-space:nowrap;';
+  const rows = qAvals.map((av, i) => {
+    const sit  = qSituacao(av);
+    const quem = qEsc(av.trabalhador || av.cargo || ('Avaliação ' + (i + 1)));
+    return `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:6px 8px;color:var(--text3);font-size:.8rem;">${i + 1}</td>
+        <td style="padding:6px 8px;font-size:.83rem;">${quem}</td>
+        <td style="padding:6px 8px;color:var(--text2);font-size:.78rem;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${qEsc(av.agente || '—')}</td>
+        <td style="padding:6px 8px;color:var(--text3);font-size:.78rem;white-space:nowrap;">${qEsc(av.filtroNumero || '—')}</td>
+        <td style="padding:4px 8px;"><input type="text" value="${qEsc(av.dataAnalise)}" placeholder="dd/mm/aaaa" onchange="qAvals[${i}].dataAnalise=this.value" style="width:108px;${INP}"></td>
+        <td style="padding:4px 8px;"><input type="text" value="${qEsc(av.concentracao)}" placeholder="Ex: 0,4324 PPM" oninput="qMassaSetConc(${i},this.value)" style="width:128px;${INP}"></td>
+        <td style="padding:6px 8px;"><span id="q-massa-sit-${i}" style="font-size:.74rem;font-weight:700;color:${sit.cor};">${sit.txt}</span></td>
+      </tr>`;
+  }).join('');
+  c.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:1.5px solid var(--border2);text-align:left;">
+          <th style="${TH}">#</th><th style="${TH}">Cargo / Trabalhador</th><th style="${TH}">Agente</th>
+          <th style="${TH}">Filtro</th><th style="${TH}">Data Análise</th><th style="${TH}">Concentração</th><th style="${TH}">Situação</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// Escreve a concentração e atualiza só o badge da linha (sem re-render → não perde o foco).
+function qMassaSetConc(i, v) {
+  qAvals[i].concentracao = v;
+  const el = document.getElementById('q-massa-sit-' + i);
+  if (el) { const s = qSituacao(qAvals[i]); el.textContent = s.txt; el.style.color = s.cor; }
+}
+
+function qMassaAplicarDataTodas() {
+  const d = (document.getElementById('q-massa-data-todas').value || '').trim();
+  if (!d || !qAvals.length) return;
+  qAvals.forEach(av => { av.dataAnalise = d; });
+  qRenderAvals();   // re-render sincroniza grade + cards das avaliações
 }
 
 // Feedback visual ao escolher o logo da empresa (o arquivo é lido no envio).

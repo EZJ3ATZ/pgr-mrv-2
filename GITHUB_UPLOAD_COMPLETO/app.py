@@ -1951,12 +1951,21 @@ def gerar_quimico_bytes(d):
 
     # ── Build section XI: Certificado de Calibração ──────────────────
     xi_new = ''
-    if pump and pump_sn and pump in _PUMP_CERT_PAGES and pump_sn in _PUMP_CERT_PAGES[pump]:
-        for pg in range(1, _PUMP_CERT_PAGES[pump][pump_sn] + 1):
-            path = os.path.join(CERTS_DIR, f'cert_{pump}_{pump_sn}_p{pg}.jpg')
-            if os.path.exists(path):
-                rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
-                xi_new += _q_img_para(rid, iid)
+    # Certificados das bombas — derivados das avaliações (bomba é por avaliação;
+    # pump/pump_sn ficam só como fallback legado da config).
+    _cert_pairs = []
+    for _ev in evals:
+        _bk  = _ev.get('bomba')   or pump
+        _bsn = _ev.get('bombaSN') or pump_sn
+        if _bk and _bsn and (_bk, _bsn) not in _cert_pairs:
+            _cert_pairs.append((_bk, _bsn))
+    for _bk, _bsn in _cert_pairs:
+        if _bk in _PUMP_CERT_PAGES and _bsn in _PUMP_CERT_PAGES[_bk]:
+            for pg in range(1, _PUMP_CERT_PAGES[_bk][_bsn] + 1):
+                path = os.path.join(CERTS_DIR, f'cert_{_bk}_{_bsn}_p{pg}.jpg')
+                if os.path.exists(path):
+                    rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
+                    xi_new += _q_img_para(rid, iid)
     if calibrad and calibrad in _CALIB_CERT_PAGES:
         for pg in range(1, _CALIB_CERT_PAGES[calibrad] + 1):
             path = os.path.join(CERTS_DIR, f'cert_{calibrad}_p{pg}.jpg')
