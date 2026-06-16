@@ -6039,6 +6039,13 @@
   <!-- S0: KPIs Gerais -->
   <div id="bi-kpi-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;"></div>
 
+  <!-- S0.5: Laboratório — tempo no ciclo + gargalos -->
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#129514; Laborat&#243;rio — Tempo no Ciclo &amp; Gargalos</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">Quanto a amostra demora da coleta ao lab e do lab ao resultado &#8212; e onde o fluxo trava</div>
+    <div id="bi-lab-ciclo" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;"></div>
+  </div>
+
   <!-- S1: Status dos Amostradores -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
     <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128230; Status dos Amostradores</div>
@@ -6060,10 +6067,10 @@
     <div id="bi-atrasadas-wrap"></div>
   </div>
 
-  <!-- S4: Evolucao Mensal -->
+  <!-- S4: Evolucao Mensal — abertas x concluidas -->
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px;">
-    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128200; Evolu&#231;&#227;o Mensal — OS Conclu&#237;das</div>
-    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">&#218;ltimos 12 meses</div>
+    <div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">&#128200; OS Abertas &#215; Conclu&#237;das por M&#234;s</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-bottom:14px;">Entrada (abertas) vs sa&#237;da (conclu&#237;das) &#8212; se as abertas ficam acima, o backlog cresce</div>
     <div id="bi-evolucao-wrap" style="position:relative;height:200px;"><canvas id="bi-chart-evolucao"></canvas></div>
     <div id="bi-evolucao-empty" style="display:none;text-align:center;padding:32px;color:var(--text3);font-size:.78rem;">Dados insuficientes — aguardando hist&#243;rico de conclus&#245;es</div>
   </div>
@@ -13766,6 +13773,27 @@ function biProdLimparData() {
   biProdChartLoad();
 }
 
+function _biRenderLab(fluxo) {
+  const el = document.getElementById('bi-lab-ciclo'); if (!el) return;
+  fluxo = fluxo || {};
+  const tcl = fluxo.tempo_coleta_lab || {}, tlc = fluxo.tempo_lab_concluido || {}, g = fluxo.gargalos || {};
+  const card = (titulo, valor, sub, cor) => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px;">${titulo}</div>
+      <div style="font-size:1.7rem;font-weight:800;color:${cor};line-height:1;">${valor}</div>
+      <div style="font-size:.66rem;color:var(--text3);margin-top:4px;">${sub}</div>
+    </div>`;
+  const _d = (o) => (o && o.media_dias != null) ? Math.round(o.media_dias) + 'd' : '—';
+  const _n = (o) => (o && o.amostra != null) ? o.amostra + ' amostras' : 'sem dados';
+  const presos = g.presos_lab || {}, reserv = g.reservados_parados || {}, arq = g.concluidos_para_arquivar || {};
+  el.innerHTML =
+    card('Coleta &#8594; Lab', _d(tcl), _n(tcl), 'var(--blue)') +
+    card('Lab &#8594; Resultado', _d(tlc), _n(tlc), 'var(--purple)') +
+    card('Presos no lab', (presos.qtd || 0), '&gt; ' + (presos.limite_dias || 15) + ' dias', presos.qtd ? 'var(--red)' : 'var(--green)') +
+    card('Reservados parados', (reserv.qtd || 0), '&gt; ' + (reserv.limite_dias || 7) + ' dias', reserv.qtd ? 'var(--yellow)' : 'var(--green)') +
+    card('Para arquivar', (arq.qtd || 0), 'conclu&#237;dos &#8805;30d', arq.qtd ? 'var(--text2)' : 'var(--green)');
+}
+
 async function biLoad() {
   if (!window.Chart) { console.warn('Chart.js nao carregado'); return; }
   const loadEl   = document.getElementById('bi-loading');
@@ -13774,14 +13802,20 @@ async function biLoad() {
   if (contentEl) contentEl.style.display = 'none';
 
   try {
-    const [dmndRaw, amstRaw, prodRaw] = await Promise.all([
+    const [dmndRaw, amstRaw, prodRaw, anRaw, fluxoRaw] = await Promise.all([
       ctrlFetch('/controle/demandas?limit=1000'),
       ctrlFetch('/controle/amostradores?limit=2000'),
       ctrlFetch('/controle/produtividade/tecnicos').catch(() => []),
+      ctrlFetch('/controle/analytics').catch(() => ({})),
+      ctrlFetch('/controle/amostradores/analytics').catch(() => ({})),
     ]);
     const demandas   = Array.isArray(dmndRaw) ? dmndRaw : (dmndRaw.items || []);
     const amostradores = Array.isArray(amstRaw) ? amstRaw : (amstRaw.items || []);
     const prodTecnicos = Array.isArray(prodRaw) ? prodRaw : (prodRaw.items || []);
+    const analytics    = anRaw || {};
+    const fluxo        = fluxoRaw || {};
+    // ── Laboratório: tempo no ciclo + gargalos (dados já calculados no backend) ──
+    try { _biRenderLab(fluxo); } catch(e) { console.warn('biLab', e); }
 
     if (loadEl)    loadEl.style.display   = 'none';
     if (contentEl) contentEl.style.display = 'block';
@@ -13922,28 +13956,29 @@ async function biLoad() {
       }
     }
 
-    // ── S4: Evolução Mensal (concluídas por mês) ──────────────────
-    const evolMap = {};
-    demandas.forEach(d => {
-      if ((d.status||'').toLowerCase() === 'concluida' && d.prazo) {
-        const ym = d.prazo.slice(0,7);
-        evolMap[ym] = (evolMap[ym] || 0) + 1;
-      }
-    });
-    // Last 12 months
-    const evolLabels = [], evolData = [];
+    // ── S4: OS abertas × concluídas por mês (dados REAIS do backend) ──
+    // evolucao_mensal = concluídas/mês (concluido_em real); demandas_por_mes = abertas/mês (criado_em real)
+    const _evC = {}, _evA = {};
+    (analytics.evolucao_mensal || []).forEach(r => { if (r && r.mes) _evC[r.mes] = r.qtd || 0; });
+    (analytics.demandas_por_mes || []).forEach(r => { if (r && r.mes) _evA[r.mes] = r.qtd || 0; });
+    const evolLabels = [], evolData = [], evolAbert = [];
     window._biEvolMonths = [];
-    for (let i = 11; i >= 0; i--) {
-      const dt = new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()-i);
-      const ym = dt.toISOString().slice(0,7);
-      evolLabels.push(_biMes(ym));
-      evolData.push(evolMap[ym] || 0);
-      window._biEvolMonths.push({ label: _biMes(ym), ym });
+    const _mAll = Array.from(new Set(Object.keys(_evC).concat(Object.keys(_evA)))).sort();
+    if (_mAll.length) {
+      _mAll.slice(-12).forEach(ym => {
+        evolLabels.push(_biMes(ym)); evolData.push(_evC[ym] || 0); evolAbert.push(_evA[ym] || 0);
+        window._biEvolMonths.push({ label: _biMes(ym), ym });
+      });
+    } else {
+      // Fallback legado (cliente) se o backend não trouxer as séries
+      const evolMap = {};
+      demandas.forEach(d => { if ((d.status||'').toLowerCase()==='concluida' && d.prazo) { const ym=d.prazo.slice(0,7); evolMap[ym]=(evolMap[ym]||0)+1; } });
+      for (let i = 11; i >= 0; i--) { const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()-i); const ym=dt.toISOString().slice(0,7); evolLabels.push(_biMes(ym)); evolData.push(evolMap[ym]||0); evolAbert.push(0); window._biEvolMonths.push({label:_biMes(ym), ym}); }
     }
     _biDestroy('evolucao');
     const evolWrap = document.getElementById('bi-evolucao-wrap');
     const evolEmpty = document.getElementById('bi-evolucao-empty');
-    const hasEvolData = evolData.some(v => v > 0);
+    const hasEvolData = evolData.some(v => v > 0) || evolAbert.some(v => v > 0);
     if (evolWrap) evolWrap.style.display = hasEvolData ? 'block' : 'none';
     if (evolEmpty) evolEmpty.style.display = hasEvolData ? 'none' : 'block';
     if (hasEvolData) {
@@ -13951,20 +13986,18 @@ async function biLoad() {
         type: 'line',
         data: {
           labels: evolLabels,
-          datasets: [{
-            label: 'OS Concluídas',
-            data: evolData,
-            borderColor: '#4ade80',
-            backgroundColor: 'rgba(74,222,128,.12)',
-            fill: true, tension: 0.4,
-            pointBackgroundColor: '#4ade80', pointRadius: 4, pointHoverRadius: 6,
-          }]
+          datasets: [
+            { label: 'OS abertas', data: evolAbert, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.10)',
+              fill: true, tension: 0.4, pointBackgroundColor: '#f59e0b', pointRadius: 3, pointHoverRadius: 6 },
+            { label: 'OS concluídas', data: evolData, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,.10)',
+              fill: true, tension: 0.4, pointBackgroundColor: '#4ade80', pointRadius: 3, pointHoverRadius: 6 },
+          ]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: { label: function(ctx) { return ctx.raw + ' OS concluídas'; } } }
+            legend: { display: true, position: 'bottom', labels: { color: tickClr, boxWidth: 12, font: { size: 11 } } },
+            tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw; } } }
           },
           scales: {
             x: { grid: { color: gridClr }, ticks: { color: tickClr, maxRotation: 45 } },
