@@ -2357,6 +2357,7 @@ def reconciliar_status_amostradores():
     init_db()
     aplicar = (request.method == 'POST')
     mudancas = []
+    ambiguos = []   # NÃO mexer: disponivel com envio antigo pode ter voltado do lab (reuso)
     with get_db() as conn:
         rows = conn.execute(
             "SELECT id, codigo, tipo, status, data_envio_lab, data_resultado "
@@ -2367,18 +2368,19 @@ def reconciliar_status_amostradores():
             envio = (d.get('data_envio_lab') or '').strip()
             result = (d.get('data_resultado') or '').strip()
             novo = None
-            if result and st in ('disponivel', 'reservado', 'laboratorio'):
-                novo = 'concluido'
-            elif st == 'reservado':
-                novo = 'laboratorio' if envio else 'disponivel'
-            elif st == 'disponivel' and envio and not result:
-                novo = 'laboratorio'
+            # Só transições de ALTA CONFIANÇA (amostradores são reutilizados → datas
+            # antigas não indicam o estado atual; por isso disponivel+envio NÃO vira lab).
+            if st == 'reservado':
+                novo = 'laboratorio' if envio else 'disponivel'   # 'reservado' não existe no fluxo
+                motivo = 'reservado ' + ('com envio' if envio else 'sem envio')
+            elif st == 'laboratorio' and result:
+                novo = 'concluido'                                 # estava no lab e o resultado chegou
+                motivo = 'resultado chegou'
             if novo and novo != st:
                 mudancas.append({'id': d['id'], 'codigo': d.get('codigo'), 'tipo': d.get('tipo'),
-                                 'de': st, 'para': novo,
-                                 'motivo': ('tem resultado' if novo == 'concluido'
-                                            else ('tem envio ao lab' if novo == 'laboratorio'
-                                                  else 'reservado sem envio'))})
+                                 'de': st, 'para': novo, 'motivo': motivo})
+            elif st == 'disponivel' and envio and not result:
+                ambiguos.append({'codigo': d.get('codigo'), 'tipo': d.get('tipo'), 'envio': envio})
     if aplicar and mudancas:
         with get_db() as conn:
             for m in mudancas:
@@ -2389,7 +2391,9 @@ def reconciliar_status_amostradores():
         k = m['de'] + ' → ' + m['para']
         resumo[k] = resumo.get(k, 0) + 1
     return jsonify({'modo': 'APLICADO' if aplicar else 'PREVIEW (nada gravado)',
-                    'total': len(mudancas), 'por_transicao': resumo, 'amostra': mudancas[:60]})
+                    'total': len(mudancas), 'por_transicao': resumo, 'amostra': mudancas[:60],
+                    'ambiguos_disponivel_com_envio': {'qtd': len(ambiguos), 'amostra': ambiguos[:30],
+                        'nota': 'NÃO alterados: amostrador reutilizado pode ter voltado do lab; revisar manualmente.'}})
 
 
 @controle_bp.route('/empresas/mesclar_duplicatas', methods=['POST'])
