@@ -3430,23 +3430,7 @@
   <div class="card">
     <div class="card-header">
       <div class="card-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg></div>
-      <div><div class="card-title">Equipamento de Coleta</div><div class="card-desc">Calibrador e bomba padrão (pode definir bomba individual por avaliação abaixo)</div></div>
-    </div>
-    <div class="grid2 field">
-      <div>
-        <label>Bomba Gravimétrica</label>
-        <select id="q-bomba" onchange="qUpdateBombaSN()">
-          <option value="">— Selecionar —</option>
-          <option value="bdx">BDX II – GILLIAN</option>
-          <option value="airlite">AIRLITE – SKC</option>
-          <option value="turam">FORMIS – TURAM</option>
-          <option value="inlite">INLITE VENTUSPRO</option>
-        </select>
-      </div>
-      <div>
-        <label>Número de Série da Bomba</label>
-        <select id="q-bomba-sn"><option value="">— Selecione a bomba primeiro —</option></select>
-      </div>
+      <div><div class="card-title">Calibrador de Fluxo de Ar</div><div class="card-desc">Instrumento de referência da calibração — a bomba é definida por avaliação</div></div>
     </div>
     <div class="field">
       <label>Calibrador de Fluxo de Ar</label>
@@ -7260,8 +7244,11 @@ async function quim_importarBaixas() {
 
 // ── Bomba SN update ────────────────────────────────────────────────
 function qUpdateBombaSN() {
-  const model = document.getElementById('q-bomba').value;
-  const sel   = document.getElementById('q-bomba-sn');
+  // Bomba agora é por avaliação — o seletor do topo foi removido.
+  const elB = document.getElementById('q-bomba');
+  const sel = document.getElementById('q-bomba-sn');
+  if (!elB || !sel) return;
+  const model = elB.value;
   if (!model) { sel.innerHTML = '<option value="">— Selecione a bomba primeiro —</option>'; return; }
   fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
     sel.innerHTML = sns.map(sn=>`<option value="${sn}">${sn}</option>`).join('');
@@ -7405,6 +7392,20 @@ const _Q_BOMBA_LABELS = {
   'turam':'FORMIS – TURAM', 'inlite':'INLITE VENTUSPRO'
 };
 
+// Resolve um texto livre de bomba (label, nome do lab, etc.) para a chave (bdx/airlite/...)
+function _qResolveBombaModel(raw) {
+  raw = String(raw || '').trim();
+  if (!raw) return '';
+  if (_Q_BOMBA_LABELS[raw]) return raw;                                  // já é a chave
+  if (typeof _CQ_BOMBA_MAP !== 'undefined' && _CQ_BOMBA_MAP[raw]) return _CQ_BOMBA_MAP[raw];
+  const up = raw.toUpperCase().replace(/\s|–|-/g, '');
+  for (const [k, lbl] of Object.entries(_Q_BOMBA_LABELS)) {
+    const L = lbl.toUpperCase().replace(/\s|–|-/g, '');
+    if (L.includes(up) || up.includes(L)) return k;
+  }
+  return '';
+}
+
 function qNewAval() {
   return {
     cargo:'', trabalhador:'', setor:'',
@@ -7433,7 +7434,14 @@ function qUpdateAvalBombaSN(i, model) {
   }
 }
 
-function qAddAval() { qAvals.push(qNewAval()); qRenderAvals(); }
+function qAddAval() {
+  const nv = qNewAval();
+  // Mantém a conveniência: nova avaliação herda a bomba da anterior (pode trocar por agente).
+  const last = qAvals[qAvals.length - 1];
+  if (last && last.bomba) { nv.bomba = last.bomba; nv.bombaSN = last.bombaSN; }
+  qAvals.push(nv);
+  qRenderAvals();
+}
 function qRemoveAval(i) { qAvals.splice(i,1); qRenderAvals(); }
 function qEsc(s) {
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -7614,8 +7622,6 @@ async function gerarQuimico() {
       bombaLabel: _Q_BOMBA_LABELS[av.bomba] || av.bomba || '',
     })),
     config: {
-      bomba:      document.getElementById('q-bomba').value,
-      bombaSN:    document.getElementById('q-bomba-sn').value,
       calibrador: calib,
       fotosVIII:  qFotosVIII.filter(f => f.img),
       laudoImgs:  qLaudoImgs,
@@ -8051,39 +8057,9 @@ async function quimPrefillCarregar(coletaId) {
     const d = r.dados || {};
     _laudoSetEmpresa('quim', r.empresa);
 
-    // Config (bomba / SN / calibrador)
+    // Config (calibrador). A bomba agora é por avaliação — propagada no map abaixo.
     const cfg = d.config || {};
-    if (cfg.bomba) {
-      const selB = document.getElementById('q-bomba');
-      if (selB) {
-        let model = '';
-        const raw = String(cfg.bomba).trim();
-        if (_Q_BOMBA_LABELS[raw]) model = raw;                               // já é a chave (bdx/airlite/...)
-        else if (typeof _CQ_BOMBA_MAP !== 'undefined' && _CQ_BOMBA_MAP[raw]) model = _CQ_BOMBA_MAP[raw];
-        else {
-          const up = raw.toUpperCase();
-          for (const [k, lbl] of Object.entries(_Q_BOMBA_LABELS)) {
-            if (lbl.toUpperCase().replace(/\s|–|-/g,'').includes(up.replace(/\s|–|-/g,'')) ||
-                up.replace(/\s|–|-/g,'').includes(lbl.toUpperCase().replace(/\s|–|-/g,''))) { model = k; break; }
-          }
-        }
-        if (model) {
-          selB.value = model;
-          qUpdateBombaSN();   // recarrega lista de S/N do modelo
-          if (cfg.bombaSN) {
-            const selSN = document.getElementById('q-bomba-sn');
-            setTimeout(() => {
-              if (selSN) {
-                if (!Array.from(selSN.options).some(o => o.value === cfg.bombaSN)) {
-                  const o = document.createElement('option'); o.value = cfg.bombaSN; o.textContent = cfg.bombaSN; selSN.appendChild(o);
-                }
-                selSN.value = cfg.bombaSN;
-              }
-            }, 400);
-          }
-        }
-      }
-    }
+    const _cfgBombaModel = _qResolveBombaModel(cfg.bomba);
     if (cfg.calibrador) {
       const radios = document.getElementsByName('q-calib');
       Array.from(radios).forEach(rb => { if (rb.value === cfg.calibrador) rb.checked = true; });
@@ -8107,6 +8083,9 @@ async function quimPrefillCarregar(coletaId) {
         av.tempoExposicao = a.tempoExposicao || av.tempoExposicao;
         av.acessorios     = a.acessorios     || av.acessorios;
         av.agente         = a.agente         || '';
+        // Bomba por avaliação: usa a da avaliação, senão a da coleta como padrão.
+        av.bomba          = _qResolveBombaModel(a.bomba) || _cfgBombaModel || '';
+        av.bombaSN        = a.bombaSN || cfg.bombaSN || '';
         // concentracao e dataAnalise intencionalmente em branco (vêm do laboratório)
         return av;
       });

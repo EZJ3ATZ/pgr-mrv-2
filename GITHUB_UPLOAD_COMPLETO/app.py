@@ -1801,9 +1801,19 @@ def gerar_quimico_bytes(d):
     xml = xml.replace('Planos de saúde', _xe(emp.get('descricaoCnae', '')))
 
     # ── Pump/calibrator name substitution in methodology section ─────
-    if pump and pump_sn:
-        bomb_str = f'{_PUMP_NAMES.get(pump, pump)} — S/N: {pump_sn}'
-        xml = xml.replace('AIRLITE – A060502', _xe(bomb_str))  # template placeholder
+    # A bomba é definida por avaliação — derivamos a(s) bomba(s) usada(s) das
+    # avaliações (pump/pump_sn ficam só como fallback legado da config).
+    _pump_pairs = []
+    for _ev in evals:
+        _bk  = _ev.get('bomba')   or pump
+        _bsn = _ev.get('bombaSN') or pump_sn
+        if _bk and _bsn:
+            _nome = _ev.get('bombaLabel') or _PUMP_NAMES.get(_bk, _bk)
+            _pair = f'{_nome} — S/N: {_bsn}'
+            if _pair not in _pump_pairs:
+                _pump_pairs.append(_pair)
+    if _pump_pairs:
+        xml = xml.replace('AIRLITE – A060502', _xe(' / '.join(_pump_pairs)))  # template placeholder
     if calibrad:
         xml = xml.replace('DEFENDER 510-M', _xe(_CALIB_NAMES.get(calibrad, calibrad)))
 
