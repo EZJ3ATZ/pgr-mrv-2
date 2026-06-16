@@ -8156,6 +8156,7 @@ function _laudoSetEmpresa(prefix, emp) {
   put(F.cidade,   emp.cidade);
   put(F.cnae,     emp.cnae);
   put(F.cnaeDesc, emp.descricaoCnae);
+  put(F.grauRisco, emp.grauRisco || emp.grau_risco);
   if (F.uf && emp.uf) { const el = document.getElementById(F.uf); if (el) el.value = emp.uf; }
 }
 
