@@ -939,7 +939,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r44-debug-sharepoint'
+BUILD_MARK = '2026-06-15-r45-parse-cadeia-codigo'
 
 
 @app.route('/healthz')
@@ -2400,7 +2400,18 @@ def api_parse_cadeia():
                         return j
             return None
 
-        col_id      = find_col(['AMOSTRADOR (CLIENTE)', 'NUMERO DO AMOSTRADOR (CLIENTE)'])
+        # Número do amostrador: a coluna "NÚMERO DO AMOSTRADOR" (código do lab, ex.
+        # EC81053A — é o que casa com o RA), NÃO a "(CLIENTE)" (numeração interna do
+        # cliente, que costuma vir vazia). Fallback p/ a (CLIENTE) se a do lab faltar.
+        col_id = col_id_cli = None
+        for j, hn in enumerate(header_norm):
+            if 'NUMERO DO AMOSTRADOR' in hn:
+                if 'CLIENTE' in hn:
+                    col_id_cli = j
+                elif col_id is None:
+                    col_id = j
+        if col_id is None:
+            col_id = col_id_cli
         col_data    = find_col(['DATA AMOSTRAGEM', 'DATA DE AMOSTRAGEM'])
         col_nome    = find_col(['NOME DO FUNCIONARIO', 'FUNCIONARIO'])
         col_funcao  = find_col(['FUNCAO', 'CARGO'])
@@ -2491,7 +2502,7 @@ def api_parse_cadeia():
             data_s = data_v.strftime('%d/%m/%Y') if hasattr(data_v, 'strftime') else _str(data_v)
 
             ev = {
-                'filtroNumero':  _str(_cv(row, col_id)),
+                'filtroNumero':  _str(_cv(row, col_id)) or (_str(_cv(row, col_id_cli)) if col_id_cli is not None else ''),
                 'dataColeta':    data_s,
                 'trabalhador':   nome,
                 'cargo':         _str(_cv(row, col_funcao)),
