@@ -1170,6 +1170,37 @@ _PUMP_NAMES = {
 _CALIB_CERT_PAGES = {'defender510m': 2, 'tsi4143f': 2}
 _CALIB_NAMES = {'defender510m': 'DEFENDER 510M', 'tsi4143f': 'TSI 4143F'}
 
+def _guia_norm(x):
+    import unicodedata as _ud
+    return _ud.normalize('NFD', str(x)).encode('ascii', 'ignore').decode('ascii').upper().strip()
+
+def _guia_entry(agente_str, guia):
+    """Acha a entrada do guia_metodos p/ um agente livre (nome, nome (sinônimo)
+    ou nome (CAS)). Casa por CAS, por nome exato (string toda / dentro de
+    parênteses / base sem parênteses) e, por fim, por conteúdo parcial."""
+    if not agente_str or not guia:
+        return None
+    s = str(agente_str).strip()
+    for cas in re.findall(r'\b(\d{2,7}-\d{2}-\d)\b', s):
+        if cas in guia and guia[cas]:
+            return guia[cas][0]
+    cands = {_guia_norm(s)}
+    for inside in re.findall(r'\(([^)]*)\)', s):
+        cands.add(_guia_norm(inside))
+    cands.add(_guia_norm(re.sub(r'\s*\([^)]*\)\s*', ' ', s)))
+    cands.discard('')
+    for entries in guia.values():
+        for e in entries:
+            if _guia_norm(e.get('nome', '')) in cands:
+                return e
+    ns = _guia_norm(s)
+    for entries in guia.values():
+        for e in entries:
+            n = _guia_norm(e.get('nome', ''))
+            if n and (n in ns or ns in n):
+                return e
+    return None
+
 # Calibradores de nivel sonoro (ruido) — Chrompack SmartCal, frota do grupo (Ocupacional/Assiste).
 # Quando ha 2 certificados p/ mesma serie, vale a calibracao mais recente (ja consolidado abaixo).
 # Calibracao acustica IEC 60942 e anual → validade = data_calib + 1 ano.
@@ -1751,6 +1782,11 @@ def gerar_quimico_bytes(d):
     emp        = d.get('empresa', {})
     evals      = d.get('avaliacoes', [])
     conf       = d.get('config', {})
+    try:
+        with open(_GUIA_PATH, encoding='utf-8') as _gf:
+            _guia = _json.load(_gf).get('by_cas', {})
+    except Exception:
+        _guia = {}
     pump       = conf.get('bomba', '')
     pump_sn    = conf.get('bombaSN', '')
     calibrad   = conf.get('calibrador', '')
@@ -1854,6 +1890,21 @@ def gerar_quimico_bytes(d):
         b = _rr(b, 'Data da análise',          ev.get('dataAnalise', ''))
         b = _rr(b, 'Agentes Analisados (CAS)', ev.get('agente', ''))
         b = _rr(b, 'Fonte Geradora:',          ev.get('fonte', ''))
+        # Método de Coleta / Métodos Analíticos / descrição do amostrador —
+        # pelo agente via guia_metodos (antes ficavam fixos no texto do template).
+        _ge = _guia_entry(ev.get('agente', ''), _guia)
+        if _ge:
+            _md    = str(_ge.get('metodoCod', '')).strip()
+            _mdesc = str(_ge.get('metodoDesc', '')).strip()
+            if _md or _mdesc:
+                b = _rr(b, 'Métodos Analíticos',
+                        f'{_md} – {_mdesc}' if (_md and _mdesc) else (_md or _mdesc))
+            _amos = str(_ge.get('amostradorDesc', '')).strip()
+            if _amos:
+                b = _rr(b, 'Filtro', _amos)   # célula 'Filtro' (vem antes de 'Filtro Número')
+            _passivo = ('PASSIVO' in _md.upper()) or (str(_ge.get('vazao', '')).strip() in ('0', '0,0', '0.0', ''))
+            b = _rr(b, 'Método de Coleta',
+                    'Amostrador passivo' if _passivo else 'Bomba de amostragem – NHO 08')
         b = _rr(b, 'Filtro Número',            ev.get('filtroNumero', ''))
         b = _ri(b, 'Vazão Inicial (L/min): ',  ev.get('vazaoInicial', ''))
         b = _ri(b, 'Vazão Fina (L/min): ',     ev.get('vazaoFinal', ''))
