@@ -2065,6 +2065,16 @@ def gerar_quimico_bytes(d):
                 zw.writestr(item, rels_xml.encode('utf-8'))
             elif item.filename == 'word/media/image1.png':
                 zw.writestr(item, logo_bytes)
+            elif item.filename == 'word/settings.xml':
+                # Força o Word a atualizar campos ao abrir → o ÍNDICE (TOC) recalcula
+                # com os cargos REAIS (heading J3 já trocado no corpo) e numeração
+                # correta. Sem isto, fica o texto cacheado do template Unimed:
+                # "Técnica de Enfermagem" e o caption "AVALIAÇÃO REALIZA" da seção VIII.
+                _s = zin.read(item.filename).decode('utf-8')
+                if 'w:updateFields' not in _s:
+                    _s = re.sub(r'(<w:settings\b[^>]*>)',
+                                r'\1<w:updateFields w:val="true"/>', _s, count=1)
+                zw.writestr(item, _s.encode('utf-8'))
             else:
                 zw.writestr(item, zin.read(item.filename))
         for path, data in extra_media.items():
