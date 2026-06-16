@@ -14630,6 +14630,45 @@ function nvEquipAutoFill(campo, valor) {
     showBadge('nv-eq-bomba-cert');
   }
 }
+
+// ── Equipamento por nº de série: lookup + status de calibração vs data da coleta ──
+function nvEquipInfo(sn) {
+  if (!sn) return null;
+  sn = String(sn).trim();
+  return NV_EQUIP_DB[sn] || NV_EQUIP_DB[Object.keys(NV_EQUIP_DB).find(k => k.toLowerCase() === sn.toLowerCase())] || null;
+}
+function _nvDataColeta() {
+  return (document.getElementById('ctrl-nv-data')?.value)
+      || (document.getElementById('nv-cr-data')?.value)
+      || new Date().toISOString().slice(0,10);
+}
+function nvEquipStatus(sn, dataColeta) {
+  const eq = nvEquipInfo(sn);
+  if (!eq) return null;
+  const v = eq.validade; dataColeta = dataColeta || _nvDataColeta();
+  let st = 'ok', msg = '✓ sem validade';
+  if (v) {
+    if (v < dataColeta) { st = 'venc'; msg = '⚠ calibração VENCIDA (' + v.split('-').reverse().join('/') + ')'; }
+    else if ((new Date(v) - new Date(dataColeta)) / 86400000 <= 30) { st = 'perto'; msg = '⚠ vence ' + v.split('-').reverse().join('/'); }
+    else { msg = '✓ válida até ' + v.split('-').reverse().join('/'); }
+  }
+  return { eq, st, msg, validade: v };
+}
+function nvEquipStatusHtml(sn) {
+  const s = nvEquipStatus(sn);
+  if (!s) return '';
+  const cor = s.st === 'venc' ? 'var(--red)' : (s.st === 'perto' ? 'var(--yellow)' : 'var(--green)');
+  return `<span style="font-size:.66rem;color:${cor};font-weight:600;">${s.eq.modelo} · ${s.msg}</span>`;
+}
+function nvBombaStatus(idx, sn) {
+  const el = document.getElementById('nv-bomba-status-' + idx);
+  if (el) el.innerHTML = nvEquipStatusHtml(sn);
+}
+// datalist de nº de série conhecidos por tipo (autocomplete)
+function _nvEquipDatalist(id, tipo) {
+  return `<datalist id="${id}">` + Object.keys(NV_EQUIP_DB).filter(k => NV_EQUIP_DB[k].tipo === tipo)
+    .map(k => `<option value="${k}">${NV_EQUIP_DB[k].modelo}</option>`).join('') + `</datalist>`;
+}
 // ═══════════════════════════════════════════════════════════════════
 
 function nvReset() {
@@ -15122,7 +15161,7 @@ function nvCqRenderAgentes() {
   if (!list) return;
   if (!_nvCqAgentes.length) { list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:.85rem;">Clique em "+ Adicionar Agente" acima.</div>'; return; }
   const inp = 'width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.84rem;outline:none;';
-  list.innerHTML = _nvCqAgentes.map((ag, idx) => {
+  list.innerHTML = _nvEquipDatalist('nv-bombas-dl', 'bomba') + _nvCqAgentes.map((ag, idx) => {
     const lbl = ag.func_nome ? `${idx+1}. ${ag.func_nome}${ag.func_funcao?' — '+ag.func_funcao:''}` : `${idx+1}. Agente ${idx+1}`;
     const bodyD = ag.expanded ? '' : 'display:none;';
     const chk = (f) => ag[f] ? 'checked' : '';
@@ -15170,8 +15209,8 @@ function nvCqRenderAgentes() {
         <div><label>Meteorologia</label><select style="${inp}" onchange="nvCqSet(${idx},'meteo',this.value)">${metOpts}</select></div>
       </div>
       <div class="nv-g3 nv-f">
-        <div><label>Temperatura (°C)</label><input type="text" value="${ag.temperatura||''}" placeholder="25" style="${inp}" oninput="nvCqSet(${idx},'temperatura',this.value)"></div>
-        <div><label>Umidade (%)</label><input type="text" value="${ag.umidade||''}" placeholder="60" style="${inp}" oninput="nvCqSet(${idx},'umidade',this.value)"></div>
+        <div><label>Temperatura (°C)</label><input type="text" inputmode="decimal" value="${ag.temperatura||''}" placeholder="25" style="${inp}" oninput="nvCqSet(${idx},'temperatura',this.value)"></div>
+        <div><label>Umidade (%)</label><input type="text" inputmode="decimal" value="${ag.umidade||''}" placeholder="60" style="${inp}" oninput="nvCqSet(${idx},'umidade',this.value)"></div>
         <div><label>Outras Condições</label><input type="text" value="${ag.outras_cond||''}" style="${inp}" oninput="nvCqSet(${idx},'outras_cond',this.value)"></div>
       </div>
     </div>
@@ -15179,7 +15218,7 @@ function nvCqRenderAgentes() {
       <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:8px;">Equipamentos de Coleta</div>
       <div class="nv-g2 nv-f" style="margin-bottom:8px;">
         <div><label>Bomba Gravimétrica</label><select style="${inp}" onchange="nvCqSet(${idx},'bomba',this.value)">${bombaOpts}</select></div>
-        <div><label>ID da Bomba</label><input type="text" value="${ag.id_bomba||''}" placeholder="Ex: BDX-001" style="${inp}" oninput="nvCqSet(${idx},'id_bomba',this.value)"></div>
+        <div><label>ID da Bomba (Nº série)</label><input type="text" list="nv-bombas-dl" value="${ag.id_bomba||''}" placeholder="Nº de série" style="${inp}" oninput="nvCqSet(${idx},'id_bomba',this.value)" onchange="nvBombaStatus(${idx},this.value)"><div id="nv-bomba-status-${idx}" style="margin-top:3px;">${nvEquipStatusHtml(ag.id_bomba)}</div></div>
       </div>
       <div class="nv-g2 nv-f" style="margin-bottom:8px;">
         <div><label>Data Calibração Bomba</label><input type="date" value="${ag.cal_bomba||''}" style="${inp}" onchange="nvCqSet(${idx},'cal_bomba',this.value)"></div>
@@ -15931,10 +15970,14 @@ function nvValidarFinalizacao() {
     if (!val('nv-cr-hora-ini') || !val('nv-cr-hora-fim')) avisos.push('Ruído: horário de início/término não informado.');
   }
   if (tipos.includes('quimico'))
-    (_nvCqAgentes||[]).forEach((a,ai) => (a.amostradores||[]).forEach((am,mi) => {
-      const vi = parseFloat(am.vazao_inicial), vf = parseFloat(am.vazao_final);
-      if (!isNaN(vi) && !isNaN(vf) && vi>0 && Math.abs(vi-vf)/vi*100 > 5) avisos.push(`Químico — agente ${ai+1}, amostrador ${mi+1}: variação de vazão acima de ±5%.`);
-    }));
+    (_nvCqAgentes||[]).forEach((a,ai) => {
+      (a.amostradores||[]).forEach((am,mi) => {
+        const vi = parseFloat(am.vazao_inicial), vf = parseFloat(am.vazao_final);
+        if (!isNaN(vi) && !isNaN(vf) && vi>0 && Math.abs(vi-vf)/vi*100 > 5) avisos.push(`Químico — agente ${ai+1}, amostrador ${mi+1}: variação de vazão acima de ±5%.`);
+      });
+      const _es = (typeof nvEquipStatus === 'function') ? nvEquipStatus(a.id_bomba) : null;
+      if (_es && _es.st === 'venc') avisos.push(`Químico — agente ${ai+1}: bomba ${a.id_bomba} com CALIBRAÇÃO VENCIDA (${_es.eq.modelo}).`);
+    });
   if (tipos.includes('calor'))
     (window._nvCalorSetores||[]).forEach((s,i) => { const dd = parseFloat(s.duracao); if (!isNaN(dd) && dd > 60) avisos.push(`Calor: setor ${i+1} com duração ${dd} min (NHO-06 exige ≤60 por medição).`); });
   if (tipos.includes('vibracao'))

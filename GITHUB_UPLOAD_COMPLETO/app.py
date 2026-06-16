@@ -939,7 +939,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r39-graficos-lab-evolucao'
+BUILD_MARK = '2026-06-15-r40-equip-validade'
 
 
 @app.route('/healthz')
