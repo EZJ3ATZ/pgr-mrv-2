@@ -1914,19 +1914,22 @@ def gerar_quimico_bytes(d):
         b = _rr(b, 'Fonte Geradora:',          ev.get('fonte', ''))
         # Método de Coleta / Métodos Analíticos / descrição do amostrador —
         # pelo agente via guia_metodos (antes ficavam fixos no texto do template).
-        _ge = _guia_entry(ev.get('agente', ''), _guia)
-        if _ge:
-            _md    = str(_ge.get('metodoCod', '')).strip()
-            _mdesc = str(_ge.get('metodoDesc', '')).strip()
-            if _md or _mdesc:
-                b = _rr(b, 'Métodos Analíticos',
-                        f'{_md} – {_mdesc}' if (_md and _mdesc) else (_md or _mdesc))
-            _amos = str(_ge.get('amostradorDesc', '')).strip()
-            if _amos:
-                b = _rr(b, 'Filtro', _amos)   # célula 'Filtro' (vem antes de 'Filtro Número')
-            _passivo = ('PASSIVO' in _md.upper()) or (str(_ge.get('vazao', '')).strip() in ('0', '0,0', '0.0', ''))
-            b = _rr(b, 'Método de Coleta',
-                    'Amostrador passivo' if _passivo else 'Bomba de amostragem – NHO 08')
+        # Método Analítico + descrição do Amostrador (Filtro): a FONTE DA VERDADE
+        # é o RA do laboratório (ev['metodo'] / ev['amostradorDesc']); o
+        # guia_metodos entra só como fallback quando o RA não trouxe.
+        _ge = _guia_entry(ev.get('agente', ''), _guia) or {}
+        _md    = str(_ge.get('metodoCod', '')).strip()
+        _mdesc = str(_ge.get('metodoDesc', '')).strip()
+        _metodo = (ev.get('metodo') or '').strip() or (
+            f'{_md} – {_mdesc}' if (_md and _mdesc) else (_md or _mdesc))
+        if _metodo:
+            b = _rr(b, 'Métodos Analíticos', _metodo)
+        _amos = (ev.get('amostradorDesc') or '').strip() or str(_ge.get('amostradorDesc', '')).strip()
+        if _amos:
+            b = _rr(b, 'Filtro', _amos)   # célula 'Filtro' (vem antes de 'Filtro Número')
+        _passivo = ('PASSIVO' in (_metodo or _md).upper()) or (str(_ge.get('vazao', '')).strip() in ('0', '0,0', '0.0', ''))
+        b = _rr(b, 'Método de Coleta',
+                'Amostrador passivo' if _passivo else 'Bomba de amostragem – NHO 08')
         b = _rr(b, 'Filtro Número',            ev.get('filtroNumero', ''))
         b = _ri(b, 'Vazão Inicial (L/min): ',  ev.get('vazaoInicial', ''))
         b = _ri(b, 'Vazão Fina (L/min): ',     ev.get('vazaoFinal', ''))
@@ -1959,9 +1962,18 @@ def gerar_quimico_bytes(d):
         if ev.get('ltSTEL'):  b = _rr(b, 'Limite de Tolerância ', ev['ltSTEL'], nth=3)
         conc = ev.get('concentracao', '')
         if conc:
-            b = _rr(b, 'Concentração (PPM)', conc, nth=1)
-            b = _rr(b, 'Concentração (PPM)', conc, nth=2)
-            b = _rr(b, 'Concentração (PPM)', conc, nth=3)
+            # A unidade real vem junto do valor (ex.: "1,0127 mg/m³"). Coloca a
+            # unidade no RÓTULO e deixa só o número no valor — o template fixava
+            # "(PPM)", errado p/ metais/poeira (mg/m³). 'conc' fica intacto p/ a
+            # lógica de conclusão (_qf).
+            _um   = re.search(r'(mg/m³|mg/m3|µg/m³|μg/m³|ppm|µg|μg|mg|f/cc)', conc, re.IGNORECASE)
+            _uni  = _um.group(1) if _um else ''
+            _cval = conc.replace(_uni, '').strip() if _uni else conc
+            b = _rr(b, 'Concentração (PPM)', _cval, nth=1)
+            b = _rr(b, 'Concentração (PPM)', _cval, nth=2)
+            b = _rr(b, 'Concentração (PPM)', _cval, nth=3)
+            if _uni and 'ppm' not in _uni.lower():
+                b = b.replace('Concentração (PPM)', 'Concentração (%s)' % _uni)
         # BRIEF & SCALA: a frase do template só vale quando C < LT.
         # Se a concentração ULTRAPASSOU o limite, troca pela recomendação de controle.
         _cv  = _qf(conc) if conc not in ('', 'N.D.') else None
@@ -2414,6 +2426,15 @@ def api_convert_laudo():
         # Data da análise (processamento) = data isolada logo após a emissão.
         data_analise = _g([r'S[ãa]o Bernardo do Campo,\s*\d{2}/\d{2}/\d{4}\.\s*\n\s*(\d{2}/\d{2}/\d{4})'])
 
+        # Método analítico + descrição do amostrador — DIRETO DO RA (fonte da
+        # verdade). Antes vinham do guia_metodos genérico e saíam errados.
+        _mm = _re.search(r'M[ÉE]TODO\s*\(?s?\)?\s*\n(.*?)\n\s*4\s*[-–]', full_text, _re.S | _re.I)
+        metodo = _re.sub(r'\s+', ' ', _mm.group(1)).strip() if _mm else ''
+        _am = _re.search(
+            r'Descri[çc][ãa]o do Amostrador:\s*(.*?)(?:\n\s*3\s*[-–]|\n\s*Informa[çc]|\n\s*\d\s*[-–]\s)',
+            full_text, _re.S | _re.I)
+        amostrador_desc = _re.sub(r'\s+', ' ', _am.group(1)).strip().rstrip('.') if _am else ''
+
         dados = {k: v for k, v in {
             'filtroNumero': filtro,
             'trabalhador':  trabalhador,
@@ -2427,6 +2448,8 @@ def api_convert_laudo():
             'tempoColeta':  tempo_min,
             'agente':       agente,
             'concentracao': concentracao,
+            'metodo':         metodo,
+            'amostradorDesc': amostrador_desc,
             'ltNR15':       lt_nr15,
             'naNR15':       na_nr15,
             'ltTWA':        lt_twa,
