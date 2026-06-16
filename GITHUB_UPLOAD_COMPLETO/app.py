@@ -1308,6 +1308,25 @@ def _q_add_b64(b64str, extra_rels, extra_media, ctr):
     return rid, iid
 
 
+def _img_wh(data):
+    """(largura, altura) em px de um PNG/JPEG; (0, 0) se não reconhecer."""
+    import struct
+    try:
+        if data[:8] == b'\x89PNG\r\n\x1a\n':
+            w, h = struct.unpack('>II', data[16:24]); return w, h
+        if data[:2] == b'\xff\xd8':            # JPEG: acha o SOF
+            i = 2
+            while i < len(data) - 9:
+                if data[i] != 0xFF:
+                    i += 1; continue
+                if data[i + 1] in (0xC0, 0xC1, 0xC2, 0xC3):
+                    h, w = struct.unpack('>HH', data[i + 5:i + 9]); return w, h
+                i += 2 + struct.unpack('>H', data[i + 2:i + 4])[0]
+    except Exception:
+        pass
+    return 0, 0
+
+
 def _q_sec_head(xml, text):
     """Return (tbl_start, tbl_end) of the table that contains this section heading
     (second occurrence — first is TOC)."""
@@ -2002,12 +2021,24 @@ def gerar_quimico_bytes(d):
 
     # ── Build section X: Resultados laboratoriais ────────────────────
     if laudo_imgs:
+        # Área útil A4 do template (EMU): largura 5.400.040, altura 7.811.770.
+        # As páginas do laudo são retrato (A4) → preenche a largura e calcula a
+        # altura pela proporção REAL (antes ia num box fixo paisagem e espremia).
+        _TXT_W, _TXT_H = 5400040, 7811770
         x_new = ''
         for li, img in enumerate(laudo_imgs):
             if not img:
                 continue
             rid, iid = _q_add_b64(img, extra_rels, extra_media, img_ctr)
-            x_new += _q_img_para(rid, iid, cx=6858000, cy=4857750)
+            _raw = base64.b64decode(img.split(',', 1)[1] if ',' in img else img)
+            _w, _h = _img_wh(_raw)
+            if _w and _h:
+                _cx = _TXT_W; _cy = int(_cx * _h / _w)
+                if _cy > _TXT_H:
+                    _cy = _TXT_H; _cx = int(_cy * _w / _h)
+            else:
+                _cx, _cy = _TXT_W, int(_TXT_W * 1.414)   # fallback A4 retrato
+            x_new += _q_img_para(rid, iid, cx=_cx, cy=_cy)
     else:
         x_new = xml[x_te:xi_ts]
 
