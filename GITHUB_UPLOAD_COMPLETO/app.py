@@ -1327,6 +1327,18 @@ def _img_wh(data):
     return 0, 0
 
 
+def _q_fit_extent(data, txt_w=5400040, txt_h=7811770):
+    """(cx, cy) em EMU p/ a imagem preencher a largura útil A4 preservando a
+    proporção real (cap na altura útil). Evita imagem estourando a margem."""
+    w, h = _img_wh(data)
+    if w and h:
+        cx = txt_w; cy = int(cx * h / w)
+        if cy > txt_h:
+            cy = txt_h; cx = int(cy * w / h)
+        return cx, cy
+    return txt_w, int(txt_w * 1.414)   # fallback A4 retrato
+
+
 def _q_sec_head(xml, text):
     """Return (tbl_start, tbl_end) of the table that contains this section heading
     (second occurrence — first is TOC)."""
@@ -2070,13 +2082,15 @@ def gerar_quimico_bytes(d):
                 path = os.path.join(CERTS_DIR, f'cert_{_bk}_{_bsn}_p{pg}.jpg')
                 if os.path.exists(path):
                     rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
-                    xi_new += _q_img_para(rid, iid)
+                    with open(path, 'rb') as _cf: _cx, _cy = _q_fit_extent(_cf.read())
+                    xi_new += _q_img_para(rid, iid, cx=_cx, cy=_cy)
     if calibrad and calibrad in _CALIB_CERT_PAGES:
         for pg in range(1, _CALIB_CERT_PAGES[calibrad] + 1):
             path = os.path.join(CERTS_DIR, f'cert_{calibrad}_p{pg}.jpg')
             if os.path.exists(path):
                 rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
-                xi_new += _q_img_para(rid, iid)
+                with open(path, 'rb') as _cf: _cx, _cy = _q_fit_extent(_cf.read())
+                xi_new += _q_img_para(rid, iid, cx=_cx, cy=_cy)
     if not xi_new:
         xi_new = xml[xi_te:xii_ts]
 
