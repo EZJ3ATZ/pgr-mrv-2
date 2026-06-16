@@ -2344,6 +2344,54 @@ def normalizar_status_amostradores():
     return jsonify({'ok': True, 'normalizados': total, 'vocabulario': list(STATUS_AMOSTRADOR)})
 
 
+@controle_bp.route('/amostradores/reconciliar_status', methods=['GET', 'POST'])
+def reconciliar_status_amostradores():
+    """Alinha o STATUS do amostrador aos FATOS (datas de envio/resultado) p/ deixar o
+    inventário confiável. GET = prévia (nada grava); POST = aplica.
+    Regras conservadoras:
+      R1 'reservado' + envio          -> laboratorio  (reservado não existe no fluxo real)
+      R1 'reservado' sem envio        -> disponivel
+      R2 'disponivel' + envio s/ result -> laboratorio (foi enviado, status ficou atrasado)
+      R3 result presente (disponivel/reservado/laboratorio) -> concluido
+    NÃO mexe em 'devolvido' nem em 'concluido' já existentes (são sinais do lab)."""
+    init_db()
+    aplicar = (request.method == 'POST')
+    mudancas = []
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT id, codigo, tipo, status, data_envio_lab, data_resultado "
+            "FROM amostradores WHERE COALESCE(arquivado,0)=0").fetchall()
+        for r in rows:
+            d = row_to_dict(r)
+            st = (d.get('status') or '').strip()
+            envio = (d.get('data_envio_lab') or '').strip()
+            result = (d.get('data_resultado') or '').strip()
+            novo = None
+            if result and st in ('disponivel', 'reservado', 'laboratorio'):
+                novo = 'concluido'
+            elif st == 'reservado':
+                novo = 'laboratorio' if envio else 'disponivel'
+            elif st == 'disponivel' and envio and not result:
+                novo = 'laboratorio'
+            if novo and novo != st:
+                mudancas.append({'id': d['id'], 'codigo': d.get('codigo'), 'tipo': d.get('tipo'),
+                                 'de': st, 'para': novo,
+                                 'motivo': ('tem resultado' if novo == 'concluido'
+                                            else ('tem envio ao lab' if novo == 'laboratorio'
+                                                  else 'reservado sem envio'))})
+    if aplicar and mudancas:
+        with get_db() as conn:
+            for m in mudancas:
+                conn.execute("UPDATE amostradores SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                             (m['para'], m['id']))
+    resumo = {}
+    for m in mudancas:
+        k = m['de'] + ' → ' + m['para']
+        resumo[k] = resumo.get(k, 0) + 1
+    return jsonify({'modo': 'APLICADO' if aplicar else 'PREVIEW (nada gravado)',
+                    'total': len(mudancas), 'por_transicao': resumo, 'amostra': mudancas[:60]})
+
+
 @controle_bp.route('/empresas/mesclar_duplicatas', methods=['POST'])
 def mesclar_duplicatas():
     """Consolida empresas com mesmo nome em um único registro."""
