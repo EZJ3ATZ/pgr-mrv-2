@@ -2049,12 +2049,47 @@ def gerar_quimico_bytes(d):
         rels_xml = rels_xml.replace('</Relationships>',
                                     '\n'.join(extra_rels) + '</Relationships>')
 
-    # Fix IDs duplicados
-    _idc = [1]
-    def _nwid(m):
-        _idc[0] += 1
-        return f'w:id="{_idc[0]}"'
-    xml = re.sub(r'w:id="\d+"', _nwid, xml)
+    # ── Índice (TOC): troca as entradas "Técnica de Enfermagem" (cargo) do
+    # template Unimed pelos CARGOS REAIS e remove as captions "AVALIAÇÃO
+    # REALIZA" da seção VIII (essas saíram do corpo). As entradas de seção
+    # (I–XII) ficam; o updateFields no settings.xml recalcula a numeração.
+    def _toc_span(anchor):
+        a = xml.find('w:anchor="%s"' % anchor)
+        if a < 0:
+            return None
+        return (xml.rfind('<w:p ', 0, a), xml.find('</w:p>', a) + 6)
+
+    _m146 = _toc_span('_Toc225948146')   # 1ª entrada de cargo (vira modelo)
+    if _m146:
+        _mp  = re.search(r'<w:pPr>.*?</w:pPr>', xml[_m146[0]:_m146[1]], re.S)
+        _ppr = _mp.group(0) if _mp else '<w:pPr><w:pStyle w:val="Sumrio3"/></w:pPr>'
+        _seen, _cargos = set(), []
+        for _ev in evals:                 # cargos reais, distintos, na ordem
+            _c = (_ev.get('cargo') or '').strip()
+            if _c and _c.upper() not in _seen:
+                _seen.add(_c.upper()); _cargos.append(_c)
+        _novas = ''.join(
+            '<w:p>%s<w:r><w:t xml:space="preserve">%s</w:t></w:r></w:p>' % (_ppr, _xe(_c))
+            for _c in _cargos) or ('<w:p>%s</w:p>' % _ppr)
+        xml = xml[:_m146[0]] + _novas + xml[_m146[1]:]
+    for _anc in ('_Toc225948147', '_Toc225948149', '_Toc225948150'):
+        _sp = _toc_span(_anc)             # 2ª entrada de cargo + 2 captions
+        if _sp:
+            xml = xml[:_sp[0]] + xml[_sp[1]:]
+
+    # ── Bookmarks: renumera mantendo o PAR start/end (os únicos w:id do doc são
+    # bookmarks). O renumber antigo numerava start e end separadamente → par
+    # quebrado → PAGEREF do índice falhava ("Erro! Indicador não definido").
+    _bid, _bstk = [1000], {}
+    def _fix_bm(m):
+        tag, oid = m.group(1), m.group(2)
+        if tag == 'bookmarkStart':
+            _bid[0] += 1
+            _bstk.setdefault(oid, []).append(_bid[0])
+            return '<w:bookmarkStart w:id="%d"' % _bid[0]
+        _lst = _bstk.get(oid)
+        return '<w:bookmarkEnd w:id="%d"' % (_lst.pop() if _lst else _bid[0] + 1)
+    xml = re.sub(r'<w:(bookmarkStart|bookmarkEnd) w:id="(\d+)"', _fix_bm, xml)
 
     zout = io.BytesIO()
     with zipfile.ZipFile(zout, 'w', zipfile.ZIP_DEFLATED) as zw:
@@ -2063,13 +2098,15 @@ def gerar_quimico_bytes(d):
                 zw.writestr(item, xml.encode('utf-8'))
             elif item.filename == 'word/_rels/document.xml.rels':
                 zw.writestr(item, rels_xml.encode('utf-8'))
-            elif item.filename == 'word/media/image1.png':
+            elif item.filename in ('word/media/image1.png', 'word/media/image3.png'):
+                # image1 = logo do cliente na capa; image3 = a MESMA logo na faixa
+                # do cabeçalho (slot do cliente). Ambas eram a logo Unimed do
+                # template — trocadas pela logo do cliente (ou em branco se não houver).
                 zw.writestr(item, logo_bytes)
             elif item.filename == 'word/settings.xml':
-                # Força o Word a atualizar campos ao abrir → o ÍNDICE (TOC) recalcula
-                # com os cargos REAIS (heading J3 já trocado no corpo) e numeração
-                # correta. Sem isto, fica o texto cacheado do template Unimed:
-                # "Técnica de Enfermagem" e o caption "AVALIAÇÃO REALIZA" da seção VIII.
+                # Força o Word a atualizar campos ao abrir → recalcula a NUMERAÇÃO
+                # de página do índice (PAGEREF). Os nomes das entradas já são
+                # corrigidos acima (cargos reais; captions removidas).
                 _s = zin.read(item.filename).decode('utf-8')
                 if 'w:updateFields' not in _s:
                     _s = re.sub(r'(<w:settings\b[^>]*>)',
