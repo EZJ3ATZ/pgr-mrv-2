@@ -939,7 +939,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r43-reconciliar-no-sync'
+BUILD_MARK = '2026-06-15-r44-debug-sharepoint'
 
 
 @app.route('/healthz')
@@ -1835,6 +1835,9 @@ def gerar_quimico_bytes(d):
     xml = xml.replace('>MG<', f'>{_xe(emp.get("uf","MG"))}<')
     xml = xml.replace('65.50-2-00', _xe(emp.get('cnae', '')))
     xml = xml.replace('Planos de saúde', _xe(emp.get('descricaoCnae', '')))
+    _grau = str(emp.get('grauRisco', '')).strip()
+    if _grau:
+        xml = _rp(xml, 'Grau de Risco', _grau)   # célula da capa (valor em parágrafo separado)
 
     # ── Pump/calibrator name substitution in methodology section ─────
     # A bomba é definida por avaliação — derivamos a(s) bomba(s) usada(s) das

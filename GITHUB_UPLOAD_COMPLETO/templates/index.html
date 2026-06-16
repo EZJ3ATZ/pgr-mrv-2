@@ -3502,9 +3502,9 @@
       </div>
       <div><label>CNAE</label><input type="text" id="q-cnae" placeholder="00.00-0/00"></div>
     </div>
-    <div class="field">
-      <label>Descrição CNAE</label>
-      <input type="text" id="q-cnae-desc" placeholder="Atividade econômica principal">
+    <div class="grid2 field">
+      <div><label>Descrição CNAE</label><input type="text" id="q-cnae-desc" placeholder="Atividade econômica principal"></div>
+      <div><label>Grau de Risco <span style="font-weight:400;color:#888">(capa — NR-4)</span></label><input type="text" id="q-grau-risco" placeholder="Ex: 1, 2, 3 ou 4"></div>
     </div>
   </div>
 
@@ -7796,6 +7796,7 @@ async function gerarQuimico() {
       uf:           document.getElementById('q-uf').value,
       cnae:         document.getElementById('q-cnae').value,
       descricaoCnae:document.getElementById('q-cnae-desc').value,
+      grauRisco:    document.getElementById('q-grau-risco').value,
     },
     avaliacoes: qAvals.map(av => ({
       ...av,
@@ -8357,7 +8358,7 @@ const EMPRESA_FIELDS = {
   pgr:    { nome:'f-nome', cnpj:'f-cnpj', cep:'f-cep', rua:'f-rua', numero:'f-num', compl:'f-compl', bairro:'f-bairro', cidade:'f-cidade', uf:'f-uf' },
   calor:  { nome:'c-nome', cnpj:'c-cnpj', cep:'c-cep', end:'c-end', bairro:'c-bairro', cidade:'c-cidade', uf:'c-uf', cnae:'c-cnae', cnaeDesc:'c-cnae-desc' },
   ruido:  { nome:'r-razao', fantasia:'r-fantasia', cnpj:'r-cnpj', cep:'r-cep', end:'r-end', bairro:'r-bairro', cidade:'r-cidade', cnae:'r-cnae', cnaeDesc:'r-cnae-desc' },
-  quim:   { nome:'q-razao', titulo:'q-titulo', cnpj:'q-cnpj', cep:'q-cep', end:'q-end', numero:'q-num', bairro:'q-bairro', cidade:'q-cidade', uf:'q-uf', cnae:'q-cnae', cnaeDesc:'q-cnae-desc' }
+  quim:   { nome:'q-razao', titulo:'q-titulo', cnpj:'q-cnpj', cep:'q-cep', end:'q-end', numero:'q-num', bairro:'q-bairro', cidade:'q-cidade', uf:'q-uf', cnae:'q-cnae', cnaeDesc:'q-cnae-desc', grauRisco:'q-grau-risco' }
 };
 
 function _setVal(id, val) {

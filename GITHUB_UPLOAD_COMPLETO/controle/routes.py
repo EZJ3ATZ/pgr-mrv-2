@@ -6383,6 +6383,41 @@ def graph_auditoria_lab():
     return jsonify({'ok': True, 'async': True, 'mensagem': 'Auditoria rodando em background — GET /controle/graph/auditoria_lab em ~1-2 min.'})
 
 
+@controle_bp.route('/graph/debug_sharepoint')
+def graph_debug_sharepoint():
+    """DEBUG: descobre sites/drives do SharePoint p/ guardar os certificados.
+    ?q=nome busca sites; ?site_id=X lista os drives (bibliotecas) do site."""
+    init_db()
+    from .graph import graph_get
+    out = {}
+    try:
+        try:
+            r = graph_get('/sites/root')
+            out['root'] = {'id': r.get('id'), 'nome': r.get('displayName'), 'url': r.get('webUrl')}
+        except Exception as e:
+            out['root'] = {'erro': str(e)[:200]}
+        q = request.args.get('q', '')
+        if q:
+            try:
+                sr = graph_get(f"/sites?search={q}")
+                out['busca'] = [{'id': s.get('id'), 'nome': s.get('displayName'), 'url': s.get('webUrl')}
+                                for s in sr.get('value', [])[:20]]
+            except Exception as e:
+                out['busca'] = {'erro': str(e)[:200]}
+        sid = request.args.get('site_id', '')
+        if sid:
+            try:
+                dr = graph_get(f"/sites/{sid}/drives")
+                out['drives'] = [{'id': d.get('id'), 'nome': d.get('name'), 'tipo': d.get('driveType'), 'url': d.get('webUrl')}
+                                 for d in dr.get('value', [])[:20]]
+            except Exception as e:
+                out['drives'] = {'erro': str(e)[:200]}
+        return jsonify(out)
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
 @controle_bp.route('/graph/users')
 def graph_list_users():
     """Lista usuários Microsoft da organização."""
