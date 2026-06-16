@@ -7593,7 +7593,8 @@ function qRenderAvals() {
 // ── Resultados em massa (grade) ────────────────────────────────────
 // Converte "0,4324 PPM" → 0.4324 (mesma leitura do backend _qf).
 function _qNum(v) {
-  const t = String(v == null ? '' : v).trim().split(/\s+/)[0].replace(',', '.');
+  // "<0,007 ppm" → 0.007 (resultado abaixo do LQ conta como o valor → REGULAR).
+  const t = String(v == null ? '' : v).trim().split(/\s+/)[0].replace(/^[<>]+/, '').replace(',', '.');
   const n = parseFloat(t);
   return isNaN(n) ? null : n;
 }
