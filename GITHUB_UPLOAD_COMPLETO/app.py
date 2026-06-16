@@ -2444,10 +2444,18 @@ def api_convert_laudo():
         # verdade). Antes vinham do guia_metodos genérico e saíam errados.
         _mm = _re.search(r'M[ÉE]TODO\s*\(?s?\)?\s*\n(.*?)\n\s*4\s*[-–]', full_text, _re.S | _re.I)
         metodo = _re.sub(r'\s+', ' ', _mm.group(1)).strip() if _mm else ''
+        # A descrição (CASSETE/TUBO/…) vem entre "Nº do Branco de Campo:" e
+        # "Informações da amostragem". No texto do fitz, o rótulo "Descrição do
+        # Amostrador:" é seguido pelos OUTROS rótulos (layout 2 colunas), então
+        # ancorar nele pegava lixo ("Data da Amostragem: Vazão…").
         _am = _re.search(
-            r'Descri[çc][ãa]o do Amostrador:\s*(.*?)(?:\n\s*3\s*[-–]|\n\s*Informa[çc]|\n\s*\d\s*[-–]\s)',
+            r'Branco de Campo:[^\n]*\n(.*?)\n\s*Informa[çc][õo]es da amostragem',
             full_text, _re.S | _re.I)
         amostrador_desc = _re.sub(r'\s+', ' ', _am.group(1)).strip().rstrip('.') if _am else ''
+        # guarda: se o layout vier diferente e capturar rótulos, descarta
+        if _re.search(r'Data da Amostragem|Vaz[ãa]o M[ée]dia|Funcion|Respons[áa]vel|Descri[çc]',
+                      amostrador_desc, _re.I):
+            amostrador_desc = ''
 
         dados = {k: v for k, v in {
             'filtroNumero': filtro,
