@@ -2085,7 +2085,7 @@
   </style>
 </head>
 <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js"></script>
-<body data-user="{{ current_user.email if current_user.is_authenticated else 'anon' }}">
+<body data-user="{{ current_user.email if current_user.is_authenticated else 'anon' }}" data-role="{{ current_user.role if current_user.is_authenticated else '' }}">
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="mobileSidebarClose()"></div>
 
 <!-- ══ Header ══════════════════════════════════════════════════════════ -->
@@ -3943,7 +3943,8 @@
     <div style="background:rgba(96,165,250,.07);border-left:3px solid var(--blue);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--text2);">
       <b>Demandas / OS</b> — Ordens de serviço sincronizadas do Microsoft Planner. Cada empresa pode ter múltiplas OS com prazos e status distintos. Use os filtros para localizar rapidamente.
     </div>
-    <!-- Painel de revisão — OS com extração duvidosa -->
+    <!-- Painel de revisão — OS com extração duvidosa (ferramenta de manutenção: só admin) -->
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
     <div id="ctrl-revisao-banner" style="display:none;background:rgba(245,158,11,.1);border:1.5px solid rgba(245,158,11,.4);border-radius:8px;padding:10px 14px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
         <span style="font-size:.82rem;color:var(--yellow);font-weight:700;">⚠ <span id="ctrl-revisao-count">0</span> OS com extração duvidosa (needs_review)</span>
@@ -3951,6 +3952,7 @@
       </div>
       <div id="ctrl-revisao-lista" style="display:none;margin-top:10px;max-height:300px;overflow-y:auto;"></div>
     </div>
+    {% endif %}
     <div class="ctrl-filters">
       <input type="text" id="ctrl-fd-empresa" placeholder="Empresa..." oninput="ctrlLoadDemand()">
       <input type="text" id="ctrl-fd-os" placeholder="N° OS..." oninput="ctrlLoadDemand()" style="min-width:100px;max-width:130px;">
@@ -8816,7 +8818,7 @@ async function ctrlLoadGraphStatus() {
         ${(st.erros||[]).length ? `<span style="color:var(--orange)">· ${st.erros.length} erros</span>` : ''}
       </span>
       <button onclick="ctrlSyncPlanner(this)" style="margin-left:12px;background:var(--blue);color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">⟳ Sincronizar agora</button>
-      <button onclick="ctrlReprocessarAgentes(this)" title="Re-extrai os agentes de TODAS as demandas do Planner (corrige OS sem agentes no painel)" style="margin-left:8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">🧠 Reprocessar agentes</button>
+      ${document.body.dataset.role === 'admin' ? '<button onclick="ctrlReprocessarAgentes(this)" title="Re-extrai os agentes de TODAS as demandas do Planner (corrige OS sem agentes no painel)" style="margin-left:8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">🧠 Reprocessar agentes</button>' : ''}
     `;
   } catch(e) {
     const el = document.getElementById('ctrl-graph-status-bar');
