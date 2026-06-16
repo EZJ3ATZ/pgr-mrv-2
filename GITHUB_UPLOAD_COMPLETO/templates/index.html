@@ -13709,7 +13709,6 @@ async function indLoad() {
           card(tcl?`${tcl.media_dias}d`:'—', 'Médio coleta → lab', 'var(--blue)', tcl?`${tcl.amostra} amostras`:'sem dados'),
           card(tlc?`${tlc.media_dias}d`:'—', 'Médio lab → concluído', '#4ade80', tlc?`${tlc.amostra} amostras`:'sem dados'),
           card(g.presos_lab?.qtd ?? 0, `Presos no lab (>${g.presos_lab?.limite_dias??15}d)`, (g.presos_lab?.qtd>0?'var(--red)':'var(--text2)')),
-          card(g.reservados_parados?.qtd ?? 0, `Reservados parados (>${g.reservados_parados?.limite_dias??7}d)`, (g.reservados_parados?.qtd>0?'var(--yellow)':'var(--text2)')),
           card(g.concluidos_para_arquivar?.qtd ?? 0, 'A arquivar (≥30d)', 'var(--text3)'),
         ];
         fa.innerHTML = cards.join('');
@@ -13946,12 +13945,11 @@ function _biRenderLab(fluxo) {
     </div>`;
   const _d = (o) => (o && o.media_dias != null) ? Math.round(o.media_dias) + 'd' : '—';
   const _n = (o) => (o && o.amostra != null) ? o.amostra + ' amostras' : 'sem dados';
-  const presos = g.presos_lab || {}, reserv = g.reservados_parados || {}, arq = g.concluidos_para_arquivar || {};
+  const presos = g.presos_lab || {}, arq = g.concluidos_para_arquivar || {};
   el.innerHTML =
     card('Coleta &#8594; Lab', _d(tcl), _n(tcl), 'var(--blue)') +
     card('Lab &#8594; Resultado', _d(tlc), _n(tlc), 'var(--purple)') +
     card('Presos no lab', (presos.qtd || 0), '&gt; ' + (presos.limite_dias || 15) + ' dias', presos.qtd ? 'var(--red)' : 'var(--green)') +
-    card('Reservados parados', (reserv.qtd || 0), '&gt; ' + (reserv.limite_dias || 7) + ' dias', reserv.qtd ? 'var(--yellow)' : 'var(--green)') +
     card('Para arquivar', (arq.qtd || 0), 'conclu&#237;dos &#8805;30d', arq.qtd ? 'var(--text2)' : 'var(--green)');
 }
 
@@ -14054,7 +14052,10 @@ async function biLoad() {
       ).push(d);
     });
     window._biDmndBuckets = _biDmndBuckets;
-    window._biAtrasadas   = [];
+    // Listas para o drill-down dos KPIs do topo (mesma def. do backend):
+    // em aberto = tudo que não está concluído; atrasada = em aberto com prazo vencido.
+    window._biAbertas   = demandas.filter(d => (d.status||'').toLowerCase() !== 'concluida');
+    window._biAtrasadas = window._biAbertas.filter(d => d.prazo && d.prazo < today);
     const cardsEl = document.getElementById('bi-dmnd-cards');
     if (cardsEl) {
       cardsEl.innerHTML = Object.entries(_BI_DMND).map(([key, cfg]) => {
@@ -14317,11 +14318,15 @@ async function biLoad() {
       if (kpiEl && an.kpis) {
         const k = an.kpis;
         kpiEl.innerHTML = [
-          { label:'Coletas Realizadas', val: k.total_medicoes,  color:'#60a5fa', sub:'planilhas de campo registradas' },
-          { label:'OS Concluídas',    val: k.concluidas,        color:'#4ade80', sub:`${k.taxa_conclusao}% do total` },
-          { label:'OS em Aberto',     val: k.total_demandas - k.concluidas, color:'#fb923c', sub:'pendentes' },
-          { label:'Demandas Atrasadas',val: k.demandas_atrasadas, color:'#f87171', sub:'prazo vencido' },
-        ].map(c => `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+          { label:'Coletas Realizadas', val: k.total_medicoes,  color:'#60a5fa', sub:'planilhas de campo registradas',
+            click:"goToTab('planilhas')" },
+          { label:'OS Concluídas',    val: k.concluidas,        color:'#4ade80', sub:`${k.taxa_conclusao}% do total`,
+            click:"biDrawerOpen('OS Conclu&#237;das — '+(window._biDmndBuckets.concluida||[]).length+' OS', window._biDmndListHtml(window._biDmndBuckets.concluida))" },
+          { label:'OS em Aberto',     val: k.total_demandas - k.concluidas, color:'#fb923c', sub:'pendentes',
+            click:"biDrawerOpen('OS em Aberto — '+(window._biAbertas||[]).length+' OS', window._biDmndListHtml(window._biAbertas))" },
+          { label:'Demandas Atrasadas',val: k.demandas_atrasadas, color:'#f87171', sub:'prazo vencido',
+            click:"biDrawerOpen('Demandas Atrasadas — '+(window._biAtrasadas||[]).length+' OS', window._biDmndListHtml(window._biAtrasadas))" },
+        ].map(c => `<div ${c.click?`onclick="${c.click}" title="Clique para ver a lista"`:''} style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;${c.click?'cursor:pointer;transition:border-color .15s;':''}" ${c.click?`onmouseover="this.style.borderColor='${c.color}'" onmouseout="this.style.borderColor='var(--border)'"`:''}>
           <div style="font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">${c.label}</div>
           <div style="font-size:1.6rem;font-weight:800;color:${c.color};">${c.val ?? '—'}</div>
           <div style="font-size:.68rem;color:var(--text3);">${c.sub}</div>
