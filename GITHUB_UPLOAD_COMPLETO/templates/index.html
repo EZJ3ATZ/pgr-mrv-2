@@ -15945,6 +15945,7 @@ async function nvGerarRelatorioCampo() {
   const empresa_nome = document.getElementById('ctrl-nv-empresa')?.value||'';
   const base = {
     empresa_nome,
+    cnpj:        window._ctrlNvEmpresa?.cnpj || '',
     unidade:     document.getElementById('nv-unidade')?.value||'',
     cidade:      document.getElementById('nv-cidade')?.value||'',
     resp_empresa:document.getElementById('nv-resp-empresa')?.value||'',

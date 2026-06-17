@@ -4362,18 +4362,22 @@ def gerar_relatorio_campo_completo():
         story.append(Spacer(1, 4))
 
         trabs = r.get('trabalhadores', [])
+        # SN do dosímetro vem do form como 'sn'; Início/Fim por trabalhador
+        # nunca eram preenchidos (form só tem horário global) → colunas removidas.
         cab_r = ['#', 'Nome', 'Cargo / Função', 'Setor', 'Dosímetro',
-                 'Almoço (início–fim)', 'Início', 'Fim']
-        cw_r  = [W*0.035, W*0.205, W*0.155, W*0.135, W*0.12, W*0.13, W*0.11, W*0.11]
+                 'Almoço (início–fim)']
+        cw_r  = [W*0.04, W*0.26, W*0.20, W*0.18, W*0.16, W*0.16]
         linhas_r = []
         for i, t in enumerate(trabs, 1):
             _almoco = ' – '.join([x for x in [t.get('pausa','') or t.get('almoco',''),
                                               t.get('almoco_fim','')] if x])
             linhas_r.append([i, t.get('nome',''), t.get('cargo','') or t.get('funcao',''),
-                              t.get('setor',''), t.get('dosimetro','') or t.get('amostrador',''),
-                              _almoco, t.get('hora_ini',''), t.get('hora_fim','')])
+                              t.get('setor',''),
+                              t.get('sn','') or t.get('serie_dosimetro','') or
+                              t.get('dosimetro','') or t.get('amostrador',''),
+                              _almoco])
         while len(linhas_r) < 6:
-            linhas_r.append([len(linhas_r)+1,'','','','','','',''])
+            linhas_r.append([len(linhas_r)+1,'','','','',''])
         story.append(_tabela(cab_r, linhas_r, cw_r))
         # Linha GHEs (agentes do planejamento) — FORA da tabela, igual à individual
         itens_ghe_r = r.get('itens', [])
