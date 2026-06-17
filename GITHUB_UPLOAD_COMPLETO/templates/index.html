@@ -6957,7 +6957,7 @@ function calor_limparEmpresa() {
 }
 
 function _novoPonto() {
-  return { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Trabalho Moderado – De pé, com os braços e tronco', M:198, fotos:[null,null,null] };
+  return { local:'', tempo:60, tbn:'', tbs:'', tg:'', atividade:'Em pé/agachado/ajoelhado — Trabalho moderado com as mãos', M:180, fotos:[null,null,null] };
 }
 
 function addSetor() {
@@ -8376,7 +8376,7 @@ async function calorPrefillCarregar(coletaId) {
           tbn: p.tbn != null ? p.tbn : '',
           tbs: p.tbs != null ? p.tbs : '',
           tg:  p.tg  != null ? p.tg  : '',
-          atividade: p.atividade || 'Trabalho Moderado – De pé, com os braços e tronco',
+          atividade: p.atividade || 'Em pé/agachado/ajoelhado — Trabalho moderado com as mãos',
           M: (p.M === '' || p.M == null) ? 198 : +p.M,
           fotos: [null, null, null]
         }))
@@ -8640,17 +8640,72 @@ function _showToast(msg, type='info') {
 }
 
 // ── CALOR: Atividade → M automático (NR-15 Anexo 3) ───────────────────
+// Taxas metabólicas (M, em W) por tipo de atividade — quadro FUNDACENTRO NHO-06,
+// usado com a NR-15 Anexo 3 p/ estresse térmico (IBUTG). Transcrito do quadro
+// oficial "Taxas Metabólicas x Tipo de Atividade". O rótulo leva a postura/
+// categoria como prefixo p/ ficar único e claro no seletor.
 const ATIVIDADES_NR15 = [
-  { label:'Sentado em repouso',                                              M:100 },
-  { label:'Trabalho leve sentado, movimentos moderados c/ braços e tronco',  M:125 },
-  { label:'Trabalho leve sentado, movimentos moderados c/ braços e pernas',  M:150 },
-  { label:'Trabalho leve de pé, c/ braços (máq. ou bancada)',                M:150 },
-  { label:'Trabalho leve de pé, c/ alguma movimentação',                     M:175 },
-  { label:'Trabalho Moderado – De pé, com os braços e tronco',               M:198 },
-  { label:'Trabalho moderado de pé, c/ máq. ou bancada e movimentação',      M:220 },
-  { label:'Em movimento – trabalho moderado de levantar/empurrar',           M:300 },
-  { label:'Trabalho intermitente de levantar/empurrar/arrastar',             M:440 },
-  { label:'Trabalho fatigante',                                              M:550 },
+  // Trabalho com braços e pernas
+  { label:'Trabalho leve com braços e pernas',                               M:324 },
+  { label:'Trabalho moderado com braços e pernas',                           M:441 },
+  { label:'Trabalho pesado com braços e pernas',                             M:603 },
+  // Em pé, agachado ou ajoelhado
+  { label:'Em pé/agachado/ajoelhado — Em repouso',                           M:126 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho leve com as mãos',            M:153 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho moderado com as mãos',        M:180 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho pesado com as mãos',          M:198 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho leve com um braço',           M:189 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho moderado com um braço',       M:225 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho pesado com um braço',         M:261 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho leve com dois braços',        M:243 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho moderado com dois braços',    M:279 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho pesado com dois braços',      M:315 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho leve com o corpo',            M:351 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho moderado com o corpo',        M:468 },
+  { label:'Em pé/agachado/ajoelhado — Trabalho pesado com o corpo',          M:630 },
+  // Sentado
+  { label:'Sentado — Em repouso',                                            M:100 },
+  { label:'Sentado — Trabalho leve com as mãos',                             M:126 },
+  { label:'Sentado — Trabalho moderado com as mãos',                         M:153 },
+  { label:'Sentado — Trabalho pesado com as mãos',                           M:171 },
+  { label:'Sentado — Trabalho leve com um braço',                            M:162 },
+  { label:'Sentado — Trabalho moderado com um braço',                        M:198 },
+  { label:'Sentado — Trabalho pesado com um braço',                          M:234 },
+  { label:'Sentado — Trabalho leve com dois braços',                         M:216 },
+  { label:'Sentado — Trabalho moderado com dois braços',                     M:252 },
+  { label:'Sentado — Trabalho pesado com dois braços',                       M:288 },
+  // Em pé, em movimento — andando no plano
+  { label:'Andando no plano (sem carga) — 2 km/h',                           M:198 },
+  { label:'Andando no plano (sem carga) — 3 km/h',                           M:252 },
+  { label:'Andando no plano (sem carga) — 4 km/h',                           M:297 },
+  { label:'Andando no plano (sem carga) — 5 km/h',                           M:360 },
+  { label:'Andando no plano (com carga) — 10 kg, 4 km/h',                    M:333 },
+  { label:'Andando no plano (com carga) — 30 kg, 4 km/h',                    M:450 },
+  // Correndo no plano
+  { label:'Correndo no plano — 9 km/h',                                      M:787 },
+  { label:'Correndo no plano — 12 km/h',                                     M:873 },
+  { label:'Correndo no plano — 15 km/h',                                     M:990 },
+  // Subindo rampa
+  { label:'Subindo rampa (sem carga) — 5° de inclinação, 4 km/h',            M:324 },
+  { label:'Subindo rampa (sem carga) — 15° de inclinação, 3 km/h',           M:378 },
+  { label:'Subindo rampa (sem carga) — 25° de inclinação, 3 km/h',           M:540 },
+  { label:'Subindo rampa (carga 20 kg) — 15° de inclinação, 4 km/h',         M:486 },
+  { label:'Subindo rampa (carga 20 kg) — 25° de inclinação, 4 km/h',         M:738 },
+  // Descendo rampa (5 km/h, sem carga)
+  { label:'Descendo rampa (5 km/h, sem carga) — 5° de inclinação',           M:243 },
+  { label:'Descendo rampa (5 km/h, sem carga) — 15° de inclinação',          M:252 },
+  { label:'Descendo rampa (5 km/h, sem carga) — 25° de inclinação',          M:324 },
+  // Escada (80 degraus/min, degrau de 0,17 m)
+  { label:'Subindo escada (80 degraus/min, 0,17 m) — sem carga',             M:522 },
+  { label:'Subindo escada (80 degraus/min, 0,17 m) — carga 20 kg',           M:648 },
+  { label:'Descendo escada (80 degraus/min, 0,17 m) — sem carga',            M:279 },
+  { label:'Descendo escada (80 degraus/min, 0,17 m) — carga 20 kg',          M:400 },
+  // Exemplos de atividades
+  { label:'Trabalho moderado de braços (ex.: varrer, almoxarifado)',         M:320 },
+  { label:'Trabalho moderado de levantar ou empurrar',                       M:349 },
+  { label:'Empurrar carrinho de mão no plano, com carga',                    M:391 },
+  { label:'Carregar pesos / movimentos vigorosos com os braços (ex.: foice)',M:495 },
+  { label:'Levantar, empurrar ou arrastar pesos — pesado (ex.: pá, valas)',  M:524 },
 ];
 
 window.ATIVIDADES_NR15 = ATIVIDADES_NR15;
@@ -14978,7 +15033,7 @@ window._nvCalorSetores = [];
 function nvCalorAddSetor() {
   window._nvCalorSetores.push({
     setor: '', tbs: '', tbn: '', tg: '',
-    regime: 'Trabalho Moderado – De pé, com os braços e tronco', M: 198,
+    regime: 'Em pé/agachado/ajoelhado — Trabalho moderado com as mãos', M: 180,
     ibutg_interno: '', ibutg_externo: '', duracao: '',
   });
   nvCalorRenderSetores();
