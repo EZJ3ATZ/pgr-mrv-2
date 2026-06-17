@@ -15488,10 +15488,7 @@ function _nvRunValidacoesCore(res) {
 
   if (tipos.includes('ruido')) {
     checks.push({ok:_nvCrTrabs.length>0, msg:_nvCrTrabs.length>0?`${_nvCrTrabs.length} trabalhador(es) cadastrado(s)`:'Nenhum trabalhador adicionado'});
-    const ini=parseFloat(document.getElementById('nv-cr-cal-ini')?.value);
-    const fim=parseFloat(document.getElementById('nv-cr-cal-fim')?.value);
-    if(!isNaN(ini)&&!isNaN(fim)){const dv=Math.abs(fim-ini);checks.push({ok:dv<=0.5,warn:dv>0.5,msg:`Desvio calibração: <b>${dv.toFixed(1)} dB</b> ${dv<=0.5?'✓':'⚠ FORA do tolerado (±0,5 dB)!'}`});}
-    else checks.push({warn:true,msg:'Calibração do dosímetro não informada'});
+    // Calibração do dosímetro removida da planilha de campo (só o nº do calibrador vai p/ o laudo) — Helbert 17/06.
   }
 
   if (tipos.includes('quimico')) {
@@ -16134,8 +16131,6 @@ function nvValidarFinalizacao() {
   });
   // ── Fora-da-norma (AVISA + confirma) ──
   if (tipos.includes('ruido')) {
-    const ci = parseFloat(val('nv-cr-cal-ini').replace(',','.')), cf = parseFloat(val('nv-cr-cal-fim').replace(',','.'));
-    if (!isNaN(ci) && !isNaN(cf) && Math.abs(cf-ci) > 0.5) avisos.push(`Calibração do dosímetro fora de tolerância: desvio ${(cf-ci).toFixed(1)} dB (máx ±0,5).`);
     if (!val('nv-cr-hora-ini') || !val('nv-cr-hora-fim')) avisos.push('Ruído: horário de início/término não informado.');
   }
   if (tipos.includes('quimico'))

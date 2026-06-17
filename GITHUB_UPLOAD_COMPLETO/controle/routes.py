@@ -4357,28 +4357,8 @@ def gerar_relatorio_campo_completo():
         story.append(_row2('Acompanhante:', r.get('acomp',''), 'Cargo:', r.get('cargo_acomp','')))
         story.append(_row2('Horário:', f'{r.get("hora_ini","___")} – {r.get("hora_fim","___")}',
                            'Calibrador:', r.get('calibrador','')))
-        story.append(_row2('Calibração inicial:', f'{r.get("cal_ini","")  or "___"} dB',
-                           'Calibração final:', f'{r.get("cal_fim","") or "___"} dB'))
-        # Desvio e status da calibração (critério da planilha individual: |Δ| ≤ 0.5 dB)
-        _dsv_r = r.get('desvio_calibracao', '')
-        if _dsv_r in ('', None) and r.get('cal_ini') not in ('', None) and r.get('cal_fim') not in ('', None):
-            try:
-                _dsv_r = round(float(str(r.get('cal_fim')).replace(',', '.')) -
-                               float(str(r.get('cal_ini')).replace(',', '.')), 2)
-            except Exception:
-                _dsv_r = ''
-        if _dsv_r not in ('', None):
-            try:
-                _ok_cal = abs(float(str(_dsv_r).replace(',', '.'))) <= 0.5
-                _st_txt = ('✓ APROVADA' if _ok_cal else '✗ REPROVADA') + f' (Δ = {_dsv_r} dB)'
-                _st_clr = '#16A34A' if _ok_cal else '#D97706'
-            except Exception:
-                _st_txt, _st_clr = '—', '#000000'
-            story.append(_row2('Desvio:', f'{_dsv_r} dB',
-                               'Status:', f'<font color="{_st_clr}"><b>{_st_txt}</b></font>'))
-        else:
-            # Calibração final ainda não medida — preencher na volta do campo
-            story.append(_row2('Desvio:', '____', 'Status:', '____'))
+        # Aferição (inicial/final/desvio/status) removida da planilha de campo —
+        # fica só o nº do calibrador, útil p/ o laudo (pedido Helbert 17/06).
         story.append(Spacer(1, 4))
 
         trabs = r.get('trabalhadores', [])
@@ -4727,46 +4707,12 @@ def gerar_relatorio_ruido():
                               [W*0.35, W*0.35, W*0.30]))
     elements.append(Spacer(1, 8))
 
-    # ─── Calibração ─────────────────────────────────────────────────
-    elements.append(sec_label('3. CALIBRAÇÃO DO EQUIPAMENTO'))
+    # ─── Equipamento / Calibrador ───────────────────────────────────
+    # Aferição inicial/final + desvio removidos da planilha de campo;
+    # fica só a identificação do calibrador, útil p/ o laudo (Helbert 17/06).
+    elements.append(sec_label('3. EQUIPAMENTO / CALIBRADOR'))
     elements.append(Spacer(1, 2))
-
-    # Status calibração
-    if desvio != '':
-        try:
-            dev_num = float(str(desvio).replace(',','.'))
-            ok_cal  = abs(dev_num) <= 0.5
-            status_cal_txt = ('✓ APROVADA' if ok_cal else '✗ REPROVADA') + f' (Δ = {desvio} dB)'
-            status_cal_color = VERDE if ok_cal else LARANJA
-        except:
-            status_cal_txt = str(status_cal) or '____'
-            status_cal_color = PRETO
-    else:
-        # Calibração final ainda não medida — preencher na volta do campo
-        status_cal_txt = status_cal or '____'
-        status_cal_color = PRETO
-
-    cal_rows = [
-        [Paragraph('<b>Calibrador</b>', cell_bold), Paragraph('<b>Cal. Inicial (dB)</b>', cell_bold),
-         Paragraph('<b>Cal. Final (dB)</b>', cell_bold), Paragraph('<b>Desvio</b>', cell_bold),
-         Paragraph('<b>Status</b>', cell_bold)],
-        [Paragraph(str(calibrador) or '—', cell_reg),
-         Paragraph(str(cal_ini) or '—', cell_reg),
-         Paragraph(str(cal_fim) or '—', cell_reg),
-         Paragraph(str(desvio) if desvio != '' else '____', cell_reg),
-         Paragraph(f'<font color="{status_cal_color.hexval() if hasattr(status_cal_color,"hexval") else "#16A34A"}">{status_cal_txt}</font>', cell_reg)],
-    ]
-    cal_tbl = Table(cal_rows, colWidths=[W*0.28, W*0.18, W*0.18, W*0.14, W*0.22])
-    cal_tbl.setStyle(TableStyle([
-        ('BACKGROUND',(0,0),(-1,0),AZUL_CLR),
-        ('GRID',(0,0),(-1,-1),0.4,BORDA),
-        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
-        ('FONTSIZE',(0,0),(-1,-1),8),
-        ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
-        ('LEFTPADDING',(0,0),(-1,-1),5),
-        ('ALIGN',(1,0),(3,-1),'CENTER'),
-    ]))
-    elements.append(cal_tbl)
+    elements.append(info_row([('Calibrador / N° Série', calibrador)], [W]))
     elements.append(Spacer(1, 8))
 
     # ─── Trabalhadores ───────────────────────────────────────────────
