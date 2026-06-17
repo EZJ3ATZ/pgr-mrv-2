@@ -900,6 +900,10 @@ def _migrate(conn):
 
     # ── empresas ──
     _add_col(conn, 'empresas', 'pendente', 'INTEGER DEFAULT 0')
+    # Cadastro completo da empresa — preenchido automaticamente ao gerar laudo
+    # (enriquecer_empresa). Reusado nos próximos laudos/planilhas (cruzamento).
+    for _c in ('cep', 'endereco', 'numero', 'bairro', 'cnae', 'descricao_cnae'):
+        _add_col(conn, 'empresas', _c, 'TEXT')
 
     # ── demandas: campos Planner ──
     demandas_extra = {
@@ -2496,6 +2500,56 @@ def upsert_empresa(cnpj, nome, **extra):
              extra.get('telefone'), extra.get('email'), extra.get('cidade'), extra.get('uf'))
         )
         return cur.lastrowid
+
+
+def enriquecer_empresa(dados):
+    """Backfill: preenche campos VAZIOS de uma empresa com o que o técnico
+    digitou ao gerar um laudo. Casa por CNPJ (se já houver) ou por nome exato;
+    NUNCA cria empresa nova e NUNCA sobrescreve um valor já preenchido.
+    CNPJ só é gravado se nenhuma OUTRA empresa já o usa (evita violar o UNIQUE).
+
+    Campos defaultados nos formulários (cidade='Belo Horizonte', uf='MG',
+    grau_risco='3') ficam de FORA de propósito — salvar default poluiria
+    empresas de outras cidades. Retorna {ok, id, atualizados, cnpj_conflito}.
+    """
+    dados = dados or {}
+    nome = str(dados.get('nome') or dados.get('razaoSocial') or '').strip()
+    cnpj = str(dados.get('cnpj') or '').strip()
+    # Só campos sem default enganoso no form
+    campos = ['cnpj', 'contato', 'telefone', 'email',
+              'cep', 'endereco', 'numero', 'bairro', 'cnae', 'descricao_cnae']
+    with get_db() as conn:
+        row = None
+        if cnpj:
+            row = conn.execute('SELECT * FROM empresas WHERE cnpj = ?', (cnpj,)).fetchone()
+        if not row and nome:
+            row = conn.execute(
+                'SELECT * FROM empresas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?)) '
+                'ORDER BY COALESCE(pendente, 0) ASC, id ASC LIMIT 1', (nome,)).fetchone()
+        if not row:
+            return {'ok': False, 'motivo': 'empresa nao encontrada'}
+        emp = row_to_dict(row)
+        eid = emp['id']
+        sets, params, atualizados = [], [], []
+        cnpj_conflito = False
+        for c in campos:
+            novo = dados.get(c)
+            novo = str(novo).strip() if novo is not None else ''
+            if not novo:
+                continue
+            if emp.get(c) not in (None, '', 0, '0'):
+                continue  # já preenchido — não sobrescreve
+            if c == 'cnpj':
+                dup = conn.execute('SELECT id FROM empresas WHERE cnpj = ? AND id <> ?',
+                                   (novo, eid)).fetchone()
+                if dup:
+                    cnpj_conflito = True
+                    continue
+            sets.append(f'{c} = ?'); params.append(novo); atualizados.append(c)
+        if sets:
+            params.append(eid)
+            conn.execute(f'UPDATE empresas SET {", ".join(sets)} WHERE id = ?', params)
+        return {'ok': True, 'id': eid, 'atualizados': atualizados, 'cnpj_conflito': cnpj_conflito}
 
 
 # ── Pipeline stats ─────────────────────────────────────────────────────

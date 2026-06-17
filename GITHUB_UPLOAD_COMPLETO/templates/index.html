@@ -7193,6 +7193,18 @@ async function gerarCalor() {
     const m = cd.match(/filename="(.+)"/);
     baixarUrl(URL.createObjectURL(blob), m ? m[1] : `Laudo de Calor - ${nome}.docx`);
     showCalorStatus('Laudo gerado com sucesso. Download iniciado automaticamente.','ok');
+    _salvarEmpresaDoLaudo({
+      nome: document.getElementById('c-nome')?.value || nome,
+      cnpj: document.getElementById('c-cnpj')?.value || '',
+      contato: document.getElementById('c-contato')?.value || '',
+      telefone: document.getElementById('c-tel')?.value || '',
+      email: document.getElementById('c-email')?.value || '',
+      cep: document.getElementById('c-cep')?.value || '',
+      endereco: document.getElementById('c-end')?.value || '',
+      bairro: document.getElementById('c-bairro')?.value || '',
+      cnae: document.getElementById('c-cnae')?.value || '',
+      descricao_cnae: document.getElementById('c-cnae-desc')?.value || '',
+    });
   } catch(e) {
     showCalorStatus('Erro: '+e.message,'err');
   } finally {
@@ -7822,6 +7834,16 @@ async function gerarQuimico() {
     const m = cd.match(/filename="(.+)"/);
     baixarUrl(URL.createObjectURL(blob), m ? m[1] : `Análise Química - ${razao}.docx`);
     showQStatus('Laudo gerado com sucesso! Download iniciado.', 'ok');
+    _salvarEmpresaDoLaudo({
+      nome: razao,
+      cnpj: document.getElementById('q-cnpj')?.value || '',
+      cep: document.getElementById('q-cep')?.value || '',
+      endereco: document.getElementById('q-end')?.value || '',
+      numero: document.getElementById('q-num')?.value || '',
+      bairro: document.getElementById('q-bairro')?.value || '',
+      cnae: document.getElementById('q-cnae')?.value || '',
+      descricao_cnae: document.getElementById('q-cnae-desc')?.value || '',
+    });
   } catch(e) {
     showQStatus('Erro: ' + e.message, 'err');
   } finally {
@@ -8078,6 +8100,18 @@ async function gerarRuido() {
     const m = cd.match(/filename="(.+)"/);
     baixarUrl(URL.createObjectURL(blob), m ? m[1] : `Laudo_Ruido_${razao}.docx`);
     showRuidoStatus('Laudo gerado com sucesso! Download iniciado.', 'ok');
+    _salvarEmpresaDoLaudo({
+      nome: razao,
+      cnpj: document.getElementById('r-cnpj')?.value || '',
+      contato: document.getElementById('r-responsavel')?.value || '',
+      telefone: document.getElementById('r-tel')?.value || '',
+      email: document.getElementById('r-email')?.value || '',
+      cep: document.getElementById('r-cep')?.value || '',
+      endereco: document.getElementById('r-end')?.value || '',
+      bairro: document.getElementById('r-bairro')?.value || '',
+      cnae: document.getElementById('r-cnae')?.value || '',
+      descricao_cnae: document.getElementById('r-cnae-desc')?.value || '',
+    });
   } catch(err) {
     showRuidoStatus('Erro: ' + err.message, 'err');
   } finally {
@@ -8141,6 +8175,19 @@ async function _laudoPrefillFetch(tipo, coletaId) {
 }
 
 // Preenche os inputs de empresa de um prefixo (ruido/quim/calor) SEM sobrescrever com vazio.
+// Cruzamento de dados: ao gerar um laudo, salva no cadastro da empresa os
+// dados que o técnico digitou (CNPJ, endereço, CNAE...). O servidor preenche
+// só o que está vazio. Silencioso — nunca atrapalha a geração do laudo.
+async function _salvarEmpresaDoLaudo(emp) {
+  try {
+    if (!emp || !(emp.nome || emp.cnpj)) return;
+    await fetch('/controle/empresas/enriquecer', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(emp)
+    });
+  } catch (_) { /* não bloqueia o laudo */ }
+}
+
 function _laudoSetEmpresa(prefix, emp) {
   if (!emp) return;
   const F = EMPRESA_FIELDS[prefix] || {};

@@ -1602,6 +1602,17 @@ def cria_empresa():
     return jsonify({'ok': True, 'id': eid})
 
 
+@controle_bp.route('/empresas/enriquecer', methods=['POST'])
+def api_enriquecer_empresa():
+    """Salva no cadastro da empresa os dados que o técnico digitou ao gerar
+    um laudo (CNPJ, endereço, CNAE, etc.). Preenche só o que está vazio —
+    cruzamento de dados p/ reusar nas próximas planilhas/laudos. Não cria
+    empresa nem sobrescreve. Disparado automaticamente no fim de cada laudo."""
+    init_db()
+    from .db import enriquecer_empresa
+    return jsonify(enriquecer_empresa(request.json or {}))
+
+
 @controle_bp.route('/empresas/busca')
 def api_empresas_busca():
     """Autocomplete de empresas por nome — para planejamento de empresa por
