@@ -1,9 +1,10 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v3';
+const CACHE = 'medicoes-v4';
 const SHELL = [
   '/mobile/',
   '/mobile/hoje',
   '/mobile/nova-visita',
+  '/campo/',
   '/static/mobile.css',
   '/static/sw.js',
   '/static/manifest.json',

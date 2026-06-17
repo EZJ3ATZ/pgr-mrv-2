@@ -50,6 +50,15 @@ except Exception as _me:
     print(f'[mobile] erro ao carregar blueprint: {_me}')
     traceback.print_exc()
 
+try:
+    from controle.campo import campo_bp
+    app.register_blueprint(campo_bp)
+    print('[campo] blueprint registrado OK')
+except Exception as _ce:
+    import traceback
+    print(f'[campo] erro ao carregar blueprint: {_ce}')
+    traceback.print_exc()
+
 # ── Rede de segurança global: handlers de erro 404/500 ────────────────
 # Sem isto, qualquer erro não-tratado ou URL inválida devolve HTML padrão
 # do Flask — e o frontend (ctrlFetch) espera JSON, quebrando a tela.
