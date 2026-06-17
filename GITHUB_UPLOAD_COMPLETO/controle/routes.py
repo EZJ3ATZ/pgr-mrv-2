@@ -3917,9 +3917,7 @@ def _calor_setores_flowables(setores, W):
     keys = ['setor', 'duracao', 'tbs', 'tbn', 'tg', 'ibutg_interno',
             'ibutg_externo', 'M', 'regime']
     rows = [[Paragraph(h, cab_sty) for h in heads]]
-    pl = list(setores or [])
-    while len(pl) < 6:
-        pl.append({})
+    pl = list(setores or [])   # só os setores preenchidos (sem linhas em branco)
     for i, s in enumerate(pl, 1):
         row = [Paragraph(str(i), cel_sty)]
         for k in keys:
@@ -4387,8 +4385,7 @@ def gerar_relatorio_campo_completo():
                               t.get('sn','') or t.get('serie_dosimetro','') or
                               t.get('dosimetro','') or t.get('amostrador',''),
                               _almoco])
-        while len(linhas_r) < 6:
-            linhas_r.append([len(linhas_r)+1,'','','','',''])
+        # Só os trabalhadores preenchidos (sem linhas em branco de padding).
         story.append(_tabela(cab_r, linhas_r, cw_r))
         # Linha GHEs (agentes do planejamento) — FORA da tabela, igual à individual
         itens_ghe_r = r.get('itens', [])
@@ -4459,8 +4456,7 @@ def gerar_relatorio_campo_completo():
                     row.append(p.get('terreno',''))
                 row.append(_equip_full(p))
                 linhas_v.append(row)
-            while len(linhas_v) < 4:
-                linhas_v.append([len(linhas_v)+1] + [''] * (len(cab_v) - 1))
+            # Só os trabalhadores preenchidos (sem linhas em branco).
             if titulo:
                 story.append(Paragraph(f'<b>{titulo}</b>', bold)); story.append(Spacer(1, 2))
             story.append(_tabela(cab_v, linhas_v, cw_v)); story.append(Spacer(1, 6))
@@ -4744,10 +4740,8 @@ def gerar_relatorio_ruido():
     ]
     trab_rows = [trab_head]
 
-    # Garantir pelo menos 5 linhas
+    # Só os trabalhadores preenchidos (sem linhas em branco de padding).
     trabs_fill = list(trabalhadores) if trabalhadores else []
-    while len(trabs_fill) < 5:
-        trabs_fill.append({})
 
     for i, tr in enumerate(trabs_fill, 1):
         trab_rows.append([
@@ -5007,9 +5001,7 @@ def gerar_relatorio_vibracao():
             _keys  = [None, 'nome', ('funcao','cargo'), 'setor', 'horario', 'tempo', 'tempo_nexp', 'trajeto', 'terreno', ('equip_full','obs')]
             _colw  = [W*0.04, W*0.14, W*0.11, W*0.09, W*0.10, W*0.07, W*0.07, W*0.10, W*0.10, W*0.18]
         rows = [[Paragraph(h, cell_bold7) for h in _heads]]
-        pl = list(pts_t)
-        while len(pl) < 6:
-            pl.append({})
+        pl = list(pts_t)   # só os trabalhadores preenchidos
         for i, p in enumerate(pl, 1):
             row = []
             for k in _keys:
