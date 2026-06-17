@@ -1,5 +1,5 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v4';
+const CACHE = 'medicoes-v5';
 const SHELL = [
   '/mobile/',
   '/mobile/hoje',
@@ -40,9 +40,18 @@ self.addEventListener('fetch', e => {
   if (e.request.mode === 'navigate' ||
       (e.request.headers.get('accept') || '').includes('text/html')) {
     e.respondWith(
-      fetch(e.request).catch(async () =>
-        (await caches.match(e.request)) || (await caches.match('/mobile/'))
-      )
+      fetch(e.request)
+        .then(r => {
+          // Atualiza a cópia offline com a última versão vista online
+          if (r && r.ok && !r.redirected) {
+            const clone = r.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
+          }
+          return r;
+        })
+        .catch(async () =>
+          (await caches.match(e.request)) || (await caches.match('/mobile/'))
+        )
     );
     return;
   }

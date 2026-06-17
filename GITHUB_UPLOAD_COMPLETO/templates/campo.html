@@ -49,6 +49,13 @@
   .pre-tag{display:inline-block;background:rgba(16,185,129,.12);color:#6ee7b7;font-size:.65rem;padding:1px 6px;border-radius:3px;margin-left:4px;font-weight:600;}
   .stale{background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);color:#fbbf24;
     font-size:.8rem;padding:8px 12px;border-radius:8px;margin-bottom:12px;}
+  .prontidao{display:flex;align-items:center;gap:14px;margin-bottom:18px;border-width:1.5px;}
+  .prontidao #prontidaoIcon{font-size:1.9rem;line-height:1;flex-shrink:0;}
+  .prontidao #prontidaoTxt{flex:1;font-size:.86rem;color:var(--text);line-height:1.45;}
+  .prontidao.ok  {background:rgba(16,185,129,.10);border-color:rgba(16,185,129,.45);}
+  .prontidao.warn{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.45);}
+  .prontidao.no  {background:rgba(239,68,68,.08); border-color:rgba(239,68,68,.4);}
+  @media(max-width:560px){.prontidao{flex-wrap:wrap;}.prontidao button{width:100%;}}
 </style>
 </head>
 <body>
@@ -62,7 +69,6 @@
     </div>
     <div class="campo-actions">
       <span id="conn" class="conn on"><span class="dot"></span><span id="connTxt">Online</span></span>
-      <button class="btn btn-sm btn-ghost" onclick="atualizarDados(true)" id="btnRefresh">↻ Atualizar dados</button>
       <button class="btn btn-sm" style="position:relative;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.35);color:#60a5fa" onclick="sincronizarFila()">
         ☁ Sincronizar
         <span id="filaBadge" style="display:none;position:absolute;top:-7px;right:-7px;background:#ef4444;color:#fff;border-radius:50%;min-width:18px;height:18px;font-size:11px;line-height:18px;text-align:center;font-weight:700;padding:0 3px"></span>
@@ -73,6 +79,12 @@
 
   <!-- ── LISTA DE OS ────────────────────────────────────────────────── -->
   <div id="viewLista">
+    <!-- Prontidão para o campo: baixa os dados e confirma que dá pra ficar offline -->
+    <div id="prontidaoCard" class="card prontidao no">
+      <span id="prontidaoIcon">⏳</span>
+      <div id="prontidaoTxt"><b>Verificando...</b></div>
+      <button class="btn btn-primary" id="btnPreparar" onclick="prepararCampo()" style="flex-shrink:0">⬇ Preparar para o campo</button>
+    </div>
     <div id="dadosInfo" class="sub" style="margin-bottom:10px"></div>
     <div id="staleWarn" class="stale" style="display:none"></div>
     <div class="section-title">OS do dia</div>
@@ -458,7 +470,57 @@ async function atualizarDados(manual){
     }
   }
   atualizarBadge();
+  renderProntidao();
 }
+
+// ── Prontidão para o campo ─────────────────────────────────────────────
+async function swAtivo(){
+  if(!('serviceWorker' in navigator)) return false;
+  try{ const reg = await navigator.serviceWorker.getRegistration(); return !!(reg && reg.active); }
+  catch(_){ return false; }
+}
+async function prepararCampo(){
+  if(!navigator.onLine){ showToast('⚠ Conecte à internet para preparar o campo'); return; }
+  const btn=document.getElementById('btnPreparar');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Preparando...'; }
+  try{
+    // Garante o service worker ativo (faz a tela abrir offline)
+    if('serviceWorker' in navigator){
+      try{ await navigator.serviceWorker.register('/static/sw.js'); await navigator.serviceWorker.ready; }catch(_){}
+    }
+    await atualizarDados(false);   // baixa e guarda as OS do dia
+    await sincronizarFila(true);   // envia o que tiver pendente de antes
+    showToast('✓ Pronto para o campo — pode ficar sem internet');
+  } finally { if(btn){ btn.disabled=false; btn.textContent='⬇ Preparar para o campo'; } }
+  renderProntidao();
+}
+async function renderProntidao(){
+  const card=document.getElementById('prontidaoCard');
+  if(!card) return;
+  const icon=document.getElementById('prontidaoIcon');
+  const txt =document.getElementById('prontidaoTxt');
+  const local=await lerDadosLocal();
+  const sw   =await swAtivo();
+  const n  = (local && local.payload && local.payload.os) ? local.payload.os.length : 0;
+  const ts = local ? local.ts : null;
+  const hoje = ts && (new Date(ts).toISOString().slice(0,10)===HOJE_ISO);
+  const hora = ts ? new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+  const dia  = ts ? new Date(ts).toLocaleDateString('pt-BR') : '';
+  if(local && sw && hoje){
+    card.className='card prontidao ok'; icon.textContent='✅';
+    txt.innerHTML=`<b>Pronto para o campo.</b> ${n} OS baixadas — pode desligar a internet.<br><span class="sub">Preparado hoje às ${hora}.</span>`;
+    if(btnPrepararEl()) btnPrepararEl().textContent='↻ Atualizar dados';
+  } else if(local){
+    card.className='card prontidao warn'; icon.textContent='🟡';
+    txt.innerHTML = !hoje
+      ? `<b>Dados de ${dia}.</b> Conecte e prepare de novo para baixar as OS de hoje.`
+      : `<b>Quase pronto.</b> O modo offline ainda está ativando — toque em preparar mais uma vez.`;
+  } else {
+    card.className='card prontidao no'; icon.textContent='🔴';
+    txt.innerHTML=`<b>Ainda não preparado.</b> Com internet, toque em <b>“Preparar para o campo”</b> antes de sair.`;
+  }
+}
+function btnPrepararEl(){ return document.getElementById('btnPreparar'); }
 
 function renderLista(payload, offline){
   const grid = document.getElementById('osGrid');
@@ -810,6 +872,7 @@ function showToast(msg, ms=2800){
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 setConn();
+renderProntidao();   // feedback imediato (lê do cache local)
 atualizarDados(false);
 if (navigator.onLine) sincronizarFila(true);
 </script>
