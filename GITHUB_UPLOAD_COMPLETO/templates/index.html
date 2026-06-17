@@ -14706,7 +14706,7 @@ function nvShowStep3() {
   const ibutgSec = document.getElementById('nv-calor-ibutg-section');
   if (ibutgSec) {
     ibutgSec.style.display = _nvTipos.includes('calor') ? '' : 'none';
-    if (_nvTipos.includes('calor') && !window._nvCalorSetores?.length) nvCalorAddSetor();
+    if (_nvTipos.includes('calor') && !window._nvCalorSetores?.length) nvCalorSeedSetores();
   }
   // Seção Dados da Avaliação: só quando tipo vibração
   const vibrSec = document.getElementById('nv-vibr-pontos-section');
@@ -15030,13 +15030,25 @@ function nvCrCalcDesvio() {
 // ── IBUTG — Calor ────────────────────────────────────────────────────
 window._nvCalorSetores = [];
 
-function nvCalorAddSetor() {
+function nvCalorAddSetor(nome) {
   window._nvCalorSetores.push({
-    setor: '', tbs: '', tbn: '', tg: '',
+    setor: (typeof nome === 'string' ? nome : ''), tbs: '', tbn: '', tg: '',
     regime: 'Em pé/agachado/ajoelhado — Trabalho moderado com as mãos', M: 180,
     ibutg_interno: '', ibutg_externo: '', duracao: '',
   });
   nvCalorRenderSetores();
+}
+
+// Ao entrar na seção IBUTG, cria 1 setor por setor/função listado no
+// Planejamento ("Setores / Funções Prioritários"), já com o nome preenchido.
+// Sem planejamento → 1 setor em branco (comportamento antigo). Só semeia quando
+// está vazio (não atropela o que o técnico já preencheu nem o rascunho).
+function nvCalorSeedSetores() {
+  if (window._nvCalorSetores && window._nvCalorSetores.length) { nvCalorRenderSetores(); return; }
+  const raw = (document.getElementById('nv-plan-setores')?.value || '').trim();
+  const nomes = raw ? raw.split(/[,;\/\n]+/).map(s => s.trim()).filter(Boolean) : [];
+  if (nomes.length) nomes.forEach(n => nvCalorAddSetor(n));
+  else nvCalorAddSetor();
 }
 
 // Atividade (NR-15 Anexo 3) define a taxa metabólica M — sugere o valor da
