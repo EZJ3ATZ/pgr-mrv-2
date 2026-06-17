@@ -2513,23 +2513,22 @@ def analytics():
         """).fetchall()
         dem_por_status = {r['status']: r['qtd'] for r in dem_rows}
 
-        # Evolucao mensal — OS concluídas por mês. Usa a data real do Planner
-        # (concluido_em_ms); quando falta (concluída sem data do RA), cai p/
-        # prazo → criado_em pra a OS não sumir do gráfico (mês antigo zerava
-        # mesmo tendo conclusão).
-        # NULLIF p/ tratar '' (string vazia, comum em TEXT) como ausente —
-        # senão ''::timestamp quebraria no PostgreSQL.
-        _cd = ("COALESCE(NULLIF(concluido_em_ms,''), NULLIF(prazo,''), "
-               "NULLIF(criado_em_ms,''), NULLIF(criado_em,''))")
+        # Evolucao mensal — OS concluídas por mês, pela data REAL de conclusão
+        # (concluido_em_ms, vinda do Planner). OS concluída SEM data de conclusão
+        # NÃO entra no gráfico mensal (continua contada nos totais/KPIs).
+        # Antes havia fallback p/ prazo, que podia ser FUTURO e jogava a OS num
+        # mês que nem chegou (ex.: 5 concluídas aparecendo em Jul/26).
+        # NULLIF trata '' (TEXT vazio) como ausente p/ não quebrar ''::timestamp no PG.
+        _cc = "NULLIF(concluido_em_ms,'')"
         evolucao = [row_to_dict(r) for r in conn.execute(f"""
-            SELECT {_mes_fmt(_cd)} AS mes, COUNT(*) AS qtd
+            SELECT {_mes_fmt(_cc)} AS mes, COUNT(*) AS qtd
             FROM demandas
             WHERE (LOWER(COALESCE(planner_bucket,'')) LIKE '%entregue%'
                    OR LOWER(COALESCE(planner_bucket,'')) LIKE '%conclu%'
                    OR status = 'concluida')
               AND origem = 'planner'
-              AND {_cd} IS NOT NULL
-              AND {_recent_cond(_cd)}
+              AND {_cc} IS NOT NULL
+              AND {_recent_cond(_cc)}
             GROUP BY mes ORDER BY mes
         """).fetchall()]
 
