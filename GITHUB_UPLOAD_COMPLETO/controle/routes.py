@@ -2464,6 +2464,8 @@ def analytics():
             return f"({col})::timestamp >= NOW() - INTERVAL '18 months'"
         _now_date  = 'CURRENT_DATE'
         _prazo_lt  = lambda d: f"prazo::date < {d}"
+        def _clamp_today(expr):   # nunca passa de hoje (conclusão não pode ser futura)
+            return f"LEAST(({expr})::date, CURRENT_DATE)"
     else:
         def _mes_fmt(col):
             return f"strftime('%Y-%m', {col})"
@@ -2471,6 +2473,8 @@ def analytics():
             return f"{col} >= date('now','-18 months')"
         _now_date  = "date('now')"
         _prazo_lt  = lambda d: f"prazo < {d}"
+        def _clamp_today(expr):
+            return f"min({expr}, date('now'))"
 
     with get_db() as conn:
 
@@ -2513,22 +2517,26 @@ def analytics():
         """).fetchall()
         dem_por_status = {r['status']: r['qtd'] for r in dem_rows}
 
-        # Evolucao mensal — OS concluídas por mês, pela data REAL de conclusão
-        # (concluido_em_ms, vinda do Planner). OS concluída SEM data de conclusão
-        # NÃO entra no gráfico mensal (continua contada nos totais/KPIs).
-        # Antes havia fallback p/ prazo, que podia ser FUTURO e jogava a OS num
-        # mês que nem chegou (ex.: 5 concluídas aparecendo em Jul/26).
+        # Evolucao mensal — OS concluídas por mês. Usa a data REAL de conclusão
+        # (concluido_em_ms) quando existe; senão cai p/ prazo → criado_em pra a OS
+        # concluída não sumir do gráfico (~34% das concluídas não têm data do
+        # Planner — o time move pro bucket "Entregue" sem marcar 100%).
+        # _clamp_today TRAVA a data em hoje: conclusão nunca cai em mês futuro
+        # (era o bug do prazo futuro → OS aparecendo em Jul/26). Assim a soma do
+        # gráfico bate com o total de concluídas dos KPIs.
         # NULLIF trata '' (TEXT vazio) como ausente p/ não quebrar ''::timestamp no PG.
-        _cc = "NULLIF(concluido_em_ms,'')"
+        _cd = ("COALESCE(NULLIF(concluido_em_ms,''), NULLIF(prazo,''), "
+               "NULLIF(criado_em_ms,''), NULLIF(criado_em,''))")
+        _cdc = _clamp_today(_cd)
         evolucao = [row_to_dict(r) for r in conn.execute(f"""
-            SELECT {_mes_fmt(_cc)} AS mes, COUNT(*) AS qtd
+            SELECT {_mes_fmt(_cdc)} AS mes, COUNT(*) AS qtd
             FROM demandas
             WHERE (LOWER(COALESCE(planner_bucket,'')) LIKE '%entregue%'
                    OR LOWER(COALESCE(planner_bucket,'')) LIKE '%conclu%'
                    OR status = 'concluida')
               AND origem = 'planner'
-              AND {_cc} IS NOT NULL
-              AND {_recent_cond(_cc)}
+              AND {_cd} IS NOT NULL
+              AND {_recent_cond(_cdc)}
             GROUP BY mes ORDER BY mes
         """).fetchall()]
 
