@@ -4245,19 +4245,19 @@
     <button onclick="nvReset()" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 11px;border-radius:6px;cursor:pointer;font-size:.75rem;font-family:inherit;flex-shrink:0;">↺ Reiniciar</button>
   </div>
 
-  <!-- Atalho: Modo Campo offline (pra quem vai a lugar sem internet) -->
-  <a href="/campo/" target="_blank" style="text-decoration:none;display:block;margin-bottom:20px;">
-    <div style="background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(16,185,129,.08));
-         border:1.5px solid rgba(59,130,246,.35);border-radius:12px;padding:13px 16px;
-         display:flex;align-items:center;gap:13px;cursor:pointer;">
-      <div style="font-size:1.5rem;flex-shrink:0;">🧭</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:800;color:var(--text);font-size:.92rem;">Vai pra um lugar sem internet? Use o Modo Campo</div>
-        <div style="font-size:.76rem;color:var(--text3);margin-top:1px;">Baixe as OS do dia e preencha tudo offline — assina, fotografa e sincroniza ao reconectar.</div>
-      </div>
-      <span style="flex-shrink:0;background:var(--accent,#3b82f6);color:#fff;padding:7px 14px;border-radius:8px;font-size:.8rem;font-weight:700;">Abrir →</span>
+  <!-- Preparar para o campo: liga o offline NA PRÓPRIA Planilha de Campo -->
+  <div id="ctrl-off-widget" style="background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(16,185,129,.08));border:1.5px solid rgba(59,130,246,.35);border-radius:12px;padding:13px 16px;margin-bottom:20px;display:flex;align-items:center;gap:13px;flex-wrap:wrap;">
+    <div style="font-size:1.5rem;flex-shrink:0;">🧭</div>
+    <div style="flex:1;min-width:200px;">
+      <div style="font-weight:800;color:var(--text);font-size:.92rem;">Vai pra um lugar sem internet?</div>
+      <div id="ctrl-off-status" style="font-size:.78rem;color:var(--text3);margin-top:2px;">Toque em "Preparar para o campo" com internet — depois esta tela funciona offline.</div>
+      <div id="ctrl-off-pendentes" style="font-size:.74rem;color:var(--orange);margin-top:2px;"></div>
     </div>
-  </a>
+    <button onclick="ctrlPrepararCampo(this)" id="ctrl-off-btn" style="flex-shrink:0;background:var(--blue,#3b82f6);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">⬇ Preparar para o campo</button>
+    <button onclick="_offSincronizar(false)" style="position:relative;flex-shrink:0;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:9px 14px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;">☁ Sincronizar
+      <span id="ctrl-off-badge" style="display:none;position:absolute;top:-7px;right:-7px;background:#ef4444;color:#fff;border-radius:50%;min-width:18px;height:18px;font-size:11px;line-height:18px;text-align:center;font-weight:700;padding:0 3px;"></span>
+    </button>
+  </div>
 
   <!-- Progress Bar -->
   <div class="nv-prog" id="nv-prog">
@@ -8923,6 +8923,7 @@ let ctrlDemandCache = [];
 let ctrlMetodosCache = null;
 
 async function ctrlFetch(url, opt = {}, _retry = true) {
+  const _m = ((opt && opt.method) || 'GET').toUpperCase();
   let r;
   try {
     r = await fetch(url, opt);
@@ -8932,6 +8933,9 @@ async function ctrlFetch(url, opt = {}, _retry = true) {
       await new Promise(res => setTimeout(res, 800));
       return ctrlFetch(url, opt, false);
     }
+    // OFFLINE — Planilha de Campo: devolve dado cacheado (GET) ou enfileira (POST).
+    const _off = await _ctrlOfflineFallback(url, _m, opt && opt.body);
+    if (_off !== undefined) return _off;
     throw new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.');
   }
   if (!r.ok) {
@@ -8952,8 +8956,143 @@ async function ctrlFetch(url, opt = {}, _retry = true) {
     }
     throw new Error(msg);
   }
-  return r.json();
+  const _data = await r.json();
+  if (_m === 'GET') { try { _ctrlCachePut(url, _data); } catch (_) {} }
+  return _data;
 }
+
+// ════════════════════════════════════════════════════════════════════════
+//  MOTOR OFFLINE DA PLANILHA DE CAMPO
+//  - GETs de dados do wizard (bombas, dosímetros, calibradores, agentes,
+//    empresas) ficam cacheados no IndexedDB p/ uso sem internet.
+//  - POSTs de coleta entram numa fila (mesma que o service worker sincroniza).
+//  Online: comportamento idêntico ao de antes (só grava cache em paralelo).
+// ════════════════════════════════════════════════════════════════════════
+const _OFF_GET_CACHE  = ['/controle/bombas','/controle/dosimetros-ruido','/controle/calibradores-ruido','/controle/agentes','/controle/empresas'];
+const _OFF_POST_QUEUE = ['/controle/medicoes','/controle/planejamentos'];
+function _offMatch(url, list){ const p = (url||'').split('?')[0]; return list.some(x => p === x || p.startsWith(x + '/') || p.startsWith(x + '?') || p === x); }
+
+function _offOpenCache(){ return new Promise((res,rej)=>{ const r=indexedDB.open('medicoes-campo',1); r.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('dados')) db.createObjectStore('dados',{keyPath:'k'}); }; r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e); }); }
+function _ctrlCachePut(url, data){
+  if(!_offMatch(url, _OFF_GET_CACHE)) return;
+  _offOpenCache().then(db=>{ try{ const tx=db.transaction('dados','readwrite'); tx.objectStore('dados').put({k:'GET '+url, data, ts:Date.now()}); }catch(_){} }).catch(()=>{});
+}
+function _ctrlCacheGet(url){
+  return _offOpenCache().then(db=>new Promise(res=>{ try{ const tx=db.transaction('dados','readonly'); const r=tx.objectStore('dados').get('GET '+url); r.onsuccess=()=>res(r.result?r.result.data:undefined); r.onerror=()=>res(undefined); }catch(_){ res(undefined); } })).catch(()=>undefined);
+}
+function _offPutRaw(k, data){ _offOpenCache().then(db=>{ try{ db.transaction('dados','readwrite').objectStore('dados').put({k, data, ts:Date.now()}); }catch(_){} }).catch(()=>{}); }
+function _offGetRaw(k){ return _offOpenCache().then(db=>new Promise(res=>{ try{ const tx=db.transaction('dados','readonly'); const r=tx.objectStore('dados').get(k); r.onsuccess=()=>res(r.result||null); r.onerror=()=>res(null); }catch(_){ res(null); } })).catch(()=>null); }
+
+function _offOpenQueue(){ return new Promise((res,rej)=>{ const r=indexedDB.open('medicoes-offline',1); r.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('queue')) db.createObjectStore('queue',{keyPath:'id',autoIncrement:true}); }; r.onsuccess=e=>res(e.target.result); r.onerror=e=>rej(e); }); }
+function _offEnqueue(url, method, body){
+  let b=body; if(typeof b==='string'){ try{ b=JSON.parse(b); }catch(_){} }
+  return _offOpenQueue().then(db=>new Promise((res,rej)=>{ const tx=db.transaction('queue','readwrite'); tx.objectStore('queue').add({url, method, body:b, ts:Date.now()}); tx.oncomplete=()=>res(); tx.onerror=e=>rej(e); }));
+}
+function _offLerFila(){ return _offOpenQueue().then(db=>new Promise(res=>{ const tx=db.transaction('queue','readonly'); const r=tx.objectStore('queue').getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>res([]); })).catch(()=>[]); }
+function _offRemoverFila(id){ return _offOpenQueue().then(db=>new Promise(res=>{ const tx=db.transaction('queue','readwrite'); tx.objectStore('queue').delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>res(); })); }
+
+async function _ctrlOfflineFallback(url, method, body){
+  if (method === 'GET'){
+    const cached = await _ctrlCacheGet(url);
+    if (cached !== undefined) return cached;
+    // Empresa: filtra a lista completa cacheada pelo ?q=
+    if ((url.split('?')[0]) === '/controle/empresas'){
+      const all = await _ctrlCacheGet('/controle/empresas');
+      if (Array.isArray(all)){
+        const q = decodeURIComponent((url.split('q=')[1]||'').split('&')[0]).toLowerCase();
+        return q ? all.filter(e => ((e.nome||'')+'').toLowerCase().includes(q)) : all;
+      }
+    }
+    return undefined;
+  }
+  if (method === 'POST' && _offMatch(url, _OFF_POST_QUEUE)){
+    await _offEnqueue(url, method, body);
+    try { _offAtualizarBadge(); } catch(_){}
+    if ('serviceWorker' in navigator && 'SyncManager' in window){
+      try { const sw = await navigator.serviceWorker.ready; await sw.sync.register('sync-visitas'); } catch(_){}
+    }
+    return { ok:true, offline:true, _queued:true, id:null };
+  }
+  return undefined;
+}
+
+// Sincroniza a fila manualmente (volta a ficar online → reenvia coletas)
+async function _offSincronizar(silencioso){
+  if (!navigator.onLine) { if(!silencioso) _showToast('Sem conexão','warn'); return; }
+  const fila = await _offLerFila();
+  if (!fila.length) { if(!silencioso) _showToast('Nada para sincronizar'); _offAtualizarBadge(); return; }
+  let ok=0, fail=0;
+  for (const item of fila){
+    try {
+      const r = await fetch(item.url, { method:item.method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(item.body) });
+      if (r.ok) { await _offRemoverFila(item.id); ok++; } else fail++;
+    } catch(_) { fail++; }
+  }
+  _offAtualizarBadge();
+  if (ok>0) _showToast(`☁ ${ok} coleta(s) enviada(s)${fail?` · ${fail} falhou`:''}`, 'ok');
+  else if(!silencioso) _showToast(`Falha no envio (${fail})`,'warn');
+}
+
+async function _offAtualizarBadge(){
+  const fila = await _offLerFila();
+  const el = document.getElementById('ctrl-off-badge');
+  if (el){ if(fila.length){ el.textContent = fila.length; el.style.display='inline-block'; } else el.style.display='none'; }
+  const ind = document.getElementById('ctrl-off-pendentes');
+  if (ind){ ind.textContent = fila.length ? `⚠ ${fila.length} coleta(s) aguardando envio` : ''; }
+}
+
+// "Preparar para o campo": baixa dados + casca do portal pra Planilha de Campo
+// funcionar sem internet. Roda com internet, antes de o técnico sair.
+async function ctrlPrepararCampo(btn){
+  if (!navigator.onLine){ _showToast('Conecte à internet para preparar o campo','warn'); return; }
+  if (btn){ btn.disabled=true; btn.textContent='⏳ Preparando...'; }
+  try {
+    if ('serviceWorker' in navigator){
+      try { await navigator.serviceWorker.register('/sw.js'); await Promise.race([navigator.serviceWorker.ready, new Promise(r=>setTimeout(r,5000))]); } catch(_){}
+    }
+    // Aquece o cache dos dados do wizard
+    await Promise.all([
+      ctrlFetch('/controle/bombas').catch(()=>{}),
+      ctrlFetch('/controle/dosimetros-ruido').catch(()=>{}),
+      ctrlFetch('/controle/calibradores-ruido').catch(()=>{}),
+      ctrlFetch('/controle/agentes').catch(()=>{}),
+    ]);
+    // Lista completa de empresas (chave canônica usada no fallback offline)
+    try { const emps = await ctrlFetch('/controle/empresas?limit=200'); _offPutRaw('GET /controle/empresas', emps); } catch(_){}
+    // Garante a casca do portal no cache do SW (Accept text/html aciona o cache de navegação)
+    try { await fetch('/', { headers:{'Accept':'text/html'}, cache:'reload' }); } catch(_){}
+    _offPutRaw('preparado', { ts: Date.now() });
+    await _offSincronizar(true);
+    _showToast('✓ Pronto para o campo — pode ficar sem internet','ok');
+  } finally { if (btn){ btn.disabled=false; btn.textContent='⬇ Preparar para o campo'; } }
+  _ctrlRenderProntidao();
+}
+
+async function _ctrlRenderProntidao(){
+  const st = document.getElementById('ctrl-off-status'); if(!st) return;
+  await _offAtualizarBadge();
+  if (!navigator.onLine){
+    st.innerHTML = '📴 <b>Offline</b> — a Planilha de Campo está usando os dados baixados. As coletas entram na fila e sobem ao reconectar.';
+    return;
+  }
+  const prep = await _offGetRaw('preparado');
+  const swOk = ('serviceWorker' in navigator) ? !!(await navigator.serviceWorker.getRegistration().catch(()=>null)) : false;
+  if (prep && prep.data && prep.data.ts){
+    const d = new Date(prep.data.ts);
+    const hoje = d.toISOString().slice(0,10) === new Date().toISOString().slice(0,10);
+    st.innerHTML = (swOk && hoje)
+      ? `✅ <b>Pronto para o campo</b> — preparado hoje às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}. Pode desligar a internet.`
+      : `🟡 Preparado em ${d.toLocaleDateString('pt-BR')}. Recomendo preparar de novo hoje antes de sair.`;
+  } else {
+    st.innerHTML = 'Toque em "Preparar para o campo" com internet — depois a Planilha de Campo funciona offline.';
+  }
+}
+
+// Boot offline: registra o SW, escuta online/offline e mostra a prontidão.
+if ('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+window.addEventListener('online',  ()=>{ try{ _ctrlRenderProntidao(); _offSincronizar(true); }catch(_){} });
+window.addEventListener('offline', ()=>{ try{ _ctrlRenderProntidao(); }catch(_){} });
+window.addEventListener('DOMContentLoaded', ()=>{ try{ _ctrlRenderProntidao(); }catch(_){} });
 
 function ctrlInit() {
   if (ctrlInitialized) {
@@ -16342,6 +16481,17 @@ async function nvConcluirOS() {
   if (_v.avisos.length && !confirm('⚠️ Fora da norma:\n\n• ' + _v.avisos.join('\n• ') + '\n\nFinalizar mesmo assim?')) return;
   const resp = await nvSalvarMedicao();
   if (!resp) return;  // erro ao salvar — não prossegue
+  // OFFLINE: coleta entrou na fila. Não dá pra gerar o PDF agora (é no servidor).
+  if (resp && resp._queued) {
+    try { nvDraftClear(); } catch(e) {}
+    alert('📴 Você está OFFLINE.\n\n' +
+          'A coleta foi SALVA no aparelho e entrou na fila de envio. Quando você ' +
+          'reconectar à internet, ela é enviada automaticamente e a planilha (PDF) é gerada.\n\n' +
+          '⚠️ Reconecte pelo menos uma vez antes de fechar — e não limpe os dados do navegador.');
+    _showToast('📴 Coleta salva offline — envia ao reconectar.','warn');
+    try { _offAtualizarBadge(); } catch(e) {}
+    return;
+  }
   if ((window._nvAgentesFalhos||[]).length)
     alert('⚠️ Alguns agentes químicos NÃO foram salvos: ' + window._nvAgentesFalhos.join(', ') +
           '.\nRefaça esses agentes — o restante foi registrado.');
