@@ -59,6 +59,19 @@ except Exception as _ce:
     print(f'[campo] erro ao carregar blueprint: {_ce}')
     traceback.print_exc()
 
+
+# ── Service Worker servido na RAIZ ────────────────────────────────────
+# Em /static/sw.js o escopo seria só /static/ — não controlaria /campo nem
+# /mobile (offline nunca funcionava nessas telas). Servindo em /sw.js o
+# escopo vira "/" e o SW passa a interceptar todas as páginas.
+@app.route('/sw.js')
+def _root_service_worker():
+    resp = app.send_static_file('sw.js')
+    resp.headers['Content-Type'] = 'application/javascript'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
 # ── Rede de segurança global: handlers de erro 404/500 ────────────────
 # Sem isto, qualquer erro não-tratado ou URL inválida devolve HTML padrão
 # do Flask — e o frontend (ctrlFetch) espera JSON, quebrando a tela.

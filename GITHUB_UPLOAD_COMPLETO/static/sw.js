@@ -1,19 +1,21 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v5';
+const CACHE = 'medicoes-v6';
 const SHELL = [
   '/mobile/',
   '/mobile/hoje',
   '/mobile/nova-visita',
   '/campo/',
   '/static/mobile.css',
-  '/static/sw.js',
+  '/sw.js',
   '/static/manifest.json',
 ];
 
-// ── Install: cache shell ───────────────────────────────────────────────
+// ── Install: cache shell (tolerante a falha — uma URL ruim não derruba tudo) ──
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c =>
+      Promise.all(SHELL.map(u => c.add(u).catch(err => console.warn('[sw] nao cacheou', u, err))))
+    ).then(() => self.skipWaiting())
   );
 });
 

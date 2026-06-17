@@ -360,7 +360,9 @@
    ════════════════════════════════════════════════════════════════════ */
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/static/sw.js').catch(console.warn);
+  navigator.serviceWorker.register('/sw.js').catch(console.warn);
+  // Quando o SW assume o controle da página, reavalia a prontidão (fica verde)
+  navigator.serviceWorker.addEventListener('controllerchange', () => { try{ renderProntidao(); }catch(_){} });
 }
 
 const USUARIO   = {{ usuario | tojson | safe }};
@@ -484,9 +486,16 @@ async function prepararCampo(){
   const btn=document.getElementById('btnPreparar');
   if(btn){ btn.disabled=true; btn.textContent='⏳ Preparando...'; }
   try{
-    // Garante o service worker ativo (faz a tela abrir offline)
+    // Garante o service worker ativo (faz a tela abrir offline).
+    // Timeout de segurança: se o SW demorar/falhar, não trava o botão.
     if('serviceWorker' in navigator){
-      try{ await navigator.serviceWorker.register('/static/sw.js'); await navigator.serviceWorker.ready; }catch(_){}
+      try{
+        await navigator.serviceWorker.register('/sw.js');
+        await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise(r => setTimeout(r, 5000)),
+        ]);
+      }catch(_){}
     }
     await atualizarDados(false);   // baixa e guarda as OS do dia
     await sincronizarFila(true);   // envia o que tiver pendente de antes
