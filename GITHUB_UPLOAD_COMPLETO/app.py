@@ -1961,7 +1961,13 @@ def gerar_quimico_bytes(d):
         _amos = (ev.get('amostradorDesc') or '').strip() or str(_ge.get('amostradorDesc', '')).strip()
         if _amos:
             b = _rr(b, 'Filtro', _amos)   # célula 'Filtro' (vem antes de 'Filtro Número')
-        _passivo = ('PASSIVO' in (_metodo or _md).upper()) or (str(_ge.get('vazao', '')).strip() in ('0', '0,0', '0.0', ''))
+        # passivo só quando o método diz "PASSIVO" OU não há vazão NEM bomba na avaliação.
+        # (amostragem ativa = bomba + vazão; o RA traz a vazão em vazaoInicial/Final.)
+        # Antes checava _ge.get('vazao') do GUIA de métodos — que nunca tem 'vazao' —,
+        # então marcava "Amostrador passivo" sempre, mesmo com bomba e vazão.
+        _tem_vazao = any(_qf(ev.get(k)) not in (None, 0) for k in ('vazaoInicial', 'vazaoFinal', 'vazao'))
+        _tem_bomba = bool(ev.get('bomba') or pump)
+        _passivo = ('PASSIVO' in (_metodo or _md).upper()) or (not _tem_vazao and not _tem_bomba)
         b = _rr(b, 'Método de Coleta',
                 'Amostrador passivo' if _passivo else 'Bomba de amostragem – NHO 08')
         b = _rr(b, 'Filtro Número',            ev.get('filtroNumero', ''))

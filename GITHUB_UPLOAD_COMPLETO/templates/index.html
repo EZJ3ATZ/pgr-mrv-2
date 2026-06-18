@@ -7489,7 +7489,7 @@ function qNewAval() {
     bomba:'', bombaSN:'',
     vazaoInicial:'0,2000', vazaoFinal:'0,1910',
     tempoColeta:'15', volume:'2,933',
-    tempoExposicao:'18 Min', acessorios:'Redutor de vazão',
+    tempoExposicao:'', acessorios:'Redutor de vazão',
     ltNR15:'', naNR15:'', concentracao:'',
     ltTWA:'', naTWA:'', ltSTEL:'', conclusao:''
   };
@@ -7618,7 +7618,7 @@ function qRenderAvals() {
       </div>
       <div class="grid3 field">
         <div><label>Volume Amostrado (L)</label><input type="text" value="${qEsc(av.volume)}" onchange="qAvals[${i}].volume=this.value"></div>
-        <div><label>Tempo de Exposição</label><input type="text" value="${qEsc(av.tempoExposicao)}" placeholder="18 Min" onchange="qAvals[${i}].tempoExposicao=this.value"></div>
+        <div><label>Tempo de Exposição</label><input type="text" value="${qEsc(av.tempoExposicao)}" placeholder="Ex: 8h (jornada completa)" onchange="qAvals[${i}].tempoExposicao=this.value"></div>
         <div><label>Acessórios</label><input type="text" value="${qEsc(av.acessorios)}" onchange="qAvals[${i}].acessorios=this.value"></div>
       </div>
       <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">RESULTADOS</div>
