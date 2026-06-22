@@ -7538,16 +7538,9 @@ function qAgenteChange(i, val) {
   // Try by CAS
   if (!found && all[val]) found = all[val][0];
   if (found) {
-    // Auto-fill memória de campo
-    if (found.vazao && found.vazao !== '0') {
-      // Parse range "0,02 A 0,2 L/MIN" → take max
-      const nums = found.vazao.replace(/,/g,'.').match(/[\d.]+/g);
-      if (nums && nums.length) {
-        const v = nums[nums.length-1];
-        qAvals[i].vazaoInicial = v.replace('.',',');
-        qAvals[i].vazaoFinal   = v.replace('.',',');
-      }
-    }
+    // #6 Bernardo: NÃO auto-preencher Vi/Vf com o mesmo valor. Vi e Vf são leituras REAIS
+    // de campo (calibrador) e devem diferir — o técnico digita as duas (ou vêm da coleta).
+    // Antes o nominal do guia ia em AMBAS → variação 0,0% (Vi=Vf, errado).
     if (found.amostradorDesc) qAvals[i].acessorios = found.amostradorDesc;
     qRenderAvals();
   }

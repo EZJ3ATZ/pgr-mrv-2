@@ -2003,8 +2003,11 @@ def gerar_quimico_bytes(d):
             b = _ri(b, 'Bomba Gravimétrica da marca ', f'{_bnome} {_bsn}')
         if ev.get('ltNR15'):  b = _rr(b, 'Limite de Tolerância ', ev['ltNR15'], nth=1)
         if ev.get('naNR15'):  b = _rr(b, 'Nível de Ação ',        ev['naNR15'], nth=1)
+        # ACGIH-TWA: idem ao STEL — sem limite ACGIH-TWA, não exibir o valor-padrão do template.
         if ev.get('ltTWA'):   b = _rr(b, 'Limite de Tolerância ', ev['ltTWA'],  nth=2)
+        else:                 b = _rr(b, 'Limite de Tolerância ', 'Não se aplica (agente sem limite ACGIH-TWA)', nth=2)
         if ev.get('naTWA'):   b = _rr(b, 'Nível de Ação ',        ev['naTWA'],  nth=2)
+        else:                 b = _rr(b, 'Nível de Ação ',        'Não se aplica', nth=2)
         # STEL (#2 Bernardo): só vale com TLV-STEL E medição ≤15 min (TLV-STEL = média de
         # 15 min). Chumbo e afins não têm STEL → não exibir o valor fantasma do template.
         _durmin = _qf(ev.get('tempoColeta', ''))
