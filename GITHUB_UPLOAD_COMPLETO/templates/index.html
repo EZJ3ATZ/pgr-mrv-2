@@ -7491,7 +7491,7 @@ function qNewAval() {
     tempoColeta:'', volume:'',
     tempoExposicao:'', acessorios:'',
     ltNR15:'', naNR15:'', concentracao:'',
-    ltTWA:'', naTWA:'', ltSTEL:'', conclusao:''
+    ltTWA:'', naTWA:'', ltSTEL:'', conclusao:'', pontoEstacionario:''
   };
 }
 
@@ -7613,6 +7613,9 @@ function qRenderAvals() {
         <div><label>Volume Amostrado (L)</label><input type="text" value="${qEsc(av.volume)}" onchange="qAvals[${i}].volume=this.value"></div>
         <div><label>Tempo de Exposição</label><input type="text" value="${qEsc(av.tempoExposicao)}" placeholder="Ex: 8h (jornada completa)" onchange="qAvals[${i}].tempoExposicao=this.value"></div>
         <div><label>Acessórios</label><input type="text" value="${qEsc(av.acessorios)}" onchange="qAvals[${i}].acessorios=this.value"></div>
+      </div>
+      <div class="field">
+        <div><label>Ponto estacionário <span style="font-weight:400;color:var(--text3)">(só p/ amostragem de ponto fixo/ambiental — opcional)</span></label><input type="text" value="${qEsc(av.pontoEstacionario)}" placeholder="Ex: próximo ao tanque de chumbo" onchange="qAvals[${i}].pontoEstacionario=this.value"></div>
       </div>
       <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">RESULTADOS</div>
       <div class="grid3 field">

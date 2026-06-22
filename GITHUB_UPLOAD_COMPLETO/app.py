@@ -1951,7 +1951,11 @@ def gerar_quimico_bytes(d):
         b = _rr(b, 'Data da coleta',           ev.get('dataColeta', ''))
         b = _rr(b, 'Data da análise',          ev.get('dataAnalise', ''))
         b = _rr(b, 'Agentes Analisados (CAS)', ev.get('agente', ''))
-        b = _rr(b, 'Fonte Geradora:',          ev.get('fonte', ''))
+        # #11 Bernardo: citar o ponto estacionário (amostragem de ponto fixo/ambiental).
+        _fonte = ev.get('fonte', '')
+        if ev.get('pontoEstacionario'):
+            _fonte = (_fonte + ' — ' if _fonte else '') + 'Amostragem estacionária no ponto: ' + ev['pontoEstacionario']
+        b = _rr(b, 'Fonte Geradora:',          _fonte)
         # Método de Coleta / Métodos Analíticos / descrição do amostrador —
         # pelo agente via guia_metodos (antes ficavam fixos no texto do template).
         # Método Analítico + descrição do Amostrador (Filtro): a FONTE DA VERDADE
@@ -2099,7 +2103,17 @@ def gerar_quimico_bytes(d):
                    b)
         blocks.append(b)
 
-    xml = xml[:tbl1_s] + ''.join(blocks) + xml[sec6_e:]
+    # #1 Bernardo: fórmula do Brief & Scala na metodologia (antes das planilhas).
+    _bs_meth = ('<w:p><w:pPr><w:spacing w:after="120"/></w:pPr>'
+                '<w:r><w:rPr><w:b/><w:bCs/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+                '<w:t xml:space="preserve">Metodologia de cálculo — Correção pela Brief &amp; Scala: </w:t></w:r>'
+                '<w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+                '<w:t xml:space="preserve">os limites da ACGIH são definidos para jornada de 40 horas semanais; '
+                'como a jornada brasileira é de 44 horas, o Limite de Tolerância ACGIH é corrigido pelo fator de '
+                'redução de Brief &amp; Scala — FR = (Hsp/Hsr) × ((168 − Hsr)/(168 − Hsp)), onde Hsp = 40 h (padrão '
+                'ACGIH), Hsr = 44 h (jornada real) e 168 = horas/semana, resultando em FR = 0,88. O limite corrigido '
+                '(LT ACGIH × 0,88) é o valor comparado com a concentração obtida.</w:t></w:r></w:p>')
+    xml = xml[:tbl1_s] + _bs_meth + ''.join(blocks) + xml[sec6_e:]
 
     # ── Section bounds (after eval replacement) ──────────────────────
     viii_ts, viii_te = _q_sec_head(xml, 'MEMORIAL FOTOGR')
