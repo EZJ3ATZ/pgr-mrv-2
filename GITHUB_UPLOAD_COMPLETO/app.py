@@ -1433,6 +1433,145 @@ def _build_ix_xml(evals):
             '<w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>')
 
 
+# ── Quadros de referência da NR-15, Anexo 3 — texto padrão do laudo de calor ──
+# Valores oficiais (NR-15 Anexo 3). Para corrigir, edite aqui.
+_NR15_Q1_HEADER = ('Regime de trabalho intermitente (descanso no próprio local)', 'Leve', 'Moderada', 'Pesada')
+_NR15_Q1_ROWS = [
+    ('Trabalho contínuo',                  'até 30,0',      'até 26,7',      'até 25,0'),
+    ('45 min trabalho / 15 min descanso',  '30,1 a 30,6',   '26,8 a 28,0',   '25,1 a 25,9'),
+    ('30 min trabalho / 30 min descanso',  '30,7 a 31,4',   '28,1 a 29,4',   '26,0 a 27,9'),
+    ('15 min trabalho / 45 min descanso',  '31,5 a 32,2',   '29,5 a 31,1',   '28,0 a 30,0'),
+    ('Não é permitido o trabalho sem a adoção de medidas adequadas de controle',
+                                           'acima de 32,2', 'acima de 31,1', 'acima de 30,0'),
+]
+# (texto, valor, categoria?) — categoria = linha-título (negrito, sem valor)
+_NR15_Q2_ROWS = [
+    ('SENTADO EM REPOUSO', '100', False),
+    ('TRABALHO LEVE', '', True),
+    ('Sentado, movimentos moderados com braços e tronco (ex.: datilografia)', '125', False),
+    ('Sentado, movimentos moderados com braços e pernas (ex.: dirigir)', '150', False),
+    ('De pé, trabalho leve em máquina ou bancada, principalmente com os braços', '150', False),
+    ('TRABALHO MODERADO', '', True),
+    ('Sentado, movimentos vigorosos com braços e pernas', '180', False),
+    ('De pé, trabalho leve em máquina ou bancada, com alguma movimentação', '175', False),
+    ('De pé, trabalho moderado em máquina ou bancada, com alguma movimentação', '220', False),
+    ('Em movimento, trabalho moderado de levantar ou empurrar', '300', False),
+    ('TRABALHO PESADO', '', True),
+    ('Trabalho intermitente de levantar, empurrar ou arrastar pesos (ex.: remoção com pá)', '440', False),
+    ('Trabalho fatigante', '550', False),
+]
+_QBORDER = ('<w:tcBorders>'
+            '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tcBorders>')
+
+def _calor_cell(text, w, bold=False, fill=None, align='left'):
+    rpr = '<w:rPr><w:sz w:val="16"/>' + ('<w:b/>' if bold else '') + '</w:rPr>'
+    shd = f'<w:shd w:val="clear" w:color="auto" w:fill="{fill}"/>' if fill else ''
+    return (f'<w:tc><w:tcPr><w:tcW w:w="{w}" w:type="dxa"/>{shd}{_QBORDER}'
+            '<w:vAlign w:val="center"/></w:tcPr>'
+            f'<w:p><w:pPr><w:spacing w:after="0"/><w:jc w:val="{align}"/></w:pPr>'
+            f'<w:r>{rpr}<w:t xml:space="preserve">{_xe(str(text))}</w:t></w:r></w:p></w:tc>')
+
+def _calor_table(grid, rows_xml):
+    g = ''.join(f'<w:gridCol w:w="{w}"/>' for w in grid)
+    return ('<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:jc w:val="center"/>'
+            '<w:tblBorders>'
+            '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
+            '</w:tblBorders></w:tblPr>'
+            f'<w:tblGrid>{g}</w:tblGrid>{rows_xml}</w:tbl>')
+
+def _calor_heading(text, size=22):
+    return ('<w:p><w:pPr><w:spacing w:before="160" w:after="80"/><w:jc w:val="center"/></w:pPr>'
+            f'<w:r><w:rPr><w:b/><w:sz w:val="{size}"/></w:rPr>'
+            f'<w:t xml:space="preserve">{_xe(text)}</w:t></w:r></w:p>')
+
+def _calor_para(text, size=16, italic=True):
+    it = '<w:i/>' if italic else ''
+    return ('<w:p><w:pPr><w:spacing w:after="80"/><w:jc w:val="both"/></w:pPr>'
+            f'<w:r><w:rPr>{it}<w:sz w:val="{size}"/></w:rPr>'
+            f'<w:t xml:space="preserve">{_xe(text)}</w:t></w:r></w:p>')
+
+def _build_quadros_xml():
+    """Quadros I e II do Anexo 3 da NR-15 — inseridos na metodologia do laudo."""
+    HDR, CAT = 'D9D9D9', 'F2F2F2'
+    g1 = [4600, 1500, 1500, 1500]
+    r1 = '<w:tr>' + ''.join(_calor_cell(h, g1[i], bold=True, fill=HDR, align='center')
+                            for i, h in enumerate(_NR15_Q1_HEADER)) + '</w:tr>'
+    for reg, lv, mo, pe in _NR15_Q1_ROWS:
+        r1 += ('<w:tr>' + _calor_cell(reg, g1[0])
+               + _calor_cell(lv, g1[1], align='center')
+               + _calor_cell(mo, g1[2], align='center')
+               + _calor_cell(pe, g1[3], align='center') + '</w:tr>')
+    t1 = _calor_table(g1, r1)
+
+    g2 = [7600, 1500]
+    r2 = ('<w:tr>' + _calor_cell('Tipo de Atividade', g2[0], bold=True, fill=HDR)
+          + _calor_cell('Kcal/h', g2[1], bold=True, fill=HDR, align='center') + '</w:tr>')
+    for atv, val, cat in _NR15_Q2_ROWS:
+        if cat:
+            r2 += ('<w:tr>' + _calor_cell(atv, g2[0], bold=True, fill=CAT)
+                   + _calor_cell('', g2[1], fill=CAT) + '</w:tr>')
+        else:
+            r2 += ('<w:tr>' + _calor_cell(atv, g2[0])
+                   + _calor_cell(val, g2[1], align='center') + '</w:tr>')
+    t2 = _calor_table(g2, r2)
+
+    pb = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+    return (_calor_heading('QUADROS DE REFERÊNCIA — LIMITES DE TOLERÂNCIA (NR-15, ANEXO 3)')
+            + _calor_heading('Quadro Nº 1 — Limites de Tolerância para exposição ao calor (IBUTG, ºC)', 18)
+            + t1
+            + _calor_heading('Quadro Nº 2 — Taxas de Metabolismo por Tipo de Atividade', 18)
+            + t2
+            + _calor_para('Os limites do Quadro Nº 1 são expressos em IBUTG (ºC). A taxa de '
+                          'metabolismo (M) por tipo de atividade, conforme o Quadro Nº 2, é '
+                          'utilizada na determinação do limite de tolerância aplicável a cada avaliação.')
+            + pb)
+
+def _build_histograma_xml(b64, add_image):
+    """Histograma anexado pelo técnico — página própria antes do certificado."""
+    if not b64:
+        return ''
+    try:
+        rid, iid = add_image(b64)
+    except Exception:
+        return ''
+    cx, cy = 5760000, 3600000  # fallback ~16:10
+    try:
+        from PIL import Image as _PILImg
+        _raw = b64.split(',', 1)[1] if ',' in b64 else b64
+        _im = _PILImg.open(io.BytesIO(base64.b64decode(_raw)))
+        iw, ih = _im.size
+        if iw and ih:
+            MAXW, MAXH = 5760000, 8200000
+            cx, cy = MAXW, int(MAXW * ih / iw)
+            if cy > MAXH:
+                cy, cx = MAXH, int(MAXH * iw / ih)
+    except Exception:
+        pass
+    img = (f'<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing>'
+           f'<wp:inline distT="0" distB="0" distL="0" distR="0" wp14:anchorId="7A000001" wp14:editId="7A00ABCD">'
+           f'<wp:extent cx="{cx}" cy="{cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>'
+           f'<wp:docPr id="{iid}" name="Histograma {iid}"/>'
+           f'<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+           f'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+           f'<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+           f'<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+           f'<pic:nvPicPr><pic:cNvPr id="{iid}" name="histograma_{iid}.png"/><pic:cNvPicPr/></pic:nvPicPr>'
+           f'<pic:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+           f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+           f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+           f'</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>')
+    pb = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+    return pb + _calor_heading('HISTOGRAMA DA AVALIAÇÃO') + img
+
+
 def gerar_calor_bytes(d):
     emp  = d.get('empresa',{})
     aval = d.get('avaliacao',{})
@@ -1707,7 +1846,11 @@ def gerar_calor_bytes(d):
               '<w:r><w:rPr><w:noProof/></w:rPr><w:br w:type="page"/></w:r></w:p>') if si > 0 else ''
         sector_blocks.append(pb + cp + tbl_xml)
 
-    xml = xml[:sec_start] + ''.join(sector_blocks) + xml[tbl_end:]
+    # Quadros de referência (metodologia) antes dos setores; histograma depois (antes do certificado)
+    quadros_xml    = _build_quadros_xml()
+    histograma_xml = _build_histograma_xml(aval.get('histograma'), _add_image)
+    xml = (xml[:sec_start] + quadros_xml + ''.join(sector_blocks)
+           + histograma_xml + xml[tbl_end:])
 
     # ── ART section (conditional) ────────────────────────────────────
     art_numero = aval.get('artNumero', '').strip()
