@@ -1404,18 +1404,24 @@ def _build_ix_xml(evals):
     for ev in evals:
         conc = ev.get('concentracao', 'N.D.')
         lt   = ev.get('ltNR15', '') or ev.get('ltTWA', '')
-        try:
-            cv  = float(str(conc).split()[0].replace(',', '.')) if conc not in ('', 'N.D.') else None
-            ltv = float(str(lt).split()[0].replace(',', '.')) if lt else None
-            if cv is not None and ltv is not None:
-                if cv < ltv:
+        cs   = str(conc).strip()
+        # Não detectado ("<" ou N.D.) = abaixo do limite de detecção → REGULAR, em VERDE (#9 Bernardo)
+        _nd  = ('<' in cs) or cs.upper() in ('N.D.', 'ND', 'NÃO DETECTADO', '')
+        if _nd:
+            fill = 'C6EFCE'
+            res  = (cs + ' (NÃO DETECTADO)') if (cs and cs.upper() not in ('N.D.', 'ND')) else 'N.D. (NÃO DETECTADO)'
+        else:
+            try:
+                cv  = float(cs.split()[0].replace(',', '.'))
+                ltv = float(str(lt).split()[0].replace(',', '.')) if lt else None
+                if ltv is not None and cv < ltv:
                     fill, res = 'C6EFCE', f'{conc} (REGULAR)'
-                else:
+                elif ltv is not None:
                     fill, res = 'FFC7CE', f'{conc} (IRREGULAR)'
-            else:
+                else:
+                    fill, res = 'FFFFFF', conc or 'N.D.'
+            except Exception:
                 fill, res = 'FFFFFF', conc or 'N.D.'
-        except Exception:
-            fill, res = 'FFFFFF', conc or 'N.D.'
         rows += _tr(_tc(ev.get('setor', ''), cws[0]),
                     _tc(ev.get('cargo', ''), cws[1]),
                     _tc(ev.get('agente', ''), cws[2]),
@@ -1999,7 +2005,15 @@ def gerar_quimico_bytes(d):
         if ev.get('naNR15'):  b = _rr(b, 'Nível de Ação ',        ev['naNR15'], nth=1)
         if ev.get('ltTWA'):   b = _rr(b, 'Limite de Tolerância ', ev['ltTWA'],  nth=2)
         if ev.get('naTWA'):   b = _rr(b, 'Nível de Ação ',        ev['naTWA'],  nth=2)
-        if ev.get('ltSTEL'):  b = _rr(b, 'Limite de Tolerância ', ev['ltSTEL'], nth=3)
+        # STEL (#2 Bernardo): só vale com TLV-STEL E medição ≤15 min (TLV-STEL = média de
+        # 15 min). Chumbo e afins não têm STEL → não exibir o valor fantasma do template.
+        _durmin = _qf(ev.get('tempoColeta', ''))
+        if ev.get('ltSTEL') and _durmin is not None and _durmin <= 15:
+            b = _rr(b, 'Limite de Tolerância ', ev['ltSTEL'], nth=3)
+        elif ev.get('ltSTEL'):
+            b = _rr(b, 'Limite de Tolerância ', 'Não se aplica (TLV-STEL exige medição de até 15 min)', nth=3)
+        else:
+            b = _rr(b, 'Limite de Tolerância ', 'Não se aplica (agente sem TLV-STEL ACGIH)', nth=3)
         conc = ev.get('concentracao', '')
         if conc:
             # A unidade real vem junto do valor (ex.: "1,0127 mg/m³"). Coloca a
@@ -2009,30 +2023,74 @@ def gerar_quimico_bytes(d):
             _um   = re.search(r'(mg/m³|mg/m3|µg/m³|μg/m³|ppm|µg|μg|mg|f/cc)', conc, re.IGNORECASE)
             _uni  = _um.group(1) if _um else ''
             _cval = conc.replace(_uni, '').strip() if _uni else conc
+            # "<" no resultado = abaixo do limite de detecção → não detectado (#7 Bernardo)
+            if '<' in _cval:
+                _cval = '%s (não detectado pelo método de amostragem)' % _cval
             b = _rr(b, 'Concentração (PPM)', _cval, nth=1)
             b = _rr(b, 'Concentração (PPM)', _cval, nth=2)
             b = _rr(b, 'Concentração (PPM)', _cval, nth=3)
-            if _uni and 'ppm' not in _uni.lower():
-                b = b.replace('Concentração (PPM)', 'Concentração (%s)' % _uni)
-        # BRIEF & SCALA: a frase do template só vale quando C < LT.
-        # Se a concentração ULTRAPASSOU o limite, troca pela recomendação de controle.
+            # Unidade no rótulo; 'ppm' sempre MINÚSCULO (Bernardo) e metais/poeira
+            # em mg/m³. Default ppm quando o RA não trouxe unidade.
+            _uni_disp = (_uni or 'ppm').replace('PPM', 'ppm').replace('Ppm', 'ppm')
+            b = b.replace('Concentração (PPM)', 'Concentração (%s)' % _uni_disp)
         _cv  = _qf(conc) if conc not in ('', 'N.D.') else None
         _ltv = _qf(ev.get('ltNR15', '') or ev.get('ltTWA', ''))
-        if _cv is not None and _ltv is not None and _cv >= _ltv:
+        # BRIEF & SCALA (#1 Bernardo): corrige o LT ACGIH–TWA p/ a jornada brasileira
+        # de 44h/sem. FC = (40/44)·((168−44)/(168−40)) = 0,88. Calculado SEMPRE que há
+        # limite ACGIH-TWA (Bernardo). Substitui o antigo "não há necessidade de cálculo".
+        _fb  = lambda x: (f'{x:.4f}'.rstrip('0').rstrip('.')).replace('.', ',')
+        # extrai o número de qualquer lugar do texto (o LT TWA pode vir "ACGIH – TWA: 200 ppm")
+        _mw  = re.search(r'(\d+(?:[.,]\d+)?)', str(ev.get('ltTWA', '')))
+        _ltw = float(_mw.group(1).replace(',', '.')) if _mw else None
+        if _ltw is not None:
+            _uma  = re.search(r'(mg/m³|mg/m3|µg/m³|μg/m³|ppm|mg|f/cc)', str(ev.get('ltTWA', '')), re.I)
+            _unia = (_uma.group(1).lower() if _uma else 'ppm')
+            _ltc  = _ltw * 0.88
+            if _cv is not None:
+                _ok = _cv < _ltc
+                _bs = ('Aplicando o fator de redução de Brief &amp; Scala (FC = 0,88) para a '
+                       'jornada de 44 horas semanais, o Limite de Tolerância ACGIH–TWA corrigido '
+                       'é %s %s. A concentração obtida (%s %s) está %s do LT corrigido; situação '
+                       'considerada %s.' % (_fb(_ltc), _unia, _fb(_cv), _unia,
+                       'abaixo' if _ok else 'ACIMA',
+                       'regular' if _ok else 'IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação'))
+            else:
+                _bs = ('Limite de Tolerância ACGIH–TWA corrigido pela Brief &amp; Scala '
+                       '(FC = 0,88, jornada de 44 horas semanais): %s %s.' % (_fb(_ltc), _unia))
+            b = b.replace(OLD_BRIEF, _bs)
+        elif _cv is not None and _ltv is not None and _cv >= _ltv:
             b = b.replace(OLD_BRIEF, _xe(NEW_BRIEF))
         new_conc = ev.get('conclusao', '')
         if new_conc:
             b = b.replace(f'>{OLD_CONC}</', f'>{_xe(new_conc)}</')
-        elif _cv is not None and _ltv is not None and _cv >= _ltv:
-            # Sem conclusão custom E C >= LT: o texto padrão do template ("C < LT,
-            # regular") estaria ERRADO (ex.: chumbo acima do LT sairia "regular").
-            # Substitui pela conclusão de EXCESSO. (C < LT mantém OLD_CONC, correto.)
-            NEW_CONC = ('concluímos que C &gt; LT, a concentração é maior que o Limite de '
-                        'Tolerância. Logo a situação é considerada IRREGULAR, sendo necessária '
-                        'a adoção imediata de medidas de controle e reavaliação após implementação.')
-            b = b.replace(f'>{OLD_CONC}</', f'>{NEW_CONC}</')
-        # sem conclusão custom e C < LT: mantém OLD_CONC como está (já é XML escapado —
-        # re-escapar gerava "&amp;lt;" e o cliente via "C &lt; LT" literal)
+        else:
+            # #3 Bernardo: CONCLUSÃO por LIMITE (NR-15 + ACGIH corrigido + STEL), no lugar de
+            # uma frase única só de NR-15; com a sinalização regular/IRREGULAR por limite (#8).
+            # Interpretação de layout: mantém a seção CONCLUSÃO, uma frase por limite — o
+            # Bernardo pode pedir inline em cada seção depois.
+            _und = '<' in str(conc)
+            _parts = []
+            _ltn = _qf(ev.get('ltNR15', ''))
+            # 1ª frase COMPLETA o lead-in do template ("...conforme a NR-15,"), sem repetir "Quanto à NR-15".
+            if _ltn is not None:
+                if _und:
+                    _parts.append('o resultado foi não detectado pelo método de amostragem (abaixo do '
+                                  'limite de detecção e, portanto, do Limite de Tolerância), caracterizando situação REGULAR.')
+                elif _cv is not None:
+                    _parts.append('verifica-se que a concentração obtida (%s) %s Limite de Tolerância (%s), caracterizando situação %s.'
+                        % (conc, 'está abaixo do' if _cv < _ltn else 'ultrapassa o', ev.get('ltNR15', ''),
+                           'REGULAR' if _cv < _ltn else 'IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação'))
+            if _ltw is not None and _cv is not None and not _und:
+                _okt = _cv < _ltc
+                _parts.append('Quanto à ACGIH (LT-TWA corrigido pela Brief & Scala = %s %s): a concentração %s limite corrigido, situação %s.'
+                    % (_fb(_ltc), _unia, 'está abaixo do' if _okt else 'ultrapassa o', 'REGULAR' if _okt else 'IRREGULAR'))
+            _lts = _qf(ev.get('ltSTEL', ''))
+            if _lts is not None and _durmin is not None and _durmin <= 15 and _cv is not None and not _und:
+                _oks = _cv < _lts
+                _parts.append('Quanto ao TLV-STEL (%s): a concentração %s limite de curta duração, situação %s.'
+                    % (ev.get('ltSTEL', ''), 'está abaixo do' if _oks else 'ultrapassa o', 'REGULAR' if _oks else 'IRREGULAR'))
+            if _parts:
+                b = b.replace(f'>{OLD_CONC}</', '>' + _xe(' '.join(_parts)) + '</')
         b = re.sub(r'w14:paraId="([0-9A-Fa-f]{8})"',
                    lambda m, ii=i: f'w14:paraId="{(int(m.group(1),16)+(ii+1)*0x10000)&0xFFFFFFFE:08X}"',
                    b)
