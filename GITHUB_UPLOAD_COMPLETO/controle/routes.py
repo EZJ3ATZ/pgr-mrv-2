@@ -3919,10 +3919,11 @@ def _calor_setores_flowables(setores, W):
                              textColor=PRETO, alignment=1)
     leg_sty = ParagraphStyle('_cal_leg', fontName='Helvetica', fontSize=6.5,
                              textColor=colors.HexColor('#555555'))
-    heads = ['#', 'Setor', 'Duração (min)', 'TBS (°C)', 'TBN (°C)', 'TG (°C)',
-             'IBUTG int.', 'IBUTG ext.', 'Taxa Metab. (W)', 'Regime']
-    keys = ['setor', 'duracao', 'tbs', 'tbn', 'tg', 'ibutg_interno',
-            'ibutg_externo', 'M', 'regime']
+    # Campo = só o que se mede em campo. As temperaturas (TBN/TBS/TG) e o IBUTG
+    # saem no histograma do equipamento e são lançados no escritório (Laudo de
+    # Calor) — por isso não entram na planilha de campo.
+    heads = ['#', 'Setor', 'Duração (min)', 'Taxa Metab. (W)', 'Regime']
+    keys = ['setor', 'duracao', 'M', 'regime']
     rows = [[Paragraph(h, cab_sty) for h in heads]]
     pl = list(setores or [])   # só os setores preenchidos (sem linhas em branco)
     for i, s in enumerate(pl, 1):
@@ -3931,8 +3932,7 @@ def _calor_setores_flowables(setores, W):
             v = s.get(k, '') if isinstance(s, dict) else ''
             row.append(Paragraph('' if v in (None, '') else str(v), cel_sty))
         rows.append(row)
-    colw = [W*0.035, W*0.165, W*0.095, W*0.075, W*0.075, W*0.075,
-            W*0.085, W*0.085, W*0.115, W*0.195]
+    colw = [W*0.05, W*0.33, W*0.15, W*0.18, W*0.29]
     t = Table(rows, colWidths=colw, repeatRows=1)
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), AZUL_CLR),
@@ -3947,8 +3947,8 @@ def _calor_setores_flowables(setores, W):
     ]))
     out = [t, Spacer(1, 3)]
     out.append(Paragraph(
-        'IBUTG interno = 0,7·TBN + 0,3·TG  ·  IBUTG externo (c/ carga solar) = '
-        '0,7·TBN + 0,2·TG + 0,1·TBS  ·  NR-15 Anexo 3 / NHO-06 FUNDACENTRO',
+        'As temperaturas (TBN/TBS/TG) e o IBUTG saem no histograma do equipamento '
+        'e são lançados no escritório (Laudo de Calor).  ·  NR-15 Anexo 3 / NHO-06 FUNDACENTRO',
         leg_sty))
     return out
 
