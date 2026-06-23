@@ -1250,7 +1250,7 @@ _DOSIM_RUIDO = {
         '1152': {'serie': '0000001152', 'cert': '172.888', 'data_calib': '2025-08-19'},
         '1153': {'serie': '0000001153', 'cert': '172.906', 'data_calib': '2025-08-19'},
         '1154': {'serie': '0000001154', 'cert': '172.886', 'data_calib': '2025-08-19'},
-        '5309': {'serie': '0000005309', 'cert': '2503A35508', 'data_calib': '2025-03-20'},
+        '5309': {'serie': '0000005309', 'cert': '183.247', 'data_calib': '2026-06-01'},
         # 2026 (cal 09/04/2026) — modelo SmartdB
         '1085': {'serie': '0000001085', 'cert': '181.280', 'data_calib': '2026-04-09'},
         '1086': {'serie': '0000001086', 'cert': '181.272', 'data_calib': '2026-04-09'},
@@ -1262,12 +1262,16 @@ _DOSIM_RUIDO = {
         '5066': {'serie': '0000005066', 'cert': '181.271', 'data_calib': '2026-04-09'},
         '5308': {'serie': '0000005308', 'cert': '181.274', 'data_calib': '2026-04-09'},
         '5311': {'serie': '0000005311', 'cert': '181.278', 'data_calib': '2026-04-09'},
-        # Seminovos usados em campo (relato Helbert) — não estavam no sistema.
-        # ATENÇÃO: calibração de 2023 (provavelmente VENCIDA). Conferir recalibração
-        # antes de usar em laudo — o sistema vai sinalizar como vencida.
-        '1084': {'serie': '0000001084', 'cert': '145.665A', 'data_calib': '2023-05-25'},
+        # Lote recalibrado em 01/06/2026 (certificados conferidos nos PDFs).
+        '1084': {'serie': '0000001084', 'cert': '183.249', 'data_calib': '2026-06-01'},
+        '5307': {'serie': '0000005307', 'cert': '183.250', 'data_calib': '2026-06-01'},
+        '5306': {'serie': '0000005306', 'cert': '183.248', 'data_calib': '2026-06-01'},
+        '5310': {'serie': '0000005310', 'cert': '183.254', 'data_calib': '2026-06-01'},
+        '5061': {'serie': '0000005061', 'cert': '183.252', 'data_calib': '2026-06-01'},
+        '0320': {'serie': '0000000320', 'cert': '183.251', 'data_calib': '2026-06-01'},  # SmartdB LITE
+        # 1087 NÃO veio no lote de recalibração — segue com o certificado de 2023
+        # (VENCIDO). Não usar em laudo até recalibrar.
         '1087': {'serie': '0000001087', 'cert': '145.663A', 'data_calib': '2023-05-25'},
-        '5307': {'serie': '0000005307', 'cert': '146.763',  'data_calib': '2023-07-05'},
     },
     'inlite': {
         # DoseMax V2 (cal 28/08/2025)
