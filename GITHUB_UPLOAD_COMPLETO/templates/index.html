@@ -4194,7 +4194,7 @@
   <div id="ctrl-sub-nova" style="display:none;">
   <style>
     .nv-prog{display:flex;align-items:flex-start;justify-content:center;gap:0;margin-bottom:24px;padding:18px 0 0;}
-    .nv-prog-item{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;}
+    .nv-prog-item{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;cursor:pointer;}
     .nv-prog-item::before{content:'';position:absolute;top:15px;left:-50%;right:50%;height:2px;background:var(--border2);z-index:0;}
     .nv-prog-item:first-child::before{display:none;}
     .nv-prog-item.done::before,.nv-prog-item.active::before{background:var(--green);}
@@ -14786,6 +14786,15 @@ function nvGotoStep(n) {
   if (n === 5) { nvGerarResumo(); nvSigShowSection(); }
 }
 
+// Passos da barra de progresso clicáveis — permite voltar pra corrigir
+// (ex.: revisar o IBUTG) direto da validação, sem ficar preso no "Voltar".
+document.getElementById('nv-prog')?.addEventListener('click', function (e) {
+  const item = e.target.closest('.nv-prog-item');
+  if (!item) return;
+  const s = parseInt(item.dataset.s, 10);
+  if (s && s !== _nvStep) nvGotoStep(s);
+});
+
 // ── Autosave da Planilha de Campo (#2) — rascunho em localStorage ───────
 const _NV_DRAFT_KEY = 'nv_planilha_draft_v1';
 function _nvCollectFields() {
@@ -15278,8 +15287,10 @@ function nvCalorRenderSetores() {
     el.innerHTML = '<div style="color:var(--text3);font-size:.83rem;padding:8px 0;">Clique em "+ Setor" para adicionar medições.</div>';
     return;
   }
-  // Atividade/M vêm da tabela canônica window.ATIVIDADES_NR15 (NR-15 Anexo 3)
-  el.innerHTML = window._nvCalorSetores.map((s, i) => `
+  // CAMPO = só o básico. Temperaturas (TBN/TBS/TG) e IBUTG saem no histograma
+  // do equipamento e são lançadas no escritório (Laudo de Calor) — Helbert.
+  el.innerHTML = '<div style="font-size:.74rem;color:var(--text2);background:rgba(245,158,11,.07);border-left:3px solid var(--yellow);padding:9px 11px;border-radius:6px;margin-bottom:10px;line-height:1.45;">🌡️ As <b>temperaturas (TBN/TBS/TG)</b> e o <b>IBUTG</b> saem no <b>histograma do equipamento</b> e são preenchidos no escritório, no Laudo de Calor. Aqui registre só o de campo: <b>onde mediu</b>, <b>duração</b> e a <b>atividade</b> (taxa metabólica).</div>'
+    + window._nvCalorSetores.map((s, i) => `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span style="font-weight:700;font-size:.85rem;color:var(--text);">Setor ${i+1}</span>
@@ -15294,30 +15305,14 @@ function nvCalorRenderSetores() {
             style="width:100%;background:var(--surface);border:1px solid ${(s.duracao && +s.duracao>60)?'#ef4444':'var(--border)'};border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="60">
           <div id="nv-cal-dur-aviso-${i}" style="font-size:.68rem;color:#ef4444;margin-top:2px;">${(s.duracao && +s.duracao>60)?'⚠ Máximo 60 min por medição':''}</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TBS (°C)</label>
-          <input type="number" step="0.1" value="${s.tbs}" oninput="window._nvCalorSetores[${i}].tbs=this.value;nvCalorCalcIBUTG(${i})"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="35.0"></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TBN (°C)</label>
-          <input type="number" step="0.1" value="${s.tbn}" oninput="window._nvCalorSetores[${i}].tbn=this.value;nvCalorCalcIBUTG(${i})"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="28.0"></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">TG (°C)</label>
-          <input type="number" step="0.1" value="${s.tg}" oninput="window._nvCalorSetores[${i}].tg=this.value;nvCalorCalcIBUTG(${i})"
-            style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;" placeholder="38.0"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;align-items:end;">
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">IBUTG Interno</label>
-          <div id="nv-cal-ibutg-i-${i}" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;font-weight:700;color:#f59e0b;">${s.ibutg_interno||'—'}</div></div>
-        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">IBUTG Externo</label>
-          <div id="nv-cal-ibutg-e-${i}" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;font-weight:700;color:#fb923c;">${s.ibutg_externo||'—'}</div></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;align-items:end;">
+        <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Atividade / Regime (NR-15 Anexo 3) <span style="color:var(--text3);">— define a taxa metabólica</span></label>
+          <select onchange="nvCalorSetAtividade(${i}, this.value)" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;">
+            ${(window.ATIVIDADES_NR15||[]).map(a => `<option value="${_esc(a.label)}" ${s.regime===a.label?'selected':''}>${a.M} W — ${_esc(a.label)}</option>`).join('')}
+          </select></div>
         <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Taxa Metab. (W)</label>
           <input type="number" value="${s.M}" oninput="window._nvCalorSetores[${i}].M=+this.value"
             style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.83rem;"></div>
-      </div>
-      <div><label style="font-size:.72rem;color:var(--text2);display:block;margin-bottom:3px;">Atividade / Regime (NR-15 Anexo 3) <span style="color:var(--text3);">— preenche a taxa metabólica</span></label>
-        <select onchange="nvCalorSetAtividade(${i}, this.value)" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;">
-          ${(window.ATIVIDADES_NR15||[]).map(a => `<option value="${_esc(a.label)}" ${s.regime===a.label?'selected':''}>${a.M} W — ${_esc(a.label)}</option>`).join('')}
-        </select>
       </div>
     </div>
   `).join('');
@@ -15874,11 +15869,10 @@ function _nvRunValidacoesCore(res) {
 
   if (tipos.includes('calor')) {
     const setores = (window._nvCalorSetores || []);
-    checks.push({ok:setores.length>0, warn:setores.length===0, msg:setores.length>0?`${setores.length} setor(es) IBUTG medido(s)`:'Nenhum setor IBUTG adicionado'});
+    checks.push({ok:setores.length>0, warn:setores.length===0, msg:setores.length>0?`${setores.length} setor(es) de calor registrado(s)`:'Nenhum setor de calor adicionado'});
     setores.forEach((s, i) => {
-      const tg=parseFloat(s.tg), tbn=parseFloat(s.tbn), tbs=parseFloat(s.tbs);
-      const completo = !isNaN(tg) && !isNaN(tbn) && !isNaN(tbs);
-      checks.push({ok:completo, warn:!completo, msg:`Setor ${i+1} (${s.setor||'sem nome'}): ${completo?`TG <b>${tg}</b> · TBN <b>${tbn}</b> · TBS <b>${tbs}</b>`:'temperaturas incompletas (TG/TBN/TBS)'}`});
+      // Campo = local + atividade (taxa metabólica). Temperaturas/IBUTG saem no histograma (escritório).
+      checks.push({ok:true, msg:`Setor ${i+1} (${s.setor||'sem nome'}): atividade <b>${s.M||'—'} W</b> · temperaturas/IBUTG no histograma (escritório)`});
     });
   }
 
@@ -16470,8 +16464,10 @@ function nvValidarFinalizacao() {
   }
   if (tipos.includes('calor')) {
     const ss = (window._nvCalorSetores||[]);
+    // Campo exige só o setor (local). Temperaturas (TBN/TBS/TG) e IBUTG saem no
+    // histograma do equipamento e são lançadas no escritório — não travam o campo.
     if (!ss.length) erros.push('Calor: adicione ao menos um setor medido.');
-    else ss.forEach((s,i) => { if (!String(s.tbn||'').trim() || !String(s.tg||'').trim()) erros.push(`Calor: setor ${i+1} sem TBN/TG.`); });
+    else ss.forEach((s,i) => { if (!String(s.setor||'').trim()) avisos.push(`Calor: setor ${i+1} sem o nome do local.`); });
   }
   if (tipos.includes('vibracao') && !(window._nvVibrPontos||[]).filter(p => (p.nome||'').trim()).length)
     erros.push('Vibração: adicione ao menos um trabalhador avaliado.');

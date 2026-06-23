@@ -1994,6 +1994,7 @@ def gerar_quimico_bytes(d):
     calibrad   = conf.get('calibrador', '')
     fotos_viii = conf.get('fotosVIII', [])   # [{img: b64, desc: str}]
     laudo_imgs = conf.get('laudoImgs', [])   # [b64]  — pages of lab result PDF
+    planilha_imgs = conf.get('planilhaImgs', [])  # [b64] — páginas da planilha de campo (anexada)
     logo_b64   = emp.get('logo', '')
 
     img_ctr    = [60]
@@ -2340,9 +2341,33 @@ def gerar_quimico_bytes(d):
     if not xi_new:
         xi_new = xml[xi_te:xii_ts]
 
+    # ── Seção PLANILHA DE CAMPO (anexo, opcional) — páginas embutidas como imagens ──
+    # Reaproveita o mesmo embed da seção X (resultados do lab). Fonte das páginas:
+    # planilha de campo de uma coleta finalizada, escolhida no módulo de laudo.
+    pl_new = ''
+    if planilha_imgs:
+        pl_new = ('<w:p><w:pPr><w:spacing w:before="240" w:after="120"/><w:jc w:val="center"/></w:pPr>'
+                  '<w:r><w:rPr><w:b/><w:bCs/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>'
+                  '<w:t>PLANILHA DE CAMPO</w:t></w:r></w:p>')
+        _TXT_W2, _TXT_H2 = 5400040, 7811770
+        for img in planilha_imgs:
+            if not img:
+                continue
+            rid, iid = _q_add_b64(img, extra_rels, extra_media, img_ctr)
+            _raw = base64.b64decode(img.split(',', 1)[1] if ',' in img else img)
+            _w, _h = _img_wh(_raw)
+            if _w and _h:
+                _cx = _TXT_W2; _cy = int(_cx * _h / _w)
+                if _cy > _TXT_H2:
+                    _cy = _TXT_H2; _cx = int(_cy * _w / _h)
+            else:
+                _cx, _cy = _TXT_W2, int(_TXT_W2 * 1.414)
+            pl_new += _q_img_para(rid, iid, cx=_cx, cy=_cy)
+
     # ── Assemble final XML ────────────────────────────────────────────
     xml = (xml[:viii_te] + viii_new +
            xml[ix_ts:ix_te] + ix_new +
+           pl_new +
            xml[x_ts:x_te]  + x_new  +
            xml[xi_ts:xi_te] + xi_new +
            xml[xii_ts:])
