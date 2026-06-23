@@ -1230,7 +1230,7 @@ _CALIB_RUIDO_MARCA = 'CHROMPACK'
 _CALIB_RUIDO_MODELO = 'SMARTCAL'
 _CALIB_RUIDO = {
     '1562': {'serie': 'CAL0000001562', 'cert': '142.574',    'data_calib': '2023-02-14', 'marca': 'CHROMPACK'},
-    '1575': {'serie': 'CAL0000001575', 'cert': '2503A35509', 'data_calib': '2025-03-20', 'marca': 'CHROMPACK'},
+    '1575': {'serie': 'CAL0000001575', 'cert': '182.920', 'data_calib': '2026-05-21', 'marca': 'CHROMPACK'},
     '2150': {'serie': 'CAL0000002150', 'cert': '172.833',    'data_calib': '2025-08-18', 'marca': 'CHROMPACK'},
     '1614': {'serie': 'CAL0000001614', 'cert': '181.238',    'data_calib': '2026-04-08', 'marca': 'CHROMPACK'},
     '0284': {'serie': 'CAL0000000284', 'cert': '181.239',    'data_calib': '2026-04-08', 'marca': 'CHROMPACK'},
@@ -1269,9 +1269,7 @@ _DOSIM_RUIDO = {
         '5310': {'serie': '0000005310', 'cert': '183.254', 'data_calib': '2026-06-01'},
         '5061': {'serie': '0000005061', 'cert': '183.252', 'data_calib': '2026-06-01'},
         '0320': {'serie': '0000000320', 'cert': '183.251', 'data_calib': '2026-06-01'},  # SmartdB LITE
-        # 1087 NÃO veio no lote de recalibração — segue com o certificado de 2023
-        # (VENCIDO). Não usar em laudo até recalibrar.
-        '1087': {'serie': '0000001087', 'cert': '145.663A', 'data_calib': '2023-05-25'},
+        '1087': {'serie': '0000001087', 'cert': '183.253', 'data_calib': '2026-06-01'},
     },
     'inlite': {
         # DoseMax V2 (cal 28/08/2025)
