@@ -15074,12 +15074,15 @@ const NV_EQUIP_DB = {
   '73289':  { tipo:'dosim', modelo:'Cirrus DoseBadge Leitor', cert:'2504A35620', validade:'2026-04-02' },
 
   // ── CALIBRADORES ACÚSTICOS ──
-  '1575':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'2503A35509', validade:'2026-03-20' },
+  '1575':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'182.920', validade:'2027-05-21' },
   '0284':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'181.239', validade:'2027-04-08' },
   '1614':   { tipo:'cal', modelo:'Chrompack SmartCal',  cert:'181.238', validade:'2027-04-08' },
 
-  // ── CALIBRADOR DE FLUXO (Defender 510-M, cal. 14/08/2025, val. 14/08/2026) ──
+  // ── CALIBRADORES DE FLUXO (calibram a vazão das bombas) ──
+  // Defender 510-M (cal. 14/08/2025, val. 14/08/2026)
   '126958':  { tipo:'cal', modelo:'Defender 510-M (Bios)', cert:'172.712', validade:'2026-08-14' },
+  // TSI 4143F (cal. 19/05/2026, val. 19/05/2027)
+  '41432019013': { tipo:'cal', modelo:'TSI 4143F', cert:'182.806', validade:'2027-05-19' },
 
   // ── CALIBRADOR INLITE CalPro (cal. 28/08/2025, val. 28/08/2026) ──
   '25035711': { tipo:'cal', modelo:'Inlite CalPro', cert:'42.179-2025', validade:'2026-08-28' },
@@ -15681,7 +15684,7 @@ function nvCqRenderAgentes() {
     const bodyD = ag.expanded ? '' : 'display:none;';
     const chk = (f) => ag[f] ? 'checked' : '';
     const bombaOpts = [['','-- Selecionar --'],['BDX-II GILLIAN','BDX-II – GILLIAN'],['AIRLITE SKC','AIRLITE – SKC'],['FORMIS TURAM','FORMIS – TURAM'],['INLITE VENTUSPRO','INLITE – VENTUSPRO']].map(([v,l])=>`<option value="${v}"${ag.bomba===v?' selected':''}>${l}</option>`).join('');
-    const _calPresets = ['DEFENDER 510M S/N:126958','TSI 4143F – 414332019013'];
+    const _calPresets = ['DEFENDER 510M S/N:126958','TSI 4143F – 41432019013'];
     // Se o calibrador não é um dos presets, está em modo "Outro" (texto livre)
     const _calOutro = !!(ag.calibrador && !_calPresets.includes(ag.calibrador));
     const calOpts = `<option value=""${!ag.calibrador ? ' selected' : ''}>— Selecione o calibrador —</option>` +

@@ -4108,7 +4108,7 @@ def _quimico_agente_flowables(ag, idx, W, data_fmt='', dia_semana=''):
                       ('VALIGN', (0, 0), (-1, -1), 'TOP')])))
 
     cal_nome = ag.get('calibrador', '')
-    cal_todos = ['Defender 510M S/N: 126958', 'TSI 4143F – 414332019013']
+    cal_todos = ['Defender 510M S/N: 126958', 'TSI 4143F – 41432019013']
     cal_sel   = [c for c in cal_todos if cal_nome and c[:8].lower() in cal_nome.lower()]
     out.append(_full('ID Calibrador:', _chk(cal_todos, cal_sel)
                      + (f'  Outro: {cal_nome}' if cal_nome and not cal_sel else '')))
