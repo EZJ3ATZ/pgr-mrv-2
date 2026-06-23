@@ -1262,6 +1262,12 @@ _DOSIM_RUIDO = {
         '5066': {'serie': '0000005066', 'cert': '181.271', 'data_calib': '2026-04-09'},
         '5308': {'serie': '0000005308', 'cert': '181.274', 'data_calib': '2026-04-09'},
         '5311': {'serie': '0000005311', 'cert': '181.278', 'data_calib': '2026-04-09'},
+        # Seminovos usados em campo (relato Helbert) — não estavam no sistema.
+        # ATENÇÃO: calibração de 2023 (provavelmente VENCIDA). Conferir recalibração
+        # antes de usar em laudo — o sistema vai sinalizar como vencida.
+        '1084': {'serie': '0000001084', 'cert': '145.665A', 'data_calib': '2023-05-25'},
+        '1087': {'serie': '0000001087', 'cert': '145.663A', 'data_calib': '2023-05-25'},
+        '5307': {'serie': '0000005307', 'cert': '146.763',  'data_calib': '2023-07-05'},
     },
     'inlite': {
         # DoseMax V2 (cal 28/08/2025)
