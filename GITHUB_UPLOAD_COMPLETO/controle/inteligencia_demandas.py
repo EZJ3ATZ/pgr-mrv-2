@@ -107,7 +107,7 @@ AGENTES_SST: Dict[str, List[str]] = {
     ],
     'Benzeno': [
         'benzeno', 'benzene', 'benzol', 'nr15 benzeno', 'nr-15 benzeno',
-        'ppra benzeno', 'programa benzeno', 'btx', 'btex', 'hidrocarboneto aromatico',
+        'ppra benzeno', 'programa benzeno', 'hidrocarboneto aromatico',
     ],
     'Tolueno': [
         'tolueno', 'toluene', 'metilbenzeno',
@@ -139,6 +139,14 @@ AGENTES_SST: Dict[str, List[str]] = {
         'fumo metalico', 'fumos de soldagem', 'particulas metalicas',
         'neblinas metalicas', 'neblinas metálicas', 'aerossois metalicos',
         'aerossóis metálicos',
+    ],
+    'Óxido de Ferro': [
+        'oxido de ferro', 'óxido de ferro', 'fe2o3', 'oxido ferrico',
+        'óxido férrico', 'fumos de ferro', 'oxido de ferro (fe2o3)',
+    ],
+    'Óxido de Zinco': [
+        'oxido de zinco', 'óxido de zinco', 'zno', 'fumos de zinco',
+        'oxido de zinco (zno)',
     ],
     'Chumbo': [
         'chumbo', 'pb', 'exposicao a chumbo', 'exposição ao chumbo',
@@ -647,6 +655,22 @@ def extrair_agentes_multifonte(
     _GAS_VOC = {'Benzeno', 'Tolueno', 'Xileno', 'Hexano', 'MEK (Butanona)', 'Acetona', 'Álcool'}
     if any(c in acumulado for c in _GAS_VOC):
         acumulado.pop('Gases e Vapores (geral)', None)
+
+    # BTX / BTEX: a sigla cobre Benzeno + Tolueno + Xileno (1 tubo de carvão,
+    # análise múltipla). Quando a sigla aparece em qualquer fonte, garante o trio.
+    _txt_btx = ' '.join(_norm(t) for t, _, _ in fontes if t)
+    if re.search(r'(?<!\w)bte?x(?!\w)', _txt_btx):
+        _base = acumulado.get('Benzeno')
+        _conf = _base.confianca if _base else 0.80
+        _qtd  = _base.quantidade if _base else 1
+        for _canon in ('Benzeno', 'Tolueno', 'Xileno'):
+            if _canon not in acumulado:
+                acumulado[_canon] = AgenteExtraido(
+                    canonical=_canon, quantidade=_qtd,
+                    tipo=_tipo_agente(_canon),
+                    fontes=[FonteInfo('btx', 'BTX/BTEX', _conf)],
+                    confianca=_conf,
+                )
 
     return sorted(acumulado.values(), key=lambda a: -a.confianca)
 
