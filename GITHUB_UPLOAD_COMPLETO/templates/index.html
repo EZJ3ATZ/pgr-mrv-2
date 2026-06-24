@@ -11167,7 +11167,11 @@ function _planRenderizarAgentes() {
         <div id="plan-vaz-aviso-${i}">${_planVazaoAvisoHtml(i)}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;align-items:center;">
           <input type="text" value="${a.amostrador_codigo||''}" placeholder="Amostrador (cód.)" onchange="window._planAgentes[${i}].amostrador_codigo=this.value" style="${inp}width:115px;" title="Código do amostrador">
-          <input type="text" value="${a.calibrador_nome||''}" placeholder="Calibrador vazão" onchange="window._planAgentes[${i}].calibrador_nome=this.value" style="${inp}width:115px;" title="Calibrador utilizado na calibração da bomba">
+          <select onchange="window._planAgentes[${i}].calibrador_nome=this.value" style="${inp}width:auto;" title="Calibrador de vazão usado na calibração da bomba (banco real)">
+            <option value="">— Calibrador de vazão —</option>
+            <option ${a.calibrador_nome==='DEFENDER 510M S/N:126958'?'selected':''}>DEFENDER 510M S/N:126958</option>
+            <option ${a.calibrador_nome==='TSI 4143F – 41432019013'?'selected':''}>TSI 4143F – 41432019013</option>
+          </select>
           <input type="date" value="${a.data_calibracao||''}" title="Data da calibração da bomba" onchange="window._planAgentes[${i}].data_calibracao=this.value" style="${inp}width:130px;">
         </div>`;
     } else if (a.tipo === 'ruido') {
