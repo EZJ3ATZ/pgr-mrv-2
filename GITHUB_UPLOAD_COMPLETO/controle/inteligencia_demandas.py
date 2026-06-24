@@ -442,7 +442,13 @@ _RE_QTD_ANTES = re.compile(
 
 # Aliases muito curtos ou ambíguos para evitar falsos positivos
 _ALIAS_CURTO_MINLEN = 4   # aliases com < 4 chars normalizado → requerem contexto explícito
-_ALIASES_AMBIGUOS  = {'co', 'pb', 'mn', 'ni', 'cd', 'hg', 'as', 'uv', 'iv'}
+# Símbolos/siglas (CO, UV, Pb...) só contam quando vêm em MAIÚSCULA no texto
+# original — distingue o símbolo "CO" de uma sílaba qualquer.
+_ALIASES_AMBIGUOS  = {'co', 'pb', 'mn', 'ni', 'cd', 'hg', 'uv', 'iv'}
+# Abreviações que são PALAVRAS comuns do português → nunca contam como token
+# solto (o agente é sempre detectado pelo nome por extenso: "arsênio", "umidade",
+# "ergonomia"). Sem isto, o artigo "as" de qualquer texto virava "Arsênio".
+_ALIAS_PALAVRA_PT  = {'as', 'ur', 'ler'}
 
 
 def _extrair_agentes_de_texto(
@@ -461,13 +467,28 @@ def _extrair_agentes_de_texto(
 
     # Estratégia A: varrer aliases do maior para o menor (evita substring)
     for alias, canonical in _ALIAS_SORTED:
+        # Abreviação que é palavra comum do português ("as", "ur", "ler") nunca
+        # conta como token solto — o agente vem pelo nome por extenso. Sem isto,
+        # o artigo "as" de qualquer descrição virava "Arsênio".
+        if alias in _ALIAS_PALAVRA_PT:
+            continue
         if len(alias) < _ALIAS_CURTO_MINLEN:
-            # Alias curto: regex com fronteira de palavra
-            pat = r'(?<!\w)' + re.escape(alias) + r'(?!\w)'
-            m = re.search(pat, txt_n)
-            if not m:
-                continue
-            start = m.start()
+            if alias in _ALIASES_AMBIGUOS:
+                # Símbolo/sigla (CO, UV, Pb...): só conta em MAIÚSCULA no texto
+                # original — distingue o símbolo de uma sílaba qualquer.
+                pat_sym = r'(?<![A-Za-zÀ-ÿ])' + re.escape(alias.upper()) + r'(?![A-Za-zÀ-ÿ])'
+                if not re.search(pat_sym, texto):
+                    continue
+                start = txt_n.find(alias)
+                if start < 0:
+                    continue
+            else:
+                # Alias curto: regex com fronteira de palavra
+                pat = r'(?<!\w)' + re.escape(alias) + r'(?!\w)'
+                m = re.search(pat, txt_n)
+                if not m:
+                    continue
+                start = m.start()
         else:
             # Alias longo: busca direta por substring
             start = txt_n.find(alias)
