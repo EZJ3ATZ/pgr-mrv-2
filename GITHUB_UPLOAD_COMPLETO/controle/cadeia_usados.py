@@ -332,6 +332,33 @@ USADOS = frozenset({
     'THO1214', 'TPC21L09', 'TPC32L08', 'TPC678AV2', 'TSP5772', 'TSP6168', 'TSP6399', 'TSP6752', 
     'TSP6836', 'TSP6850', 'TSP6876', 'TSP7285', 'TSP7318', 'TSP7347', 'TSP7893', 'TSP7958', 
     'TSP8274', 'TTCP48X6', 'X2G0464', 'X2L0705', 'X2N065', 'X2N079', 'X4D0085', 'X7F0487', 
-    'X7F0496', 'X7G00408', 'X7G00591', 'X7G00976', 'X7G01006', 'X7G01018', 'X7G01062', 'X7P0036', 
-    'X7P0181', 'X7P0852', 'X7P1995', 'X7P71756', 'X7P72368', 'X7P73066', 
+    'X7F0496', 'X7G00408', 'X7G00591', 'X7G00976', 'X7G01006', 'X7G01018', 'X7G01062', 'X7P0036',
+    'X7P0181', 'X7P0852', 'X7P1995', 'X7P71756', 'X7P72368', 'X7P73066',
 })
+
+
+def codigos_usados():
+    """USADOS (retrato da extração histórica das 854 cadeias) + códigos das
+    planilhas químicas registradas NO SISTEMA (coletas_quimico_amostr).
+    Uso novo entra sozinho — a lista congelada degradava com o tempo e
+    amostradores usados após a extração ficavam invisíveis (fix 03/07/2026)."""
+    import re
+    out = set(USADOS)
+    try:
+        from .db import get_db, row_to_dict
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT id_amostrador, tipo_amostrador FROM coletas_quimico_amostr "
+                "WHERE COALESCE(id_amostrador,'') <> ''").fetchall()
+        for r in rows:
+            d = row_to_dict(r)
+            cod = re.sub(r'\s+', '', str(d.get('id_amostrador') or '')).upper()
+            tp  = re.sub(r'\s+', '', str(d.get('tipo_amostrador') or '')).upper()
+            if not cod:
+                continue
+            out.add(cod)
+            if tp and not cod.startswith(tp):
+                out.add(tp + cod)
+    except Exception:
+        pass   # sem banco (import fora do app) → só a lista histórica
+    return frozenset(out)

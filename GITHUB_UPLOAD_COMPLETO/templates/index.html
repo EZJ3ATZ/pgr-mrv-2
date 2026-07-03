@@ -3882,7 +3882,11 @@
         </select>
         <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
         <button onclick="ctrlSyncLab()" class="ctrl-import-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Lê os e-mails do laboratório e atualiza status + lista oficial de pendentes (admin)">🔄 Sincronizar com o lab</button>
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <button onclick="ctrlAuditoriaLab()" class="ctrl-import-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Confere se o site capturou tudo que passou pelos e-mails do lab: RAs recebidos × data_resultado e cadeias enviadas × data_envio_lab">🧪 Auditoria do lab</button>
+        {% endif %}
       </div>
+      <div id="ctrl-lab-auditoria" style="display:none;margin:10px 0;"></div>
       <div class="ctrl-table-wrap">
         <table class="ctrl-table">
           <thead>
@@ -9416,6 +9420,55 @@ async function ctrlSyncLab() {
   } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
 }
 
+// ── Auditoria do lab (admin): RAs recebidos × data_resultado, cadeias × data_envio_lab ──
+async function ctrlAuditoriaLab() {
+  const box = document.getElementById('ctrl-lab-auditoria');
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:.8rem;color:var(--text3);padding:8px;">Carregando última auditoria...</div>';
+  try {
+    const d = await ctrlFetch('/controle/graph/auditoria_lab');
+    box.innerHTML = _ctrlLabAudHtml(d);
+  } catch(e) { box.innerHTML = `<div style="color:#e22;font-size:.8rem;">Erro: ${_esc(e.message)}</div>`; }
+}
+
+async function ctrlAuditoriaLabRodar() {
+  if (!confirm('Rodar a auditoria do laboratório agora?\n\nVarre inbox + enviados de todas as caixas (RAs recebidos e cadeias enviadas) e cruza com data_resultado/data_envio_lab dos amostradores. Roda em segundo plano (~1-2 min).')) return;
+  try {
+    await ctrlFetch('/controle/graph/auditoria_lab', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    _showToast('⏳ Auditoria rodando em segundo plano — recarrego em ~90s.', 'ok');
+    setTimeout(ctrlAuditoriaLab, 90000);
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
+}
+
+function _ctrlLabAudHtml(d) {
+  const btn = `<button onclick="ctrlAuditoriaLabRodar()" style="background:var(--brand);color:#fff;border:none;padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;">▶ Rodar agora</button>
+    <button onclick="document.getElementById('ctrl-lab-auditoria').style.display='none'" style="background:transparent;color:var(--text3);border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;margin-left:6px;">Fechar</button>`;
+  if (d.erro) return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="color:#e22;font-size:.8rem;">Erro na última auditoria: ${_esc(String(d.erro)).slice(0,300)}</div><div style="margin-top:8px;">${btn}</div></div>`;
+  if (d.status) return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="font-size:.8rem;color:var(--text2);">${_esc(d.status)}</div><div style="margin-top:8px;">${btn}</div></div>`;
+  const r = d.resultados || {}, c = d.cadeias || {};
+  const gapR = r.gap_inv_sem_data || [], gapC = c.gap_inv_sem_data || [];
+  const bloco = (titulo, tot, cods, inv, dat, gap, extra) => `
+    <div style="flex:1;min-width:260px;background:var(--surface2);border-radius:8px;padding:10px 12px;">
+      <div style="font-weight:700;font-size:.8rem;margin-bottom:6px;">${titulo}</div>
+      <div style="font-size:.75rem;color:var(--text2);">E-mails: <b>${tot||0}</b> · Códigos: <b>${cods||0}</b> · No inventário: <b>${inv||0}</b> · Com data no site: <b style="color:${(dat||0)>=(inv||0)?'#0a7':'#f80'}">${dat||0}</b></div>
+      ${gap.length ? `<div style="font-size:.72rem;color:#e22;margin-top:6px;">⚠ ${gap.length} no inventário SEM data capturada: ${gap.slice(0,15).map(_esc).join(', ')}${gap.length>15?'…':''}</div>` : `<div style="font-size:.72rem;color:#0a7;margin-top:6px;">✓ Sem gaps — o site capturou todos.</div>`}
+      ${extra||''}
+    </div>`;
+  const semCod = (c.emails_sem_codigo || []);
+  return `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+      <b style="font-size:.85rem;">🧪 Auditoria do laboratório</b>
+      <span style="font-size:.72rem;color:var(--text3);">última: ${_esc(String(d.quando||'—'))} · caixas varridas: ${(d.caixas||[]).length}</span>
+      <span style="margin-left:auto;">${btn}</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      ${bloco('📥 Resultados (RA) recebidos', r.ra_emails, r.codigos_distintos, r.no_inventario, r.datados, gapR, '')}
+      ${bloco('📤 Cadeias de custódia enviadas', c.emails_enviados, c.codigos_detectados, c.no_inventario, c.datados, gapC,
+        semCod.length ? `<div style="font-size:.72rem;color:#f80;margin-top:4px;">${semCod.length} e-mail(s) ao lab sem código reconhecido (anexo escaneado?)</div>` : '')}
+    </div>
+  </div>`;
+}
+
 async function ctrlLoadVencendo() {
   const tb = document.getElementById('ctrl-tb-venc');
   const stEl = document.getElementById('ctrl-venc-stats');
@@ -12229,6 +12282,7 @@ async function ctrlNvBuscarAgente(nome) {
   const estoqueInfo = document.getElementById('ctrl-nv-estoque-info');
   const selAm = document.getElementById('ctrl-nv-amostr-sel');
   window._ctrlNvMetodoAtual = null;
+  nome = (nome || '').replace(/\s+/g, ' ').trim();  // agente do Planner pode vir com \n — quebrava a URL do estoque
   if (!nome) {
     info.style.display = 'none';
     estoqueInfo.style.display = 'none';
@@ -13531,7 +13585,7 @@ async function ctrlConfirmarConcluir() {
 
 // Conclui em massa os amostradores que aparecem em alguma cadeia de custódia
 async function ctrlConcluirUtilizados() {
-  if (!confirm('Marcar como CONCLUÍDO todo amostrador que consta em alguma cadeia de custódia (= foi utilizado)?\n\nBaseado na extração das 854 cadeias. Não mexe nos que nunca foram usados.')) return;
+  if (!confirm('Marcar como CONCLUÍDO todo amostrador que consta em alguma cadeia de custódia (= foi utilizado)?\n\nBaseado nas cadeias históricas + planilhas químicas registradas no sistema. Não mexe nos que nunca foram usados.')) return;
   try {
     const r = await ctrlFetch('/controle/amostradores/concluir-utilizados', {
       method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}'

@@ -522,7 +522,9 @@ def concluir_amostradores_utilizados():
     init_db()
     import re as _re
     try:
-        from .cadeia_usados import USADOS
+        # Lista dinâmica: cadeias históricas + planilhas químicas do sistema
+        from .cadeia_usados import codigos_usados
+        USADOS = codigos_usados()
     except Exception as e:
         return jsonify({'erro': f'Lista de utilizados indisponível: {e}'}), 500
 
@@ -574,7 +576,8 @@ def amostradores_diagnostico():
     import re as _re
     from datetime import date as _date, datetime as _dt
     try:
-        from .cadeia_usados import USADOS
+        from .cadeia_usados import codigos_usados
+        USADOS = codigos_usados()
     except Exception:
         USADOS = frozenset()
 
@@ -1840,6 +1843,9 @@ def estoque_para_agente(nome):
       - lista de codigos disponiveis
     """
     init_db()
+    # Agentes extraídos do Planner podem vir com \n/espaços múltiplos no nome —
+    # quebrava a URL/lookup (fix 03/07/2026). Colapsa qualquer whitespace.
+    nome = re.sub(r'\s+', ' ', nome or '').strip()
     metodos = _buscar_metodos_agente(nome)
     if not metodos:
         return jsonify({
