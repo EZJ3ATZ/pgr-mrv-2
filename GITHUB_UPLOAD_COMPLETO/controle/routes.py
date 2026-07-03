@@ -2763,6 +2763,10 @@ _TIPO_KEYWORDS = {
     'calor':    ['calor', 'ibutg', 'ibtug', 'termic', 'termico', 'sobrecarga'],
     'vibracao': ['vibra'],
 }
+# Química não tem keywords (o agente é o NOME da substância, impossível enumerar)
+# → é reconhecida por EXCLUSÃO: medição cujo agente não é de nenhuma família física.
+_KW_FISICOS = ['ruido', 'dosimetr', 'calor', 'ibutg', 'ibtug', 'termic',
+               'sobrecarga', 'vibra', 'ilumin']
 
 
 def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
@@ -2776,7 +2780,7 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
     - duplicada=True quando TODAS as medições correspondentes já estavam
       'realizado' → sinal de planilha de campo duplicada (trava).
     """
-    res = {'baixada': None, 'duplicada': False, 'tinha_pendente': False}
+    res = {'baixada': None, 'duplicada': False, 'tinha_pendente': False, 'sem_match': False}
     if not demanda_id:
         return res
     fam = tipo or ''
@@ -2803,6 +2807,20 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
                 return False
 
             matched = [r for r in rows if _match(_g(r, 'agente', 1))]
+            # Química sem match textual da substância (fix 03/07/2026 — antes a
+            # medição ficava pendente EM SILÊNCIO e voltava pro replanejamento):
+            # fallback por exclusão — se a demanda tem UMA única substância
+            # química pendente, é ela. Com 2+ pendentes não chuta: sinaliza
+            # sem_match p/ o caller avisar e a baixa ser feita à mão.
+            if not matched and fam == 'quimico':
+                pend_q = [r for r in rows
+                          if _g(r, 'status', 4) != 'realizado'
+                          and not any(k in _norm_txt(_g(r, 'agente', 1)) for k in _KW_FISICOS)]
+                if len({_norm_txt(_g(r, 'agente', 1)) for r in pend_q}) == 1:
+                    matched = pend_q
+                elif pend_q:
+                    res['sem_match'] = True
+                    return res
             if not matched:
                 return res  # medição avulsa (sem demanda planejada) → não trava
             pendentes = [r for r in matched if _g(r, 'status', 4) != 'realizado']
@@ -3749,8 +3767,15 @@ def api_salvar_medicao_wizard():
                 + (f" ({', '.join(bxa['baixados'])})" if bxa['baixados'] else '')
                 + (f"; não reconhecidos: {', '.join(bxa['nao_encontrados'])}" if bxa['nao_encontrados'] else ''),
                 cid, 'coleta_quimico', tecnico_login or 'sistema', request.remote_addr)
+        if bx.get('sem_match'):
+            registrar_evento(
+                'medicao_sem_baixa',
+                f"planilha química #{cid}: substância '{cq.get('substancias', '') or '—'}' não casou "
+                f"com nenhuma medição pendente da OS (2+ substâncias pendentes) — baixa manual necessária",
+                cid, 'coleta_quimico', tecnico_login or 'sistema', request.remote_addr)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico', 'medicao_baixada': bx['baixada'],
+                        'medicao_sem_match': bx.get('sem_match', False),
                         'amostradores_baixados': bxa['baixados'],
                         'amostradores_nao_reconhecidos': bxa['nao_encontrados']})
 
