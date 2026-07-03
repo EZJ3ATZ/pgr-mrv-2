@@ -1180,7 +1180,8 @@ _PUMP_SN = {
     'inlite':  ['25040902602B', '25040903102B', '25040907102B'],
 }
 _PUMP_CERT_PAGES = {
-    'bdx':     {'20230702024': 2, '20230702029': 2, '20230702030': 2, '20141201119': 2},
+    'bdx':     {'20230702024': 2, '20230702029': 2, '20230702030': 2, '20141201119': 2,
+                '38356': 2, '38357': 2, '38358': 2, '38359': 2},
     'airlite': {'A060502': 2, 'A061553': 4, 'A061585': 2, 'A062462': 2, 'A63555': 2},
     'turam':   {'2420120549': 1, '2420120550': 1, '2420120551': 1},
     'inlite':  {'25040902602B': 2, '25040903102B': 2, '25040907102B': 2},
@@ -1405,7 +1406,7 @@ def _build_ix_xml(evals):
 
     grid = ''.join(f'<w:gridCol w:w="{w}"/>' for w in cws)
     hdr  = _tr(_tc('SETOR', cws[0], bold=True, fill='BDD7EE'),
-               _tc('CARGO', cws[1], bold=True, fill='BDD7EE'),
+               _tc('CARGO / LOCAL', cws[1], bold=True, fill='BDD7EE'),
                _tc('AGENTE AVALIADO', cws[2], bold=True, fill='BDD7EE'),
                _tc('RESULTADO', cws[3], bold=True, fill='BDD7EE'))
     rows = ''
@@ -1430,8 +1431,13 @@ def _build_ix_xml(evals):
                     fill, res = 'FFFFFF', conc or 'N.D.'
             except Exception:
                 fill, res = 'FFFFFF', conc or 'N.D.'
+        # CARGO p/ amostragem pessoal; LOCAL/ambiente (campo trabalhador) p/ amostragem
+        # de área/fixa, em vez de "NÃO INFORMADO" (Matheus: usar o ambiente da planilha de campo).
+        _cl = (ev.get('cargo', '') or '').strip()
+        if (not _cl) or _cl.upper() == 'NÃO INFORMADO':
+            _cl = (ev.get('trabalhador', '') or '').strip() or _cl or 'Não informado'
         rows += _tr(_tc(ev.get('setor', ''), cws[0]),
-                    _tc(ev.get('cargo', ''), cws[1]),
+                    _tc(_cl, cws[1]),
                     _tc(ev.get('agente', ''), cws[2]),
                     _tc(res, cws[3], fill=fill))
     return (f'<w:tbl><w:tblPr><w:tblW w:w="{total}" w:type="dxa"/>'

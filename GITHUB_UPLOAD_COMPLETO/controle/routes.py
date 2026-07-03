@@ -450,14 +450,15 @@ def baixa_simples_lote():
     obs_final = obs or (f'Baixa rápida — {empresa_nome}' if empresa_nome else 'Baixa rápida')
 
     with get_db() as conn:
+        # data_envio_lab não é carimbada aqui (fix 03/07/2026): a data real de envio
+        # vem do lab sync / lançamento manual — carimbar zerava a métrica coleta→lab.
         conn.execute(
             f"""UPDATE amostradores
                 SET status='laboratorio', avaliador=?, data_medicao=?,
-                    data_envio_lab=COALESCE(data_envio_lab, ?),
                     observacao=?, empresa_id=COALESCE(?,empresa_id),
                     atualizado_em=CURRENT_TIMESTAMP
                 WHERE id IN ({ph}) AND status IN ('disponivel','reservado')""",
-            [avaliador, data_med, data_med, obs_final, empresa_id] + ids
+            [avaliador, data_med, obs_final, empresa_id] + ids
         )
         afetados = conn.execute(
             f"SELECT COUNT(*) AS c FROM amostradores WHERE id IN ({ph})", ids
@@ -1466,14 +1467,16 @@ def dar_baixa():
             'SELECT empresa_id FROM demandas WHERE id=?',
             (me['demanda_id'],)).fetchone()['empresa_id']
 
-        # Atualizar amostrador: muda status, vincula empresa, avaliador e data
+        # Atualizar amostrador: muda status, vincula empresa, avaliador e data.
+        # data_envio_lab NÃO é mais carimbada com a data da medição (fix 03/07/2026)
+        # — a data REAL de envio vem do lab sync (e-mail enviado) ou lançamento manual;
+        # carimbar aqui zerava a métrica coleta→lab.
         conn.execute("""
             UPDATE amostradores
             SET status='laboratorio', empresa_id=?, avaliador=?, data_medicao=?,
-                data_envio_lab=COALESCE(data_envio_lab, ?),
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?""",
-            (empresa_id, avaliador, data_medicao, data_medicao, amostrador_id))
+            (empresa_id, avaliador, data_medicao, amostrador_id))
 
         # Incrementar pontos realizados da medicao
         nova_qtd = (me['qtd_pontos_feita'] or 0) + 1
@@ -2829,6 +2832,64 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
         return res
 
 
+def _baixar_amostradores_quimico(amostradores, empresa_id, avaliador, data_medicao):
+    """Dá baixa automática nos amostradores digitados na planilha química.
+
+    O técnico digita o código como texto livre ('EC81053A', 'ec 81053a' ou só
+    '81053A') — resolve para amostradores.id com a mesma normalização
+    tipo+código do lab_inbox e aplica a transição do /baixa manual
+    (disponível/reservado → laboratório + empresa + avaliador + data_medicao).
+    data_envio_lab fica vazia de propósito: a data REAL de envio vem do lab
+    sync (e-mail enviado ao lab) ou de lançamento manual.
+
+    Retorna {'baixados': [codigos], 'nao_encontrados': [textos digitados]}.
+    """
+    from .lab_inbox import _sistema_lookup, _norm
+    res = {'baixados': [], 'nao_encontrados': []}
+    if not amostradores:
+        return res
+    try:
+        look = _sistema_lookup()
+        alvos, vistos = [], set()
+        for am in (amostradores or []):
+            txt = (am or {}).get('id_amostrador') or ''
+            cod = _norm(txt)
+            tp = _norm((am or {}).get('tipo_amostrador'))
+            if not cod:
+                continue
+            hit = look.get(tp + cod) or look.get(cod)
+            if not hit and len(cod) >= 5:
+                # técnico digitou só o final do código ('81053A' de 'EC81053A')
+                cands = {d['id']: d for k, d in look.items() if k.endswith(cod)}
+                if len(cands) == 1:
+                    hit = next(iter(cands.values()))
+            if not hit:
+                res['nao_encontrados'].append(txt.strip())
+                continue
+            # concluído/descartado não regride — código provavelmente digitado errado
+            if (hit.get('status') or '') in ('concluido', 'descartado'):
+                res['nao_encontrados'].append(f"{txt.strip()} (já {hit.get('status')})")
+                continue
+            if hit['id'] in vistos:
+                continue
+            vistos.add(hit['id'])
+            alvos.append(hit)
+        if alvos:
+            with get_db() as conn:
+                for hit in alvos:
+                    conn.execute(
+                        "UPDATE amostradores SET status='laboratorio', "
+                        "empresa_id=COALESCE(?, empresa_id), "
+                        "avaliador=COALESCE(NULLIF(?,''), avaliador), "
+                        "data_medicao=COALESCE(NULLIF(?,''), data_medicao), "
+                        "atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                        (empresa_id, avaliador or '', data_medicao or '', hit['id']))
+                    res['baixados'].append(hit.get('codigo'))
+    except Exception as e:
+        log.warning('[quimico] baixa automatica de amostradores falhou: %s', e)
+    return res
+
+
 @controle_bp.route('/coletas/ruido', methods=['POST'])
 def api_save_coleta_ruido():
     init_db()
@@ -3676,8 +3737,22 @@ def api_salvar_medicao_wizard():
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição química já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_quimico(payload_q)
+        # Baixa automática dos amostradores usados (antes SÓ existia no botão manual
+        # "Dar Baixa" — a planilha gravava o uso mas o estoque não saía do lugar)
+        bxa = _baixar_amostradores_quimico(
+            cq.get('amostradores') or [], d.get('empresa_id'),
+            d.get('avaliador', ''), d.get('data', ''))
+        if bxa['baixados'] or bxa['nao_encontrados']:
+            registrar_evento(
+                'amostrador_baixa_auto',
+                f"planilha química #{cid}: {len(bxa['baixados'])} p/ laboratório"
+                + (f" ({', '.join(bxa['baixados'])})" if bxa['baixados'] else '')
+                + (f"; não reconhecidos: {', '.join(bxa['nao_encontrados'])}" if bxa['nao_encontrados'] else ''),
+                cid, 'coleta_quimico', tecnico_login or 'sistema', request.remote_addr)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
-        return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico', 'medicao_baixada': bx['baixada']})
+        return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico', 'medicao_baixada': bx['baixada'],
+                        'amostradores_baixados': bxa['baixados'],
+                        'amostradores_nao_reconhecidos': bxa['nao_encontrados']})
 
     elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
         import json as _json

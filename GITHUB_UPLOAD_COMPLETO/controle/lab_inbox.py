@@ -62,7 +62,7 @@ def _sistema_lookup():
     look = {}
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT id, codigo, tipo, status FROM amostradores "
+            "SELECT id, codigo, tipo, status, atualizado_em FROM amostradores "
             "WHERE COALESCE(arquivado,0)=0").fetchall()
     for r in rows:
         d = row_to_dict(r)
@@ -123,6 +123,7 @@ def _fetch_lab_emails(boxes, top=150):
                 'subject': m.get('subject', ''),
                 'from': frm,
                 'data': (m.get('receivedDateTime') or '')[:10],
+                'data_full': m.get('receivedDateTime') or '',
                 'anexos': bool(m.get('hasAttachments')),
                 'body': (m.get('body') or {}).get('content', ''),
                 'caixa': box,
@@ -273,7 +274,21 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     look = _sistema_lookup()
     boxes = _mailboxes()
     emails, fetch_erros = _fetch_lab_emails(boxes, top)
-    emails = sorted(emails, key=lambda e: e['data'])  # cronológico (antigo→novo)
+    # cronológico (antigo→novo) pelo timestamp COMPLETO — antes truncava a dia e
+    # a ordem dentro do mesmo dia era aleatória (e-mail antigo podia vencer)
+    emails = sorted(emails, key=lambda e: e.get('data_full') or e['data'])
+
+    # Watermark: e-mail de status (remessa/recebimento) já processado numa varredura
+    # anterior NÃO é reaplicado. Era isso que revertia a edição manual do técnico a
+    # cada 3h — o mesmo e-mail antigo de remessa ("disponivel") entrava de novo.
+    watermark = ''
+    try:
+        with get_db() as conn:
+            r = conn.execute("SELECT valor FROM ms_sync_state WHERE chave='lab_watermark'").fetchone()
+            watermark = ((row_to_dict(r) or {}).get('valor') or '') if r else ''
+    except Exception:
+        watermark = ''
+    max_visto = watermark
 
     cat_count = {'remessa': 0, 'recebimento': 0, 'resultado': 0, 'pendentes': 0, 'ignorado': 0}
     fora = set()
@@ -322,6 +337,11 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
         if cat == 'pendentes':
             pendentes = {'data': e['data'], 'codigos': no_sis, 'total': len(codes)}
         else:
+            full = e.get('data_full') or e['data']
+            if full > max_visto:
+                max_visto = full
+            if watermark and full <= watermark:
+                continue   # já processado em varredura anterior — não reaplica
             novo = 'disponivel' if cat == 'remessa' else 'devolvido'
             for c in no_sis:
                 estado_final[c] = (novo, e['data'])
@@ -330,9 +350,15 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     plano = []
     for c, (alvo, data) in estado_final.items():
         amos = look.get(c)
-        if amos and (amos.get('status') or '') != alvo:
-            plano.append({'id': amos['id'], 'codigo': amos.get('codigo'),
-                          'de': amos.get('status'), 'para': alvo, 'fonte_data': data})
+        if not amos or (amos.get('status') or '') == alvo:
+            continue
+        # Guarda de timestamp: e-mail mais antigo que a última edição do amostrador
+        # NÃO rebaixa o status — a edição manual do técnico vence o sinal antigo.
+        ult = str(amos.get('atualizado_em') or '')[:10]
+        if ult and (data or '') < ult:
+            continue
+        plano.append({'id': amos['id'], 'codigo': amos.get('codigo'),
+                      'de': amos.get('status'), 'para': alvo, 'fonte_data': data})
 
     # ── ENVIO ao lab (data REAL) — lê os e-mails ENVIADOS com a cadeia de custódia.
     #    Pega a MENOR data por amostrador (1º envio) e só preenche quem ainda NÃO
@@ -379,15 +405,14 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             for rid in resultado_faltam:   # auto-data o resultado (RA) — pelo nome do laudo
                 conn.execute("UPDATE amostradores SET data_resultado=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                              (resultado_por_id[rid], rid))
-            # Reconciliação de status de ALTA CONFIANÇA (mantém o inventário confiável):
-            # 'reservado' não existe no fluxo (→ lab se enviado, senão disponível);
-            # laboratório com resultado → concluído. (disponivel+envio NÃO mexe — reuso.)
-            for rr in conn.execute("SELECT id, status, data_envio_lab, data_resultado FROM amostradores WHERE COALESCE(arquivado,0)=0").fetchall():
-                rd = row_to_dict(rr); _st = (rd.get('status') or '').strip()
-                _ev = (rd.get('data_envio_lab') or '').strip(); _rs = (rd.get('data_resultado') or '').strip()
-                _nv = ('laboratorio' if _ev else 'disponivel') if _st == 'reservado' else ('concluido' if (_st == 'laboratorio' and _rs) else None)
-                if _nv and _nv != _st:
-                    conn.execute("UPDATE amostradores SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?", (_nv, rd['id']))
+            # Reconciliação de ALTA CONFIANÇA: laboratório com resultado (RA) → concluído.
+            # 'reservado' é status legítimo escolhido na UI e NÃO é mais apagado aqui
+            # (fix 03/07/2026 — a job zerava a reserva do técnico a cada 3h).
+            conn.execute("UPDATE amostradores SET status='concluido', atualizado_em=CURRENT_TIMESTAMP "
+                         "WHERE COALESCE(arquivado,0)=0 AND status='laboratorio' "
+                         "AND COALESCE(data_resultado,'') <> ''")
+            if max_visto and max_visto != watermark:
+                _kv_set(conn, 'lab_watermark', max_visto)
             if pendentes is not None:
                 _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
             if resultados:

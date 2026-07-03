@@ -116,8 +116,9 @@ _STATUS_LEGADO = {
     'devolvido': 'devolvido',
     'manutencao': 'manutencao', 'manutenção': 'manutencao',
     'descartado': 'descartado',
-    # estado fantasma removido → devolve ao estoque
-    'utilizado': 'disponivel', 'utilizado?': 'disponivel', 'verificar': 'disponivel',
+    # 'utilizado' = saiu a campo → NUNCA volta ao estoque (fix 03/07/2026:
+    # antes mapeava p/ 'disponivel' e o amostrador usado reaparecia como novo)
+    'utilizado': 'laboratorio', 'utilizado?': 'laboratorio', 'verificar': 'disponivel',
 }
 
 def normalizar_status_amostrador(raw):

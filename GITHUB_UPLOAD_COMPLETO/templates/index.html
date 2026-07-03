@@ -12287,7 +12287,11 @@ async function ctrlNvBuscarAgente(nome) {
       <div style="margin-top:4px; font-size:.72rem;">Tipos compatíveis: ${tipos.join(', ') || '—'} · Estoque/Total → ${detalhes}</div>`;
 
     // Popular dropdown de amostradores compatíveis em estoque
-    const disponiveis = (d.amostradores || []).filter(a => (a.status||'').toLowerCase().includes('estoque'));
+    // (backend manda status canônico 'disponivel' — 'estoque' só existia em dado legado)
+    const disponiveis = (d.amostradores || []).filter(a => {
+      const st = (a.status||'').toLowerCase();
+      return st.includes('dispon') || st.includes('estoque');
+    });
     if (!disponiveis.length) {
       selAm.innerHTML = `<option value="">⚠ Sem amostrador em estoque (${tipos.join(',')})</option>`;
     } else {
