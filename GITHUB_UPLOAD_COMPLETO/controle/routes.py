@@ -473,14 +473,18 @@ def baixa_simples_lote():
     obs          = d.get('observacao', '')
 
     empresa_id = None
+    empresa_nao_encontrada = False
     if empresa_nome:
         with get_db() as conn:
             row = conn.execute(
-                "SELECT id FROM empresas WHERE lower(nome) LIKE lower(?) LIMIT 1",
+                "SELECT id FROM empresas WHERE lower(nome) LIKE lower(?) "
+                "ORDER BY length(nome) LIMIT 1",
                 (f'%{empresa_nome}%',)
             ).fetchone()
             if row:
                 empresa_id = row['id']
+            else:
+                empresa_nao_encontrada = True
 
     ph = ','.join(['?'] * len(ids))
     obs_final = obs or (f'Baixa rápida — {empresa_nome}' if empresa_nome else 'Baixa rápida')
@@ -488,6 +492,12 @@ def baixa_simples_lote():
     with get_db() as conn:
         # data_envio_lab não é carimbada aqui (fix 03/07/2026): a data real de envio
         # vem do lab sync / lançamento manual — carimbar zerava a métrica coleta→lab.
+        # Conta os elegíveis (disponivel/reservado) — o COUNT antigo somava TODOS
+        # os ids selecionados, inflando o "afetados".
+        afetados = conn.execute(
+            f"SELECT COUNT(*) AS c FROM amostradores "
+            f"WHERE id IN ({ph}) AND status IN ('disponivel','reservado')", ids
+        ).fetchone()['c']
         conn.execute(
             f"""UPDATE amostradores
                 SET status='laboratorio', avaliador=?, data_medicao=?,
@@ -496,15 +506,15 @@ def baixa_simples_lote():
                 WHERE id IN ({ph}) AND status IN ('disponivel','reservado')""",
             [avaliador, data_med, obs_final, empresa_id] + ids
         )
-        afetados = conn.execute(
-            f"SELECT COUNT(*) AS c FROM amostradores WHERE id IN ({ph})", ids
-        ).fetchone()['c']
 
     user = getattr(current_user, 'email', 'sistema') if current_user.is_authenticated else 'sistema'
     for aid in ids:
         registrar_evento('amostrador_atualizado', f'Baixa rápida — {empresa_nome or "s/empresa"}',
                          aid, 'amostrador', user)
-    return jsonify({'ok': True, 'afetados': afetados})
+    resp = {'ok': True, 'afetados': afetados}
+    if empresa_nao_encontrada:
+        resp['aviso'] = f'Empresa "{empresa_nome}" não encontrada — baixa sem vincular empresa.'
+    return jsonify(resp)
 
 
 @controle_bp.route('/amostradores/concluir', methods=['POST'])
@@ -520,26 +530,40 @@ def concluir_amostradores():
     obs          = d.get('observacao', '')
 
     empresa_id = None
+    empresa_nao_encontrada = False
     if empresa_nome:
         with get_db() as conn:
+            # ORDER BY length(nome): entre vários que contêm o texto, pega o nome
+            # mais curto (mais próximo do buscado) em vez de um arbitrário.
             row = conn.execute(
-                "SELECT id FROM empresas WHERE lower(nome) LIKE lower(?) LIMIT 1",
+                "SELECT id FROM empresas WHERE lower(nome) LIKE lower(?) "
+                "ORDER BY length(nome) LIMIT 1",
                 (f'%{empresa_nome}%',)
             ).fetchone()
             if row:
                 empresa_id = row['id']
+            else:
+                empresa_nao_encontrada = True
 
     ph = ','.join(['?'] * len(ids))
     obs_final = obs or (f'Concluído — {empresa_nome}' if empresa_nome else 'Concluído')
 
+    # Guarda: não re-concluir nem "concluir" um descartado. Conta os REALMENTE
+    # afetados (elegíveis) em vez de len(ids), que fingia sucesso total.
     with get_db() as conn:
+        afetados = conn.execute(
+            f"SELECT COUNT(*) AS c FROM amostradores "
+            f"WHERE id IN ({ph}) AND status NOT IN ('concluido','descartado')",
+            ids
+        ).fetchone()['c']
         conn.execute(
             f"""UPDATE amostradores
                 SET status='concluido', observacao=?,
                     data_conclusao=COALESCE(data_conclusao, ?),
                     empresa_id=COALESCE(?,empresa_id),
                     atualizado_em=CURRENT_TIMESTAMP
-                WHERE id IN ({ph})""",
+                WHERE id IN ({ph})
+                  AND status NOT IN ('concluido','descartado')""",
             [obs_final, datetime.now().strftime('%Y-%m-%d'), empresa_id] + ids
         )
 
@@ -547,7 +571,10 @@ def concluir_amostradores():
     for aid in ids:
         registrar_evento('amostrador_atualizado', f'Concluído — {empresa_nome or "s/empresa"}',
                          aid, 'amostrador', user)
-    return jsonify({'ok': True, 'afetados': len(ids)})
+    resp = {'ok': True, 'afetados': afetados}
+    if empresa_nao_encontrada:
+        resp['aviso'] = f'Empresa "{empresa_nome}" não encontrada — concluído sem vincular empresa.'
+    return jsonify(resp)
 
 
 @controle_bp.route('/amostradores/concluir-utilizados', methods=['POST'])
