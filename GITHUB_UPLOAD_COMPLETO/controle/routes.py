@@ -120,6 +120,15 @@ def _sanitize_rl(obj):
     return obj
 
 
+def _qint(name, default, maximo=None):
+    """Inteiro da query string com fallback seguro — evita HTTP 500 com ?x=abc."""
+    try:
+        v = int(request.args.get(name, default))
+    except (TypeError, ValueError):
+        v = default
+    return min(v, maximo) if maximo is not None else v
+
+
 # Ferramentas de manutenção/diagnóstico e endpoints de debug: só admin (regra 9).
 # O frontend já esconde os botões de não-admin, mas a trava real tem de ser aqui —
 # senão um técnico chama o endpoint direto e altera/apaga dados operacionais.
@@ -298,7 +307,7 @@ def import_planner():
 def get_sync_log():
     """Retorna historico das ultimas importacoes."""
     init_db()
-    return jsonify(list_sync_log(limit=int(request.args.get('limit', 20))))
+    return jsonify(list_sync_log(limit=_qint('limit', 20)))
 
 
 # ── Auditoria ──────────────────────────────────────────────────────────
@@ -306,7 +315,7 @@ def get_sync_log():
 @login_required
 def get_eventos():
     init_db()
-    limit = min(int(request.args.get('limit', 100)), 500)
+    limit = _qint('limit', 100, 500)
     tipo = request.args.get('tipo')
     with get_db() as conn:
         sql = 'SELECT * FROM eventos WHERE 1=1'
@@ -1586,7 +1595,7 @@ def get_empresas():
     """Lista/busca empresas. Param ?q= filtra por nome ou CNPJ."""
     init_db()
     q = request.args.get('q', '').strip()
-    limit = min(int(request.args.get('limit', 100)), 200)
+    limit = _qint('limit', 100, 200)
     sql = "SELECT * FROM empresas WHERE 1=1"
     params = []
     if q:
@@ -5699,7 +5708,7 @@ def get_operacional_buckets():
 def get_raw_tasks():
     """Raw tasks do Planner (staging — todas, com status do pipeline)."""
     init_db()
-    limit = min(int(request.args.get('limit', 200)), 1000)
+    limit = _qint('limit', 200, 1000)
     filtros = {k: v for k, v in request.args.to_dict().items() if k != 'limit'}
     return jsonify(list_raw_tasks(filtros, limit=limit))
 
@@ -6299,7 +6308,7 @@ def graph_debug_anexo():
     from .graph import graph_get
     from .lab_inbox import LAB_DOM, _norm, _extrair_texto_anexo, _codigos_no_texto
     mailbox = request.args.get('mailbox', 'engenharia7@ocupacional.com.br')
-    limite = int(request.args.get('limite', 2))
+    limite = _qint('limite', 2)
     try:
         data = graph_get(
             f"/users/{mailbox}/mailFolders/sentitems/messages"
@@ -6357,7 +6366,7 @@ def graph_debug_resultado():
     from .graph import graph_get
     from .lab_inbox import _classificar, _extrair_texto_anexo, _codigos_no_texto
     mailbox = request.args.get('mailbox', 'engenharia19@ocupacional.com.br')
-    limite = int(request.args.get('limite', 2))
+    limite = _qint('limite', 2)
     try:
         data = graph_get(
             f"/users/{mailbox}/mailFolders/inbox/messages"
@@ -7749,7 +7758,7 @@ def consistencia_listar():
     """Lista divergências com filtros opcionais."""
     init_db()
     status = request.args.get('status', 'aberta')
-    limit  = min(int(request.args.get('limit', 100)), 500)
+    limit  = _qint('limit', 100, 500)
     tipo   = request.args.get('tipo')
     sev    = request.args.get('severidade')
     try:
@@ -7841,7 +7850,7 @@ def consistencia_alertas():
     """Lista alertas operacionais ativos."""
     init_db()
     status = request.args.get('status', 'ativo')
-    limit  = min(int(request.args.get('limit', 50)), 200)
+    limit  = _qint('limit', 50, 200)
     with get_db() as conn:
         rows = conn.execute(
             'SELECT * FROM alertas_operacionais WHERE status=? ORDER BY criado_em DESC LIMIT ?',

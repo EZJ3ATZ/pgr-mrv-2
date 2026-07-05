@@ -157,7 +157,11 @@ def nova_visita():
 @mobile_bp.route('/api/empresas')
 def api_empresas():
     q = (request.args.get('q') or '').strip()
-    limit = min(int(request.args.get('limit', 8) or 8), 20)
+    # 'or 8' só cobria vazio; ?limit=abc ainda estourava int() -> 500. Guarda real:
+    try:
+        limit = min(int(request.args.get('limit', 8) or 8), 20)
+    except (TypeError, ValueError):
+        limit = 8
     if len(q) < 2:
         return jsonify([])
     try:
