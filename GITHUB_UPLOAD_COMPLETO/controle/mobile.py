@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash
 from .db import (
     get_db, init_db, row_to_dict,
     list_planejamentos, get_planejamento,
-    criar_visita, concluir_visita,
+    criar_visita, concluir_visita, registrar_evento,
 )
 
 mobile_bp = Blueprint('mobile', __name__, url_prefix='/mobile')
@@ -284,13 +284,28 @@ def api_salvar_visita():
             'trabalhadores_json':     data.get('trabalhadores_json'),
         })
 
-        _salvar_assinatura(vid, data.get('assinatura_data_url'),
+        assinatura_ok = _salvar_assinatura(vid, data.get('assinatura_data_url'),
                            data.get('assinatura_empresa_data_url'),
                            assinante_nome=data.get('assinante_nome'),
                            assinante_cargo=data.get('assinante_cargo') or data.get('cargo_acompanhante'),
                            sem_assinatura_motivo=data.get('sem_assinatura_motivo'))
-        _salvar_fotos(vid, data.get('fotos'))
-        return jsonify({'ok': True, 'visita_id': vid})
+        fotos_ok = _salvar_fotos(vid, data.get('fotos'))
+        resp = {'ok': True, 'visita_id': vid}
+        if not (assinatura_ok and fotos_ok):
+            # Visita gravada, mas a evidência (assinatura/foto) falhou. Antes isso
+            # era engolido e a API dizia "ok" — a evidência sumia sem rastro.
+            faltou = ', '.join(x for x, ok in
+                               (('assinatura', assinatura_ok), ('fotos', fotos_ok)) if not ok)
+            try:
+                registrar_evento('visita_evidencia_falhou',
+                                 f'Visita {vid}: falha ao gravar {faltou}.',
+                                 vid, 'visita', _usuario())
+            except Exception:
+                pass
+            resp['assinatura_ok'] = assinatura_ok
+            resp['fotos_ok'] = fotos_ok
+            resp['aviso'] = f'Visita salva, mas falhou ao gravar {faltou}. Refaça pelo desktop.'
+        return jsonify(resp)
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'ok': False, 'erro': str(e)}), 500
@@ -331,7 +346,7 @@ def _salvar_assinatura(visita_id, data_url, data_url_empresa=None,
     data-hora e o texto de ciência (Diretriz Mestra). Guarda a data-URL
     base64 inteira — o filesystem do Railway é efêmero."""
     if not visita_id:
-        return
+        return False
     def _ok(u):
         return bool(u) and str(u).startswith('data:image/')
     try:
@@ -348,22 +363,24 @@ def _salvar_assinatura(visita_id, data_url, data_url_empresa=None,
             elif sem_assinatura_motivo:
                 conn.execute("UPDATE visitas_tecnicas SET sem_assinatura_motivo=? WHERE id=?",
                              (str(sem_assinatura_motivo).strip(), visita_id))
-    except Exception as e:
+        return True
+    except Exception:
         import traceback; traceback.print_exc()
+        return False
 
 
 def _salvar_fotos(visita_id, fotos):
     """Persiste fotos da visita no banco (visita_fotos).
     fotos: [{categoria: ambiente|atividade|equipamentos, data: dataURL, legenda}]"""
     if not visita_id or not fotos:
-        return
+        return True   # nada a salvar não é falha
     if isinstance(fotos, str):
         try:
             fotos = json.loads(fotos)
         except Exception:
-            return
+            return False
     if not isinstance(fotos, list):
-        return
+        return False
     try:
         with get_db() as conn:
             for f in fotos[:30]:  # teto de sanidade por visita
@@ -378,8 +395,10 @@ def _salvar_fotos(visita_id, fotos):
                 conn.execute(
                     'INSERT INTO visita_fotos (visita_id, categoria, data, legenda) VALUES (?,?,?,?)',
                     (visita_id, cat, data, (f.get('legenda') or '')[:300]))
+        return True
     except Exception:
         import traceback; traceback.print_exc()
+        return False
 
 
 def _fmt_data(iso: str) -> str:

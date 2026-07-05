@@ -839,7 +839,7 @@ async function salvarVisita(e){
     try{
       const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await r.json();
-      if(r.ok && data.ok){ showToast('✅ Visita salva!'); finalizar(); return; }
+      if(r.ok && data.ok){ showToast(data.aviso ? '⚠ '+data.aviso : '✅ Visita salva!', data.aviso?4200:2800); finalizar(); return; }
       throw new Error(data.erro||'Erro desconhecido');
     }catch(err){ showToast('⚠ Erro online — salvando offline: '+err.message); }
   }
