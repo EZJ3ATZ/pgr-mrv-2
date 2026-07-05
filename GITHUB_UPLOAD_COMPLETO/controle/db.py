@@ -2910,7 +2910,10 @@ def concluir_visita(vid: int, data: dict) -> bool:
               _j(data.get('agentes_executados')),
               _j(data.get('agentes_nao_executados')),
               _j(data.get('agentes_adicionados')),
-              data.get('justificativa_causa'),
+              # O mobile envia a chave 'justificativa'; o desktop pode mandar
+              # 'justificativa_causa'. Sem o fallback, toda visita de campo
+              # gravava causa NULL e o relatório "não executados" mostrava "—".
+              data.get('justificativa_causa') or data.get('justificativa'),
               int(data.get('cobravel', 0)),
               data.get('observacao'),
               data.get('acompanhante'),
