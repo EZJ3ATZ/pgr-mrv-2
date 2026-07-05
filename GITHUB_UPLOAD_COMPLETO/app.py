@@ -993,6 +993,7 @@ def index():
 
 
 @app.route('/extrair', methods=['POST'])
+@login_required
 def extrair():
     if 'pdf' not in request.files:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
@@ -1003,6 +1004,7 @@ def extrair():
     return jsonify(dados)
 
 @app.route('/gerar', methods=['POST'])
+@login_required
 def gerar():
     data = request.json
     nome   = xclean(data.get('nome','').strip())
@@ -1931,6 +1933,7 @@ def gerar_calor_bytes(d):
     return zout.getvalue()
 
 @app.route('/gerar_calor', methods=['POST'])
+@login_required
 def gerar_calor():
     data = request.json
     if not data or not data.get('empresa',{}).get('razaoSocial','').strip():
@@ -2479,6 +2482,7 @@ def gerar_quimico_bytes(d):
 
 
 @app.route('/gerar_quimico', methods=['POST'])
+@login_required
 def gerar_quimico():
     data = request.json
     if not data or not data.get('empresa', {}).get('razaoSocial', '').strip():
@@ -2503,6 +2507,7 @@ def gerar_quimico():
 
 # ── API: Usuários/Técnicos ────────────────────────────────────────────
 @app.route('/api/tecnicos')
+@login_required
 def api_tecnicos():
     """Retorna todos os usuários ativos para uso como técnico elaborador."""
     try:
@@ -2622,6 +2627,7 @@ def api_pump_sns():
 
 # ── API: Convert lab result PDF to base64 JPG images + extract data ──
 @app.route('/api/convert_laudo', methods=['POST'])
+@login_required
 def api_convert_laudo():
     try:
         import fitz
@@ -2788,6 +2794,7 @@ def api_convert_laudo():
 
 # ── API: Parse chain of custody Excel (Uniscientific format) ─────────
 @app.route('/api/parse_cadeia', methods=['POST'])
+@login_required
 def api_parse_cadeia():
     try:
         import openpyxl
@@ -3489,6 +3496,7 @@ def gerar_ruido_bytes(d):
 
 # ── API: Parse dosimeter PDF ──────────────────────────────────────────
 @app.route('/api/parse_dosimetro', methods=['POST'])
+@login_required
 def api_parse_dosimetro():
     try:
         import fitz
@@ -3591,6 +3599,7 @@ def api_parse_dosimetro():
 
 # ── Rota: Gerar laudo de ruído ────────────────────────────────────────
 @app.route('/gerar-ruido', methods=['POST'])
+@login_required
 def gerar_ruido():
     try:
         d = request.get_json(force=True)
