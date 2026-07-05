@@ -21,13 +21,15 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-# Sufixos societários a ignorar no matching de nome
+# Sufixos a ignorar no matching de nome — SÓ formas societárias/estruturais.
+# NÃO inclui palavras de ramo (engenharia, comercio, industria, servicos,
+# construtora, solucoes...): elas distinguem empresas. Antes, "ABC Engenharia"
+# e "ABC Comercio" viravam ambas "abc" -> similaridade 1.0 -> demanda vinculada
+# à empresa ERRADA com score 1.0. Removê-las torna o match conservador (o que
+# não bate vira pendente p/ validação manual, que é o comportamento seguro).
 _SUFIXOS = {
     'ltda', 'sa', 'ssa', 'eireli', 'me', 'epp', 'ss', 'scp',
-    'filial', 'matriz', 'holding', 'grupo', 'industria', 'industrias',
-    'ind', 'com', 'comercio', 'servicos', 'servico', 'solucoes',
-    'engenharia', 'construtora', 'construcoes', 'construcao',
-    'associacao', 'fundacao', 'sindicato', 'cooperativa',
+    'filial', 'matriz', 'holding', 'grupo',
 }
 
 # Regex para extrair número de OS do título
