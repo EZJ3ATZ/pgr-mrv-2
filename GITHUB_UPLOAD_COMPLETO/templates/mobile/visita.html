@@ -630,6 +630,10 @@ async function salvarVisita(e) {
   const body = {};
   fd.forEach((v, k) => { if (v !== '' && v !== null) body[k] = v; });
   if (_fotos.length) body.fotos = _fotos;
+  // UUID de idempotência: gerado 1x aqui e reenviado igual no retry/offline,
+  // para o servidor não duplicar a visita.
+  body.client_uuid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                     : (Date.now() + '-' + Math.random().toString(36).slice(2));
 
   const url = '/mobile/api/visita';
 

@@ -319,6 +319,9 @@ async function salvarNova(e) {
   const body = {};
   fd.forEach((v, k) => { if (v) body[k] = v; });
   body.tipo_visita = body.tipo_visita || 'medicao';
+  // UUID de idempotência (reenviado igual no retry/offline -> servidor não duplica)
+  body.client_uuid = (self.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                     : (Date.now() + '-' + Math.random().toString(36).slice(2));
 
   const url = '/mobile/api/visita';
 

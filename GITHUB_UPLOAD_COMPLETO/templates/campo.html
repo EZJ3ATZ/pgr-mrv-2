@@ -831,6 +831,8 @@ async function salvarVisita(e){
   const fd=new FormData(document.getElementById('formCampo'));
   const body={}; fd.forEach((v,k)=>{ if(v!=='' && v!==null) body[k]=v; });
   if(_fotos.length) body.fotos=_fotos;
+  // UUID de idempotencia (reenviado igual no retry/offline -> servidor nao duplica)
+  body.client_uuid=(self.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+'-'+Math.random().toString(36).slice(2));
 
   const url='/mobile/api/visita';
   if (navigator.onLine){

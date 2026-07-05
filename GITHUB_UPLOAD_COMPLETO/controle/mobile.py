@@ -201,6 +201,18 @@ def api_salvar_visita():
         init_db()
         data = request.get_json(force=True) or {}
 
+        # Idempotência: se esta visita (mesmo client_uuid) já foi gravada, não
+        # duplica — reenvio via retry/fila offline/background sync devolve a
+        # existente. O UNIQUE index em client_uuid é o backstop contra corrida.
+        cuid = (data.get('client_uuid') or '').strip()
+        if cuid:
+            with get_db() as conn:
+                _ex = conn.execute(
+                    'SELECT id FROM visitas_tecnicas WHERE client_uuid=? LIMIT 1', (cuid,)
+                ).fetchone()
+            if _ex:
+                return jsonify({'ok': True, 'visita_id': row_to_dict(_ex)['id'], 'duplicada': True})
+
         # ── Relatório de Visita é OBRIGATÓRIO (Diretriz Mestra) ──────────
         resultado = data.get('resultado', 'concluido')
         nao_exec  = _parse_lista(data.get('agentes_nao_executados')) or []
@@ -252,6 +264,7 @@ def api_salvar_visita():
             'observacao_geral':   data.get('observacao') or data.get('observacao_geral'),
             'acompanhante':       data.get('acompanhante'),
             'cargo_acompanhante': data.get('cargo_acompanhante'),
+            'client_uuid':        cuid or None,
         })
 
         concluir_visita(vid, {

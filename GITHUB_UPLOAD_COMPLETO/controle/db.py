@@ -966,6 +966,15 @@ def _migrate(conn):
     _add_col(conn, 'visitas_tecnicas', 'imprevisto_tipo',       'TEXT DEFAULT NULL')
     _add_col(conn, 'visitas_tecnicas', 'sem_assinatura_motivo', 'TEXT DEFAULT NULL')
 
+    # Idempotência do save mobile/offline: UUID gerado 1x no cliente por visita.
+    # Reenvio (retry, fila offline, background sync) não cria visita duplicada.
+    _add_col(conn, 'visitas_tecnicas', 'client_uuid', 'TEXT DEFAULT NULL')
+    try:
+        conn.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_visita_client_uuid '
+                     'ON visitas_tecnicas(client_uuid) WHERE client_uuid IS NOT NULL')
+    except Exception as e:
+        print(f'[migrate] idx_visita_client_uuid: {e}')
+
     # Fotos da visita persistidas NO BANCO (filesystem do Railway é efêmero).
     # categoria: ambiente | atividade | equipamentos
     _pk_vf = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
@@ -2818,7 +2827,7 @@ def criar_visita(data: dict) -> int:
     campos = ['planejamento_id', 'demanda_id', 'empresa_id', 'tecnico',
               'data_visita', 'hora_inicio', 'hora_termino',
               'tipo_visita', 'resultado', 'retrabalho', 'justificativa', 'observacao_geral',
-              'acompanhante', 'cargo_acompanhante', 'numero_os']
+              'acompanhante', 'cargo_acompanhante', 'numero_os', 'client_uuid']
     vals = {c: data.get(c) for c in campos if data.get(c) is not None}
     vals.setdefault('tipo_visita', 'medicao')
     vals.setdefault('resultado', 'pendente')
