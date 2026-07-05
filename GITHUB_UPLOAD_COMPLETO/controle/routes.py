@@ -241,6 +241,10 @@ def import_amostr():
     try:
         nome_arq = f.filename or 'arquivo.xlsx'
         res = importar_amostradores(f.read())
+        if res.get('sheets_reconhecidas', 0) == 0:
+            return jsonify({'erro': 'Arquivo não reconhecido: nenhuma aba tem o cabeçalho '
+                            'de amostradores (Status / Tipo de Amostrador / Código). '
+                            'Confira se é a planilha certa.'}), 400
         registrar_sync('amostradores', nome_arq, res.get('inserted', 0), res.get('updated', 0), user)
         return jsonify({'ok': True, **res})
     except Exception as e:
@@ -258,6 +262,9 @@ def import_med():
     try:
         nome_arq = f.filename or 'arquivo.xlsx'
         res = importar_medicoes(f.read())
+        if res.get('sheets_reconhecidas', 0) == 0:
+            return jsonify({'erro': 'Arquivo não reconhecido: nenhuma aba tem o cabeçalho '
+                            'de medições (Unidade / Agente). Confira se é a planilha certa.'}), 400
         registrar_sync('medicoes', nome_arq, res.get('medicoes_inseridas', 0), 0, user)
         return jsonify({'ok': True, **res})
     except Exception as e:
@@ -276,6 +283,10 @@ def import_planner():
     try:
         nome_arq = f.filename or 'arquivo.xlsx'
         res = importar_demandas_planner(f.read())
+        if res.get('sheets_reconhecidas', 0) == 0:
+            return jsonify({'erro': 'Arquivo não reconhecido: nenhuma aba tem o cabeçalho '
+                            'do export do Planner (Nome/Empresa + Criação/Prazo/Status). '
+                            'Confira se é a planilha certa.'}), 400
         registrar_sync('planner', nome_arq, res.get('demandas_inseridas', 0), res.get('demandas_atualizadas', 0), user)
         return jsonify({'ok': True, **res})
     except Exception as e:
