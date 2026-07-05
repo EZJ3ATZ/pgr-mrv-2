@@ -93,11 +93,13 @@ def register():
             try:
                 senha_hash = generate_password_hash(senha)
                 with get_db() as conn:
+                    # ativo=0: conta nasce PENDENTE — admin aprova na tela de usuários.
+                    # Sem isso qualquer um com e-mail @ocupacional entrava direto.
                     conn.execute(
-                        'INSERT INTO usuarios (nome, email, senha_hash, registro_mte) VALUES (?,?,?,?)',
+                        'INSERT INTO usuarios (nome, email, senha_hash, registro_mte, ativo) VALUES (?,?,?,?,0)',
                         (nome, email, senha_hash, registro_mte)
                     )
-                return redirect(url_for('auth.login') + '?ok=1')
+                return redirect(url_for('auth.login') + '?pendente=1')
             except Exception as e:
                 msg = str(e).lower()
                 if 'unique' in msg or 'duplicate' in msg:

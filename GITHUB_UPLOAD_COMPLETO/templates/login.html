@@ -410,6 +410,10 @@
     <div class="ok">✓ Cadastro realizado! Faça login abaixo.</div>
     {% endif %}
 
+    {% if request.args.get('pendente') %}
+    <div class="ok">✓ Cadastro enviado! Aguarde a aprovação do administrador para acessar.</div>
+    {% endif %}
+
     {% if request.args.get('senha_ok') %}
     <div class="ok">✓ Senha redefinida com sucesso! Faça login abaixo.</div>
     {% endif %}

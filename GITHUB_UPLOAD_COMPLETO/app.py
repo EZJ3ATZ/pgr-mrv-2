@@ -1828,7 +1828,7 @@ def gerar_calor_bytes(d):
         ok      = ibutg_m <= limite
 
         c1 = (f'O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, do Anexo Nº 3, '
-              f'na NR-09, para uma taxa de metabolismo média de {round(m_med)} W é de {_fx(limite)} IBUTG.')
+              f'na NR-15, para uma taxa de metabolismo média de {round(m_med)} W é de {_fx(limite)} IBUTG.')
         c2 = (f'O IBUTG médio encontrado foi de {_fx(ibutg_m)} ºC, ' +
               ('não ultrapassando o limite de tolerância.' if ok else 'ultrapassando o limite de tolerância.'))
 
