@@ -85,7 +85,7 @@ def _root_service_worker():
     resp = app.send_static_file('sw.js')
     resp.headers['Content-Type'] = 'application/javascript'
     resp.headers['Service-Worker-Allowed'] = '/'
-    resp.headers['Cache-Control'] = 'no-cache'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return resp
 
 # ── Rede de segurança global: handlers de erro 404/500 ────────────────
@@ -956,14 +956,7 @@ def extrair_pdf(file_bytes):
 
 # ── Rotas ─────────────────────────────────────────────────────────
 
-@app.route('/sw.js')
-def sw_js():
-    resp = send_from_directory('static', 'sw.js', mimetype='application/javascript')
-    # Nunca cachear o SW: garante que toda checagem de atualização pegue a versão nova
-    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    resp.headers['Service-Worker-Allowed'] = '/'
-    return resp
-
+# (rota /sw.js duplicada removida — a de cima, _root_service_worker, é a que vence)
 
 @app.route('/login')
 def login_redirect():
