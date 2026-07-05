@@ -864,7 +864,13 @@ async function sincronizarFila(silencioso){
   for(const item of fila){
     try{
       const r=await fetch(item.url,{method:item.method,headers:{'Content-Type':'application/json'},body:JSON.stringify(item.body)});
-      if(r.ok){ await removerFila(item.id); ok++; } else fail++;
+      // Só remove da fila com confirmação real (JSON ok:true). Sessão expirada
+      // devolve 401/HTML → o item FICA na fila em vez de sumir.
+      let saved=false;
+      if(r.ok && (r.headers.get('content-type')||'').includes('application/json')){
+        try{ saved=((await r.json())||{}).ok===true; }catch(_){ saved=false; }
+      }
+      if(saved){ await removerFila(item.id); ok++; } else fail++;
     }catch(_){ fail++; }
   }
   await atualizarBadge();

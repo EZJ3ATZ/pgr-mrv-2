@@ -31,8 +31,13 @@ def _usuario():
 def _guard():
     public = {'mobile.login_page', 'mobile.index', 'mobile.logout', 'mobile.instalar'}
     endpoint = request.endpoint or ''
-    if endpoint not in public and not current_user.is_authenticated:
-        return redirect(url_for('mobile.login_page'))
+    if endpoint in public or current_user.is_authenticated:
+        return
+    # Para a API responde 401 JSON — senão o fetch offline segue o redirect,
+    # recebe o HTML do login como 200 e a fila apaga a visita achando que salvou.
+    if (request.path or '').startswith('/mobile/api'):
+        return jsonify({'ok': False, 'erro': 'nao autenticado'}), 401
+    return redirect(url_for('mobile.login_page'))
 
 
 # ── Login / Logout ────────────────────────────────────────────────────

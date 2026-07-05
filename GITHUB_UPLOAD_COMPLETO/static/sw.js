@@ -1,5 +1,5 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v7';
+const CACHE = 'medicoes-v8';
 const SHELL = [
   '/mobile/',
   '/mobile/hoje',
@@ -106,7 +106,13 @@ async function flushQueue() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item.body),
       });
-      if (r.ok) {
+      // Só remove da fila com confirmação real (JSON ok:true). Sessão expirada
+      // devolve 401/HTML → o item FICA na fila em vez de sumir.
+      let saved = false;
+      if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
+        try { saved = ((await r.json()) || {}).ok === true; } catch (_) { saved = false; }
+      }
+      if (saved) {
         await deleteQueued(db, item.id);
       }
     } catch (_) {

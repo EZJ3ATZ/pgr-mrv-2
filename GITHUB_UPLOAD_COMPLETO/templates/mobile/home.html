@@ -143,7 +143,13 @@ async function syncOffline() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(item.body),
         });
-        if (r.ok) { await deleteQueued(db, item.id); ok++; }
+        // Só remove da fila se o servidor confirmou de fato (JSON ok:true).
+        // Sessão expirada devolve 401/HTML — nesse caso o item FICA na fila.
+        let saved = false;
+        if (r.ok && (r.headers.get('content-type') || '').includes('application/json')) {
+          try { saved = ((await r.json()) || {}).ok === true; } catch (_) { saved = false; }
+        }
+        if (saved) { await deleteQueued(db, item.id); ok++; }
         else fail++;
       } catch (_) { fail++; }
     }
