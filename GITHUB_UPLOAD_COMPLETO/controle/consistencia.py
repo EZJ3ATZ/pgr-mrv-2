@@ -340,6 +340,8 @@ def detectar_os_paradas(dias: int = 15) -> list:
     alertas = []
     with get_db() as conn:
         try:
+            # HAVING não pode referenciar alias de SELECT no PostgreSQL — repete a
+            # expressão MAX(); o filtro por criado_em é de linha, vai no WHERE.
             rows = conn.execute('''
                 SELECT d.id, d.numero_os, e.nome AS empresa_nome,
                        MAX(vt.data_visita) AS ultima_visita
@@ -349,12 +351,13 @@ def detectar_os_paradas(dias: int = 15) -> list:
                 LEFT JOIN visitas_tecnicas vt ON vt.planejamento_id = p.id
                 WHERE d.status NOT IN ('concluido','cancelado','removido')
                   AND (d.empresa_id IS NULL OR d.empresa_id > 0)
+                  AND d.criado_em < ?
                 GROUP BY d.id, d.numero_os, e.nome
-                HAVING (ultima_visita IS NULL OR ultima_visita < ?)
-                   AND d.criado_em < ?
+                HAVING MAX(vt.data_visita) IS NULL OR MAX(vt.data_visita) < ?
                 LIMIT 100
             ''', (limite, limite)).fetchall()
-        except Exception:
+        except Exception as e:
+            print(f'[consistencia] os_paradas falhou: {e}')
             return []
         for r in rows:
             r = dict(r)
@@ -402,16 +405,20 @@ def detectar_amostradores_vencendo(dias_alerta: int = 30) -> list:
     alertas = []
     with get_db() as conn:
         try:
+            # A calibração vence pela validade do certificado (cert_validade).
+            # As colunas 'proximo_calibracao'/'ativo' nunca existiram no schema —
+            # a query antiga falhava nos dois bancos e retornava [] silenciosamente.
             rows = conn.execute('''
-                SELECT id, codigo, tipo, proximo_calibracao
+                SELECT id, codigo, tipo, cert_validade AS proximo_calibracao
                 FROM amostradores
-                WHERE proximo_calibracao IS NOT NULL
-                  AND proximo_calibracao <= ?
-                  AND (ativo = 1 OR ativo IS NULL)
-                ORDER BY proximo_calibracao
+                WHERE cert_validade IS NOT NULL AND cert_validade != ''
+                  AND cert_validade <= ?
+                  AND COALESCE(arquivado, 0) = 0
+                ORDER BY cert_validade
                 LIMIT 50
             ''', (limite,)).fetchall()
-        except Exception:
+        except Exception as e:
+            print(f'[consistencia] amostradores_vencendo falhou: {e}')
             return []
         for r in rows:
             r = dict(r)
@@ -478,15 +485,19 @@ def detectar_coletas_sem_resultado(dias: int = 45) -> list:
     alertas = []
     with get_db() as conn:
         for tbl in ('coletas_ruido', 'coletas_quimico'):
+            # coletas_quimico não tem coluna 'os' (só coletas_ruido) — seleciona
+            # NULL para manter o mesmo formato de linha nas duas tabelas.
+            os_col = 'os' if tbl == 'coletas_ruido' else 'NULL AS os'
             try:
                 rows = conn.execute(f'''
-                    SELECT id, empresa_nome, data_coleta, os, status
+                    SELECT id, empresa_nome, data_coleta, {os_col}, status
                     FROM {tbl}
                     WHERE data_coleta < ?
                       AND (status IS NULL OR status NOT IN ('resultado_ok','concluido','cancelado'))
                     LIMIT 30
                 ''', (limite,)).fetchall()
-            except Exception:
+            except Exception as e:
+                print(f'[consistencia] coletas_sem_resultado {tbl} falhou: {e}')
                 continue
             for r in rows:
                 r = dict(r)
