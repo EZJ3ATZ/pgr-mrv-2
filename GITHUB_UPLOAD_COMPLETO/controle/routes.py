@@ -249,7 +249,7 @@ def import_amostr():
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/import/medicoes', methods=['POST'])
@@ -269,7 +269,7 @@ def import_med():
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/import/planner', methods=['POST'])
@@ -291,7 +291,7 @@ def import_planner():
         return jsonify({'ok': True, **res})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/sync_log')
@@ -5953,7 +5953,7 @@ def graph_debug_labels():
         return jsonify(resultado)
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/graph/debug_plan')
@@ -5990,7 +5990,7 @@ def graph_debug_plan():
         })
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/graph/debug_groups')
@@ -6017,7 +6017,7 @@ def graph_debug_groups():
         return jsonify({'total_grupos': len(grupos), 'grupos_com_planner': resultado})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/debug/demandas_fantasmas')
@@ -6056,7 +6056,7 @@ def debug_demandas_fantasmas():
         return jsonify({'total': len(result), 'demandas': result})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:2000]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/demandas/limpar-fantasmas', methods=['POST'])
@@ -7004,7 +7004,7 @@ def admin_saude():
         return jsonify(diagnostico_banco())
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:1000]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/admin/log_evento', methods=['POST'])
@@ -7740,7 +7740,7 @@ def consistencia_stats():
         return jsonify(stats_consistencia())
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/consistencia/divergencias')
@@ -7758,7 +7758,7 @@ def consistencia_listar():
         return jsonify(rows)
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/consistencia/rodar', methods=['POST'])
@@ -7772,7 +7772,7 @@ def consistencia_rodar():
         return jsonify({'ok': True, **resultado})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()[:500]}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 @controle_bp.route('/consistencia/divergencias/<int:div_id>/justificar', methods=['POST'])

@@ -2789,7 +2789,7 @@ def api_convert_laudo():
         return jsonify({'paginas': imgs, 'dadosExtraidos': dados})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 # ── API: Parse chain of custody Excel (Uniscientific format) ─────────
@@ -2959,7 +2959,7 @@ def api_parse_cadeia():
         return jsonify({'avaliacoes': avaliacoes})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -3611,7 +3611,7 @@ def api_parse_dosimetro():
         return jsonify({'dados': dados, 'tabela': tabela_img, 'histograma': histograma_img})
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 # ── Rota: Gerar laudo de ruído ────────────────────────────────────────
@@ -3636,7 +3636,7 @@ def gerar_ruido():
         )
     except Exception as e:
         import traceback
-        return jsonify({'erro': str(e), 'tb': traceback.format_exc()}), 500
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
 
 
 if __name__ == '__main__':
