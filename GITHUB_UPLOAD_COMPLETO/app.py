@@ -3151,35 +3151,52 @@ def _build_ruido_aval(av, idx, img_rids):
     rows += _r_row2('NE',                      f"{av.get('neQ5','')} dB")
     rows += _r_row2('NEN',                     f"{av.get('nenQ5','')} dB")
 
-    # Conclusão automática baseada nos valores
-    try:
-        lavg = float(str(av.get('lavgQ3',0)).replace(',','.').replace(' dB(A)',''))
-        if lavg >= 85:
-            conclusao = (f"O resultado da avaliação de ruído para o cargo de {cargo} ultrapassou "
-                         f"o LIMITE DE TOLERÂNCIA de 85,0 dB(A), sendo necessário adotar "
-                         f"medidas de controle coletivas e/ou individuais.")
-            row_color = 'FFD0D0'
-        elif lavg >= 80:
-            conclusao = (f"O resultado da avaliação de ruído para o cargo de {cargo} está acima "
-                         f"do NÍVEL DE AÇÃO de 80,0 dB(A), necessitando de adoção de medidas "
-                         f"de controle visando à redução da exposição.")
-            row_color = 'FFFACC'
-        else:
-            conclusao = (f"O resultado da avaliação de ruído para o cargo de {cargo} não "
-                         f"ultrapassou o limite de tolerância de 85,0 dB(A) estabelecido "
-                         f"pela NR-15, Anexo 1.")
-            row_color = 'D0FFD0'
-    except:
-        conclusao = av.get('conclusao', '')
-        row_color = 'FFFFFF'
+    # Conclusão automática — DUPLA: NR-15 (Q=5) e NHO-01 (Q=3), cada uma com a
+    # sua norma. Sem valor válido a conclusão daquela norma é omitida — nunca
+    # conclui "não ultrapassou" sem dado (antes o default 0 dava laudo verde).
+    _CORES = {3: 'FFD0D0', 2: 'FFFACC', 1: 'D0FFD0', 0: 'FFFFFF'}
 
-    rows += _r_row_header('CONCLUSÃO', fill=row_color, color='000000')
-    rows += (f'<w:tr><w:tc>'
-             f'<w:tcPr><w:gridSpan w:val="2"/>'
-             f'<w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/></w:tcPr>'
-             f'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
-             f'<w:t xml:space="preserve">{_r_esc(conclusao)}</w:t>'
-             f'</w:r></w:p></w:tc></w:tr>')
+    def _num_ruido(v):
+        try:
+            return float(str(v).replace(',', '.').replace(' dB(A)', '').strip())
+        except (TypeError, ValueError):
+            return None
+
+    def _conclui_ruido(valor, prefixo):
+        if valor is None:
+            return None
+        if valor >= 85:
+            return (f"{prefixo}: a exposição de {cargo} ULTRAPASSOU o limite de tolerância "
+                    f"de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou "
+                    f"individuais.", 3)
+        if valor >= 80:
+            return (f"{prefixo}: a exposição de {cargo} está acima do NÍVEL DE AÇÃO de "
+                    f"80,0 dB(A) — necessário adotar medidas de controle para reduzir a "
+                    f"exposição.", 2)
+        return (f"{prefixo}: a exposição de {cargo} NÃO ultrapassou o limite de tolerância "
+                f"de 85,0 dB(A).", 1)
+
+    # NR-15 (trabalhista) usa Q=5 — TWA, com fallback p/ LAVG Q5. NHO-01 usa Q=3 (LAVG).
+    _v_nr15 = _num_ruido(av.get('twaQ5'))
+    if _v_nr15 is None:
+        _v_nr15 = _num_ruido(av.get('lavgQ5'))
+    conclusoes = [c for c in (
+        _conclui_ruido(_v_nr15, 'Conforme NR-15, Anexo 1 (Q=5 dB)'),
+        _conclui_ruido(_num_ruido(av.get('lavgQ3')), 'Conforme NHO-01 / Fundacentro (Q=3 dB)'),
+    ) if c]
+    if not conclusoes:
+        manual = av.get('conclusao', '')
+        conclusoes = [(manual, 0)] if manual else []
+
+    header_rank = max((rk for _t, rk in conclusoes), default=0)
+    rows += _r_row_header('CONCLUSÃO', fill=_CORES[header_rank], color='000000')
+    for texto, _rk in conclusoes:
+        rows += (f'<w:tr><w:tc>'
+                 f'<w:tcPr><w:gridSpan w:val="2"/>'
+                 f'<w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/></w:tcPr>'
+                 f'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+                 f'<w:t xml:space="preserve">{_r_esc(texto)}</w:t>'
+                 f'</w:r></w:p></w:tc></w:tr>')
 
     tbl_dados = f'<w:tbl>{tbl_pr}{tbl_grid}{rows}</w:tbl>'
 
