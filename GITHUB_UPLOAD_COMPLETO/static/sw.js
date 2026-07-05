@@ -1,12 +1,14 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v8';
+const CACHE = 'medicoes-v9';
+// NÃO listar '/mobile/' aqui: responde 302 -> /mobile/hoje; cachear um redirect
+// quebra o fallback de navegação offline (o Chrome recusa response 'redirected'
+// numa navegação). O fallback usa /mobile/hoje direto. '/sw.js' também sai (o
+// handler nem o intercepta).
 const SHELL = [
-  '/mobile/',
   '/mobile/hoje',
   '/mobile/nova-visita',
   '/campo/',
   '/static/mobile.css',
-  '/sw.js',
   '/static/manifest.json',
 ];
 
@@ -14,7 +16,12 @@ const SHELL = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(c =>
-      Promise.all(SHELL.map(u => c.add(u).catch(err => console.warn('[sw] nao cacheou', u, err))))
+      // fetch manual (em vez de c.add) p/ só cachear resposta ok e NÃO-redirecionada
+      Promise.all(SHELL.map(u =>
+        fetch(u, { credentials: 'same-origin' })
+          .then(r => { if (r && r.ok && !r.redirected) return c.put(u, r); })
+          .catch(err => console.warn('[sw] nao cacheou', u, err))
+      ))
     ).then(() => self.skipWaiting())
   );
 });
@@ -52,7 +59,7 @@ self.addEventListener('fetch', e => {
           return r;
         })
         .catch(async () =>
-          (await caches.match(e.request)) || (await caches.match('/mobile/'))
+          (await caches.match(e.request)) || (await caches.match('/mobile/hoje'))
         )
     );
     return;
@@ -62,8 +69,10 @@ self.addEventListener('fetch', e => {
   if (url.pathname.startsWith('/static/')) {
     e.respondWith(
       caches.match(e.request).then(cached => cached || fetch(e.request).then(r => {
-        const clone = r.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+        if (r && r.ok) {                       // não cacheia 404/500 transitório
+          const clone = r.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
         return r;
       }))
     );
@@ -75,8 +84,10 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(e.request)
         .then(r => {
-          const clone = r.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          if (r && r.ok && !r.redirected) {    // não cacheia 401/redirect de login
+            const clone = r.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
           return r;
         })
         .catch(() => caches.match(e.request))
