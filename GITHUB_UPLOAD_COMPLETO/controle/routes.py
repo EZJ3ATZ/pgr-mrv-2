@@ -120,14 +120,50 @@ def _sanitize_rl(obj):
     return obj
 
 
+# Ferramentas de manutenção/diagnóstico e endpoints de debug: só admin (regra 9).
+# O frontend já esconde os botões de não-admin, mas a trava real tem de ser aqui —
+# senão um técnico chama o endpoint direto e altera/apaga dados operacionais.
+# Lista explícita para NÃO bloquear leituras do dashboard (ex.: /graph/status).
+_ADMIN_ONLY_EXACT = frozenset({
+    '/controle/graph/sync', '/controle/graph/lab_sync',
+    '/controle/graph/test_mail', '/controle/graph/users',
+    '/controle/amostradores/concluir-utilizados',
+    '/controle/amostradores/diagnostico',
+    '/controle/amostradores/fix_data_entrada',
+    '/controle/amostradores/normalizar_status',
+    '/controle/amostradores/reconciliar_status',
+    '/controle/empresas/mesclar_duplicatas',
+    '/controle/empresas/suspeitas',
+    '/controle/demandas/limpar-fantasmas',
+    '/controle/demandas/match-empresas',
+    '/controle/demandas/reclassificar',
+    '/controle/demandas/re-extrair',
+    '/controle/coletas/dedup',
+    '/controle/equipamentos/rebuild-frota',
+})
+
+
+def _is_admin_only(path):
+    if path.startswith('/controle/admin') or path.startswith('/controle/reset'):
+        return True
+    if path.startswith('/controle/import/') or path.startswith('/controle/graph/debug'):
+        return True
+    if path in _ADMIN_ONLY_EXACT:
+        return True
+    # /controle/empresas/<id>/excluir-fantasma
+    if path.startswith('/controle/empresas/') and path.endswith('/excluir-fantasma'):
+        return True
+    return False
+
+
 @controle_bp.before_request
 def _require_login():
     # Toda rota do controle exige login — leitura e escrita.
     # Dados operacionais (empresas, OS, coletas) não são públicos.
     if not current_user.is_authenticated:
         return jsonify({'erro': 'Login necessário', 'redirect': '/auth/login'}), 401
-    # Rotas administrativas exigem role admin
-    if request.path.startswith('/controle/admin') or request.path.startswith('/controle/reset'):
+    # Manutenção/diagnóstico/debug exigem role admin
+    if _is_admin_only(request.path):
         if getattr(current_user, 'role', '') != 'admin':
             return jsonify({'erro': 'Apenas administradores'}), 403
 
