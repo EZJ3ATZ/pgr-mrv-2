@@ -12,7 +12,23 @@ except ImportError:
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max (fotos)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-troque-em-producao')
+
+def _secret_key():
+    """Chave de sessão. Nunca usa a chave publica do repo em producao.
+    Ordem: SECRET_KEY (env) -> derivada do DATABASE_URL (secreto, estavel entre
+    restarts, unico por deploy) -> fallback de dev (so quando nao ha Postgres)."""
+    k = os.environ.get('SECRET_KEY')
+    if k:
+        return k
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url:
+        import hashlib
+        print('[app] SECRET_KEY ausente — derivando de DATABASE_URL. '
+              'Defina SECRET_KEY no Railway para desacoplar a chave do banco.')
+        return hashlib.sha256(('sst-session::' + db_url).encode()).hexdigest()
+    return 'dev-key-troque-em-producao'
+
+app.secret_key = _secret_key()
 
 # ── Observabilidade: logging estruturado + Sentry ─────────────────────
 try:
