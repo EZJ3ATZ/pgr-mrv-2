@@ -174,6 +174,10 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Busca de empresas ──────────────────────────────────────────────────
+// Escapa &<>"' — nome de empresa é texto livre (vem do Planner) e ia direto
+// pro innerHTML/onclick, permitindo injeção de HTML e quebrando com aspas.
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 let _timer = null;
 function buscarEmpresas(q) {
   clearTimeout(_timer);
@@ -184,10 +188,13 @@ function buscarEmpresas(q) {
       const r = await fetch(`/mobile/api/empresas?q=${encodeURIComponent(q)}&limit=6`);
       const empresas = await r.json();
       lista.innerHTML = empresas.map(e =>
-        `<div class="check-item" onclick="selecionarEmpresa(${e.id}, '${e.nome.replace(/'/g,"\\'")}')">
-          <span class="check-label">${e.nome}</span>
+        `<div class="check-item" data-id="${e.id}" data-nome="${esc(e.nome)}">
+          <span class="check-label">${esc(e.nome)}</span>
         </div>`
       ).join('');
+      // clique por elemento (dataset é decodificado pelo browser) — sem onclick inline
+      lista.querySelectorAll('.check-item').forEach(el =>
+        el.addEventListener('click', () => selecionarEmpresa(el.dataset.id, el.dataset.nome)));
     } catch (_) {}
   }, 300);
 }
