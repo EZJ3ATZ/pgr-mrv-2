@@ -1895,7 +1895,7 @@ def get_empresa_painel(empresa_id):
         emp['visitas_stats'] = row_to_dict(conn.execute(f"""
             SELECT COUNT(*) AS total,
                    COUNT(CASE WHEN retrabalho=1 THEN 1 END) AS retrabalho,
-                   COUNT(CASE WHEN resultado='concluida' THEN 1 END) AS concluidas
+                   COUNT(CASE WHEN resultado IN ('concluido','concluida') THEN 1 END) AS concluidas
             FROM visitas_tecnicas WHERE empresa_id IN ({ph})
         """, ids_iguais).fetchone())
 
