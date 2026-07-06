@@ -369,6 +369,57 @@ def _registrar_evento(conn, tipo: str, descricao: str, ref_id=None, ref_tipo=Non
     ''', (tipo, descricao, ref_id, ref_tipo))
 
 
+# Trava de segurança do auto-concluir: mais órfãs que isto num sync só
+# indica falha de listagem da API (ou limpeza em massa no Planner) —
+# nesse caso não conclui nada, só registra evento para revisão manual.
+_ORFAS_LIMITE_SEGURANCA = 15
+
+
+def _concluir_demandas_orfas(conn, group_id: str, seen_tids: set) -> int:
+    """
+    FASE 6 — Demanda aberta cuja task sumiu do Planner (zumbi).
+    Fluxo da equipe: OS finalizada é movida/removida do plano. A task não
+    está mais em NENHUM plano do grupo → a demanda é concluída
+    automaticamente (com evento no feed e propagação para as medições).
+    """
+    rows = conn.execute('''
+        SELECT id, titulo, planner_task_id FROM demandas
+        WHERE planner_group_id=? AND planner_task_id IS NOT NULL
+          AND status NOT IN ('concluida', 'cancelada')
+    ''', (group_id,)).fetchall()
+    orfas = [r for r in rows if r['planner_task_id'] not in seen_tids]
+    if not orfas:
+        return 0
+    if len(orfas) > _ORFAS_LIMITE_SEGURANCA:
+        _registrar_evento(
+            conn, 'planner_orfas_em_massa',
+            f'{len(orfas)} demandas abertas sem task no Planner num único sync — '
+            'auto-conclusão suspensa, revisar manualmente.')
+        log.warning('[planner_sync] %d órfãs de uma vez (limite %d) — nada concluído',
+                    len(orfas), _ORFAS_LIMITE_SEGURANCA)
+        return 0
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    for r in orfas:
+        conn.execute('''
+            UPDATE demandas SET
+                status='concluida',
+                data_conclusao=COALESCE(data_conclusao, ?),
+                observacao=TRIM(COALESCE(observacao, '') ||
+                    ' [auto] Task removida do Planner — concluída pelo sync.'),
+                atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=?
+        ''', (now, r['id']))
+        conn.execute(
+            """UPDATE medicoes SET status='realizado'
+               WHERE demanda_id=? AND status IN ('pendente','parcial')""",
+            (r['id'],))
+        _registrar_evento(conn, 'demanda_concluida_auto',
+                          f'Task sumiu do Planner → concluída: {(r["titulo"] or "")[:80]}',
+                          r['id'], 'demanda')
+    log.info('[planner_sync] %d demandas órfãs auto-concluídas', len(orfas))
+    return len(orfas)
+
+
 def _upsert_ms_user(conn, user_id: str) -> dict:
     """Busca e cacheia usuário Microsoft no banco."""
     row = conn.execute('SELECT * FROM ms_users WHERE ms_id=?', (user_id,)).fetchone()
@@ -460,6 +511,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
         'empresa_fuzzy':    0,
         'empresa_pendente': 0,
         'parse_erros':      0,
+        'orfas_concluidas': 0,
         'erros':            [],
         'label_filter':     label_filter,
         'iniciado_em':      datetime.now(timezone.utc).isoformat(),
@@ -496,6 +548,11 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
             stats['grupos'] += 1
             gid   = grupo['id']
             gnome = grupo.get('displayName', gid)
+
+            # FASE 6: rastrear TODAS as tasks vistas no grupo (qualquer plano,
+            # com ou sem label) para detectar demandas órfãs no final.
+            seen_tids    = set()
+            listagem_ok  = True
 
             try:
                 planos = get_plans_for_group(gid)
@@ -537,8 +594,10 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                 except Exception as e:
                     log.warning('[planner_sync] tarefas plano %s: %s', pnome, e)
                     stats['erros'].append(f'Plano {pnome}: {e}')
+                    listagem_ok = False  # listagem incompleta → não detectar órfãs
                     continue
 
+                seen_tids.update(t['id'] for t in tarefas)
                 stats['tarefas_total'] += len(tarefas)
                 stats['tarefas_filtradas'] += len(tarefas)
                 log.info('[planner_sync] plano "%s" → %d tarefas para processar', pnome, len(tarefas))
@@ -761,6 +820,23 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                             plano=pnome,
                             grupo=gnome,
                         )
+
+            # ── FASE 6: demandas órfãs (task sumiu do Planner) ──────────
+            # Só roda com listagem 100% completa do grupo — listagem parcial
+            # geraria falso positivo e concluiria demanda viva.
+            if planos and listagem_ok and seen_tids:
+                try:
+                    conn.commit()  # garante estado consistente antes da varredura
+                    n_orfas = _concluir_demandas_orfas(conn, gid, seen_tids)
+                    stats['orfas_concluidas'] += n_orfas
+                    conn.commit()
+                except Exception as e:
+                    log.warning('[planner_sync] órfãs grupo %s: %s', gnome, e)
+                    stats['erros'].append(f'Órfãs {gnome}: {e}')
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
 
         # Atualizar estado do último sync
         conn.execute('''
