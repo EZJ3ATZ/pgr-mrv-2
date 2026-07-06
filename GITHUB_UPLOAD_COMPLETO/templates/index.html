@@ -10204,8 +10204,9 @@ async function ctrlToggleExpandEmpresa(empresaId) {
               // Medições pendentes inline
               let medHtml = '';
               const hasMeds = !isDone && d.medicoes_pendentes && d.medicoes_pendentes.length > 0;
+              const labMeds = (!isDone && d.medicoes_aguardando_lab) ? d.medicoes_aguardando_lab : [];
               const hasLaudar = !isDone && d.laudar_tag;
-              if (hasMeds || hasLaudar) {
+              if (hasMeds || hasLaudar || labMeds.length) {
                 const meds = d.medicoes_pendentes || [];
                 medHtml = `<tr style="background:rgba(0,0,0,.2);">
                   <td colspan="7" style="padding:4px 10px 8px 40px;">
@@ -10218,6 +10219,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                           const tag = fromPlanner ? ' <span style="font-size:.6rem;opacity:.6;">Planner</span>' : '';
                           return `<span style="background:${bg};border:1px solid ${brd};padding:2px 8px;border-radius:12px;font-size:.7rem;color:var(--text2);">${_esc(m.agente)}${tag} <span style="color:var(--text3);">(${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</span></span>`;
                         }).join('')}
+                      ${labMeds.map(m => `<span style="background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);padding:2px 8px;border-radius:12px;font-size:.7rem;color:#60a5fa;" title="Planilha de campo feita — baixa automática quando o resultado (RA) chegar do laboratório">🧪 ${_esc(m.agente)} — aguardando lab</span>`).join('')}
                       ${hasLaudar ? `<span style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);padding:2px 8px;border-radius:12px;font-size:.7rem;color:#fbbf24;">📄 Laudar</span>` : ''}
                     </div>
                   </td>

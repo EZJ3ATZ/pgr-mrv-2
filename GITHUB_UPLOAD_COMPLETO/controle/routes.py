@@ -2858,18 +2858,24 @@ _KW_FISICOS = ['ruido', 'dosimetr', 'calor', 'ibutg', 'ibtug', 'termic',
                'sobrecarga', 'vibra', 'ilumin']
 
 
-def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
+def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=False):
     """Ao finalizar uma planilha de campo, dá baixa na medição pendente
     correspondente (mesma demanda + tipo de agente) marcando-a como 'realizado'.
     Assim a medição sai do pool de 'medições pendentes' e não fica disponível
     para replanejamento em outro dia.
 
+    aguardar_lab=True (química): a planilha de campo NÃO finaliza a medição —
+    ela vai para 'aguardando_lab' e só vira 'realizado' quando o resultado
+    chega do laboratório (lab_inbox detecta o RA pelo e-mail). A demanda
+    também não conclui enquanto houver medição aguardando resultado.
+
     Retorna dict:
       {'baixada': id|None, 'duplicada': bool, 'tinha_pendente': bool}
     - duplicada=True quando TODAS as medições correspondentes já estavam
-      'realizado' → sinal de planilha de campo duplicada (trava).
+      finalizadas ('realizado' ou 'aguardando_lab') → planilha duplicada (trava).
     """
     res = {'baixada': None, 'duplicada': False, 'tinha_pendente': False, 'sem_match': False}
+    _FINALIZADOS = ('realizado', 'aguardando_lab')
     if not demanda_id:
         return res
     fam = tipo or ''
@@ -2903,7 +2909,7 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
             # sem_match p/ o caller avisar e a baixa ser feita à mão.
             if not matched and fam == 'quimico':
                 pend_q = [r for r in rows
-                          if _g(r, 'status', 4) != 'realizado'
+                          if _g(r, 'status', 4) not in _FINALIZADOS
                           and not any(k in _norm_txt(_g(r, 'agente', 1)) for k in _KW_FISICOS)]
                 if len({_norm_txt(_g(r, 'agente', 1)) for r in pend_q}) == 1:
                     matched = pend_q
@@ -2912,7 +2918,7 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
                     return res
             if not matched:
                 return res  # medição avulsa (sem demanda planejada) → não trava
-            pendentes = [r for r in matched if _g(r, 'status', 4) != 'realizado']
+            pendentes = [r for r in matched if _g(r, 'status', 4) not in _FINALIZADOS]
             if not pendentes:
                 res['duplicada'] = True
                 res['tinha_pendente'] = True
@@ -2920,9 +2926,10 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None):
             alvo = pendentes[0]
             mid = _g(alvo, 'id', 0)
             prev = _g(alvo, 'qtd_pontos_prevista', 2) or 1
+            novo_status = 'aguardando_lab' if aguardar_lab else 'realizado'
             conn.execute(
-                "UPDATE medicoes SET qtd_pontos_feita=?, status='realizado' WHERE id=?",
-                (prev, mid)
+                "UPDATE medicoes SET qtd_pontos_feita=?, status=? WHERE id=?",
+                (prev, novo_status, mid)
             )
             pend = conn.execute(
                 "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
@@ -3839,7 +3846,10 @@ def api_salvar_medicao_wizard():
         if _coleta_duplicada('quimico', d.get('demanda_id'), d.get('data'), cq.get('substancias', '')):
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta planilha química (mesma OS, data e substância) já foi finalizada. Não registrada de novo.'})
-        bx = _baixar_medicao_pendente(d.get('demanda_id'), 'quimico', cq.get('substancias', ''))
+        # Química NÃO finaliza na planilha de campo: fica 'aguardando_lab' e a
+        # baixa real acontece quando o resultado (RA) chega por e-mail (lab_inbox).
+        bx = _baixar_medicao_pendente(d.get('demanda_id'), 'quimico',
+                                      cq.get('substancias', ''), aguardar_lab=True)
         if bx['duplicada']:
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição química já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
@@ -3862,6 +3872,12 @@ def api_salvar_medicao_wizard():
                 f"planilha química #{cid}: substância '{cq.get('substancias', '') or '—'}' não casou "
                 f"com nenhuma medição pendente da OS (2+ substâncias pendentes) — baixa manual necessária",
                 cid, 'coleta_quimico', tecnico_login or 'sistema', request.remote_addr)
+        if bx.get('baixada'):
+            registrar_evento(
+                'medicao_aguardando_lab',
+                f"planilha química #{cid}: medição aguardando resultado do laboratório "
+                f"(baixa automática quando o RA chegar por e-mail)",
+                bx['baixada'], 'medicao', tecnico_login or 'sistema', request.remote_addr)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico', 'medicao_baixada': bx['baixada'],
                         'medicao_sem_match': bx.get('sem_match', False),

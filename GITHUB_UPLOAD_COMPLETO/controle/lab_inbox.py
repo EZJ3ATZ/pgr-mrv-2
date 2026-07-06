@@ -15,12 +15,16 @@ Segurança: só age sobre códigos que JÁ EXISTEM no inventário (casa por cód
 tipo+código). E-mails são removidos do texto antes de extrair (evita falso-positivo
 de 'recebimento04@', 'engenharia13@', etc.).
 """
+import os
 import re
 import html
 import json
+import logging
 from datetime import datetime
 from .graph import graph_get
 from .db import get_db, row_to_dict
+
+log = logging.getLogger(__name__)
 
 MAILBOX  = 'engenharia19@ocupacional.com.br'
 LAB_DOM  = 'uniscientificgroup.com.br'
@@ -250,6 +254,107 @@ def _codigos_no_texto(texto, look=None):
     return achados
 
 
+def _baixar_medicoes_com_resultado(conn):
+    """Medição química 'aguardando_lab' → 'realizado' quando TODOS os
+    amostradores usados nas planilhas químicas da demanda têm resultado (RA).
+    Código digitado que não resolve para o inventário BLOQUEIA a baixa
+    (conservador: melhor cobrar o código certo do que baixar sem resultado —
+    por isso o número do amostrador na planilha não pode estar errado)."""
+    meds = [row_to_dict(r) for r in conn.execute(
+        "SELECT id, demanda_id, agente FROM medicoes WHERE status='aguardando_lab'"
+    ).fetchall()]
+    meds = [m for m in meds if m.get('demanda_id')]
+    if not meds:
+        return 0
+    look = {}
+    for r in conn.execute(
+            "SELECT id, codigo, tipo, data_resultado FROM amostradores "
+            "WHERE COALESCE(arquivado,0)=0").fetchall():
+        d = row_to_dict(r)
+        cod, tp = _norm(d.get('codigo')), _norm(d.get('tipo'))
+        for k in {cod, tp + cod}:
+            if k:
+                look[k] = d
+    baixadas = 0
+    for did in {m['demanda_id'] for m in meds}:
+        usados = [row_to_dict(r) for r in conn.execute(
+            """SELECT cqa.id_amostrador, cqa.tipo_amostrador
+               FROM coletas_quimico_amostr cqa
+               JOIN coletas_quimico cq ON cq.id = cqa.coleta_id
+               WHERE cq.demanda_id=? AND COALESCE(cqa.id_amostrador,'')<>''""",
+            (did,)).fetchall()]
+        if not usados:
+            continue  # planilha sem código de amostrador → sem como casar RA (baixa manual)
+        todos_com_resultado = True
+        for u in usados:
+            cod = _norm(u.get('id_amostrador'))
+            tp = _norm(u.get('tipo_amostrador'))
+            hit = look.get(tp + cod) or look.get(cod)
+            if not hit and len(cod) >= 5:
+                cands = {d['id']: d for k, d in look.items() if k.endswith(cod)}
+                hit = next(iter(cands.values())) if len(cands) == 1 else None
+            if not hit or not (hit.get('data_resultado') or ''):
+                todos_com_resultado = False
+                break
+        if not todos_com_resultado:
+            continue
+        for m in [m for m in meds if m['demanda_id'] == did]:
+            conn.execute(
+                "UPDATE medicoes SET status='realizado' "
+                "WHERE id=? AND status='aguardando_lab'", (m['id'],))
+            conn.execute(
+                "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
+                "VALUES (?,?,?,?,CURRENT_TIMESTAMP)",
+                ('medicao_baixada_lab',
+                 f"resultado do laboratório chegou → medição química baixada "
+                 f"(demanda #{did}, agente {m.get('agente') or '—'})",
+                 m['id'], 'medicao'))
+            baixadas += 1
+        rest = row_to_dict(conn.execute(
+            "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
+            (did,)).fetchone())['c']
+        if rest == 0:
+            conn.execute(
+                "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP "
+                "WHERE id=? AND status!='concluida'", (did,))
+    return baixadas
+
+
+def _alertar_resultados_atrasados(conn, dias=None):
+    """Amostrador no laboratório há mais de LAB_ATRASO_DIAS (env, default 15)
+    sem resultado → evento 'lab_resultado_atrasado' no feed (1x por amostrador)."""
+    limite = int(dias or os.environ.get('LAB_ATRASO_DIAS', '15'))
+    hoje = datetime.now().date()
+    rows = [row_to_dict(r) for r in conn.execute(
+        "SELECT id, codigo, data_envio_lab FROM amostradores "
+        "WHERE COALESCE(arquivado,0)=0 AND status='laboratorio' "
+        "AND COALESCE(data_envio_lab,'')<>'' AND COALESCE(data_resultado,'')=''"
+    ).fetchall()]
+    novos = 0
+    for r in rows:
+        try:
+            envio = datetime.strptime(str(r['data_envio_lab'])[:10], '%Y-%m-%d').date()
+        except Exception:
+            continue
+        atraso = (hoje - envio).days
+        if atraso <= limite:
+            continue
+        ja = conn.execute(
+            "SELECT 1 FROM eventos WHERE tipo='lab_resultado_atrasado' "
+            "AND ref_id=? AND ref_tipo='amostrador' LIMIT 1", (r['id'],)).fetchone()
+        if ja:
+            continue
+        conn.execute(
+            "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
+            "VALUES (?,?,?,?,CURRENT_TIMESTAMP)",
+            ('lab_resultado_atrasado',
+             f"amostrador {r.get('codigo')}: {atraso} dias no laboratório sem resultado "
+             f"(enviado em {str(r['data_envio_lab'])[:10]}, limite {limite}d)",
+             r['id'], 'amostrador'))
+        novos += 1
+    return novos
+
+
 def _kv_set(conn, chave, valor):
     """Grava em ms_sync_state (cria a tabela se preciso)."""
     conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
@@ -393,6 +498,8 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     auto_resultado = len(resultado_faltam)
 
     aplicadas = 0
+    medicoes_baixadas = 0
+    alertas_atraso = 0
     if apply:
         with get_db() as conn:
             for p in plano:
@@ -411,6 +518,16 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             conn.execute("UPDATE amostradores SET status='concluido', atualizado_em=CURRENT_TIMESTAMP "
                          "WHERE COALESCE(arquivado,0)=0 AND status='laboratorio' "
                          "AND COALESCE(data_resultado,'') <> ''")
+            # Resultado chegou → baixa medições químicas 'aguardando_lab' da OS
+            try:
+                medicoes_baixadas = _baixar_medicoes_com_resultado(conn)
+            except Exception as e:
+                log.warning('[lab_inbox] baixa de medicoes por resultado falhou: %s', e)
+            # Amostrador parado no lab além do limite → alerta no feed
+            try:
+                alertas_atraso = _alertar_resultados_atrasados(conn)
+            except Exception as e:
+                log.warning('[lab_inbox] alerta de atraso falhou: %s', e)
             if max_visto and max_visto != watermark:
                 _kv_set(conn, 'lab_watermark', max_visto)
             if pendentes is not None:
@@ -422,6 +539,8 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 'aplicadas': aplicadas,
                 'envio_auto_datados': auto_envio,
                 'resultado_auto_datados': auto_resultado,
+                'medicoes_baixadas_lab': medicoes_baixadas,
+                'alertas_atraso': alertas_atraso,
                 'resultados_total': len(resultados),
                 'por_categoria': cat_count,
                 'fetch_erros': fetch_erros,
@@ -442,6 +561,8 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
         'envio_detectado': len(envio_por_id),
         'resultado_auto_datados': auto_resultado,
         'resultado_detectado': len(resultado_por_id),
+        'medicoes_baixadas_lab': medicoes_baixadas,
+        'alertas_atraso': alertas_atraso,
         'codigos_fora_do_sistema': sorted(fora)[:30],
         'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],

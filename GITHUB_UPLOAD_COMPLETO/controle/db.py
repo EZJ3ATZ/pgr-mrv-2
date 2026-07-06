@@ -1632,9 +1632,16 @@ def get_empresa_demandas(empresa_id):
             ORDER BY d.status ASC, d.criado_em DESC
         """, ids_iguais).fetchall()]
         for d in dems:
+            # 'aguardando_lab' NÃO entra nas pendentes (não volta pro
+            # replanejamento) — vai em lista própria p/ badge "aguardando lab"
             d['medicoes_pendentes'] = [row_to_dict(r) for r in conn.execute(
                 "SELECT id, agente, tipo_amostrador, qtd_pontos_feita, qtd_pontos_prevista "
-                "FROM medicoes WHERE demanda_id=? AND status!='realizado' ORDER BY agente",
+                "FROM medicoes WHERE demanda_id=? AND status NOT IN ('realizado','aguardando_lab') "
+                "ORDER BY agente",
+                (d['id'],)).fetchall()]
+            d['medicoes_aguardando_lab'] = [row_to_dict(r) for r in conn.execute(
+                "SELECT id, agente, tipo_amostrador "
+                "FROM medicoes WHERE demanda_id=? AND status='aguardando_lab' ORDER BY agente",
                 (d['id'],)).fetchall()]
             # Fallback: quando não há medições formais, usa agentes do motor inteligente
             if not d.get('medicoes_pendentes') and d.get('status') != 'concluida':
