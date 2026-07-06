@@ -6925,17 +6925,31 @@ const TABELA_NR15 = [
   [231,29.5],[236,29.4],[241,29.3],[246,29.2],[251,29.1],[256,29.0],
   [261,28.9],[266,28.8],[272,28.7],[277,28.6],[283,28.5],[289,28.4],
   [294,28.3],[300,28.2],[306,28.1],[313,28.0],[319,27.9],[325,27.8],
-  [332,27.7],[339,27.6],[346,27.5]
+  [332,27.7],[339,27.6],[346,27.5],[353,27.4],[360,27.3],[367,27.2],
+  [374,27.1],[382,27.0],[390,26.9],[398,26.8],[406,26.7],[414,26.6],
+  [422,26.5],[431,26.4],[440,26.3],[448,26.2],[458,26.1],[467,26.0],
+  [476,25.9],[486,25.8],[496,25.7],[506,25.6],[516,25.5],[526,25.4],
+  [537,25.3],[548,25.2],[559,25.1],[570,25.0],[582,24.9],[594,24.8],
+  [606,24.7]
 ];
 
 function getLimiteNR15(m) {
+  // Quadro 1 do Anexo 3 da NR-15 (Portaria 1359/2019) — tabela completa até 606 W
   if (m <= 100) return 33.7;
-  if (m >= 346) return 27.5;
+  if (m >= 606) return 24.7;
   for (let i = 0; i < TABELA_NR15.length-1; i++) {
     const [m1,i1] = TABELA_NR15[i], [m2,i2] = TABELA_NR15[i+1];
     if (m >= m1 && m <= m2) return +(i1 + (i2-i1)*(m-m1)/(m2-m1)).toFixed(1);
   }
   return 30.0;
+}
+
+// IBUTG do ponto — TBS preenchido = céu aberto com carga solar direta
+// (0,7·tbn + 0,1·tbs + 0,2·tg); sem TBS = interno (0,7·tbn + 0,3·tg).
+// Mesma convenção da planilha de campo e do gerador do laudo (backend).
+function ibutgPonto(p) {
+  const tbn = +p.tbn||0, tg = +p.tg||0, tbs = +p.tbs||0;
+  return tbs > 0 ? 0.7*tbn + 0.1*tbs + 0.2*tg : 0.7*tbn + 0.3*tg;
 }
 
 function fmtBR(v) { return (+v).toFixed(2).replace('.',','); }
@@ -7046,10 +7060,7 @@ function updatePonto(si, pi, field, val) {
 function recalcSetor(si) {
   const pontos = setores[si].pontos;
   const totalT = pontos.reduce((s,p) => s + (+p.tempo||0), 0) || 1;
-  const ibutgMed = pontos.reduce((s,p) => {
-    const tbn = +p.tbn||0, tg = +p.tg||0, t = +p.tempo||0;
-    return s + (0.7*tbn + 0.3*tg)*t;
-  }, 0) / totalT;
+  const ibutgMed = pontos.reduce((s,p) => s + ibutgPonto(p)*(+p.tempo||0), 0) / totalT;
   const mMed = pontos.reduce((s,p) => s + (+p.M||0)*(+p.tempo||0), 0) / totalT;
   const limite = getLimiteNR15(mMed);
   const ok = ibutgMed <= limite;
@@ -7069,8 +7080,8 @@ function recalcSetor(si) {
   pontos.forEach((p,pi) => {
     const el = document.getElementById(`ibutg-${si}-${pi}`);
     if (el && p.tbn && p.tg) {
-      const v = (0.7*(+p.tbn) + 0.3*(+p.tg));
-      el.textContent = `IBUTG = ${fmtBR(v)} ºC`;
+      const v = ibutgPonto(p);
+      el.textContent = `IBUTG = ${fmtBR(v)} ºC${+p.tbs > 0 ? ' ☀️' : ''}`;
     } else if (el) el.textContent = '';
   });
 }
@@ -7102,7 +7113,7 @@ function renderSetores() {
             <th style="text-align:left;padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Local</th>
             <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tempo (min)</th>
             <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tbn (ºC)</th>
-            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tbs (ºC)</th>
+            <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;" title="Preencha o Tbs SÓ em ponto a céu aberto com carga solar direta — ativa a fórmula IBUTG = 0,7·tbn + 0,1·tbs + 0,2·tg. Ambiente interno: deixe vazio (0,7·tbn + 0,3·tg).">Tbs (ºC) ☀️</th>
             <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">Tg (ºC)</th>
             <th style="padding:4px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.68rem;">M (W)</th>
             <th style="padding:4px 6px;font-weight:600;font-size:.68rem;color:var(--orange);">IBUTG</th>
@@ -8822,7 +8833,7 @@ function _atualizarPreviewCalor() {
   if (typeof setores === 'undefined' || typeof getLimiteNR15 !== 'function') return;
   setores.forEach((s, si) => {
     const totalT = s.pontos.reduce((a,p) => a + (+p.tempo||0), 0) || 1;
-    const ibutgMed = s.pontos.reduce((a,p) => a + (0.7*(+p.tbn||0) + 0.3*(+p.tg||0))*(+p.tempo||0), 0) / totalT;
+    const ibutgMed = s.pontos.reduce((a,p) => a + ibutgPonto(p)*(+p.tempo||0), 0) / totalT;
     const mMed = s.pontos.reduce((a,p) => a + (+p.M||0)*(+p.tempo||0), 0) / totalT;
     const limite = getLimiteNR15(mMed);
     const status = ibutgMed <= limite ? 'ACEITÁVEL' : 'ACIMA DO LIMITE';

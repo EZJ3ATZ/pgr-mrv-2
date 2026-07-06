@@ -111,6 +111,24 @@ def _quer_json():
         pass
     return False
 
+# ── Trava global: role=visualizador é somente leitura ─────────────────
+# Vale para TODOS os blueprints (controle, mobile, campo) e rotas do app.
+# /auth/ fica fora para o visualizador conseguir logar e trocar a própria senha.
+@app.before_request
+def _bloquear_escrita_visualizador():
+    if request.method in ('GET', 'HEAD', 'OPTIONS'):
+        return None
+    if request.path.startswith('/auth/'):
+        return None
+    try:
+        from flask_login import current_user as _cu
+        if _cu.is_authenticated and getattr(_cu, 'role', '') == 'visualizador':
+            return jsonify({'erro': 'Seu perfil é somente leitura — ação não permitida.',
+                            'status': 403}), 403
+    except Exception:
+        pass
+    return None
+
 @app.errorhandler(404)
 def _handle_404(e):
     if _quer_json():
@@ -1084,25 +1102,57 @@ def ghe_info(cargo):
 
 # ── Laudo de Calor ────────────────────────────────────────────────────
 
+# Quadro 1 do Anexo 3 da NR-15 (redação da Portaria SEPRT 1.359/2019):
+# taxa de metabolismo média M (W) → limite de exposição IBUTG_MAX (ºC).
+# Tabela oficial completa — vai até 606 W (antes truncava em 346 e todo
+# trabalho pesado ganhava limite 27,5, mais permissivo que a norma).
+_NR15_QUADRO1 = [
+    (100,33.7),(102,33.6),(104,33.5),(106,33.4),(108,33.3),(110,33.2),
+    (112,33.1),(115,33.0),(117,32.9),(119,32.8),(122,32.7),(124,32.6),
+    (127,32.5),(129,32.4),(132,32.3),(135,32.2),(137,32.1),(140,32.0),
+    (143,31.9),(146,31.8),(149,31.7),(152,31.6),(155,31.5),(158,31.4),
+    (161,31.3),(165,31.2),(168,31.1),(171,31.0),(175,30.9),(178,30.8),
+    (182,30.7),(186,30.6),(189,30.5),(193,30.4),(197,30.3),(201,30.2),
+    (205,30.1),(209,30.0),(214,29.9),(218,29.8),(222,29.7),(227,29.6),
+    (231,29.5),(236,29.4),(241,29.3),(246,29.2),(251,29.1),(256,29.0),
+    (261,28.9),(266,28.8),(272,28.7),(277,28.6),(283,28.5),(289,28.4),
+    (294,28.3),(300,28.2),(306,28.1),(313,28.0),(319,27.9),(325,27.8),
+    (332,27.7),(339,27.6),(346,27.5),(353,27.4),(360,27.3),(367,27.2),
+    (374,27.1),(382,27.0),(390,26.9),(398,26.8),(406,26.7),(414,26.6),
+    (422,26.5),(431,26.4),(440,26.3),(448,26.2),(458,26.1),(467,26.0),
+    (476,25.9),(486,25.8),(496,25.7),(506,25.6),(516,25.5),(526,25.4),
+    (537,25.3),(548,25.2),(559,25.1),(570,25.0),(582,24.9),(594,24.8),
+    (606,24.7)]
+
 def get_limite_nr15(m_medio):
-    T = [(100,33.7),(102,33.6),(104,33.5),(106,33.4),(108,33.3),(110,33.2),
-         (112,33.1),(115,33.0),(117,32.9),(119,32.8),(122,32.7),(124,32.6),
-         (127,32.5),(129,32.4),(132,32.3),(135,32.2),(137,32.1),(140,32.0),
-         (143,31.9),(146,31.8),(149,31.7),(152,31.6),(155,31.5),(158,31.4),
-         (161,31.3),(165,31.2),(168,31.1),(171,31.0),(175,30.9),(178,30.8),
-         (182,30.7),(186,30.6),(189,30.5),(193,30.4),(197,30.3),(201,30.2),
-         (205,30.1),(209,30.0),(214,29.9),(218,29.8),(222,29.7),(227,29.6),
-         (231,29.5),(236,29.4),(241,29.3),(246,29.2),(251,29.1),(256,29.0),
-         (261,28.9),(266,28.8),(272,28.7),(277,28.6),(283,28.5),(289,28.4),
-         (294,28.3),(300,28.2),(306,28.1),(313,28.0),(319,27.9),(325,27.8),
-         (332,27.7),(339,27.6),(346,27.5)]
-    if m_medio <= 100: return 33.7
-    if m_medio >= 346: return 27.5
+    T = _NR15_QUADRO1
+    if m_medio <= T[0][0]:  return T[0][1]
+    if m_medio >= T[-1][0]: return T[-1][1]
     for i in range(len(T)-1):
         m1,i1 = T[i]; m2,i2 = T[i+1]
         if m1 <= m_medio <= m2:
             return round(i1 + (i2-i1)*(m_medio-m1)/(m2-m1), 1)
     return 30.0
+
+def _ibutg_ponto(p):
+    """IBUTG do ponto + fórmula exibida no laudo.
+    TBS preenchido (>0) = céu aberto com carga solar direta →
+    IBUTG = 0,7·tbn + 0,1·tbs + 0,2·tg (NHO 06 / Anexo 3 da NR-15).
+    Sem TBS = ambiente interno/sem carga solar → 0,7·tbn + 0,3·tg.
+    Mesma convenção da planilha de campo (TBS digitado ativa o externo)."""
+    tbn = float(p.get('tbn') or 0)
+    tg  = float(p.get('tg') or 0)
+    try:
+        tbs = float(p.get('tbs') or 0)
+    except (TypeError, ValueError):
+        tbs = 0.0
+    if tbs > 0:
+        ibutg   = round(0.7*tbn + 0.1*tbs + 0.2*tg, 1)
+        formula = f'IBUTG = (0,7 x {_fx(tbn)}) + (0,1 x {_fx(tbs)}) + (0,2 x {_fx(tg)})'
+    else:
+        ibutg   = round(0.7*tbn + 0.3*tg, 1)
+        formula = f'IBUTG = (0,7 x {_fx(tbn)}) + (0,3 x {_fx(tg)})'
+    return ibutg, formula
 
 def _fx(v):
     try: return str(round(float(v),2)).replace('.',',')
@@ -1459,31 +1509,66 @@ def _build_ix_xml(evals):
 
 
 # ── Quadros de referência da NR-15, Anexo 3 — texto padrão do laudo de calor ──
-# Valores oficiais (NR-15 Anexo 3). Para corrigir, edite aqui.
-_NR15_Q1_HEADER = ('Regime de trabalho intermitente (descanso no próprio local)', 'Leve', 'Moderada', 'Pesada')
-_NR15_Q1_ROWS = [
-    ('Trabalho contínuo',                  'até 30,0',      'até 26,7',      'até 25,0'),
-    ('45 min trabalho / 15 min descanso',  '30,1 a 30,6',   '26,8 a 28,0',   '25,1 a 25,9'),
-    ('30 min trabalho / 30 min descanso',  '30,7 a 31,4',   '28,1 a 29,4',   '26,0 a 27,9'),
-    ('15 min trabalho / 45 min descanso',  '31,5 a 32,2',   '29,5 a 31,1',   '28,0 a 30,0'),
-    ('Não é permitido o trabalho sem a adoção de medidas adequadas de controle',
-                                           'acima de 32,2', 'acima de 31,1', 'acima de 30,0'),
-]
+# Redação VIGENTE (Portaria SEPRT 1.359/2019). Quadro 1 é renderizado direto
+# de _NR15_QUADRO1 (mesma tabela que calcula o limite — uma fonte só).
 # (texto, valor, categoria?) — categoria = linha-título (negrito, sem valor)
 _NR15_Q2_ROWS = [
-    ('SENTADO EM REPOUSO', '100', False),
-    ('TRABALHO LEVE', '', True),
-    ('Sentado, movimentos moderados com braços e tronco (ex.: datilografia)', '125', False),
-    ('Sentado, movimentos moderados com braços e pernas (ex.: dirigir)', '150', False),
-    ('De pé, trabalho leve em máquina ou bancada, principalmente com os braços', '150', False),
-    ('TRABALHO MODERADO', '', True),
-    ('Sentado, movimentos vigorosos com braços e pernas', '180', False),
-    ('De pé, trabalho leve em máquina ou bancada, com alguma movimentação', '175', False),
-    ('De pé, trabalho moderado em máquina ou bancada, com alguma movimentação', '220', False),
-    ('Em movimento, trabalho moderado de levantar ou empurrar', '300', False),
-    ('TRABALHO PESADO', '', True),
-    ('Trabalho intermitente de levantar, empurrar ou arrastar pesos (ex.: remoção com pá)', '440', False),
-    ('Trabalho fatigante', '550', False),
+    ('SENTADO', '', True),
+    ('Em repouso', '100', False),
+    ('Trabalho leve com as mãos', '126', False),
+    ('Trabalho moderado com as mãos', '153', False),
+    ('Trabalho pesado com as mãos', '171', False),
+    ('Trabalho leve com um braço', '162', False),
+    ('Trabalho moderado com um braço', '198', False),
+    ('Trabalho pesado com um braço', '234', False),
+    ('Trabalho leve com dois braços', '216', False),
+    ('Trabalho moderado com dois braços', '252', False),
+    ('Trabalho pesado com dois braços', '288', False),
+    ('Trabalho leve com braços e pernas', '324', False),
+    ('Trabalho moderado com braços e pernas', '441', False),
+    ('Trabalho pesado com braços e pernas', '603', False),
+    ('EM PÉ, AGACHADO OU AJOELHADO', '', True),
+    ('Em repouso', '126', False),
+    ('Trabalho leve com as mãos', '153', False),
+    ('Trabalho moderado com as mãos', '180', False),
+    ('Trabalho pesado com as mãos', '198', False),
+    ('Trabalho leve com um braço', '189', False),
+    ('Trabalho moderado com um braço', '225', False),
+    ('Trabalho pesado com um braço', '261', False),
+    ('Trabalho leve com dois braços', '243', False),
+    ('Trabalho moderado com dois braços', '279', False),
+    ('Trabalho pesado com dois braços', '315', False),
+    ('Trabalho leve com o corpo', '351', False),
+    ('Trabalho moderado com o corpo', '468', False),
+    ('Trabalho pesado com o corpo', '630', False),
+    ('EM PÉ, EM MOVIMENTO', '', True),
+    ('Andando no plano, sem carga — 2 km/h', '198', False),
+    ('Andando no plano, sem carga — 3 km/h', '252', False),
+    ('Andando no plano, sem carga — 4 km/h', '297', False),
+    ('Andando no plano, sem carga — 5 km/h', '360', False),
+    ('Andando no plano, com carga — 10 kg, 4 km/h', '333', False),
+    ('Andando no plano, com carga — 30 kg, 4 km/h', '450', False),
+    ('Correndo no plano — 9 km/h', '787', False),
+    ('Correndo no plano — 12 km/h', '873', False),
+    ('Correndo no plano — 15 km/h', '990', False),
+    ('Subindo rampa, sem carga — 5º de inclinação, 4 km/h', '324', False),
+    ('Subindo rampa, sem carga — 15º de inclinação, 3 km/h', '378', False),
+    ('Subindo rampa, sem carga — 25º de inclinação, 3 km/h', '540', False),
+    ('Subindo rampa, com carga de 20 kg — 15º de inclinação, 4 km/h', '486', False),
+    ('Subindo rampa, com carga de 20 kg — 25º de inclinação, 4 km/h', '738', False),
+    ('Descendo rampa (5 km/h), sem carga — 5º de inclinação', '243', False),
+    ('Descendo rampa (5 km/h), sem carga — 15º de inclinação', '252', False),
+    ('Descendo rampa (5 km/h), sem carga — 25º de inclinação', '324', False),
+    ('Subindo escada (80 degraus/min, degrau de 0,17 m) — sem carga', '522', False),
+    ('Subindo escada (80 degraus/min, degrau de 0,17 m) — com carga de 20 kg', '648', False),
+    ('Descendo escada (80 degraus/min, degrau de 0,17 m) — sem carga', '279', False),
+    ('Descendo escada (80 degraus/min, degrau de 0,17 m) — com carga de 20 kg', '400', False),
+    ('OUTRAS ATIVIDADES', '', True),
+    ('Trabalho moderado de braços (ex.: varrer, trabalho em almoxarifado)', '320', False),
+    ('Trabalho moderado de levantar ou empurrar', '349', False),
+    ('Trabalho de empurrar carrinhos de mão, no mesmo plano, com carga', '391', False),
+    ('Trabalho de carregar pesos ou com movimentos vigorosos com os braços (ex.: trabalho com foice)', '495', False),
+    ('Trabalho pesado de levantar, empurrar ou arrastar pesos (ex.: remoção com pá, abertura de valas)', '524', False),
 ]
 _QBORDER = ('<w:tcBorders>'
             '<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/>'
@@ -1524,21 +1609,33 @@ def _calor_para(text, size=16, italic=True):
             f'<w:t xml:space="preserve">{_xe(text)}</w:t></w:r></w:p>')
 
 def _build_quadros_xml():
-    """Quadros I e II do Anexo 3 da NR-15 — inseridos na metodologia do laudo."""
+    """Quadros 1 e 2 do Anexo 3 da NR-15 (redação da Portaria SEPRT 1.359/2019)
+    — inseridos na metodologia do laudo."""
     HDR, CAT = 'D9D9D9', 'F2F2F2'
-    g1 = [4600, 1500, 1500, 1500]
-    r1 = '<w:tr>' + ''.join(_calor_cell(h, g1[i], bold=True, fill=HDR, align='center')
-                            for i, h in enumerate(_NR15_Q1_HEADER)) + '</w:tr>'
-    for reg, lv, mo, pe in _NR15_Q1_ROWS:
-        r1 += ('<w:tr>' + _calor_cell(reg, g1[0])
-               + _calor_cell(lv, g1[1], align='center')
-               + _calor_cell(mo, g1[2], align='center')
-               + _calor_cell(pe, g1[3], align='center') + '</w:tr>')
+    # Quadro 1: M (W) → IBUTG máx (ºC), em 3 pares de colunas como no texto oficial
+    g1 = [1550, 1550, 1550, 1550, 1550, 1550]
+    ncol = 3
+    per_col = -(-len(_NR15_QUADRO1) // ncol)   # teto da divisão
+    r1 = '<w:tr>' + ''.join(
+        _calor_cell('M (W)', g1[0], bold=True, fill=HDR, align='center')
+        + _calor_cell('IBUTG MÁX (ºC)', g1[1], bold=True, fill=HDR, align='center')
+        for _ in range(ncol)) + '</w:tr>'
+    for i in range(per_col):
+        cells = ''
+        for c in range(ncol):
+            idx = c * per_col + i
+            if idx < len(_NR15_QUADRO1):
+                m, lim = _NR15_QUADRO1[idx]
+                cells += (_calor_cell(str(m), g1[0], align='center')
+                          + _calor_cell(_fx(lim), g1[1], align='center'))
+            else:
+                cells += _calor_cell('', g1[0]) + _calor_cell('', g1[1])
+        r1 += f'<w:tr>{cells}</w:tr>'
     t1 = _calor_table(g1, r1)
 
     g2 = [7600, 1500]
-    r2 = ('<w:tr>' + _calor_cell('Tipo de Atividade', g2[0], bold=True, fill=HDR)
-          + _calor_cell('Kcal/h', g2[1], bold=True, fill=HDR, align='center') + '</w:tr>')
+    r2 = ('<w:tr>' + _calor_cell('Atividade', g2[0], bold=True, fill=HDR)
+          + _calor_cell('Taxa metabólica (W)', g2[1], bold=True, fill=HDR, align='center') + '</w:tr>')
     for atv, val, cat in _NR15_Q2_ROWS:
         if cat:
             r2 += ('<w:tr>' + _calor_cell(atv, g2[0], bold=True, fill=CAT)
@@ -1549,14 +1646,23 @@ def _build_quadros_xml():
     t2 = _calor_table(g2, r2)
 
     pb = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
-    return (_calor_heading('QUADROS DE REFERÊNCIA — LIMITES DE TOLERÂNCIA (NR-15, ANEXO 3)')
-            + _calor_heading('Quadro Nº 1 — Limites de Tolerância para exposição ao calor (IBUTG, ºC)', 18)
+    return (_calor_heading('QUADROS DE REFERÊNCIA — LIMITES DE EXPOSIÇÃO OCUPACIONAL AO CALOR '
+                           '(NR-15, ANEXO 3 — Portaria SEPRT Nº 1.359/2019)')
+            + _calor_para('O IBUTG é determinado conforme a NHO 06 (2ª edição — 2017) da '
+                          'Fundacentro, metodologia adotada pelo Anexo 3 da NR-15: '
+                          'IBUTG = 0,7·tbn + 0,3·tg para ambientes internos ou externos sem '
+                          'carga solar direta; IBUTG = 0,7·tbn + 0,1·tbs + 0,2·tg para '
+                          'ambientes externos com carga solar direta (tbn = temperatura de '
+                          'bulbo úmido natural; tg = temperatura de globo; tbs = temperatura '
+                          'de bulbo seco).')
+            + _calor_heading('Quadro Nº 1 — Limite de exposição ocupacional ao calor '
+                             '(taxa de metabolismo M × IBUTG máximo)', 18)
             + t1
-            + _calor_heading('Quadro Nº 2 — Taxas de Metabolismo por Tipo de Atividade', 18)
+            + _calor_heading('Quadro Nº 2 — Taxa metabólica por tipo de atividade', 18)
             + t2
-            + _calor_para('Os limites do Quadro Nº 1 são expressos em IBUTG (ºC). A taxa de '
-                          'metabolismo (M) por tipo de atividade, conforme o Quadro Nº 2, é '
-                          'utilizada na determinação do limite de tolerância aplicável a cada avaliação.')
+            + _calor_para('A taxa de metabolismo média (M) é ponderada pelo tempo, conforme o '
+                          'Quadro Nº 2, e determina o limite de exposição (IBUTG máximo) '
+                          'aplicável a cada avaliação pelo Quadro Nº 1.')
             + pb)
 
 def _build_histograma_xml(b64, add_image):
@@ -1784,9 +1890,12 @@ def gerar_calor_bytes(d):
                       lambda m: m.group(1)+_uid(m.group(2), si, offset), r)
 
     def make_data_row(pi, si, p):
-        tbn = float(p.get('tbn',0)); tbs = float(p.get('tbs',0)); tg = float(p.get('tg',0))
-        ibutg = round(0.7*tbn + 0.3*tg, 1)
-        formula = f'IBUTG = (0,7 x {_fx(tbn)}) + (0,3 x {_fx(tg)})'
+        tbn = float(p.get('tbn') or 0); tg = float(p.get('tg') or 0)
+        try:
+            tbs = float(p.get('tbs') or 0)
+        except (TypeError, ValueError):
+            tbs = 0.0
+        ibutg, formula = _ibutg_ponto(p)
         r = _bump_ids(row_data_tpl, si, (pi+1)*0x100)
         r = r.replace('>Padaria – Fritadeira<', f'>{_xe(p.get("local",f"Ponto {pi+1}"))}<')
         r = r.replace('>15<', f'>{int(float(p.get("tempo",60)))}<')
@@ -1822,7 +1931,7 @@ def gerar_calor_bytes(d):
         pontos    = setor.get('pontos',[])
 
         total_t = sum(float(p.get('tempo',60)) for p in pontos) or 1
-        ibutg_m = round(sum((0.7*float(p.get('tbn',0))+0.3*float(p.get('tg',0)))*float(p.get('tempo',60)) for p in pontos)/total_t, 1)
+        ibutg_m = round(sum(_ibutg_ponto(p)[0]*float(p.get('tempo',60)) for p in pontos)/total_t, 1)
         m_med   = sum(float(p.get('M',198))*float(p.get('tempo',60)) for p in pontos)/total_t
         limite  = get_limite_nr15(m_med)
         ok      = ibutg_m <= limite
@@ -1967,6 +2076,13 @@ def gerar_calor():
                         _ibu = round(0.7 * _tbn + 0.3 * _tg, 1)
                     except Exception:
                         _ibu = ''
+                    # TBS preenchido = céu aberto → IBUTG externo (0,7tbn+0,1tbs+0,2tg),
+                    # mesma convenção da planilha de campo e do laudo.
+                    try:
+                        _tbs = float(_p.get('tbs') or 0)
+                        _ibu_ext = round(0.7 * _tbn + 0.1 * _tbs + 0.2 * _tg, 1) if _tbs > 0 else ''
+                    except Exception:
+                        _ibu_ext = ''
                     ibutg_setores.append({
                         'setor':         _nome or (_p.get('local') or ''),
                         'duracao':       _p.get('tempo') or '',
@@ -1974,7 +2090,7 @@ def gerar_calor():
                         'tbn':           _p.get('tbn'),
                         'tg':            _p.get('tg'),
                         'ibutg_interno': _ibu,
-                        'ibutg_externo': '',
+                        'ibutg_externo': _ibu_ext,
                         'M':             _p.get('M'),
                         'regime':        _p.get('atividade') or '',
                     })
