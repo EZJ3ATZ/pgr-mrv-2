@@ -3799,7 +3799,7 @@
     <!-- View: Estoque -->
     <div id="ctrl-amostr-view-estoque">
       <div class="ctrl-filters" style="align-items:center;">
-        <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
+        <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()" style="width:190px;flex:0 0 auto;">
         <!-- status agora é controlado pelos KPIs/pipeline (fica oculto, mas o JS continua lendo o value) -->
         <select id="ctrl-f-status" onchange="ctrlLoadAmostr()" style="display:none;">
           <option value="">— Status —</option>
@@ -3811,12 +3811,12 @@
           <option value="manutencao">Manutenção</option>
           <option value="descartado">Descartado</option>
         </select>
-        <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()">
+        <select id="ctrl-f-tipo" onchange="ctrlLoadAmostr()" style="width:160px;flex:0 0 auto;">
           <option value="">— Tipo —</option>
         </select>
-        <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
+        <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()" style="width:180px;flex:0 0 auto;">
         <input type="checkbox" id="ctrl-f-arquivados" style="display:none;">
-        <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
+        <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()" style="width:200px;flex:0 0 auto;">
           <option value="entrada_asc">📅 Entrada: mais antiga</option>
           <option value="entrada_desc">📅 Entrada: mais nova</option>
           <option value="parado_desc">⏳ Mais parado</option>
