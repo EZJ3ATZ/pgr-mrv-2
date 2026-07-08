@@ -1164,6 +1164,40 @@ def _canonical_to_tipo_legado(canonical: str) -> str:
     return 'quimico'
 
 
+# Tipos do motor inteligente que NÃO são medição de campo: documento (PGR,
+# LTCAT, Laudo de Insalubridade...), ergonomia e biológico. Sem este filtro o
+# fallback de _canonical_to_tipo_legado transformava "Laudo de Periculosidade"
+# em agente QUÍMICO e ele ia parar no planejamento e na planilha de campo.
+_TIPOS_NAO_MEDICAO = {'documento', 'ergonomico', 'biologico'}
+
+
+def _eh_agente_medicao(canonical: str, tipo_motor: str = '') -> bool:
+    t = (tipo_motor or '').strip().lower()
+    if t:
+        return t not in _TIPOS_NAO_MEDICAO
+    # Sem tipo do motor: só classifica nomes CANÔNICOS conhecidos; nome livre
+    # é mantido (o _tipo_agente devolve 'documento' p/ desconhecidos e
+    # derrubaria substância digitada à mão).
+    try:
+        from .inteligencia_demandas import _tipo_agente, AGENTES_SST
+        if canonical in AGENTES_SST:
+            return _tipo_agente(canonical) not in _TIPOS_NAO_MEDICAO
+    except Exception:
+        pass
+    return True
+
+
+def _extracao_tem_agentes(extracao_json_str: str) -> bool:
+    """True se o extracao_json traz QUALQUER agente (mesmo que todos sejam
+    documento/ergonomia). Evita cair no parser antigo quando o filtro de
+    medição zerou a lista de propósito."""
+    try:
+        import json as _j
+        return bool(_j.loads(extracao_json_str or '{}').get('agentes'))
+    except Exception:
+        return False
+
+
 def _ags_de_extracao_json(extracao_json_str: str) -> list:
     """Lê agentes do extracao_json (motor inteligente) no formato legado {tipo, qtd, texto}."""
     if not extracao_json_str:
@@ -1175,7 +1209,8 @@ def _ags_de_extracao_json(extracao_json_str: str) -> list:
             {'tipo': _canonical_to_tipo_legado(a.get('canonical', '')),
              'qtd':  a.get('quantidade', 1),
              'texto': a.get('canonical', '')}
-            for a in raw_ags if a.get('canonical')
+            for a in raw_ags
+            if a.get('canonical') and _eh_agente_medicao(a.get('canonical', ''), a.get('tipo', ''))
         ]
     except Exception:
         return []
@@ -1215,7 +1250,8 @@ def _ags_multifonte(titulo: str, descricao: str, checklist_raw: str, bucket: str
             checklist=checklist, bucket=bucket or '',
         )
         return [{'tipo': _canonical_to_tipo_legado(a.canonical),
-                 'qtd': a.quantidade, 'texto': a.canonical} for a in ags]
+                 'qtd': a.quantidade, 'texto': a.canonical}
+                for a in ags if _eh_agente_medicao(a.canonical, getattr(a, 'tipo', ''))]
     except Exception:
         return []
 
@@ -1240,14 +1276,18 @@ def get_demanda_agentes(did):
         if agentes is None:
             # 1. extracao_json — já computado pelo motor no sync
             agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
+            # Extração existe mas só tinha documento/ergonomia (filtrados) →
+            # lista vazia é a RESPOSTA CERTA; não cair nos fallbacks (o parser
+            # antigo ressuscitaria o lixo).
+            so_nao_medicao = not agentes and _extracao_tem_agentes(d.get('extracao_json', ''))
             # 2. motor multifonte (título + desc + checklist + bucket)
-            if not agentes:
+            if not agentes and not so_nao_medicao:
                 agentes = _ags_multifonte(
                     d.get('titulo', ''), d.get('descricao', ''),
                     d.get('checklist', ''), d.get('planner_bucket', '')
                 )
             # 3. fallback: parser antigo (só descrição)
-            if not agentes:
+            if not agentes and not so_nao_medicao:
                 from .parser_agentes import extrair_agentes
                 agentes = extrair_agentes(d.get('descricao') or '')
 
@@ -1343,12 +1383,14 @@ def get_demanda_por_os(os_num):
         agentes = _ags_manual(d.get('agentes_manual'))
         if agentes is None:
             agentes = _ags_de_extracao_json(d.get('extracao_json', ''))
-            if not agentes:
+            # Só tinha documento/ergonomia (filtrados) → não cair nos fallbacks
+            so_nao_medicao = not agentes and _extracao_tem_agentes(d.get('extracao_json', ''))
+            if not agentes and not so_nao_medicao:
                 agentes = _ags_multifonte(
                     d.get('titulo', ''), d.get('descricao', ''),
                     d.get('checklist', ''), d.get('planner_bucket', '')
                 )
-            if not agentes:
+            if not agentes and not so_nao_medicao:
                 from .parser_agentes import extrair_agentes
                 agentes = extrair_agentes(d.get('descricao') or '')
 
