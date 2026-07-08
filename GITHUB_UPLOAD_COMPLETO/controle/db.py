@@ -1093,6 +1093,8 @@ def _migrate(conn):
         # Arquivamento automático: 30 dias após concluído (não deletar)
         'arquivado':    'INTEGER DEFAULT 0',
         'arquivado_em': 'TEXT',
+        # Reserva automática pelo planejamento (08/07/2026): plano dono da reserva
+        'reservado_por_plano': 'INTEGER',
     }
     for col, tipo in amostr_extra.items():
         _add_col(conn, 'amostradores', col, tipo)

@@ -11749,7 +11749,7 @@ async function planSalvar(status) {
       return;
     }
     // Agente químico sem bomba/amostrador/vazão → a planilha de campo sai em branco.
-    // Avisa e deixa confirmar mesmo assim (ex.: amostrador definido só no campo).
+    // TRAVA DURA (08/07): não confirma incompleto — complete ou salve como rascunho.
     const incompletos = (window._planAgentes || []).filter(a => {
       if (a.tipo !== 'quimico') return false;
       const passivo = a.vazao_faixa && a.vazao_faixa.passivo;
@@ -11760,7 +11760,8 @@ async function planSalvar(status) {
     });
     if (incompletos.length) {
       const nomes = incompletos.map(a => a.agente || a.tipo).join(', ');
-      if (!confirm(`⚠ ${incompletos.length} agente(s) químico(s) sem bomba, amostrador ou vazão:\n${nomes}\n\nSem isso, a planilha de campo do técnico sai com esses campos EM BRANCO (não puxa nada). Quer confirmar mesmo assim?`)) return;
+      alert(`⛔ Não dá para confirmar: ${incompletos.length} agente(s) químico(s) sem bomba, amostrador ou vazão:\n${nomes}\n\nSem isso a planilha de campo do técnico sai EM BRANCO. Complete os equipamentos ou salve como 💾 Rascunho.`);
+      return;
     }
   }
 
@@ -11799,6 +11800,10 @@ async function planSalvar(status) {
       // Mostrar warnings de conflito
       if (r.warnings && r.warnings.length) {
         setTimeout(() => r.warnings.forEach(w => _showToast(w, 'warn')), 600);
+      }
+      // Reserva automática de amostradores (confirmar plano)
+      if (r.reserva && r.reserva.reservados && r.reserva.reservados.length) {
+        setTimeout(() => _showToast(`🔒 ${r.reserva.reservados.length} amostrador(es) reservado(s) para este plano: ${r.reserva.reservados.join(', ')}`, 'ok'), 900);
       }
       // Limpar form
       window._planAgentes = [];

@@ -1471,6 +1471,7 @@ def api_concluir_demanda(did):
             conn.execute(
                 "UPDATE planejamentos SET status='concluido' WHERE id=? AND status != 'cancelado'",
                 (pid,))
+            _liberar_reservas_plano(pid, conn)
     registrar_evento('demanda_baixa_manual',
                      f'Baixa manual da OS {os_num or "—"} pelo técnico',
                      ref_id=did, ref_tipo='demanda',
@@ -2808,6 +2809,7 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
                     "UPDATE planejamentos SET status='concluido', atualizado_em=CURRENT_TIMESTAMP "
                     "WHERE id=? AND status != 'cancelado'",
                     (planejamento_id,))
+                _liberar_reservas_plano(planejamento_id, conn)
         except Exception as e:
             log.warning('[coleta] erro ao fechar planejamento %s: %s', planejamento_id, e)
     if not demanda_id:
@@ -2993,6 +2995,7 @@ def _baixar_amostradores_quimico(amostradores, empresa_id, avaliador, data_medic
                 for hit in alvos:
                     conn.execute(
                         "UPDATE amostradores SET status='laboratorio', "
+                        "reservado_por_plano=NULL, "
                         "empresa_id=COALESCE(?, empresa_id), "
                         "avaliador=COALESCE(NULLIF(?,''), avaliador), "
                         "data_medicao=COALESCE(NULLIF(?,''), data_medicao), "
@@ -3002,6 +3005,111 @@ def _baixar_amostradores_quimico(amostradores, empresa_id, avaliador, data_medic
     except Exception as e:
         log.warning('[quimico] baixa automatica de amostradores falhou: %s', e)
     return res
+
+
+def _sync_reserva_plano(pid, agentes, dry=False):
+    """Reserva automática de amostradores ao confirmar um planejamento.
+
+    Cada agente do plano com amostrador_codigo: disponível → 'reservado'
+    (reservado_por_plano=pid). Reservado por OUTRO plano, em laboratório ou
+    concluído/descartado → conflito (trava: quem chega depois não leva).
+    'reservado' manual sem dono é adotado pelo plano. Reservas antigas deste
+    plano cujo código saiu do plano voltam para 'disponivel'.
+
+    dry=True: só resolve e lista conflitos, não escreve nada (pré-checagem
+    antes de criar o plano).
+
+    Retorna {'reservados': [], 'conflitos': [], 'liberados': [], 'nao_encontrados': []}.
+    """
+    from .lab_inbox import _sistema_lookup, _norm
+    res = {'reservados': [], 'conflitos': [], 'liberados': [], 'nao_encontrados': []}
+    if isinstance(agentes, str):
+        import json as _j
+        try:
+            agentes = _j.loads(agentes or '[]')
+        except Exception:
+            agentes = []
+    try:
+        look = _sistema_lookup()
+        alvos, vistos = [], set()
+        for a in (agentes or []):
+            txt = (a or {}).get('amostrador_codigo') or ''
+            cod = _norm(txt)
+            tp  = _norm((a or {}).get('amostrador_tipo') or (a or {}).get('tipo_amostrador'))
+            if not cod:
+                continue
+            hit = look.get(tp + cod) or look.get(cod)
+            if not hit and len(cod) >= 5:
+                cands = {d['id']: d for k, d in look.items() if k.endswith(cod)}
+                if len(cands) == 1:
+                    hit = next(iter(cands.values()))
+            if not hit:
+                res['nao_encontrados'].append(txt.strip())
+                continue
+            if hit['id'] in vistos:
+                continue
+            vistos.add(hit['id'])
+            alvos.append((txt.strip(), hit))
+        with get_db() as conn:
+            ids_alvo = {h['id'] for _, h in alvos}
+            if not dry and pid:
+                for r in conn.execute(
+                        "SELECT id, codigo FROM amostradores "
+                        "WHERE status='reservado' AND reservado_por_plano=?", (pid,)).fetchall():
+                    rd = row_to_dict(r)
+                    if rd['id'] not in ids_alvo:
+                        conn.execute(
+                            "UPDATE amostradores SET status='disponivel', reservado_por_plano=NULL, "
+                            "atualizado_em=CURRENT_TIMESTAMP WHERE id=? AND status='reservado'",
+                            (rd['id'],))
+                        res['liberados'].append(rd.get('codigo'))
+            for txt, hit in alvos:
+                row = conn.execute(
+                    'SELECT status, reservado_por_plano, codigo FROM amostradores WHERE id=?',
+                    (hit['id'],)).fetchone()
+                st = row_to_dict(row) if row else {}
+                status = (st.get('status') or '').strip()
+                dono = st.get('reservado_por_plano')
+                if status == 'reservado' and dono and (not pid or int(dono) != int(pid)):
+                    res['conflitos'].append(f"{st.get('codigo') or txt} (já reservado pelo plano #{dono})")
+                    continue
+                if status not in ('disponivel', 'reservado'):
+                    res['conflitos'].append(f"{st.get('codigo') or txt} (status: {status or '?'})")
+                    continue
+                if not dry:
+                    conn.execute(
+                        "UPDATE amostradores SET status='reservado', reservado_por_plano=?, "
+                        "atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                        (pid, hit['id']))
+                res['reservados'].append(st.get('codigo') or txt)
+    except Exception as e:
+        log.warning('[plano] reserva de amostradores falhou: %s', e)
+    return res
+
+
+def _liberar_reservas_plano(pid, conn=None):
+    """Devolve ao estoque os amostradores ainda 'reservado' deste plano
+    (cancelado, voltou a rascunho ou concluído sem uso — o utilizado já
+    virou 'laboratorio' pela baixa da planilha química)."""
+    def _run(c):
+        cods = []
+        for r in c.execute(
+                "SELECT id, codigo FROM amostradores "
+                "WHERE status='reservado' AND reservado_por_plano=?", (pid,)).fetchall():
+            rd = row_to_dict(r)
+            c.execute(
+                "UPDATE amostradores SET status='disponivel', reservado_por_plano=NULL, "
+                "atualizado_em=CURRENT_TIMESTAMP WHERE id=?", (rd['id'],))
+            cods.append(rd.get('codigo'))
+        return cods
+    try:
+        if conn is not None:
+            return _run(conn)
+        with get_db() as c:
+            return _run(c)
+    except Exception as e:
+        log.warning('[plano] liberar reservas do plano %s falhou: %s', pid, e)
+        return []
 
 
 @controle_bp.route('/coletas/ruido', methods=['POST'])
@@ -7138,14 +7246,29 @@ def api_criar_planejamento():
         except Exception:
             pass
 
+    # ── Reserva automática de amostradores ao CONFIRMAR (com trava) ──
+    # Pré-checagem: amostrador já reservado por outro plano / no lab → 409, não cria.
+    if d.get('status') == 'confirmado':
+        _pre = _sync_reserva_plano(None, agentes, dry=True)
+        if _pre['conflitos']:
+            return jsonify({'erro': '🔒 Amostrador indisponível: '
+                            + '; '.join(_pre['conflitos'])
+                            + '. Troque o amostrador ou salve como rascunho.'}), 409
+
     try:
         pid = criar_planejamento(d)
+        reserva = None
+        if d.get('status') == 'confirmado':
+            reserva = _sync_reserva_plano(pid, agentes)
+            if reserva['nao_encontrados']:
+                _warnings.append('⚠️ Amostrador(es) não encontrado(s) no estoque (sem reserva): '
+                                 + ', '.join(reserva['nao_encontrados']))
         registrar_evento('planejamento_criado',
                          f'OS: {d.get("numero_os","—")} | Técnico: {d.get("tecnico","—")} | Status: {d.get("status","rascunho")}',
                          pid, 'planejamento',
                          current_user.nome if current_user.is_authenticated else 'sistema',
                          request.remote_addr)
-        return jsonify({'ok': True, 'id': pid, 'warnings': _warnings})
+        return jsonify({'ok': True, 'id': pid, 'warnings': _warnings, 'reserva': reserva})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
@@ -7189,14 +7312,30 @@ def api_editar_planejamento(pid):
             equip.append({'tipo': 'acelerometro', 'qtd': 1, 'obs': 'ISO 2631 / NR-9'})
         d['equipamentos_json'] = equip
 
+    # ── Reserva automática de amostradores (com trava) ──
+    _p_atual = get_planejamento(pid) or {}
+    _status_final = d.get('status') or _p_atual.get('status') or ''
+    _agentes_final = d.get('agentes_previstos', _p_atual.get('agentes_previstos'))
+    if _status_final == 'confirmado':
+        _pre = _sync_reserva_plano(pid, _agentes_final, dry=True)
+        if _pre['conflitos']:
+            return jsonify({'erro': '🔒 Amostrador indisponível: '
+                            + '; '.join(_pre['conflitos'])
+                            + '. Troque o amostrador ou salve como rascunho.'}), 409
+
     try:
         atualizar_planejamento(pid, d)
+        reserva = None
+        if _status_final == 'confirmado':
+            reserva = _sync_reserva_plano(pid, _agentes_final)
+        elif _status_final in ('rascunho', 'cancelado'):
+            _liberar_reservas_plano(pid)
         registrar_evento('planejamento_editado',
                          f'OS: {d.get("numero_os","—")} | Status: {d.get("status","—")}',
                          pid, 'planejamento',
                          current_user.nome if current_user.is_authenticated else 'sistema',
                          request.remote_addr)
-        return jsonify({'ok': True, 'id': pid})
+        return jsonify({'ok': True, 'id': pid, 'reserva': reserva})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
@@ -7311,7 +7450,23 @@ def api_update_planejamento_status(pid):
     VALIDOS = {'rascunho', 'confirmado', 'em_execucao', 'concluido', 'cancelado'}
     if status not in VALIDOS:
         return jsonify({'erro': f'status inválido. Válidos: {VALIDOS}'}), 400
+    reserva = None
+    if status == 'confirmado':
+        # import local: o bloco em_execucao abaixo também importa get_planejamento
+        # localmente, o que tornaria o nome global inacessível aqui (UnboundLocalError)
+        from .db import get_planejamento as _get_plan
+        _p = _get_plan(pid) or {}
+        _pre = _sync_reserva_plano(pid, _p.get('agentes_previstos'), dry=True)
+        if _pre['conflitos']:
+            return jsonify({'erro': '🔒 Amostrador indisponível: '
+                            + '; '.join(_pre['conflitos'])
+                            + '. Troque o amostrador no plano antes de confirmar.'}), 409
+        reserva = _sync_reserva_plano(pid, _p.get('agentes_previstos'))
     update_planejamento_status(pid, status)
+    # Devolução automática: reservas não utilizadas voltam ao estoque
+    # (utilizado já virou 'laboratorio' pela baixa da planilha química)
+    if status in ('rascunho', 'cancelado', 'concluido'):
+        _liberar_reservas_plano(pid)
     # Auto-criar fichas de coleta se status = em_execucao
     if status == 'em_execucao':
         try:
