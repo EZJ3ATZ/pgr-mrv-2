@@ -11949,8 +11949,15 @@ async function ctrlNvVincularPlanejamento(pid) {
     }
 
     // ── Preencher OS ──
+    // Se a OS já estava no campo (veio do auto-vínculo por OS), NÃO re-disparar
+    // ctrlNvOsChange — isso reescreveria o painel e apagaria a nota de vínculo.
+    // Só busca quando o vínculo veio do dropdown (campo OS estava vazio).
     const osEl = document.getElementById('ctrl-nv-os');
-    if (osEl && p.numero_os) { osEl.value = p.numero_os; ctrlNvOsChange(p.numero_os); }
+    if (osEl && p.numero_os) {
+      const jaTinhaOs = osEl.value.trim() === String(p.numero_os).trim();
+      osEl.value = p.numero_os;
+      if (!jaTinhaOs) ctrlNvOsChange(p.numero_os);
+    }
 
     // ── Preencher técnico (cabeçalho) ──
     const tecEl = document.getElementById('ctrl-nv-avaliador');
