@@ -14506,10 +14506,15 @@ function biProdDrill(idx) {
   biDrawerOpen(`${tec} — ${v.total||0} medições`, html);
 }
 function biDrawerOpen(title, html) {
-  document.getElementById('bi-drawer-title').textContent = title;
-  document.getElementById('bi-drawer-body').innerHTML = html;
   const bd = document.getElementById('bi-drawer-backdrop');
   const dr = document.getElementById('bi-drawer');
+  // O drawer nasce dentro de #tab-bi (display:none fora do BI). Movê-lo para o
+  // body na 1ª abertura permite usá-lo de qualquer aba (Amostradores usa no
+  // histórico e na vinculação de RA). position:fixed → nada muda visualmente.
+  if (bd.parentElement !== document.body) document.body.appendChild(bd);
+  if (dr.parentElement !== document.body) document.body.appendChild(dr);
+  document.getElementById('bi-drawer-title').textContent = title;
+  document.getElementById('bi-drawer-body').innerHTML = html;
   bd.style.display = 'block'; dr.style.display = 'flex';
   setTimeout(() => { dr.style.transform = 'translateX(0)'; bd.style.opacity = '1'; }, 10);
 }
