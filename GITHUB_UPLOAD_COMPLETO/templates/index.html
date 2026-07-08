@@ -13409,7 +13409,9 @@ async function ctrlAplicarMetodo(sel) {
 
 function ctrlParseRange(s) {
   if (!s) return [0,0];
-  const txt = String(s).replace(',', '.').toUpperCase();
+  // replace GLOBAL de vírgula: "0,02 A 0,2" precisa virar "0.02 A 0.2".
+  // Sem o /g só a 1ª vírgula trocava → lia [0.02, 0, 2] (vazão 10x errada).
+  const txt = String(s).replace(/,/g, '.').toUpperCase();
   const nums = [...txt.matchAll(/(\d+\.?\d*)/g)].map(m => parseFloat(m[1]));
   if (!nums.length) return [0,0];
   if (nums.length === 1) return [nums[0], nums[0]];
