@@ -615,3 +615,246 @@ def get_sync_result_salvo():
     except Exception:
         pass
     return None
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  EXTRATOR DE RA (conteúdo do PDF) + BACKFILL HISTÓRICO
+#  ---------------------------------------------------------------------
+#  O sync normal (sincronizar_lab) só olha os ~120 e-mails recentes de cada
+#  caixa → RAs de amostradores parados há meses ficaram fora da janela e nunca
+#  concluíram (bug dos "258 dias parados"). Aqui usamos $search por remetente
+#  do lab (traz TODO o histórico, ~11 meses) + leitura do PDF do laudo para
+#  extrair amostrador + funcionário + resultados e fechar o ciclo sozinho.
+#  Validado contra 4 laudos reais (08/07/2026).
+# ══════════════════════════════════════════════════════════════════════
+
+def parse_ra_pdf(nome, texto):
+    """Extrai campos estruturados de UM laudo de RA (UniScientific).
+    O texto do PyMuPDF vem com rótulos e valores desalinhados, então usamos
+    âncoras robustas em vez de 'rótulo: valor' sequencial. Retorna dict com
+    amostrador, ra_num, funcionario, funcao, setor, tecnico, metodo, datas e
+    resultados[] (agente/unidade/valor)."""
+    t = texto or ""
+    linhas = [l.strip() for l in t.splitlines() if l.strip()]
+    d = {}
+
+    # Nº do RA: "Relatório de Análise - Nº 81960959-1" ou dos 2 primeiros segmentos do nome
+    m = re.search(r'Relat[oó]rio de An[aá]lise\s*-?\s*N[ºo°]?\s*([\d-]+)', t, re.I)
+    partes = (nome or "").rsplit(".", 1)[0].split("-")
+    d["ra_num"] = m.group(1) if m else ("-".join(partes[:2]) if len(partes) >= 2 else "")
+
+    # Amostrador: 3º segmento do nome do arquivo, confirmado no corpo
+    cod_nome = partes[2].strip() if len(partes) >= 3 else ""
+    cods_corpo = re.findall(r'\b[A-Z]{2}\d{4,}[A-Z0-9]*\b', t)
+    d["amostrador"] = cod_nome or (cods_corpo[0] if cods_corpo else "")
+
+    # Função: "CALDEIREIRO (A)"
+    m = re.search(r'Fun[cç][aã]o:\s*([A-ZÀ-Ú].*)', t, re.I)
+    d["funcao"] = m.group(1).strip() if m else ""
+
+    # Funcionário avaliado: linha em CAIXA ALTA imediatamente antes de "Função:"
+    d["funcionario"] = ""
+    for i, l in enumerate(linhas):
+        if re.match(r'Fun[cç][aã]o:', l, re.I) and i > 0:
+            cand = linhas[i - 1]
+            if re.match(r'^[A-ZÀ-Ú][A-ZÀ-Ú\s]+$', cand) and len(cand) > 5:
+                d["funcionario"] = cand
+            break
+
+    # Responsável pela amostragem (técnico): nome conhecido em CAIXA ALTA
+    d["tecnico"] = ""
+    for tecn in ("HELBERT", "WESLEY", "MATHEUS"):
+        if tecn in t.upper():
+            m = re.search(rf'({tecn}[A-ZÀ-Ú\s]+)', t.upper())
+            if m:
+                d["tecnico"] = m.group(1).strip()
+                break
+
+    # Setor: linha em CAIXA ALTA imediatamente antes do nome do técnico
+    d["setor"] = ""
+    if d["tecnico"]:
+        primeiro = d["tecnico"].split()[0]
+        for i, l in enumerate(linhas):
+            if l.upper().startswith(primeiro) and i > 0:
+                cand = linhas[i - 1]
+                if re.match(r'^[A-ZÀ-Ú][A-ZÀ-Ú\s/]{2,}$', cand) and cand != d["funcionario"]:
+                    d["setor"] = cand
+                break
+
+    # Método: linha logo após "MÉTODO"
+    m = re.search(r'M[EÉ]TODO.*?\n\s*(NIOSH[^\n]+|OSHA[^\n]+|MDHS[^\n]+)', t, re.I | re.S)
+    d["metodo"] = m.group(1).strip() if m else ""
+
+    # Data da coleta: data perto de "amostragem" (não confundir com emissão/recebimento)
+    d["data_amostragem"] = ""
+    for i, l in enumerate(linhas):
+        if re.match(r'^\d{2}/\d{2}/\d{4}$', l):
+            viz = " ".join(linhas[max(0, i - 1):i + 3]).lower()
+            if "amostragem" in viz:
+                d["data_amostragem"] = l
+                break
+    m = re.search(r'Recebimento da Amostra:\s*(\d{2}/\d{2}/\d{4})', t, re.I)
+    d["data_recebimento"] = m.group(1) if m else ""
+
+    # Resultados: agente (linha anterior) + unidade + 1º valor numérico (MP 8h)
+    resultados = []
+    for i, l in enumerate(linhas):
+        if l.startswith(("mg/m", "ppm", "f/cc")):
+            agente = linhas[i - 1] if i > 0 else ""
+            valor = ""
+            for j in range(i + 1, min(i + 4, len(linhas))):
+                if re.match(r'^[<>]?\s*[\d,]+$', linhas[j]) or linhas[j] == "-":
+                    valor = linhas[j]
+                    break
+            if agente and not agente.startswith(("mg", "ppm", "MP", "Teto", "TWA", "STEL")):
+                resultados.append({"agente": agente, "unidade": l, "resultado": valor})
+    d["resultados"] = resultados
+    return d
+
+
+def _search_lab_emails(box, top=200):
+    """RAs do lab em UMA caixa via $search (traz TODO o histórico — não fica preso
+    à janela de e-mails recentes). Só assuntos que começam com 'RA ' e têm anexo."""
+    try:
+        data = graph_get(f"/users/{box}/messages"
+                         f'?$search="from:{LAB_DOM}"&$top={top}'
+                         f"&$select=id,subject,from,receivedDateTime,hasAttachments")
+    except Exception:
+        return []
+    out = []
+    for m in data.get('value', []):
+        sub = (m.get('subject', '') or '')
+        if sub.strip().upper().startswith('RA ') and m.get('hasAttachments'):
+            out.append({'id': m['id'], 'subject': sub, 'caixa': box,
+                        'data': (m.get('receivedDateTime') or '')[:10]})
+    return out
+
+
+def _match_amostrador(look, cod):
+    """Casa um código (do nome do laudo) com o inventário: exato, tipo+código ou
+    sufixo único. Devolve o dict do amostrador ou None."""
+    cod = _norm(cod)
+    if not cod:
+        return None
+    amos = look.get(cod)
+    if amos:
+        return amos
+    if len(cod) >= 5:
+        cands = {d['id']: d for k, d in look.items() if k.endswith(cod)}
+        if len(cands) == 1:
+            return next(iter(cands.values()))
+    return None
+
+
+def _ensure_ra_laudos(conn):
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS ra_laudos ("
+        "amostrador_id INTEGER, amostrador_cod TEXT, ra_num TEXT, "
+        "funcionario TEXT, funcao TEXT, setor TEXT, tecnico TEXT, metodo TEXT, "
+        "data_amostragem TEXT, data_recebimento TEXT, resultados TEXT, "
+        "assunto TEXT, data_email TEXT, criado_em TEXT)")
+
+
+def _upsert_ra_laudo(conn, aid, cod, email, d):
+    """Grava o laudo extraído (DELETE+INSERT por amostrador+RA — DB-agnóstico)."""
+    ra = d.get('ra_num') or ''
+    conn.execute("DELETE FROM ra_laudos WHERE amostrador_id=? AND ra_num=?", (aid, ra))
+    conn.execute(
+        "INSERT INTO ra_laudos (amostrador_id, amostrador_cod, ra_num, funcionario, "
+        "funcao, setor, tecnico, metodo, data_amostragem, data_recebimento, "
+        "resultados, assunto, data_email, criado_em) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
+        (aid, cod, ra, d.get('funcionario', ''), d.get('funcao', ''), d.get('setor', ''),
+         d.get('tecnico', ''), d.get('metodo', ''), d.get('data_amostragem', ''),
+         d.get('data_recebimento', ''), json.dumps(d.get('resultados', []), ensure_ascii=False),
+         email.get('subject', ''), email.get('data', '')))
+
+
+def backfill_ras(apply=False, top=200):
+    """Varre TODO o histórico de RAs do lab (via $search), casa cada laudo pelo
+    código do amostrador e — no apply — seta data_resultado, conclui o amostrador
+    que ainda está no laboratório e guarda o laudo extraído (funcionário/resultados).
+    Preview (apply=False) não grava nada: só relata o que casaria."""
+    look = _sistema_lookup()
+    boxes = _mailboxes()
+    vistos_ra = set()
+    datas = []
+    plano = []      # (amostrador_id, data_resultado) — só quem está em 'laboratorio'
+    laudos = []     # (amostrador_id, cod, email, parsed) — para gravar
+    report = {'ras': 0, 'pdfs': 0, 'casaram': 0, 'concluiriam': 0,
+              'ja_concluidos': 0, 'fora_do_lab': 0, 'sem_match': [], 'amostradores': []}
+
+    for box in boxes:
+        for e in _search_lab_emails(box, top):
+            ra_key = e['subject'].strip().lower()
+            if ra_key in vistos_ra:
+                continue
+            vistos_ra.add(ra_key)
+            report['ras'] += 1
+            if e['data']:
+                datas.append(e['data'])
+            try:
+                metas = graph_get(f"/users/{box}/messages/{e['id']}/attachments"
+                                  f"?$select=id,name,contentType,size").get('value', [])
+            except Exception:
+                continue
+            for meta in metas:
+                nome = meta.get('name', '')
+                if not nome.lower().endswith('.pdf'):
+                    continue
+                report['pdfs'] += 1
+                cod = _codigo_do_anexo_ra(nome)
+                amos = _match_amostrador(look, cod)
+                if not amos:
+                    report['sem_match'].append(cod or nome[:40])
+                    continue
+                report['casaram'] += 1
+                st = (amos.get('status') or '').lower()
+                if st in ('concluido', 'devolvido'):
+                    report['ja_concluidos'] += 1
+                elif st == 'laboratorio':
+                    report['concluiriam'] += 1
+                    report['amostradores'].append(amos.get('codigo'))
+                    if not apply:
+                        continue
+                    plano.append((amos['id'], e['data']))
+                else:
+                    report['fora_do_lab'] += 1
+                if apply:
+                    try:
+                        full = graph_get(f"/users/{box}/messages/{e['id']}/attachments/{meta['id']}")
+                        txt = _extrair_texto_anexo(nome, meta.get('contentType', ''), full.get('contentBytes'))
+                        d = parse_ra_pdf(nome, txt)
+                    except Exception:
+                        d = {'amostrador': cod, 'ra_num': ''}
+                    laudos.append((amos['id'], cod, e, d))
+
+    if datas:
+        ds = sorted(datas)
+        report['periodo'] = f"{ds[0]} .. {ds[-1]}"
+    medicoes = 0
+    if apply and (plano or laudos):
+        with get_db() as conn:
+            _ensure_ra_laudos(conn)
+            for aid, dt in plano:
+                conn.execute(
+                    "UPDATE amostradores SET data_resultado=COALESCE(NULLIF(data_resultado,''),?), "
+                    "status='concluido', atualizado_em=CURRENT_TIMESTAMP "
+                    "WHERE id=? AND status='laboratorio'", (dt, aid))
+            for aid, cod, e, d in laudos:
+                try:
+                    _upsert_ra_laudo(conn, aid, cod, e, d)
+                except Exception as ex:
+                    log.warning('[backfill_ras] upsert laudo falhou (%s): %s', cod, ex)
+            try:
+                medicoes = _baixar_medicoes_com_resultado(conn)
+            except Exception as ex:
+                log.warning('[backfill_ras] baixa de medições falhou: %s', ex)
+            _kv_set(conn, 'ra_backfill_result', json.dumps({**report, 'medicoes_baixadas': medicoes},
+                                                           ensure_ascii=False))
+
+    report['modo'] = 'APLICADO' if apply else 'PREVIEW (nada gravado)'
+    report['medicoes_baixadas'] = medicoes
+    report['sem_match'] = sorted(set(report['sem_match']))[:40]
+    report['amostradores'] = sorted(set(report['amostradores']))
+    return report

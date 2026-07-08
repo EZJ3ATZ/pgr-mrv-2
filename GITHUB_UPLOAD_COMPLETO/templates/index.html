@@ -3841,6 +3841,7 @@
             <div style="padding:5px 14px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);border-top:1px solid var(--border);">Admin</div>
             <div id="btn-fix-data-entrada" onclick="ctrlAmostrToggleMenu();ctrlFixDataEntrada()" style="display:none;padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</div>
             <div onclick="ctrlAmostrToggleMenu();ctrlConcluirUtilizados()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Marca como concluído todo amostrador que consta em alguma cadeia de custódia">✓ Concluir utilizados</div>
+            <div onclick="ctrlAmostrToggleMenu();ctrlRaBackfill()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Lê TODO o histórico de laudos (RA) do laboratório, casa pelo código do amostrador e conclui sozinho quem está no lab com resultado já emitido">📥 Puxar resultados do lab (RAs)</div>
             <div onclick="ctrlAmostrToggleMenu();ctrlDiagEstoque()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Entender os números do estoque">🔍 Diagnóstico</div>
             {% endif %}
           </div>
@@ -9439,6 +9440,36 @@ async function ctrlSyncLab() {
     setTimeout(() => {
       _ctrlStatsCache = null;
       ctrlLoadVencendo();
+      if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
+    }, 60000);
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
+}
+
+// ── Backfill de RAs (admin): lê todo o histórico de laudos e conclui sozinho ──
+async function ctrlRaBackfill() {
+  _showToast('⏳ Analisando o histórico de laudos do laboratório...', 'ok');
+  let p;
+  try {
+    p = await ctrlFetch('/controle/graph/ra_backfill_preview');
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); return; }
+  if (p.erro) { _showToast('Erro: ' + p.erro, 'err'); return; }
+  const msg =
+    `Backfill de resultados (RA) — PRÉVIA (nada foi gravado ainda):\n\n` +
+    `• ${p.ras} laudos no histórico (${p.periodo || '—'})\n` +
+    `• ${p.casaram} casaram com o estoque\n` +
+    `• ${p.concluiriam} amostradores seriam CONCLUÍDOS agora (estão no lab com RA emitido)\n` +
+    `• ${p.ja_concluidos} já concluídos · ${p.fora_do_lab} fora do lab\n` +
+    (p.sem_match && p.sem_match.length ? `• ${p.sem_match.length} código(s) sem correspondência no estoque\n` : '') +
+    `\nAplicar? Vou baixar os PDFs, concluir os ${p.concluiriam} amostradores e guardar os laudos (funcionário/resultado). Roda em segundo plano.`;
+  if (!confirm(msg)) return;
+  _showToast('⏳ Backfill iniciado — baixando os laudos...', 'ok');
+  try {
+    const r = await ctrlFetch('/controle/graph/ra_backfill', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    if (r.erro) { _showToast('Erro: ' + r.erro, 'err'); return; }
+    _showToast('✓ Backfill rodando em segundo plano — atualizo o painel em ~1 min.', 'ok');
+    setTimeout(() => {
+      _ctrlStatsCache = null;
+      if (typeof ctrlLoadAmostr === 'function') ctrlLoadAmostr();
       if (typeof ctrlLoadStats === 'function') ctrlLoadStats('amostr');
     }, 60000);
   } catch(e) { _showToast('Erro: ' + e.message, 'err'); }

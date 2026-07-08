@@ -135,6 +135,7 @@ def _qint(name, default, maximo=None):
 # Lista explícita para NÃO bloquear leituras do dashboard (ex.: /graph/status).
 _ADMIN_ONLY_EXACT = frozenset({
     '/controle/graph/sync', '/controle/graph/lab_sync',
+    '/controle/graph/ra_backfill', '/controle/graph/ra_backfill_preview',
     '/controle/graph/test_mail', '/controle/graph/users',
     '/controle/amostradores/concluir-utilizados',
     '/controle/amostradores/diagnostico',
@@ -6402,6 +6403,62 @@ def graph_lab_sync():
         threading.Thread(target=_run, daemon=True).start()
         return jsonify({'ok': True, 'async': True,
                         'mensagem': 'Varredura iniciada em background — o painel atualiza em ~1 min.'})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
+@controle_bp.route('/graph/ra_backfill_preview')
+def graph_ra_backfill_preview():
+    """PREVIEW (dry-run) do backfill histórico de RAs — NÃO grava nada. Varre TODO
+    o histórico do lab (via $search), casa cada laudo pelo código do amostrador e
+    relata quantos concluiriam (amostradores parados no laboratório com RA já emitido)."""
+    init_db()
+    from .lab_inbox import backfill_ras
+    try:
+        return jsonify(backfill_ras(apply=False))
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
+@controle_bp.route('/graph/ra_backfill', methods=['POST'])
+def graph_ra_backfill():
+    """APLICA o backfill histórico de RAs em BACKGROUND: lê o PDF de cada laudo,
+    extrai amostrador/funcionário/resultados, seta data_resultado + conclui o
+    amostrador que ainda está no laboratório e guarda o laudo em ra_laudos."""
+    init_db()
+    try:
+        from .lab_inbox import backfill_ras
+        import threading
+        from flask import current_app
+        app = current_app._get_current_object()
+        quem = current_user.nome if current_user.is_authenticated else 'sistema'
+        ip = request.remote_addr
+
+        def _run():
+            with app.app_context():
+                try:
+                    r = backfill_ras(apply=True)
+                    registrar_evento('sync_planner',
+                                     f"Backfill RAs: {r.get('concluiriam', 0)} amostradores concluídos, "
+                                     f"{r.get('casaram', 0)} laudos casados, "
+                                     f"{r.get('medicoes_baixadas', 0)} medições baixadas",
+                                     None, 'amostrador', quem, ip)
+                except Exception as ex:
+                    import logging, traceback
+                    logging.getLogger(__name__).error('[ra_backfill] erro no background: %s', ex)
+                    try:
+                        with get_db() as c:
+                            c.execute("INSERT INTO ms_sync_state (chave,valor,atualizado_em) VALUES ('last_sync_error',?,CURRENT_TIMESTAMP) "
+                                      "ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, atualizado_em=EXCLUDED.atualizado_em",
+                                      (traceback.format_exc()[:2000],))
+                    except Exception:
+                        pass
+
+        threading.Thread(target=_run, daemon=True).start()
+        return jsonify({'ok': True, 'async': True,
+                        'mensagem': 'Backfill de RAs iniciado em background — pode levar alguns minutos (baixa os PDFs). O painel atualiza ao terminar.'})
     except Exception as e:
         import traceback; traceback.print_exc()
         return jsonify({'erro': str(e)}), 200
