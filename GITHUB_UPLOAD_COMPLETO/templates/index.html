@@ -12013,13 +12013,30 @@ async function ctrlNvVincularPlanejamento(pid) {
       });
     }
 
-    // ── Banner de planejamento vinculado ──
+    // ── Setores/Funções Prioritários ← funções dos agentes do plano ──
+    // (o IBUTG/calor semeia os setores a partir deste campo)
+    const setoresEl = document.getElementById('nv-plan-setores');
+    if (setoresEl && !setoresEl.value) {
+      const _sts = [...new Set(window._nvAgentesPlano.map(a => (a.funcao || '').trim()).filter(Boolean))];
+      if (_sts.length) setoresEl.value = _sts.join(', ');
+    }
+
+    // ── Banner de planejamento vinculado (com observação e checklist do plano) ──
     const s1 = document.getElementById('nv-s1');
     if (s1 && !document.getElementById('nv-plan-banner')) {
       const banner = document.createElement('div');
       banner.id = 'nv-plan-banner';
       banner.style.cssText = 'background:rgba(57,153,255,.1);border:1.5px solid rgba(57,153,255,.3);border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:.82rem;';
-      banner.innerHTML = `<span style="font-size:1.1rem;">📋</span><div><b style="color:#39f;">Planejamento vinculado</b> — ${_esc(p.empresa_nome||'OS '+p.numero_os)} · OS ${p.numero_os||'—'}<br><span style="font-size:.74rem;color:var(--text3);">Agentes previstos carregados. Confira os dados e avance as etapas.</span></div>`;
+      const _obsPlan = (p.observacao || '').trim();
+      let _clPlan = [];
+      try {
+        _clPlan = typeof p.checklist_prevista === 'string'
+          ? JSON.parse(p.checklist_prevista || '[]') : (p.checklist_prevista || []);
+      } catch(_) { _clPlan = []; }
+      banner.innerHTML = `<span style="font-size:1.1rem;">📋</span><div><b style="color:#39f;">Planejamento vinculado</b> — ${_esc(p.empresa_nome||'OS '+p.numero_os)} · OS ${p.numero_os||'—'}<br><span style="font-size:.74rem;color:var(--text3);">Agentes previstos carregados. Confira os dados e avance as etapas.</span>`
+        + (_obsPlan ? `<br><span style="font-size:.74rem;color:var(--text2);">📝 <b>Obs. do plano:</b> ${_esc(_obsPlan)}</span>` : '')
+        + (_clPlan.length ? `<br><span style="font-size:.74rem;color:var(--text3);">☑ <b>Checklist do plano:</b> ${_clPlan.map(x => _esc(String(x))).join(' · ')}</span>` : '')
+        + `</div>`;
       s1.insertBefore(banner, s1.firstChild);
     }
 
@@ -15063,6 +15080,9 @@ function nvShowStep3() {
         ag.amostrador_codigo = item.amostrador_codigo || '';
         ag.vazao_calibrada   = item.vazao_calibrada || '';
         ag.tipo_coleta       = item.tipo_coleta || 'pessoal';
+        // Método/volume definidos no plano — antes chegavam até aqui e eram descartados
+        ag.metodo            = item.metodo || '';
+        ag.volume            = item.volume || '';
         // Fração amostrada: inferir da substância (Respirável/Total/Torácica/Inalável)
         if (!ag.fracao) ag.fracao = _nvInferirFracao(ag.substancias);
         // Tipo de amostrador (meio) vindo do plano, sem fixar TCP
@@ -15663,6 +15683,7 @@ function nvCqNewAgente() {
     amostrador_codigo:'', vazao_calibrada:'', tipo_coleta:'pessoal',
     ac_ciclone_al:false, ac_ciclone_ny:false, ac_redutor:false, ac_iom:false, ac_termo:false, ac_supcass:false,
     substancias:'', fracao:'', tempo_exp:'',
+    metodo:'', volume:'', vazao_min:0, vazao_max:0,
     amostradores:[],
     epi_luvas:false, epi_oculos:false, epi_capacete:false, epi_prot_auric:false, epi_resp:false, epi_avental:false, epi_macacao:false,
     epc:'', obs:'',
@@ -15712,8 +15733,56 @@ function nvCqSetCalibrador(idx, value) {
 }
 function nvCqAddAmostr(idx) {
   if (!_nvCqAgentes[idx]) return;
-  _nvCqAgentes[idx].amostradores.push({id_amostrador:'',tipo_amostrador:'TCP',vazao_inicial:0,vazao_final:0,hora_inicio:'',hora_final:'',intervalos:''});
+  const tp = _nvCqAgentes[idx]._tipo_amostr_guia || 'TCP';
+  _nvCqAgentes[idx].amostradores.push({id_amostrador:'',tipo_amostrador:tp,vazao_inicial:0,vazao_final:0,hora_inicio:'',hora_final:'',intervalos:''});
   nvCqRenderAmostrTable(idx);
+}
+
+// ── Guia de métodos (NIOSH) por agente ────────────────────────────────
+// Ao definir a substância, busca método/vazão/volume/amostrador na guia
+// (mesmo endpoint da tela antiga: /agente/<nome>/estoque). Cache por nome.
+window._nvGuiaCache = {};
+async function nvCqBuscarGuia(idx) {
+  const ag = _nvCqAgentes[idx]; if (!ag) return;
+  const nome = (ag.substancias || '').replace(/\s+/g, ' ').trim();
+  const info = document.getElementById('nv-cqa-guia-' + idx);
+  if (!nome) { ag.vazao_min = 0; ag.vazao_max = 0; if (info) info.innerHTML = ''; return; }
+  try {
+    let d = window._nvGuiaCache[nome.toLowerCase()];
+    if (!d) {
+      d = await ctrlFetch('/controle/agente/' + encodeURIComponent(nome) + '/estoque');
+      window._nvGuiaCache[nome.toLowerCase()] = d;
+    }
+    const m1 = (d.metodos || [])[0];
+    if (!m1) {
+      ag.vazao_min = 0; ag.vazao_max = 0;
+      if (info) info.innerHTML = '<span style="color:var(--text3);">Substância não encontrada na guia — método e vazão manuais.</span>';
+      return;
+    }
+    const rng = ctrlParseRange(m1.vazao || '');
+    ag.vazao_min = rng[0] || 0;
+    ag.vazao_max = rng[1] || 0;
+    if (!ag.metodo) ag.metodo = m1.metodoCod || '';
+    if (!ag.volume) ag.volume = m1.volume || '';
+    const tipos = m1.tipos || [];
+    if (tipos.length) ag._tipo_amostr_guia = tipos[0];
+    const mEl = document.getElementById('nv-cqa-metodo-' + idx); if (mEl && !mEl.value) mEl.value = ag.metodo;
+    const vEl = document.getElementById('nv-cqa-volume-' + idx); if (vEl && !vEl.value) vEl.value = ag.volume;
+    if (info) info.innerHTML = `📖 <b>${m1.metodoCod||'—'}</b> · Vazão: <b>${m1.vazao||'—'}</b> · Volume: <b>${m1.volume||'—'}</b> · Amostrador: <b>${m1.amostradorCod||'—'}</b>` +
+      ((d.metodos||[]).length > 1 ? ` <span style="color:var(--text3);">(+${d.metodos.length-1} método(s) alternativo(s))</span>` : '');
+  } catch(e) { if (info) info.innerHTML = ''; }
+}
+
+// Botões ⚡Média / ⬆Teto POR AGENTE: aplica a vazão da faixa do método nos
+// amostradores deste agente (antes só existia na tela antiga, campo global).
+function nvCqUsarVazao(idx, modo) {
+  const ag = _nvCqAgentes[idx]; if (!ag) return;
+  if (!ag.vazao_max) { _showToast('⚠ Informe a substância primeiro (guia sem faixa de vazão p/ este agente)', 'warn'); return; }
+  const v = (modo === 'teto') ? ag.vazao_max : ((ag.vazao_min + ag.vazao_max) / 2);
+  if (!ag.amostradores.length) nvCqAddAmostr(idx);
+  ag.amostradores.forEach(am => { am.vazao_inicial = +v.toFixed(3); });
+  nvCqRenderAmostrTable(idx);
+  _showToast(`${modo==='teto'?'⬆ Vazão teto':'⚡ Vazão média'}: ${v.toFixed(3)} L/min aplicada no(s) amostrador(es)`, 'ok');
 }
 function nvCqRemAmostr(idx, ai) {
   if (!_nvCqAgentes[idx]) return;
@@ -15840,9 +15909,20 @@ function nvCqRenderAgentes() {
         <button onclick="nvCqAddAmostr(${idx})" style="background:var(--orange);color:#fff;border:none;border-radius:5px;padding:4px 11px;cursor:pointer;font-size:.78rem;font-family:inherit;">+ Amostrador</button>
       </div>
       <div class="nv-g2 nv-f" style="margin-bottom:8px;">
-        <div><label>Substância(s) Amostrada(s)</label><input type="text" value="${ag.substancias||''}" placeholder="Ex: Tolueno, BTX" style="${inp}" oninput="nvCqSet(${idx},'substancias',this.value)"></div>
+        <div><label>Substância(s) Amostrada(s)</label><input type="text" value="${ag.substancias||''}" placeholder="Ex: Tolueno, BTX" style="${inp}" oninput="nvCqSet(${idx},'substancias',this.value)" onchange="nvCqBuscarGuia(${idx})"></div>
         <div><label>Fração Amostrada</label><select style="${inp}" onchange="nvCqSet(${idx},'fracao',this.value)">${fracOpts}</select></div>
       </div>
+      <div class="nv-g3 nv-f" style="margin-bottom:4px;">
+        <div><label>Método (guia)</label><input type="text" id="nv-cqa-metodo-${idx}" value="${ag.metodo||''}" placeholder="Ex: NIOSH 1501" style="${inp}" oninput="nvCqSet(${idx},'metodo',this.value)"></div>
+        <div><label>Volume recomendado</label><input type="text" id="nv-cqa-volume-${idx}" value="${ag.volume||''}" placeholder="Ex: 1 a 8 L" style="${inp}" oninput="nvCqSet(${idx},'volume',this.value)"></div>
+        <div><label>Vazão do método</label>
+          <div style="display:flex;gap:6px;">
+            <button onclick="nvCqUsarVazao(${idx},'media')" title="Aplica a vazão MÉDIA da faixa do método nos amostradores deste agente" style="flex:1;background:rgba(45,212,191,.12);color:#2DD4BF;border:1px solid #2DD4BF;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit;">⚡ Média</button>
+            <button onclick="nvCqUsarVazao(${idx},'teto')" title="Aplica a vazão TETO (máxima) do método nos amostradores deste agente" style="flex:1;background:rgba(251,146,60,.12);color:var(--orange);border:1px solid var(--orange);padding:7px 8px;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit;">⬆ Teto</button>
+          </div>
+        </div>
+      </div>
+      <div id="nv-cqa-guia-${idx}" style="font-size:.72rem;color:var(--text2);margin-bottom:8px;min-height:14px;"></div>
       <div class="nv-f" style="margin-bottom:8px;"><label>Tempo Exposto ao Agente</label><input type="text" value="${ag.tempo_exp||''}" placeholder="Ex: 8h (jornada completa)" style="${inp}" oninput="nvCqSet(${idx},'tempo_exp',this.value)"></div>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:860px;">
@@ -15887,7 +15967,10 @@ function nvCqRenderAgentes() {
 </div>`;
   }).join('');
   // Re-render amostrador tables after DOM update
-  setTimeout(() => _nvCqAgentes.forEach((_, i) => nvCqRenderAmostrTable(i)), 0);
+  setTimeout(() => _nvCqAgentes.forEach((ag, i) => {
+    nvCqRenderAmostrTable(i);
+    if (ag.substancias) nvCqBuscarGuia(i);  // re-hidrata info do método (cacheado)
+  }), 0);
 }
 
 // ── Validações ────────────────────────────────────────────────────────
