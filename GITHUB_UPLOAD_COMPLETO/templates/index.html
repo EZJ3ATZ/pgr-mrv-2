@@ -4465,8 +4465,9 @@
             <div class="nv-card-title" style="margin:0;">Etapa 3 — Campo · Agentes Químicos</div>
             <div style="font-size:.75rem;color:var(--text3);margin-top:3px;">Um bloco por agente/funcionário monitorado. Cada bloco tem bomba, amostrador e dados próprios.</div>
           </div>
-          <button onclick="nvCqAddAgente()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:.83rem;font-weight:600;font-family:inherit;flex-shrink:0;margin-left:12px;">+ Adicionar Agente</button>
+          <button id="nv-cqa-add-btn" onclick="nvCqAddAgente()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:.83rem;font-weight:600;font-family:inherit;flex-shrink:0;margin-left:12px;">+ Adicionar Agente</button>
         </div>
+        <div id="nv-cqa-lock-note" style="display:none;margin-top:8px;font-size:.76rem;color:var(--blue);background:rgba(57,153,255,.08);border:1px solid rgba(57,153,255,.25);border-radius:6px;padding:7px 10px;">🔒 Agentes definidos pelo <b>planejamento</b> — para incluir outro agente, edite o planejamento desta OS.</div>
       </div>
       <div id="nv-cqa-list"></div>
     </div>
@@ -11907,6 +11908,9 @@ function nvLimparPlanejamentoVinculo() {
   window._nvAgentesPlano = [];
   const cont = document.getElementById('nv-agentes-plano');
   if (cont) cont.style.display = 'none';
+  // Destrava: sem plano vinculado, o técnico volta a poder escolher agentes
+  window._nvPlanLocked = false;
+  if (typeof _nvAplicarTravaPlano === 'function') _nvAplicarTravaPlano();
 }
 
 function planIrParaCampo(planejamento_id) {
@@ -11918,6 +11922,7 @@ function planIrParaCampo(planejamento_id) {
 }
 
 async function ctrlNvVincularPlanejamento(pid) {
+  window._nvLinkingPlan = true;  // guarda: ctrlNvOsChange não re-vincula durante isto
   try {
     const p = await ctrlFetch('/controle/planejamentos/' + pid);
     if (!p) return;
@@ -12053,8 +12058,13 @@ async function ctrlNvVincularPlanejamento(pid) {
       if (typeof nvTipoChange === 'function') nvTipoChange();
     }
 
+    // ── Trava: agentes/tipos vêm do plano e não podem ser trocados à mão ──
+    window._nvPlanLocked = true;
+    if (typeof _nvAplicarTravaPlano === 'function') _nvAplicarTravaPlano();
+
     _showToast(`📋 Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');
   } catch(e) { /* silencioso */ }
+  finally { window._nvLinkingPlan = false; }
 }
 
 function nvRenderAgentesPlano(agentes) {
@@ -12198,6 +12208,25 @@ async function ctrlNvOsChange(val) {
         ? agentes.map(a => `<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 8px;background:rgba(57,153,255,.13);border-radius:12px;font-size:.77rem;">${_tl[a.tipo]||a.tipo} <b>${a.qtd}pt</b> — ${_esc(a.texto)}</span>`).join('')
         : '<span style="color:var(--text3)">Nenhum agente identificado na OS</span>';
       painel.innerHTML = `<b style="color:var(--blue)">OS encontrada:</b> ${_esc(j.titulo)}<br><div style="margin-top:5px;">${cards}</div>`;
+
+      // ── Auto-vincular o PLANEJAMENTO confirmado desta OS (trava os agentes) ──
+      // Se já houver plano vinculado, ou se estamos no meio de um vínculo, não repete.
+      if (!window._nvLinkingPlan && !window._nvPlanejamentoId) {
+        try {
+          const planos = await ctrlFetch('/controle/planejamentos?limit=50');
+          const doOs = (planos || []).filter(p =>
+            String(p.numero_os || '').trim() === os &&
+            ['confirmado','em_execucao'].includes(p.status));
+          if (doOs.length) {
+            const plano = doOs[0];  // 1º confirmado desta OS
+            const selEl = document.getElementById('nv-plan-selector');
+            if (selEl) selEl.value = String(plano.id);
+            await ctrlNvVincularPlanejamento(plano.id);
+            painel.innerHTML += `<div style="margin-top:6px;color:var(--green);font-size:.77rem;">🔒 Planejamento #${plano.id} vinculado automaticamente — agentes travados no plano.</div>`
+              + (doOs.length > 1 ? `<div style="margin-top:3px;color:var(--orange);font-size:.72rem;">⚠ Há ${doOs.length} planos confirmados nesta OS; vinculei o #${plano.id}. Use o seletor de planejamento para trocar.</div>` : '');
+          }
+        } catch(_) { /* sem plano p/ esta OS — segue manual */ }
+      }
     } catch(e) {
       painel.innerHTML = '<span style="color:var(--red)">Erro ao buscar OS</span>';
     }
@@ -14859,6 +14888,30 @@ function nvTipoChange() {
   _nvTipo = _nvTipos[0] || '';  // compatibilidade com código legado
 }
 
+// Trava da planilha ao planejamento: quando vinculada a um plano confirmado,
+// os agentes/tipos vêm DO PLANO e não podem ser trocados livremente (decisão
+// do Matheus 08/07 — campo tem que bater com o que foi planejado). Para incluir
+// outro agente, edita-se o planejamento. Desvincular (selector em branco) destrava.
+function _nvAplicarTravaPlano() {
+  const travado = !!window._nvPlanLocked;
+  // Checkboxes de tipo de medição: travados no que o plano definiu
+  ['ruido','quimico','calor','vibracao'].forEach(v => {
+    const el = document.getElementById('nv-tipo-' + v);
+    if (el) {
+      el.disabled = travado;
+      const lab = document.querySelector(`label[for="nv-tipo-${v}"]`);
+      if (lab) lab.style.opacity = (travado && !el.checked) ? '.4' : '';
+    }
+  });
+  // Botão "+ Adicionar Agente" químico + nota de trava
+  const addBtn = document.getElementById('nv-cqa-add-btn');
+  if (addBtn) addBtn.style.display = travado ? 'none' : '';
+  const note = document.getElementById('nv-cqa-lock-note');
+  if (note) note.style.display = travado ? '' : 'none';
+  // Re-render dos cards químicos p/ refletir substância readonly + sem remover
+  if (typeof nvCqRenderAgentes === 'function' && document.getElementById('nv-cqa-list')) nvCqRenderAgentes();
+}
+
 function nvGotoStep(n) {
   _nvStep = n;
   for (let i = 1; i <= 5; i++) {
@@ -15830,6 +15883,7 @@ function nvCqRenderAgentes() {
   if (!list) return;
   if (!_nvCqAgentes.length) { list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:.85rem;">Clique em "+ Adicionar Agente" acima.</div>'; return; }
   const inp = 'width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.84rem;outline:none;';
+  const travado = !!window._nvPlanLocked;
   list.innerHTML = _nvEquipDatalist('nv-bombas-dl', 'bomba') + _nvCqAgentes.map((ag, idx) => {
     const lbl = ag.func_nome ? `${idx+1}. ${ag.func_nome}${ag.func_funcao?' — '+ag.func_funcao:''}` : `${idx+1}. Agente ${idx+1}`;
     const bodyD = ag.expanded ? '' : 'display:none;';
@@ -15850,9 +15904,9 @@ function nvCqRenderAgentes() {
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${ag.expanded?'14px':'0'};">
     <div id="nv-cqa-title-${idx}" style="font-weight:700;color:var(--orange);font-size:.88rem;">${lbl}</div>
     <div style="display:flex;gap:6px;align-items:center;">
-      <button onclick="nvCqDuplicarAgente(${idx})" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 9px;border-radius:5px;cursor:pointer;font-size:.75rem;font-family:inherit;">📋 Duplicar</button>
+      ${travado?'':`<button onclick="nvCqDuplicarAgente(${idx})" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 9px;border-radius:5px;cursor:pointer;font-size:.75rem;font-family:inherit;">📋 Duplicar</button>`}
       <button onclick="nvCqToggleAgente(${idx})" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:4px 9px;border-radius:5px;cursor:pointer;font-size:.75rem;">${ag.expanded?'▲':'▼'}</button>
-      ${_nvCqAgentes.length>1?`<button onclick="nvCqRemAgente(${idx})" style="background:transparent;border:1px solid var(--red);color:var(--red);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:.75rem;">✕</button>`:''}
+      ${(!travado && _nvCqAgentes.length>1)?`<button onclick="nvCqRemAgente(${idx})" style="background:transparent;border:1px solid var(--red);color:var(--red);padding:4px 8px;border-radius:5px;cursor:pointer;font-size:.75rem;">✕</button>`:''}
     </div>
   </div>
   <div id="nv-cqa-body-${idx}" style="${bodyD}">
@@ -15911,7 +15965,7 @@ function nvCqRenderAgentes() {
         <button onclick="nvCqAddAmostr(${idx})" style="background:var(--orange);color:#fff;border:none;border-radius:5px;padding:4px 11px;cursor:pointer;font-size:.78rem;font-family:inherit;">+ Amostrador</button>
       </div>
       <div class="nv-g2 nv-f" style="margin-bottom:8px;">
-        <div><label>Substância(s) Amostrada(s)</label><input type="text" value="${ag.substancias||''}" placeholder="Ex: Tolueno, BTX" style="${inp}" oninput="nvCqSet(${idx},'substancias',this.value)" onchange="nvCqBuscarGuia(${idx})"></div>
+        <div><label>Substância(s) Amostrada(s)${travado?' <span style="color:var(--blue);font-weight:400;">🔒 do plano</span>':''}</label><input type="text" value="${ag.substancias||''}" placeholder="Ex: Tolueno, BTX" style="${inp}${travado?'background:var(--surface2);cursor:not-allowed;':''}" oninput="nvCqSet(${idx},'substancias',this.value)" onchange="nvCqBuscarGuia(${idx})" ${travado?'readonly title="Definido pelo planejamento — edite o plano para mudar"':''}></div>
         <div><label>Fração Amostrada</label><select style="${inp}" onchange="nvCqSet(${idx},'fracao',this.value)">${fracOpts}</select></div>
       </div>
       <div class="nv-g3 nv-f" style="margin-bottom:4px;">
