@@ -12779,11 +12779,18 @@ function ctrlAmostrRenderKpis(data) {
       ${extra||''}
     </div>`;
   const lab200 = data.filter(a => (a.status||'').toLowerCase()==='laboratorio' && (a.tempo_parado||0)>=200).length;
+  // "Resultados a vincular" = e-mails de RA capturados do lab ainda sem amostrador
+  // (fonte: sync de e-mails) + amostradores com data_resultado que não concluíram.
+  // O clique NÃO filtra a tabela — leva ao box de vinculação logo abaixo.
+  const nRAs = (window._ctrlRAs || []).length + cnt.resultado;
   el.innerHTML =
     kpi('disponivel',  'Disponíveis',          cnt.disponivel,  'var(--green)') +
     kpi('laboratorio', 'No laboratório',       cnt.laboratorio, 'var(--orange)',
         lab200 ? `<div style="font-size:.64rem;color:#e22;margin-top:2px;">${lab200} parados há +200d</div>` : '') +
-    kpi('resultado',   'Resultados recebidos', cnt.resultado,   'var(--blue)') +
+    `<div class="ctrl-stat" onclick="ctrlAmostrIrParaRAs()" style="cursor:pointer;" title="Resultados que chegaram por e-mail do lab — clique para vincular">
+      <div class="ctrl-stat-label" style="color:var(--blue);">Resultados a vincular</div>
+      <div class="ctrl-stat-value" style="color:var(--blue);" id="ctrl-kpi-resultados">${nRAs}</div>
+    </div>` +
     `<div class="ctrl-stat" onclick="ctrlSwitchAmostrView('venc')" style="cursor:pointer;" title="Abrir controle de vencimento">
       <div class="ctrl-stat-label" style="color:#e22;">Vencidos</div>
       <div class="ctrl-stat-value" style="color:#e22;" id="ctrl-kpi-vencidos">…</div>
@@ -12792,23 +12799,35 @@ function ctrlAmostrRenderKpis(data) {
   ctrlAmostrRenderPipeline(cnt);
 }
 
+// Rola até o box de RAs e dá um flash — o KPI de resultados aponta para cá
+function ctrlAmostrIrParaRAs() {
+  const box = document.getElementById('ctrl-amostr-resultados');
+  if (!box || box.style.display === 'none') { _showToast('Nenhum resultado do laboratório aguardando vinculação', 'ok'); return; }
+  box.scrollIntoView({behavior:'smooth', block:'center'});
+  box.style.transition = 'box-shadow .3s';
+  box.style.boxShadow = '0 0 0 2px var(--blue)';
+  setTimeout(() => box.style.boxShadow = '', 1600);
+}
+
 function ctrlAmostrRenderPipeline(cnt) {
   const el = document.getElementById('ctrl-amostr-pipeline');
   if (!el) return;
   const fSt = document.getElementById('ctrl-f-status').value;
   const ativo = _ctrlAmostrPseudo || fSt;
+  // "Resultado recebido" = RAs do lab a vincular (mesma fonte do KPI); clicar leva ao box, não filtra tabela vazia.
+  const nRAs = (window._ctrlRAs || []).length + cnt.resultado;
   const etapas = [
     ['disponivel',  '📦 Disponível',         cnt.disponivel],
     ['reservado',   '📌 Reservado',          cnt.reservado],
     ['laboratorio', '🧪 No laboratório',     cnt.laboratorio],
-    ['resultado',   '📥 Resultado recebido', cnt.resultado],
+    ['resultado',   '📥 Resultado recebido', nRAs],
     ['finalizado',  '✓ Concluído',           cnt.finalizado],
   ];
   el.style.display = 'flex';
   el.innerHTML = '<span style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-right:6px;">Ciclo de vida</span>' +
     etapas.map(([k, lbl, n], i) =>
       (i ? '<span style="color:var(--text3);font-size:.72rem;margin:0 2px;">→</span>' : '') +
-      `<span onclick="ctrlAmostrKpiFilter('${k}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;font-size:.76rem;border:1px solid ${ativo===k?'var(--orange)':'var(--border)'};color:${ativo===k?'var(--orange)':'var(--text2)'};background:${ativo===k?'rgba(251,140,60,.1)':'transparent'};">${lbl}<b style="font-size:.7rem;background:var(--surface3);border-radius:8px;padding:0 7px;">${n}</b></span>`
+      `<span onclick="${k==='resultado'?'ctrlAmostrIrParaRAs()':`ctrlAmostrKpiFilter('${k}')`}" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;font-size:.76rem;border:1px solid ${ativo===k?'var(--orange)':'var(--border)'};color:${ativo===k?'var(--orange)':'var(--text2)'};background:${ativo===k?'rgba(251,140,60,.1)':'transparent'};">${lbl}<b style="font-size:.7rem;background:var(--surface3);border-radius:8px;padding:0 7px;">${n}</b></span>`
     ).join('') +
     (ativo ? `<span onclick="ctrlAmostrKpiFilter('')" style="cursor:pointer;margin-left:8px;font-size:.72rem;color:var(--text3);text-decoration:underline;">limpar filtro</span>` : '');
 }
