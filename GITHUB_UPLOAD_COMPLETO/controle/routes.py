@@ -445,7 +445,7 @@ def update_amostrador(aid):
     d = request.json or {}
     fields = []
     params = []
-    for k in ('status', 'tipo', 'codigo', 'avaliador', 'data_medicao', 'observacao', 'data_entrada'):
+    for k in ('status', 'tipo', 'codigo', 'avaliador', 'data_medicao', 'observacao', 'data_entrada', 'data_resultado'):
         if k in d:
             val = normalizar_status_amostrador(d[k]) if k == 'status' else d[k]
             fields.append(f'{k}=?'); params.append(val)

@@ -3790,21 +3790,18 @@
   <!-- Sub: Amostradores (com subabas Estoque / Vencimento) -->
   <div id="ctrl-sub-amostr" style="display:none;">
 
-    <!-- Mini-tabs dentro de Amostradores -->
-    <div style="display:flex; gap:6px; margin-bottom:16px;">
-      <div id="ctrl-amostr-mtab-estoque" onclick="ctrlSwitchAmostrView('estoque')"
-           style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--orange); color:#fff; transition:all .15s;">📦 Estoque</div>
-      <div id="ctrl-amostr-mtab-venc" onclick="ctrlSwitchAmostrView('venc')"
-           style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--surface2); color:var(--text3); transition:all .15s;">⏱ Vencimento</div>
-      <div id="ctrl-amostr-mtab-concluido" onclick="ctrlSwitchAmostrView('concluido')"
-           style="padding:6px 16px; border-radius:6px; cursor:pointer; font-size:.82rem; font-weight:600; background:var(--surface2); color:var(--text3); transition:all .15s;">✓ Concluídos</div>
-    </div>
+    <!-- Cabeçalho do redesign (08/07): KPIs clicáveis + alerta do lab + pipeline do ciclo de vida + RAs -->
+    <div id="ctrl-amostr-kpis" class="ctrl-stats" style="margin-bottom:10px;"></div>
+    <div id="ctrl-amostr-lab-cobranca" style="display:none;margin-bottom:12px;"></div>
+    <div id="ctrl-amostr-pipeline" style="display:none;flex-wrap:wrap;gap:4px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:7px 12px;margin-bottom:12px;"></div>
+    <div id="ctrl-amostr-resultados" style="display:none;margin-bottom:12px;"></div>
 
     <!-- View: Estoque -->
     <div id="ctrl-amostr-view-estoque">
-      <div class="ctrl-filters">
+      <div class="ctrl-filters" style="align-items:center;">
         <input type="text" id="ctrl-f-codigo" placeholder="Buscar código..." oninput="ctrlLoadAmostr()">
-        <select id="ctrl-f-status" onchange="ctrlLoadAmostr()">
+        <!-- status agora é controlado pelos KPIs/pipeline (fica oculto, mas o JS continua lendo o value) -->
+        <select id="ctrl-f-status" onchange="ctrlLoadAmostr()" style="display:none;">
           <option value="">— Status —</option>
           <option value="disponivel">Disponível</option>
           <option value="reservado">Reservado</option>
@@ -3819,12 +3816,6 @@
         </select>
         <input type="text" id="ctrl-f-empresa" placeholder="Empresa..." oninput="ctrlLoadAmostr()">
         <input type="checkbox" id="ctrl-f-arquivados" style="display:none;">
-        <button type="button" id="ctrl-btn-arquivados" onclick="ctrlToggleArquivados()"
-                title="Amostradores concluídos há mais de 30 dias são arquivados (somem da lista, mas ficam guardados para auditoria). Clique para vê-los."
-                style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 13px;font-size:.76rem;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;white-space:nowrap;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M3 7v13h18V7"/><path d="M1 3h22v4H1z"/><path d="M10 11h4"/></svg>
-          <span id="ctrl-arq-lbl">Ver arquivados</span>
-        </button>
         <select id="ctrl-f-sort" onchange="ctrlLoadAmostr()">
           <option value="entrada_asc">📅 Entrada: mais antiga</option>
           <option value="entrada_desc">📅 Entrada: mais nova</option>
@@ -3832,20 +3823,33 @@
           <option value="codigo_asc">🔤 Código A-Z</option>
           <option value="tipo_asc">🔤 Tipo A-Z</option>
         </select>
-        <button class="ctrl-import-btn" onclick="ctrlExportAmostr()" style="background:#0a7;">⬇ Exportar Excel</button>
-        {% if current_user.is_authenticated and current_user.role == 'admin' %}<button class="ctrl-import-btn" id="btn-fix-data-entrada" onclick="ctrlFixDataEntrada()" style="background:#555;display:none;" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</button>{% endif %}
-        <button class="ctrl-import-btn" onclick="ctrlAbrirNovoAmostrador()" style="background:var(--brand);">+ Adicionar</button>
-        <button class="ctrl-import-btn" onclick="ctrlAbrirSerie()" style="background:#6d4aff;">➕ Adicionar em série</button>
-        {% if current_user.is_authenticated and current_user.role == 'admin' %}
-        <button class="ctrl-import-btn" onclick="ctrlConcluirUtilizados()" style="background:#16a34a;" title="Marca como concluído todo amostrador que consta em alguma cadeia de custódia (= foi utilizado)">✓ Concluir utilizados</button>
-        <button class="ctrl-import-btn" onclick="ctrlDiagEstoque()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Entender os números: dos disponíveis, quantos já têm cadeia (usados) e por idade; lab por idade">🔍 Diagnóstico</button>
-        {% endif %}
+        <span style="flex:1;"></span>
+        <button class="ctrl-import-btn" onclick="ctrlSwitchAmostrView('venc')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Controle de vencimento / envios ao laboratório">⏱ Vencimento</button>
+        <div style="position:relative;display:inline-block;">
+          <button class="ctrl-import-btn" onclick="ctrlAmostrToggleMenu('ctrl-menu-add')" style="background:var(--brand);">+ Adicionar ▾</button>
+          <div id="ctrl-menu-add" class="ctrl-amostr-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:60;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;">
+            <div onclick="ctrlAmostrToggleMenu();ctrlAbrirNovoAmostrador()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">＋ Individual</div>
+            <div onclick="ctrlAmostrToggleMenu();ctrlAbrirSerie()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">➕ Em série</div>
+          </div>
+        </div>
+        <div style="position:relative;display:inline-block;">
+          <button class="ctrl-import-btn" onclick="ctrlAmostrToggleMenu('ctrl-menu-manut')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);">⚙ Manutenção ▾</button>
+          <div id="ctrl-menu-manut" class="ctrl-amostr-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:60;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:230px;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;">
+            <div onclick="ctrlAmostrToggleMenu();ctrlExportAmostr()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">⬇ Exportar Excel</div>
+            <div id="ctrl-btn-arquivados" onclick="ctrlAmostrToggleMenu();ctrlToggleArquivados()" title="Concluídos há +30 dias são arquivados. Clique para vê-los." style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">🗄 <span id="ctrl-arq-lbl">Ver arquivados</span></div>
+            {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <div style="padding:5px 14px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);border-top:1px solid var(--border);">Admin</div>
+            <div id="btn-fix-data-entrada" onclick="ctrlAmostrToggleMenu();ctrlFixDataEntrada()" style="display:none;padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Corrigir data de entrada de amostradores com +200 dias parados">🗓 Corrigir datas antigas</div>
+            <div onclick="ctrlAmostrToggleMenu();ctrlConcluirUtilizados()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Marca como concluído todo amostrador que consta em alguma cadeia de custódia">✓ Concluir utilizados</div>
+            <div onclick="ctrlAmostrToggleMenu();ctrlDiagEstoque()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''" title="Entender os números do estoque">🔍 Diagnóstico</div>
+            {% endif %}
+          </div>
+        </div>
       </div>
       <div id="ctrl-amostr-diag" style="display:none;margin-bottom:12px;"></div>
       <!-- Barra de ações em lote (aparece ao selecionar) -->
       <div id="ctrl-amostr-bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:rgba(42,157,157,.08);border:1px solid var(--bd-teal);border-radius:8px;">
         <span id="ctrl-amostr-bulk-count" style="font-size:.82rem;font-weight:700;color:var(--primary-l);">0 selecionados</span>
-        <button onclick="ctrlAbrirBaixaLote()" style="background:var(--primary);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">↓ Dar Baixa</button>
         <button onclick="ctrlAbrirConcluirLote()" style="background:var(--green);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">✓ Concluído</button>
         <button onclick="ctrlDeselAllAmostr()" style="background:transparent;color:var(--text3);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:.8rem;cursor:pointer;">Limpar seleção</button>
       </div>
@@ -3865,6 +3869,7 @@
 
     <!-- View: Vencimento -->
     <div id="ctrl-amostr-view-venc" style="display:none;">
+      <button onclick="ctrlSwitchAmostrView('estoque')" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;margin-bottom:12px;">← Voltar ao estoque</button>
       <div style="background:rgba(255,136,0,.06); border-left:3px solid #f80; padding:12px 16px; border-radius:6px; margin-bottom:16px; font-size:.82rem;">
         <b>⏱ Controle de vencimento:</b> amostradores que estão <b>em posse da Ocupacional</b> (recebidos do laboratório).
         Se não forem usados e devolvidos dentro do prazo, o <b>laboratório cobra</b>. Esta tela mostra os que estão perto de vencer — resolva antes da cobrança extra.
@@ -9253,29 +9258,36 @@ function ctrlSwitchSub(name, el) {
 }
 
 function ctrlSwitchAmostrView(view) {
+  // Redesign 08/07: uma view só (estoque) + vencimento como tela secundária.
   const estoque = document.getElementById('ctrl-amostr-view-estoque');
   const venc    = document.getElementById('ctrl-amostr-view-venc');
-  const tabEst  = document.getElementById('ctrl-amostr-mtab-estoque');
-  const tabVenc = document.getElementById('ctrl-amostr-mtab-venc');
-  const tabConc = document.getElementById('ctrl-amostr-mtab-concluido');
   if (!estoque || !venc) return;
-  // "estoque" e "concluido" compartilham a mesma tabela; "venc" é separada
-  const usaEstoque = (view === 'estoque' || view === 'concluido');
-  estoque.style.display = usaEstoque   ? 'block' : 'none';
-  venc.style.display    = view==='venc'? 'block' : 'none';
-  const _hl = (el, on) => { if (el) { el.style.background = on ? 'var(--orange)' : 'var(--surface2)'; el.style.color = on ? '#fff' : 'var(--text3)'; } };
-  _hl(tabEst,  view==='estoque');
-  _hl(tabVenc, view==='venc');
-  _hl(tabConc, view==='concluido');
-  // Ajusta o filtro de status conforme a view
-  const fStatus = document.getElementById('ctrl-f-status');
-  if (fStatus) {
-    if (view === 'concluido') fStatus.value = 'concluido';
-    else if (view === 'estoque' && fStatus.value === 'concluido') fStatus.value = '';
-  }
-  if (view === 'venc') ctrlLoadVencendo();
+  const isVenc = (view === 'venc');
+  estoque.style.display = isVenc ? 'none' : 'block';
+  venc.style.display    = isVenc ? 'block' : 'none';
+  // Cabeçalho (KPIs/pipeline/RAs) só faz sentido na view principal
+  ['ctrl-amostr-kpis','ctrl-amostr-pipeline','ctrl-amostr-lab-cobranca','ctrl-amostr-resultados'].forEach(i => {
+    const el = document.getElementById(i);
+    if (el && isVenc) el.style.display = 'none';
+  });
+  if (isVenc) ctrlLoadVencendo();
   else ctrlLoadAmostr();
 }
+
+// Dropdowns do toolbar (+ Adicionar / ⚙ Manutenção) — abre um, fecha os outros
+function ctrlAmostrToggleMenu(id) {
+  document.querySelectorAll('.ctrl-amostr-menu').forEach(m => {
+    if (id && m.id === id) m.style.display = (m.style.display === 'none' || !m.style.display) ? 'block' : 'none';
+    else m.style.display = 'none';
+  });
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.ctrl-amostr-menu') && !e.target.closest('[onclick*="ctrlAmostrToggleMenu"]')) {
+    document.querySelectorAll('.ctrl-amostr-menu').forEach(m => m.style.display = 'none');
+  }
+  const rm = document.getElementById('ctrl-amostr-rowmenu');
+  if (rm && !e.target.closest('#ctrl-amostr-rowmenu') && !e.target.closest('[data-rowmenu-btn]')) rm.remove();
+});
 
 function ctrlAbrirNovoAmostrador() {
   const today = new Date().toISOString().split('T')[0];
@@ -12624,14 +12636,8 @@ async function ctrlLoadStats(contexto) {
     const tab = contexto || _ctrlSubAtiva || 'empresa';
     let html = '';
     if (tab === 'amostr' || tab === 'venc') {
-      // Contexto amostradores: focar em estoque e vencimento
-      const venc = (s.venc_urgente||0) + (s.venc_vencidos||0);
-      html = `
-        <div class="ctrl-stat green"><div class="ctrl-stat-label">Em Estoque</div><div class="ctrl-stat-value">${s.estoque||0}</div></div>
-        <div class="ctrl-stat blue"><div class="ctrl-stat-label">Laboratório</div><div class="ctrl-stat-value">${s.laboratorio||0}</div></div>
-        <div class="ctrl-stat"><div class="ctrl-stat-label">Total</div><div class="ctrl-stat-value">${s.total_amostradores||0}</div></div>
-        ${venc > 0 ? `<div class="ctrl-stat red"><div class="ctrl-stat-label">⏱ Vencendo/Vencidos</div><div class="ctrl-stat-value">${venc}</div></div>` : ''}
-      `;
+      // Redesign 08/07: os KPIs próprios da aba (ctrl-amostr-kpis) substituem esta barra
+      html = '';
     } else {
       // Contexto empresas/demandas: focar só em pendências de OS
       html = `
@@ -12664,24 +12670,22 @@ function ctrlToggleArquivados() {
   ctrlLoadAmostr();
 }
 
+// Pseudo-filtros do redesign: 'resultado' = RA recebido e não concluído; 'finalizado' = concluído+devolvido
+let _ctrlAmostrPseudo = '';
+
 async function ctrlLoadAmostr() {
   const q = new URLSearchParams();
-  const codigo = document.getElementById('ctrl-f-codigo').value;
-  const status = document.getElementById('ctrl-f-status').value;
-  const tipo   = document.getElementById('ctrl-f-tipo').value;
-  const empresa = document.getElementById('ctrl-f-empresa').value;
   const arquivados = document.getElementById('ctrl-f-arquivados')?.checked;
-  if (codigo) q.set('codigo', codigo);
-  if (status) q.set('status', status);
-  if (tipo)   q.set('tipo', tipo);
-  if (empresa) q.set('empresa', empresa);
   if (arquivados) q.set('arquivados', '1');
 
   const tb = document.getElementById('ctrl-tb-amostr');
-  tb.innerHTML = '<tr><td colspan="8" class="ctrl-empty">Carregando...</td></tr>';
+  tb.innerHTML = '<tr><td colspan="10" class="ctrl-empty">Carregando...</td></tr>';
   try {
+    // Base completa vem do servidor; filtros são client-side (KPIs sempre globais)
     const data = await ctrlFetch('/controle/amostradores?' + q.toString());
     ctrlAmostrCache = data;
+    ctrlAmostrRenderKpis(data);
+    ctrlAmostrHeader();
     // Popular tipos uniques
     const tipos = [...new Set(data.map(a=>a.tipo).filter(Boolean))].sort();
     const sel = document.getElementById('ctrl-f-tipo');
@@ -12689,13 +12693,29 @@ async function ctrlLoadAmostr() {
     sel.innerHTML = '<option value="">— Tipo —</option>' +
       tipos.map(t => `<option ${t===cur?'selected':''}>${t}</option>`).join('');
 
-    if (!data.length) {
-      tb.innerHTML = '<tr><td colspan="9" class="ctrl-empty">Nenhum amostrador encontrado. Use "Importar Planilhas" para carregar.</td></tr>';
+    // Filtros client-side
+    const fCod = (document.getElementById('ctrl-f-codigo').value || '').trim().toUpperCase();
+    const fSt  = document.getElementById('ctrl-f-status').value;
+    const fTp  = document.getElementById('ctrl-f-tipo').value;
+    const fEmp = (document.getElementById('ctrl-f-empresa').value || '').trim().toLowerCase();
+    const lista = data.filter(a => {
+      const st = (a.status || '').toLowerCase();
+      if (fCod && !(a.codigo || '').toUpperCase().includes(fCod)) return false;
+      if (fTp && a.tipo !== fTp) return false;
+      if (fEmp && !(a.empresa_nome || '').toLowerCase().includes(fEmp)) return false;
+      if (_ctrlAmostrPseudo === 'resultado')  return !!a.data_resultado && !['concluido','devolvido','descartado'].includes(st);
+      if (_ctrlAmostrPseudo === 'finalizado') return st === 'concluido' || st === 'devolvido';
+      if (fSt) return st === fSt;
+      return true;
+    });
+
+    if (!lista.length) {
+      tb.innerHTML = '<tr><td colspan="10" class="ctrl-empty">Nenhum amostrador nesse filtro.</td></tr>';
       return;
     }
     // Ordenação client-side
     const sort = document.getElementById('ctrl-f-sort')?.value || 'entrada_asc';
-    data.sort((a,b) => {
+    lista.sort((a,b) => {
       if (sort === 'entrada_asc')  return (a.data_entrada||'') < (b.data_entrada||'') ? -1 : 1;
       if (sort === 'entrada_desc') return (a.data_entrada||'') > (b.data_entrada||'') ? -1 : 1;
       if (sort === 'parado_desc')  return (b.tempo_parado||0) - (a.tempo_parado||0);
@@ -12703,12 +12723,12 @@ async function ctrlLoadAmostr() {
       if (sort === 'tipo_asc')     return (a.tipo||'').localeCompare(b.tipo||'');
       return 0;
     });
-    // Mostrar botão de correção se houver amostradores com +200 dias em estoque
+    // Mostrar item de correção se houver amostradores com +200 dias em estoque
     const temVelhos = data.some(a => (a.tempo_parado||0) > 200 && ['disponivel','reservado'].includes((a.status||'').toLowerCase()));
     const btnFix = document.getElementById('btn-fix-data-entrada');
-    if (btnFix) btnFix.style.display = temVelhos ? 'inline-flex' : 'none';
+    if (btnFix) btnFix.style.display = temVelhos ? 'block' : 'none';
 
-    tb.innerHTML = data.map(a => {
+    tb.innerHTML = lista.map(a => {
       const st = (a.status || '').toLowerCase();
       const parado = a.tempo_parado !== null && a.tempo_parado !== undefined ? a.tempo_parado : null;
       let corParado = 'var(--text3)', lblParado = '—';
@@ -12720,22 +12740,10 @@ async function ctrlLoadAmostr() {
       }
       let rowStyle = '';
       if (st.includes('lab') && a.data_envio_lab) rowStyle = 'background:rgba(255,136,0,.03);';
-      const acoes = [
-        st === 'disponivel' ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixa(${a.id})">Dar Baixa</button>` : '',
-        `<select onchange="ctrlMudarStatusAmostr(${a.id}, this.value, this)" style="background:var(--surface2); border:1px solid var(--border); color:var(--text3); border-radius:4px; font-size:.68rem; padding:2px 4px; margin-left:4px; cursor:pointer;" title="Alterar status">
-          <option value="">Status</option>
-          <option value="disponivel" ${st==='disponivel'?'selected':''}>Disponível</option>
-          <option value="reservado" ${st==='reservado'?'selected':''}>Reservado</option>
-          <option value="laboratorio" ${st==='laboratorio'?'selected':''}>No laboratório</option>
-          <option value="concluido" ${st==='concluido'?'selected':''}>Concluído</option>
-          <option value="devolvido" ${st==='devolvido'?'selected':''}>Devolvido</option>
-          <option value="manutencao" ${st==='manutencao'?'selected':''}>Manutenção</option>
-          <option value="descartado" ${st==='descartado'?'selected':''}>Descartado</option>
-        </select>`
-      ].join('');
-      return `<tr style="${rowStyle}" data-amostr-id="${a.id}">
-        <td><input type="checkbox" class="ctrl-amostr-chk" value="${a.id}" onchange="ctrlAtualizarBulkBar()" ${st!=='disponivel'?'disabled':''}></td>
-        <td><span class="ctrl-badge ${st}">${_amostrStatusLabel(a.status)}</span></td>
+      const temRA = !!a.data_resultado && !['concluido','devolvido','descartado'].includes(st);
+      return `<tr style="cursor:pointer;${rowStyle}" data-amostr-id="${a.id}" onclick="ctrlAmostrDrill(${a.id})">
+        <td onclick="event.stopPropagation()"><input type="checkbox" class="ctrl-amostr-chk" value="${a.id}" onchange="ctrlAtualizarBulkBar()" ${st!=='disponivel'?'disabled':''}></td>
+        <td><span class="ctrl-badge ${st}">${_amostrStatusLabel(a.status)}</span>${temRA?' <span title="Resultado (RA) recebido — falta concluir" style="font-size:.78rem;">📥</span>':''}</td>
         <td><b>${a.tipo||'—'}</b></td>
         <td style="font-family:monospace; font-size:.82rem;">${a.codigo||'—'}</td>
         <td style="font-size:.78rem;">${window._dataBR(a.data_entrada)}</td>
@@ -12743,13 +12751,210 @@ async function ctrlLoadAmostr() {
         <td style="font-size:.78rem;">${a.avaliador||'—'}</td>
         <td style="font-size:.78rem;">${window._dataBR(a.data_medicao)}</td>
         <td style="color:${corParado}; font-size:.78rem; font-weight:600;">${lblParado}</td>
-        <td>${acoes}</td>
+        <td onclick="event.stopPropagation()"><button data-rowmenu-btn onclick="ctrlAmostrRowMenu(event, ${a.id})" title="Ações" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:2px 9px;cursor:pointer;font-size:.85rem;">⋯</button></td>
       </tr>`;
     }).join('');
-    ctrlLoadStats();
   } catch(e) {
-    tb.innerHTML = `<tr><td colspan="8" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="10" class="ctrl-empty" style="color:#e22;">Erro: ${e.message}</td></tr>`;
   }
+}
+
+// ── Redesign 08/07: KPIs, pipeline, cobrança do lab, RAs, menu ⋯ e drawer ──
+function ctrlAmostrRenderKpis(data) {
+  const el = document.getElementById('ctrl-amostr-kpis');
+  if (!el) return;
+  const cnt = { disponivel:0, reservado:0, laboratorio:0, resultado:0, finalizado:0 };
+  data.forEach(a => {
+    const st = (a.status||'').toLowerCase();
+    if (cnt[st] !== undefined) cnt[st]++;
+    if (st === 'concluido' || st === 'devolvido') cnt.finalizado++;
+    if (a.data_resultado && !['concluido','devolvido','descartado'].includes(st)) cnt.resultado++;
+  });
+  const fSt = document.getElementById('ctrl-f-status').value;
+  const ativo = _ctrlAmostrPseudo || fSt;
+  const kpi = (key, label, valor, cor, extra) => `
+    <div class="ctrl-stat" onclick="ctrlAmostrKpiFilter('${key}')" style="cursor:pointer;${ativo===key?'outline:1.5px solid '+cor+';':''}" title="Clique para filtrar">
+      <div class="ctrl-stat-label" style="color:${cor};">${label}</div>
+      <div class="ctrl-stat-value" style="color:${cor};">${valor}</div>
+      ${extra||''}
+    </div>`;
+  const lab200 = data.filter(a => (a.status||'').toLowerCase()==='laboratorio' && (a.tempo_parado||0)>=200).length;
+  el.innerHTML =
+    kpi('disponivel',  'Disponíveis',          cnt.disponivel,  'var(--green)') +
+    kpi('laboratorio', 'No laboratório',       cnt.laboratorio, 'var(--orange)',
+        lab200 ? `<div style="font-size:.64rem;color:#e22;margin-top:2px;">${lab200} parados há +200d</div>` : '') +
+    kpi('resultado',   'Resultados recebidos', cnt.resultado,   'var(--blue)') +
+    `<div class="ctrl-stat" onclick="ctrlSwitchAmostrView('venc')" style="cursor:pointer;" title="Abrir controle de vencimento">
+      <div class="ctrl-stat-label" style="color:#e22;">Vencidos</div>
+      <div class="ctrl-stat-value" style="color:#e22;" id="ctrl-kpi-vencidos">…</div>
+    </div>` +
+    kpi('finalizado',  'Concluídos',           cnt.finalizado,  'var(--text2)');
+  ctrlAmostrRenderPipeline(cnt);
+}
+
+function ctrlAmostrRenderPipeline(cnt) {
+  const el = document.getElementById('ctrl-amostr-pipeline');
+  if (!el) return;
+  const fSt = document.getElementById('ctrl-f-status').value;
+  const ativo = _ctrlAmostrPseudo || fSt;
+  const etapas = [
+    ['disponivel',  '📦 Disponível',         cnt.disponivel],
+    ['reservado',   '📌 Reservado',          cnt.reservado],
+    ['laboratorio', '🧪 No laboratório',     cnt.laboratorio],
+    ['resultado',   '📥 Resultado recebido', cnt.resultado],
+    ['finalizado',  '✓ Concluído',           cnt.finalizado],
+  ];
+  el.style.display = 'flex';
+  el.innerHTML = '<span style="font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-right:6px;">Ciclo de vida</span>' +
+    etapas.map(([k, lbl, n], i) =>
+      (i ? '<span style="color:var(--text3);font-size:.72rem;margin:0 2px;">→</span>' : '') +
+      `<span onclick="ctrlAmostrKpiFilter('${k}')" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;font-size:.76rem;border:1px solid ${ativo===k?'var(--orange)':'var(--border)'};color:${ativo===k?'var(--orange)':'var(--text2)'};background:${ativo===k?'rgba(251,140,60,.1)':'transparent'};">${lbl}<b style="font-size:.7rem;background:var(--surface3);border-radius:8px;padding:0 7px;">${n}</b></span>`
+    ).join('') +
+    (ativo ? `<span onclick="ctrlAmostrKpiFilter('')" style="cursor:pointer;margin-left:8px;font-size:.72rem;color:var(--text3);text-decoration:underline;">limpar filtro</span>` : '');
+}
+
+function ctrlAmostrKpiFilter(key) {
+  const fSt = document.getElementById('ctrl-f-status');
+  const atual = _ctrlAmostrPseudo || fSt.value;
+  if (!key || atual === key) { _ctrlAmostrPseudo = ''; fSt.value = ''; }         // clique repetido limpa
+  else if (key === 'resultado' || key === 'finalizado') { _ctrlAmostrPseudo = key; fSt.value = ''; }
+  else { _ctrlAmostrPseudo = ''; fSt.value = key; }
+  ctrlLoadAmostr();
+}
+
+// Vencidos + cobrança do lab + RAs recebidos — 1 fetch com cache de 5 min
+let _ctrlVencHdrCache = null, _ctrlVencHdrAt = 0;
+async function ctrlAmostrHeader(force) {
+  try {
+    if (force || !_ctrlVencHdrCache || (Date.now() - _ctrlVencHdrAt) > 300000) {
+      _ctrlVencHdrCache = await ctrlFetch('/controle/amostradores_vencendo');
+      _ctrlVencHdrAt = Date.now();
+    }
+    const d = _ctrlVencHdrCache;
+    const kv = document.getElementById('ctrl-kpi-vencidos');
+    if (kv) kv.textContent = (d.stats || {}).vencidos || 0;
+    // Banner: lista oficial de cobrança do lab
+    const ban = document.getElementById('ctrl-amostr-lab-cobranca');
+    const lp = d.lab_pendentes;
+    if (ban) {
+      if (lp && lp.codigos && lp.codigos.length) {
+        ban.style.display = 'block';
+        ban.innerHTML = `<div style="display:flex;align-items:center;gap:10px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:9px;padding:10px 14px;font-size:.82rem;">
+          <span>📌</span><div style="flex:1;">Laboratório cobra retorno de <b>${lp.codigos.length} amostrador(es)</b> <span style="color:var(--text3);">(lista oficial de ${lp.data?String(lp.data).split('-').reverse().join('/'):'—'})</span></div>
+          <button onclick="ctrlSwitchAmostrView('venc')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;cursor:pointer;font-size:.76rem;font-family:inherit;">Ver lista</button>
+        </div>`;
+      } else ban.style.display = 'none';
+    }
+    // Box de RAs recebidos (e-mails do lab) com vinculação manual
+    const box = document.getElementById('ctrl-amostr-resultados');
+    const rs = d.lab_resultados || [];
+    if (box) {
+      if (rs.length) {
+        window._ctrlRAs = rs;
+        box.style.display = 'block';
+        box.innerHTML = `<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:9px;padding:10px 14px;">
+          <div style="font-size:.82rem;margin-bottom:6px;"><b style="color:var(--green);">📥 ${rs.length} resultado(s) recebido(s) do laboratório</b> <span style="color:var(--text3);font-size:.74rem;">— vincule ao amostrador para concluir o ciclo</span></div>
+          ${rs.map((r, i) => `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:.76rem;">
+            <span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.assunto||'—')}</span>
+            <span style="color:var(--text3);white-space:nowrap;">${r.data?String(r.data).split('-').reverse().join('/'):'—'}</span>
+            <button onclick="ctrlAmostrAbrirRA(${i})" style="background:rgba(57,153,255,.12);border:1px solid rgba(57,153,255,.4);color:var(--blue);border-radius:6px;padding:3px 11px;cursor:pointer;font-size:.73rem;font-family:inherit;">🔗 Vincular</button>
+          </div>`).join('')}
+        </div>`;
+      } else box.style.display = 'none';
+    }
+  } catch(_) { /* header é acessório — não quebra a lista */ }
+}
+
+// Menu ⋯ contextual por linha
+function ctrlAmostrRowMenu(ev, id) {
+  document.getElementById('ctrl-amostr-rowmenu')?.remove();
+  const a = (ctrlAmostrCache||[]).find(x => x.id === id);
+  if (!a) return;
+  const st = (a.status||'').toLowerCase();
+  const item = (lbl, fn) => `<div onclick="document.getElementById('ctrl-amostr-rowmenu').remove();${fn}" style="padding:8px 14px;font-size:.79rem;cursor:pointer;color:var(--text);white-space:nowrap;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${lbl}</div>`;
+  let html = item('📜 Histórico', `ctrlAmostrDrill(${id})`);
+  if (st === 'laboratorio' || st === 'reservado') html += item('📥 Registrar resultado (RA)', `ctrlAmostrRegResultado(${id})`);
+  if (st === 'laboratorio') html += item('↩ Marcar devolvido', `ctrlMudarStatusAmostr(${id}, 'devolvido')`);
+  html += `<div style="border-top:1px solid var(--border);padding:6px 14px 3px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);">Alterar status</div>` +
+    ['disponivel','reservado','laboratorio','concluido','devolvido','manutencao','descartado']
+      .filter(s => s !== st)
+      .map(s => item(_amostrStatusLabel(s), `ctrlMudarStatusAmostr(${id}, '${s}')`)).join('');
+  const m = document.createElement('div');
+  m.id = 'ctrl-amostr-rowmenu';
+  m.style.cssText = 'position:fixed;z-index:90;background:var(--bg);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.45);overflow:hidden;min-width:185px;';
+  m.innerHTML = html;
+  document.body.appendChild(m);
+  const r = ev.currentTarget.getBoundingClientRect();
+  const mh = m.offsetHeight;
+  m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px';
+  m.style.top  = (r.bottom + mh + 8 > window.innerHeight ? r.top - mh - 4 : r.bottom + 4) + 'px';
+}
+
+// Drawer com a linha do tempo do amostrador (reusa o drawer do BI)
+function ctrlAmostrDrill(id) {
+  const a = (ctrlAmostrCache||[]).find(x => x.id === id);
+  if (!a || typeof biDrawerOpen !== 'function') return;
+  const st = (a.status||'').toLowerCase();
+  const passos = [
+    ['📦 Entrada no estoque', a.data_entrada, null],
+    ['📍 Usado em campo',     a.data_medicao, [a.avaliador, a.empresa_nome].filter(Boolean).join(' · ')],
+    ['🧪 Enviado ao lab',     a.data_envio_lab, null],
+    ['📥 Resultado (RA)',     a.data_resultado, null],
+    ['✓ Concluído',           a.data_conclusao, null],
+  ].filter(p => p[1]);
+  let html = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+    <span class="ctrl-badge ${st}">${_amostrStatusLabel(a.status)}</span>
+    <span style="font-size:.78rem;color:var(--text3);">${a.tipo||'—'} · ${_esc(a.empresa_nome||'sem empresa')}${a.tempo_parado!=null?` · parado há <b style="color:${(a.tempo_parado>30)?'#e22':'var(--text2)'};">${a.tempo_parado}d</b>`:''}</span>
+  </div>`;
+  html += '<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px;">Linha do tempo</div>';
+  html += passos.length
+    ? passos.map(p => `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--orange);">●</span>
+        <div style="flex:1;"><div style="font-size:.8rem;color:var(--text);">${p[0]}</div>${p[2]?`<div style="font-size:.7rem;color:var(--text3);">${_esc(p[2])}</div>`:''}</div>
+        <span style="font-size:.74rem;color:var(--text3);white-space:nowrap;">${window._dataBR(p[1])}</span>
+      </div>`).join('')
+    : '<div style="font-size:.78rem;color:var(--text3);">Sem movimentações registradas.</div>';
+  if (a.observacao) html += `<div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:7px;font-size:.75rem;color:var(--text2);line-height:1.5;">${_esc(a.observacao)}</div>`;
+  if (st === 'laboratorio') html += `<button onclick="biDrawerClose();ctrlAmostrRegResultado(${a.id})" style="margin-top:14px;width:100%;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:10px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;">📥 Registrar resultado (RA)</button>`;
+  biDrawerOpen(`Amostrador ${a.codigo||'—'}`, html);
+}
+
+// Registrar resultado direto na linha (data = hoje, edita depois se precisar)
+async function ctrlAmostrRegResultado(id) {
+  const a = (ctrlAmostrCache||[]).find(x => x.id === id);
+  const dt = prompt(`Data do resultado (RA) de ${a?a.codigo:'#'+id}:`, new Date().toISOString().slice(0,10));
+  if (!dt) return;
+  await _ctrlAmostrGravarRA(id, dt);
+}
+
+// Vincular um RA do e-mail a um amostrador no laboratório
+function ctrlAmostrAbrirRA(idx) {
+  const ra = (window._ctrlRAs||[])[idx];
+  if (!ra) return;
+  const labs = (ctrlAmostrCache||[]).filter(a => (a.status||'').toLowerCase()==='laboratorio');
+  if (!labs.length) { alert('Nenhum amostrador com status "No laboratório" para vincular.'); return; }
+  const html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:10px;background:var(--surface2);border-radius:7px;padding:10px;">${_esc(ra.assunto||'—')}<br><span style="color:var(--text3);">recebido em ${ra.data?String(ra.data).split('-').reverse().join('/'):'—'}</span></div>
+    <label style="font-size:.74rem;color:var(--text3);">Amostrador (no laboratório)</label>
+    <select id="ctrl-ra-amostr" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:inherit;font-size:.84rem;margin:4px 0 10px;">
+      ${labs.map(a => `<option value="${a.id}">${a.codigo} · ${a.tipo||'—'} · ${_esc(a.empresa_nome||'sem empresa')}${a.tempo_parado!=null?` · ${a.tempo_parado}d parado`:''}</option>`).join('')}
+    </select>
+    <label style="font-size:.74rem;color:var(--text3);">Data do resultado</label>
+    <input type="date" id="ctrl-ra-data" value="${ra.data||new Date().toISOString().slice(0,10)}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:inherit;font-size:.84rem;margin:4px 0 14px;">
+    <button onclick="_ctrlAmostrGravarRA(parseInt(document.getElementById('ctrl-ra-amostr').value), document.getElementById('ctrl-ra-data').value, true)" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:7px;padding:11px;cursor:pointer;font-size:.84rem;font-weight:700;font-family:inherit;">✓ Vincular e concluir</button>`;
+  biDrawerOpen('🔗 Vincular resultado (RA)', html);
+}
+
+async function _ctrlAmostrGravarRA(id, data, fecharDrawer) {
+  try {
+    await ctrlFetch(`/controle/amostradores/${id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({data_resultado: data, status: 'concluido'})
+    });
+    if (fecharDrawer && typeof biDrawerClose === 'function') biDrawerClose();
+    _showToast('✓ Resultado registrado — amostrador concluído', 'success');
+    ctrlAmostrHeader(true);
+    ctrlLoadAmostr();
+  } catch(e) { alert('Erro: ' + e.message); }
 }
 
 async function ctrlMudarStatusAmostr(id, novoStatus, selEl) {
@@ -12763,7 +12968,7 @@ async function ctrlMudarStatusAmostr(id, novoStatus, selEl) {
     ctrlLoadAmostr();
   } catch(e) {
     alert('Erro: ' + e.message);
-    selEl.value = '';
+    if (selEl) selEl.value = '';
   }
 }
 
