@@ -6650,6 +6650,53 @@ def graph_debug_resultado():
         return jsonify({'erro': str(e)}), 200
 
 
+@controle_bp.route('/graph/debug_ra_search')
+def graph_debug_ra_search():
+    """DEBUG: procura RAs do lab em TODO o histórico (via $search from:LAB_DOM) e
+    lista assunto + os códigos de amostrador extraídos do NOME dos PDFs (não baixa
+    o conteúdo — rápido). ?termo=Morro filtra o assunto (empresa avaliada). Serve p/
+    achar o resultado de um amostrador cujo código no laudo diverge do inventário."""
+    init_db()
+    from .graph import graph_get
+    from .lab_inbox import _mailboxes, _norm, _codigo_do_anexo_ra, LAB_DOM
+    termo = (request.args.get('termo', '') or '').strip().lower()
+    out, vistos = [], set()
+    for box in _mailboxes():
+        try:
+            data = graph_get(f"/users/{box}/messages"
+                             f'?$search="from:{LAB_DOM}"&$top=200'
+                             f"&$select=id,subject,receivedDateTime,hasAttachments")
+        except Exception:
+            continue
+        for m in data.get('value', []):
+            sub = (m.get('subject', '') or '')
+            if not sub.strip().upper().startswith('RA '):
+                continue
+            if termo and termo not in sub.lower():
+                continue
+            key = sub.strip().lower()
+            if key in vistos:
+                continue
+            vistos.add(key)
+            cods = []
+            if m.get('hasAttachments'):
+                try:
+                    metas = graph_get(f"/users/{box}/messages/{m['id']}/attachments"
+                                      f"?$select=name").get('value', [])
+                except Exception:
+                    metas = []
+                for meta in metas:
+                    nome = meta.get('name', '')
+                    if nome.lower().endswith('.pdf'):
+                        c = _norm(_codigo_do_anexo_ra(nome))
+                        if c:
+                            cods.append(c)
+            out.append({'assunto': sub[:130], 'data': (m.get('receivedDateTime') or '')[:10],
+                        'codigos': list(dict.fromkeys(cods))})
+    out.sort(key=lambda x: x['data'])
+    return jsonify({'termo': termo, 'total': len(out), 'ras': out})
+
+
 @controle_bp.route('/graph/auditoria_lab', methods=['GET', 'POST'])
 def graph_auditoria_lab():
     """AUDITORIA: reconcilia o que o lab ENVIOU (RAs na inbox + cadeias nos enviados)
