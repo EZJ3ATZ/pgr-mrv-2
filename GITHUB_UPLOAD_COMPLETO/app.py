@@ -159,6 +159,10 @@ def _handle_uncaught(e):
 _scheduler_started = False
 def _start_planner_scheduler():
     global _scheduler_started
+    if os.environ.get('DISABLE_SCHEDULER') == '1':
+        # Testes e scripts importam app.py sem querer sync em background.
+        print('[scheduler] DISABLE_SCHEDULER=1 — sync automatico desligado')
+        return
     if _scheduler_started:
         return
     _scheduler_started = True
