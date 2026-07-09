@@ -136,6 +136,7 @@ def _qint(name, default, maximo=None):
 _ADMIN_ONLY_EXACT = frozenset({
     '/controle/graph/sync', '/controle/graph/lab_sync',
     '/controle/graph/ra_backfill', '/controle/graph/ra_backfill_preview',
+    '/controle/graph/ra_backfill_result',
     '/controle/graph/test_mail', '/controle/graph/users',
     '/controle/amostradores/concluir-utilizados',
     '/controle/amostradores/diagnostico',
@@ -6461,6 +6462,28 @@ def graph_ra_backfill():
                         'mensagem': 'Backfill de RAs iniciado em background — pode levar alguns minutos (baixa os PDFs). O painel atualiza ao terminar.'})
     except Exception as e:
         import traceback; traceback.print_exc()
+        return jsonify({'erro': str(e)}), 200
+
+
+@controle_bp.route('/graph/ra_backfill_result')
+def graph_ra_backfill_result():
+    """Relatório da última execução APLICADA do backfill de RAs, incluindo os
+    erros por laudo (report['erros']) — sem isto o erro real de um laudo que
+    falhou ficava só no stdout do Railway e a UI nunca mostrava nada."""
+    init_db()
+    try:
+        with get_db() as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state "
+                         "(chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
+            row = conn.execute("SELECT valor, atualizado_em FROM ms_sync_state "
+                               "WHERE chave='ra_backfill_result'").fetchone()
+        if not row:
+            return jsonify({'info': 'backfill ainda não rodou em modo aplicado'})
+        d = row_to_dict(row)
+        out = json.loads(d.get('valor') or '{}')
+        out['quando'] = str(d.get('atualizado_em'))
+        return jsonify(out)
+    except Exception as e:
         return jsonify({'erro': str(e)}), 200
 
 
