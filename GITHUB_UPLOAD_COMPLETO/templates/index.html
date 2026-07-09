@@ -6295,7 +6295,18 @@ function goToTab(name) {
   if (name === 'quimico' && typeof laudoPrefillPopular === 'function') laudoPrefillPopular('quimico');
   if (name === 'calor'   && typeof laudoPrefillPopular === 'function') laudoPrefillPopular('calor');
   if (name === 'pops') popsLoad();
+  // Persiste a aba na URL: F5 mantém a aba e o link .../#empresas abre direto nela.
+  // replaceState não polui o histórico nem faz a página rolar.
+  try { history.replaceState(null, '', '#' + name); } catch (_) {}
 }
+
+// Abre a aba indicada no #hash da URL (no load e quando o hash muda) — evita
+// cair na Home ao atualizar a página. Ignora hash inválido (fica na Home).
+function _restoreTabFromHash() {
+  const h = (location.hash || '').replace(/^#/, '').trim();
+  if (h && document.getElementById('tab-' + h)) goToTab(h);
+}
+window.addEventListener('hashchange', _restoreTabFromHash);
 
 // ── Biblioteca de POPs (PDFs servidos em /static/pops/) ────────────────
 const _POPS = [
@@ -8943,6 +8954,7 @@ async function loadTecnicos() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  _restoreTabFromHash();   // abre a aba da URL (#nome) antes de tudo — F5 não volta pra Home
   loadTecnicos();
   // Inicializa nome do usuário logado para filtros
   fetch('/api/me').then(r => r.json()).then(me => {
