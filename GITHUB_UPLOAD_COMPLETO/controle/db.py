@@ -141,9 +141,13 @@ class _PGCursor:
         self._cur = None
         self._lastrowid = None
 
-    # Tabelas cuja PK NÃO é uma coluna 'id' (PK textual) — não anexar RETURNING id,
-    # senão o Postgres lança 'column "id" does not exist'.
-    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE')
+    # Tabelas SEM coluna 'id' (PK textual ou sem PK) — não anexar RETURNING id,
+    # senão o Postgres lança 'column "id" does not exist' e ABORTA a transação
+    # inteira (InFailedSqlTransaction), fazendo rollback de tudo que veio antes.
+    # RA_LAUDOS entrou aqui: o INSERT do backfill de RAs (lab_inbox._upsert_ra_laudo)
+    # derrubava a transação toda — conclusões de amostrador e baixas de medição
+    # eram desfeitas junto (bug do "backfill nunca conclui em prod").
+    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE', 'RA_LAUDOS')
 
     def execute(self, sql, params=None):
         self._cur = self._pg_conn.cursor(
