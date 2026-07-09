@@ -372,6 +372,26 @@ def _use_pg():
     return bool(os.environ.get('DATABASE_URL'))
 
 
+def _savepoint(conn, fn):
+    """Roda fn dentro de um SAVEPOINT. No Postgres, UM statement que falha
+    aborta a transação INTEIRA (InFailedSqlTransaction): sem savepoint, os
+    try/except daqui mascaravam o 1º erro, todos os statements seguintes
+    falhavam junto e o rollback final desfazia até o que tinha dado certo
+    (job rodava e não concluía nada). SQLite aceita a mesma sintaxe."""
+    conn.execute("SAVEPOINT sp_lab")
+    try:
+        r = fn()
+        conn.execute("RELEASE SAVEPOINT sp_lab")
+        return r
+    except Exception:
+        try:
+            conn.execute("ROLLBACK TO SAVEPOINT sp_lab")
+            conn.execute("RELEASE SAVEPOINT sp_lab")
+        except Exception:
+            pass
+        raise
+
+
 def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     """Lê os e-mails do lab (em TODAS as caixas dos técnicos + a oficial) e
     reconcilia. apply=False → só simula (preview). top = e-mails recentes por caixa.
@@ -855,24 +875,36 @@ def backfill_ras(apply=False, top=200):
         report['periodo'] = f"{ds[0]} .. {ds[-1]}"
     medicoes = 0
     if apply and (plano or laudos):
+        erros = []
         with get_db() as conn:
             _ensure_ra_laudos(conn)
             for aid, dt in plano:
-                conn.execute(
-                    "UPDATE amostradores SET data_resultado=COALESCE(NULLIF(data_resultado,''),?), "
-                    "status='concluido', atualizado_em=CURRENT_TIMESTAMP "
-                    "WHERE id=? AND status='laboratorio'", (dt, aid))
+                try:
+                    _savepoint(conn, lambda: conn.execute(
+                        "UPDATE amostradores SET data_resultado=COALESCE(NULLIF(data_resultado,''),?), "
+                        "status='concluido', atualizado_em=CURRENT_TIMESTAMP "
+                        "WHERE id=? AND status='laboratorio'", (dt, aid)))
+                except Exception as ex:
+                    log.warning('[backfill_ras] concluir amostrador #%s falhou: %s', aid, ex)
+                    erros.append(f'concluir amostrador #{aid}: {ex}')
             for aid, cod, e, d in laudos:
                 try:
-                    _upsert_ra_laudo(conn, aid, cod, e, d)
+                    _savepoint(conn, lambda: _upsert_ra_laudo(conn, aid, cod, e, d))
                 except Exception as ex:
                     log.warning('[backfill_ras] upsert laudo falhou (%s): %s', cod, ex)
+                    erros.append(f'laudo {cod}: {ex}')
             try:
-                medicoes = _baixar_medicoes_com_resultado(conn)
+                medicoes = _savepoint(conn, lambda: _baixar_medicoes_com_resultado(conn))
             except Exception as ex:
                 log.warning('[backfill_ras] baixa de medições falhou: %s', ex)
-            _kv_set(conn, 'ra_backfill_result', json.dumps({**report, 'medicoes_baixadas': medicoes},
-                                                           ensure_ascii=False))
+                erros.append(f'baixa de medições: {ex}')
+            report['erros'] = erros[:20]
+            try:
+                _savepoint(conn, lambda: _kv_set(
+                    conn, 'ra_backfill_result',
+                    json.dumps({**report, 'medicoes_baixadas': medicoes}, ensure_ascii=False)))
+            except Exception as ex:
+                log.warning('[backfill_ras] gravar resultado falhou: %s', ex)
 
     report['modo'] = 'APLICADO' if apply else 'PREVIEW (nada gravado)'
     report['medicoes_baixadas'] = medicoes
