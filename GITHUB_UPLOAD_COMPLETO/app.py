@@ -253,8 +253,30 @@ def _start_planner_scheduler():
             replace_existing=True, max_instances=1,
         )
 
+        # Backfill de RAs: varre TODO o histórico do lab (via $search), lê o PDF do
+        # laudo e conclui o amostrador parado no lab com RA já emitido. É o que fecha
+        # o ciclo sozinho (antes só existia no botão manual). 1x/dia às 05:45 UTC,
+        # logo após o lab sync pesado.
+        def _ra_backfill_job():
+            if not graph_ok():
+                return
+            try:
+                from controle.lab_inbox import backfill_ras
+                r = backfill_ras(apply=True)
+                print(f'[scheduler] RA backfill: {r.get("concluiriam",0)} concluídos, '
+                      f'{r.get("casaram",0)} casados, {r.get("medicoes_baixadas",0)} medições')
+            except Exception as e:
+                print(f'[scheduler] RA backfill erro: {e}')
+
+        scheduler.add_job(
+            _ra_backfill_job,
+            trigger=CronTrigger(hour=5, minute=45),
+            id='ra_backfill_diario', name='Backfill RAs (diário)',
+            replace_existing=True, max_instances=1,
+        )
+
         scheduler.start()
-        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos + consistência diária 06h + lab leve 3h/pesada 05h30 iniciado')
+        print(f'[scheduler] boot-sync em 60s + sync a cada {SYNC_INTERVAL_MINUTES} minutos + consistência diária 06h + lab leve 3h/pesada 05h30 + backfill RAs 05h45 iniciado')
     except ImportError:
         print('[scheduler] APScheduler nao instalado — sync automatico desabilitado')
     except Exception as e:

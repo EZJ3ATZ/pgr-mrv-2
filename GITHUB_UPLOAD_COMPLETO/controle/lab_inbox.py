@@ -425,7 +425,9 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                     if not nome.lower().endswith('.pdf'):
                         continue
                     cod = _norm(_codigo_do_anexo_ra(nome))
-                    amos = look.get(cod) if cod else None
+                    # match robusto (exato, tipo+codigo ou sufixo unico) — o mesmo
+                    # do backfill. Antes era look.get(cod) exato e casava ~nada.
+                    amos = _match_amostrador(look, cod) if cod else None
                     if not amos:
                         continue
                     aid, dt = amos['id'], e['data']
