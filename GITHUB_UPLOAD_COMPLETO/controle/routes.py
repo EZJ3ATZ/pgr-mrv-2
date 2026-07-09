@@ -3136,10 +3136,28 @@ def _sync_reserva_plano(pid, agentes, dry=False):
                     res['conflitos'].append(f"{st.get('codigo') or txt} (status: {status or '?'})")
                     continue
                 if not dry:
-                    conn.execute(
+                    # UPDATE condicional re-afirma o status (anti-corrida TOCTOU):
+                    # outro plano confirmado entre o SELECT acima e este UPDATE
+                    # não pode ser sobrescrito — rowcount 0 vira conflito.
+                    cur = conn.execute(
                         "UPDATE amostradores SET status='reservado', reservado_por_plano=?, "
-                        "atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
-                        (pid, hit['id']))
+                        "atualizado_em=CURRENT_TIMESTAMP WHERE id=? AND "
+                        "(status='disponivel' OR (status='reservado' AND "
+                        "(reservado_por_plano IS NULL OR reservado_por_plano=?)))",
+                        (pid, hit['id'], pid))
+                    if getattr(cur, 'rowcount', 1) == 0:
+                        row2 = conn.execute(
+                            'SELECT status, reservado_por_plano, codigo FROM amostradores WHERE id=?',
+                            (hit['id'],)).fetchone()
+                        st2 = row_to_dict(row2) if row2 else {}
+                        dono2 = st2.get('reservado_por_plano')
+                        if dono2:
+                            res['conflitos'].append(
+                                f"{st2.get('codigo') or txt} (já reservado pelo plano #{dono2})")
+                        else:
+                            res['conflitos'].append(
+                                f"{st2.get('codigo') or txt} (status: {(st2.get('status') or '?').strip()})")
+                        continue
                 res['reservados'].append(st.get('codigo') or txt)
     except Exception as e:
         log.warning('[plano] reserva de amostradores falhou: %s', e)
@@ -7447,6 +7465,9 @@ def api_criar_planejamento():
             if reserva['nao_encontrados']:
                 _warnings.append('⚠️ Amostrador(es) não encontrado(s) no estoque (sem reserva): '
                                  + ', '.join(reserva['nao_encontrados']))
+            if reserva['conflitos']:
+                _warnings.append('🔒 Amostrador levado por outro plano durante a confirmação '
+                                 '(sem reserva): ' + '; '.join(reserva['conflitos']))
         registrar_evento('planejamento_criado',
                          f'OS: {d.get("numero_os","—")} | Técnico: {d.get("tecnico","—")} | Status: {d.get("status","rascunho")}',
                          pid, 'planejamento',
