@@ -424,15 +424,13 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                     nome = meta.get('name', '')
                     if not nome.lower().endswith('.pdf'):
                         continue
-                    cod = _norm(_codigo_do_anexo_ra(nome))
-                    # match robusto (exato, tipo+codigo ou sufixo unico) — o mesmo
-                    # do backfill. Antes era look.get(cod) exato e casava ~nada.
-                    amos = _match_amostrador(look, cod) if cod else None
-                    if not amos:
-                        continue
-                    aid, dt = amos['id'], e['data']
-                    if dt and (aid not in resultado_por_id or dt < resultado_por_id[aid]):
-                        resultado_por_id[aid] = dt
+                    # match robusto + MULTI-código: o lab às vezes cola vários códigos
+                    # num segmento só do nome (ex.: 'FV75A1X7P75B1'). Antes pegava só o
+                    # 3º segmento como 1 código e o RA escapava.
+                    for amos in _amostradores_do_laudo(nome, look):
+                        aid, dt = amos['id'], e['data']
+                        if dt and (aid not in resultado_por_id or dt < resultado_por_id[aid]):
+                            resultado_por_id[aid] = dt
             continue
         if cat not in ('remessa', 'recebimento', 'pendentes'):
             continue
@@ -748,6 +746,25 @@ def _match_amostrador(look, cod):
     return None
 
 
+def _amostradores_do_laudo(nome, look):
+    """TODOS os amostradores do inventário citados no NOME do laudo (PDF). Na maioria
+    o 3º segmento traz 1 código, mas o lab às vezes CONCATENA vários num segmento só
+    (ex.: 'FV75A1X7P75B1' = FV75A1 + X7P75B1, ou vários numa OS grande) — o parser
+    antigo pegava o 3º segmento inteiro como 1 código e não casava nenhum. Aqui, além
+    do 3º segmento (match preciso), varremos o nome inteiro contra o inventário
+    (reverso, via _codigos_no_texto) e pegamos os códigos colados. Dedup por id."""
+    achados = {}
+    cod = _norm(_codigo_do_anexo_ra(nome))
+    a = _match_amostrador(look, cod) if cod else None
+    if a:
+        achados[a['id']] = a
+    for c in _codigos_no_texto(nome or '', look):
+        a = look.get(c)
+        if a:
+            achados[a['id']] = a
+    return list(achados.values())
+
+
 def _ensure_ra_laudos(conn):
     conn.execute(
         "CREATE TABLE IF NOT EXISTS ra_laudos ("
@@ -805,31 +822,33 @@ def backfill_ras(apply=False, top=200):
                 if not nome.lower().endswith('.pdf'):
                     continue
                 report['pdfs'] += 1
-                cod = _codigo_do_anexo_ra(nome)
-                amos = _match_amostrador(look, cod)
-                if not amos:
-                    report['sem_match'].append(cod or nome[:40])
+                # multi-código: um PDF pode citar vários amostradores (colados no nome)
+                amoslist = _amostradores_do_laudo(nome, look)
+                if not amoslist:
+                    report['sem_match'].append(_codigo_do_anexo_ra(nome) or nome[:40])
                     continue
-                report['casaram'] += 1
-                st = (amos.get('status') or '').lower()
-                if st in ('concluido', 'devolvido'):
-                    report['ja_concluidos'] += 1
-                elif st == 'laboratorio':
-                    report['concluiriam'] += 1
-                    report['amostradores'].append(amos.get('codigo'))
-                    if not apply:
-                        continue
-                    plano.append((amos['id'], e['data']))
-                else:
-                    report['fora_do_lab'] += 1
-                if apply:
-                    try:
-                        full = graph_get(f"/users/{box}/messages/{e['id']}/attachments/{meta['id']}")
-                        txt = _extrair_texto_anexo(nome, meta.get('contentType', ''), full.get('contentBytes'))
-                        d = parse_ra_pdf(nome, txt)
-                    except Exception:
-                        d = {'amostrador': cod, 'ra_num': ''}
-                    laudos.append((amos['id'], cod, e, d))
+                parsed = None   # baixa/parseia o PDF só 1x por anexo (reusa p/ cada amostrador)
+                for amos in amoslist:
+                    report['casaram'] += 1
+                    st = (amos.get('status') or '').lower()
+                    if st in ('concluido', 'devolvido'):
+                        report['ja_concluidos'] += 1
+                    elif st == 'laboratorio':
+                        report['concluiriam'] += 1
+                        report['amostradores'].append(amos.get('codigo'))
+                        if apply:
+                            plano.append((amos['id'], e['data']))
+                    else:
+                        report['fora_do_lab'] += 1
+                    if apply:
+                        if parsed is None:
+                            try:
+                                full = graph_get(f"/users/{box}/messages/{e['id']}/attachments/{meta['id']}")
+                                txt = _extrair_texto_anexo(nome, meta.get('contentType', ''), full.get('contentBytes'))
+                                parsed = parse_ra_pdf(nome, txt)
+                            except Exception:
+                                parsed = {'amostrador': amos.get('codigo'), 'ra_num': ''}
+                        laudos.append((amos['id'], amos.get('codigo'), e, parsed))
 
     if datas:
         ds = sorted(datas)
