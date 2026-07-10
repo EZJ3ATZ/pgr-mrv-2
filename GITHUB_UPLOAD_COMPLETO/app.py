@@ -1063,7 +1063,7 @@ def favicon():
 
 
 # Marcador de build — atualizar a cada push para conferir qual versão está no ar
-BUILD_MARK = '2026-06-15-r46-laudo-conclusao-excesso'
+BUILD_MARK = '2026-07-10-r47-aba-usuarios-admin'
 
 
 @app.route('/healthz')
