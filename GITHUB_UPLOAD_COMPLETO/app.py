@@ -30,6 +30,55 @@ def _secret_key():
 
 app.secret_key = _secret_key()
 
+# ── Hardening: cookie de sessão + headers de segurança ────────────────
+# Achado do blackbox 10/07 (CWE-693 / OWASP A05): produção sem nenhum
+# header de segurança; HSTS ausente sobre o login permite SSL-strip.
+_EM_PRODUCAO = bool(os.environ.get('RAILWAY_ENVIRONMENT'))
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=_EM_PRODUCAO,   # local roda em http
+    REMEMBER_COOKIE_HTTPONLY=True,
+    REMEMBER_COOKIE_SAMESITE='Lax',
+    REMEMBER_COOKIE_SECURE=_EM_PRODUCAO,
+)
+
+# CSP pragmática: cobre o que os templates realmente usam (fonts Google,
+# chart.js no jsdelivr, spline-viewer no unpkg, logo em ocupacional.com.br).
+# 'unsafe-inline'/'unsafe-eval' necessários: JS inline nos templates + WASM
+# do spline. Ainda bloqueia script de origem não listada, clickjacking
+# (frame-ancestors), form-action e <base> externos.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+    "https://cdn.jsdelivr.net https://unpkg.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' data: https://fonts.gstatic.com; "
+    "img-src 'self' data: blob: https:; "
+    "connect-src 'self' https:; "
+    "worker-src 'self' blob:; "
+    "frame-ancestors 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
+
+@app.after_request
+def _security_headers(resp):
+    h = resp.headers
+    h.setdefault('X-Content-Type-Options', 'nosniff')
+    h.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    h.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    h.setdefault('Permissions-Policy',
+                 'camera=(), microphone=(), geolocation=(), payment=()')
+    h.setdefault('Content-Security-Policy', _CSP)
+    # HSTS só quando a resposta sai por https (Railway termina TLS no proxy)
+    if request.is_secure or request.headers.get('X-Forwarded-Proto') == 'https':
+        h.setdefault('Strict-Transport-Security',
+                     'max-age=31536000; includeSubDomains')
+    return resp
+
 # ── Observabilidade: logging estruturado + Sentry ─────────────────────
 try:
     from controle.monitoring import setup_logging, init_sentry
