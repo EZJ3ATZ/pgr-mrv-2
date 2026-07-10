@@ -1075,7 +1075,16 @@ def healthz():
 def index():
     if not current_user.is_authenticated:
         return render_template('landing.html')
-    return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES)
+    usuarios_pendentes = 0
+    if getattr(current_user, 'role', '') == 'admin':
+        try:
+            with get_db() as conn:
+                row = conn.execute('SELECT COUNT(*) AS c FROM usuarios WHERE ativo=0').fetchone()
+            usuarios_pendentes = row['c'] if row else 0
+        except Exception:
+            pass
+    return render_template('index.html', cargos_sugestoes=CARGOS_SUGESTOES,
+                           usuarios_pendentes=usuarios_pendentes)
 
 
 @app.route('/extrair', methods=['POST'])
