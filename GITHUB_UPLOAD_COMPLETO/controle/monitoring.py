@@ -91,9 +91,11 @@ class _BetterStackHandler(logging.Handler):
                 },
                 method='POST',
             )
-            import ssl
-            ctx = ssl._create_unverified_context()
-            urllib.request.urlopen(req, timeout=3, context=ctx)
+            # TLS verificado (contexto padrão): BetterStack é endpoint público
+            # com certificado válido. NÃO desligar a verificação — contexto não
+            # verificado expõe o token de ingestão + o conteúdo dos logs a um
+            # atacante on-path (MITM) entre o Railway e o BetterStack. CWE-295.
+            urllib.request.urlopen(req, timeout=3)
         except Exception:
             pass  # nunca quebra a aplicação
 
