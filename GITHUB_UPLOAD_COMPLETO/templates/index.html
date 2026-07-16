@@ -10657,7 +10657,8 @@ async function planCarregarLista() {
         <div style="display:flex;flex-direction:column;gap:6px;">
         ${p.status !== 'concluido' && p.status !== 'cancelado'
           ? `<button class="plan-btn-campo" onclick="planIrParaCampo(${p.id})">📍 Ir para Campo</button>
-             <button onclick="planEditar(${p.id})" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Editar</button>`
+             <button onclick="planEditar(${p.id})" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Editar</button>
+             <button onclick="planExcluir(${p.id})" style="background:rgba(239,68,68,.08);color:#ef4444;border:1px solid rgba(239,68,68,.35);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">🗑 Excluir</button>`
           : (p.status === 'concluido'
             ? `<button onclick="planReabrir(${p.id})" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:7px 12px;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;">↩ Reabrir</button>`
             : '')}
@@ -10668,6 +10669,19 @@ async function planCarregarLista() {
     if (loading) loading.style.display = 'none';
     if (lista) lista.innerHTML = `<div style="color:#ef4444;font-size:.82rem;">Erro: ${e.message}</div>`;
   }
+}
+
+async function planExcluir(pid) {
+  if (!confirm('Excluir este planejamento?\n\nAmostradores reservados por ele voltam ao estoque. Esta ação não tem volta.')) return;
+  try {
+    await ctrlFetch('/controle/planejamentos/' + pid, {method: 'DELETE'});
+    if (window._planEditId === pid) {
+      window._planEditId = null;
+      _planSetEditUI(false);
+    }
+    _showToast('🗑 Planejamento excluído.', 'ok');
+    planCarregarLista();
+  } catch(e) { _showToast('Erro: ' + e.message, 'err'); }
 }
 
 function _planParseAgentes(raw) {
@@ -10751,9 +10765,16 @@ async function _planBuscarOs(os) {
         } catch(e) { _planAgenteCache = []; }
       }
       window._planAgentes = agentes.map(a => {
-        const tipo = a.tipo || a.tipo_medicao || 'quimico';
+        // Normaliza ANTES do enriquecimento: poeira (particulado) é família
+        // química e precisa herdar método/vazão/bomba do guia igual ao químico.
+        let tipo = a.tipo || a.tipo_medicao || 'quimico';
+        let subtipo = null;
+        if (tipo === 'vibracao_vci')       { tipo = 'vibracao'; subtipo = 'vci'; }
+        else if (tipo === 'vibracao_vbma') { tipo = 'vibracao'; subtipo = 'vbma'; }
+        else if (_PLAN_QUIM_FAM.includes(tipo)) tipo = 'quimico';
         const nome = a.texto || a.nome_agente || a.agente || '';
         const obj  = { tipo, agente: nome, qtd: a.qtd || 1 };
+        if (subtipo) obj.subtipo = subtipo;
         // Enriquece químico com método/vazão/amostrador do banco (mesmo do modo manual)
         if (tipo === 'quimico' && nome) {
           const m = (_planAgenteCache || []).find(x => x.nome && x.nome.toLowerCase() === nome.toLowerCase())
@@ -11263,7 +11284,23 @@ function planConfirmarAgente(tipo) {
   _planRenderizarAgentes();
 }
 
+// Tipos legados da extração da demanda (particulado/poeira/metais/gases e
+// vibracao_vci/vibracao_vbma) não tinham campos de edição no wizard — rascunho
+// com Poeira/Vibração abria sem bomba/amostrador/subtipo e sem preview de
+// equipamentos. Normaliza para os 4 tipos canônicos preservando nome e subtipo.
+const _PLAN_QUIM_FAM = ['quimico','particulado','poeira','metais','gases'];
+function _planNormalizarAgentes() {
+  (window._planAgentes || []).forEach(a => {
+    if (!a) return;
+    const t = String(a.tipo || '').toLowerCase();
+    if (t === 'vibracao_vci')       { a.tipo = 'vibracao'; a.subtipo = a.subtipo || 'vci'; }
+    else if (t === 'vibracao_vbma') { a.tipo = 'vibracao'; a.subtipo = a.subtipo || 'vbma'; }
+    else if (_PLAN_QUIM_FAM.includes(t)) a.tipo = 'quimico';
+  });
+}
+
 function _planRenderizarAgentes() {
+  _planNormalizarAgentes();
   const lista = document.getElementById('plan-agentes-lista');
   const tipos = {ruido:'🔊', quimico:'🧪', calor:'🌡', vibracao:'📳'};
   if (!window._planAgentes || window._planAgentes.length === 0) {
@@ -11797,6 +11834,7 @@ function planUsarDias() {
 }
 
 async function planSalvar(status) {
+  _planNormalizarAgentes();  // garante tipos canônicos no payload (poeira→quimico, vci/vbma→vibracao)
   const os          = (document.getElementById('plan-nv-os')?.value || '').trim();
   const empresa_id  = parseInt(document.getElementById('plan-empresa-id')?.value || '0');
   const tecnico     = document.getElementById('plan-tecnico')?.value || '';

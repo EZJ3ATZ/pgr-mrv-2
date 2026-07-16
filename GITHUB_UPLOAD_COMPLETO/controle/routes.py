@@ -7378,6 +7378,11 @@ def api_registrar_evento():
 # Etapa pré-visita. Dados vêm do Planner/OS + confirmação do técnico.
 # ══════════════════════════════════════════════════════════════════════
 
+# Família química nos agentes previstos: a extração antiga gravava
+# 'particulado' (poeira) — conta bomba igual a 'quimico'.
+_QUIM_FAM_PLANO = ('quimico', 'particulado', 'poeira', 'metais', 'gases')
+
+
 @controle_bp.route('/planejamentos', methods=['GET'])
 def api_list_planejamentos():
     """Lista planejamentos com filtros: tecnico, status, empresa_id, demanda_id."""
@@ -7405,7 +7410,8 @@ def api_criar_planejamento():
         import json as _j; agentes = _j.loads(agentes)
 
     qtd_dosim  = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'ruido')
-    qtd_bombas = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'quimico')
+    qtd_bombas = sum(int(a.get('qtd', 1)) for a in agentes
+                     if a.get('tipo') in _QUIM_FAM_PLANO)
 
     d['qtd_dosim_prevista']   = qtd_dosim
     d['qtd_bombas_previstas'] = qtd_bombas
@@ -7501,7 +7507,8 @@ def api_editar_planejamento(pid):
         if isinstance(agentes, str):
             import json as _j; agentes = _j.loads(agentes or '[]')
         qtd_dosim  = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'ruido')
-        qtd_bombas = sum(int(a.get('qtd', 1)) for a in agentes if a.get('tipo') == 'quimico')
+        qtd_bombas = sum(int(a.get('qtd', 1)) for a in agentes
+                         if a.get('tipo') in _QUIM_FAM_PLANO)
         d['qtd_dosim_prevista']   = qtd_dosim
         d['qtd_bombas_previstas'] = qtd_bombas
         equip = []
@@ -7541,6 +7548,48 @@ def api_editar_planejamento(pid):
                          current_user.nome if current_user.is_authenticated else 'sistema',
                          request.remote_addr)
         return jsonify({'ok': True, 'id': pid, 'reserva': reserva})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/planejamentos/<int:pid>', methods=['DELETE'])
+def api_excluir_planejamento(pid):
+    """Exclui um planejamento. Amostradores ainda reservados voltam ao estoque.
+    Bloqueia se já houver planilha de campo / visita vinculada (histórico)."""
+    init_db()
+    p = get_planejamento(pid)
+    if not p:
+        return jsonify({'erro': 'não encontrado'}), 404
+    try:
+        with get_db() as conn:
+            vinculos = []
+            for tbl, label in (('coletas_ruido', 'planilha de ruído'),
+                               ('coletas_quimico', 'planilha química'),
+                               ('coletas_outros', 'planilha de campo'),
+                               ('visitas_tecnicas', 'visita técnica'),
+                               ('execucao_campo', 'execução de campo')):
+                try:
+                    n = conn.execute(
+                        f'SELECT COUNT(*) AS n FROM {tbl} WHERE planejamento_id=?',
+                        (pid,)).fetchone()
+                    n = row_to_dict(n).get('n', 0) if n else 0
+                except Exception:
+                    n = 0
+                if n:
+                    vinculos.append(f'{n} {label}')
+            if vinculos:
+                return jsonify({'erro': 'Este planejamento já tem registro de campo vinculado ('
+                                + ', '.join(vinculos)
+                                + '). Cancele ou conclua em vez de excluir.'}), 409
+            _liberar_reservas_plano(pid, conn)
+            conn.execute('DELETE FROM planejamentos WHERE id=?', (pid,))
+        registrar_evento('planejamento_excluido',
+                         f'OS: {p.get("numero_os", "—")} | Técnico: {p.get("tecnico", "—")} | '
+                         f'Status: {p.get("status", "—")}',
+                         pid, 'planejamento',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
+        return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
