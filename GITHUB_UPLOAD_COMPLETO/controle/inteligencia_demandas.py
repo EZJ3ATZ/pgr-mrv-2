@@ -480,57 +480,72 @@ def _extrair_agentes_de_texto(
         # o artigo "as" de qualquer descrição virava "Arsênio".
         if alias in _ALIAS_PALAVRA_PT:
             continue
+        # OS multi-unidade (ex.: Belgo) repete o mesmo agente por unidade
+        # ("GGAL - 8 Ruídos ... GCM - 4 Ruídos"): dentro de UM texto as menções
+        # SOMAM; entre aliases do mesmo canonical vale o MÁXIMO (o alias curto
+        # re-casa as mesmas menções do longo — somar somas duplicaria).
         if len(alias) < _ALIAS_CURTO_MINLEN:
             if alias in _ALIASES_AMBIGUOS:
                 # Símbolo/sigla (CO, UV, Pb...): só conta em MAIÚSCULA no texto
                 # original — distingue o símbolo de uma sílaba qualquer.
+                # Ambíguo demais para somar menções: mantém 1ª ocorrência.
                 pat_sym = r'(?<![A-Za-zÀ-ÿ])' + re.escape(alias.upper()) + r'(?![A-Za-zÀ-ÿ])'
                 if not re.search(pat_sym, texto):
                     continue
                 start = txt_n.find(alias)
                 if start < 0:
                     continue
+                starts = [start]
             else:
-                # Alias curto: regex com fronteira de palavra
-                pat = r'(?<!\w)' + re.escape(alias) + r'(?!\w)'
-                m = re.search(pat, txt_n)
-                if not m:
+                # Alias curto: fronteira de LETRA (dígito colado conta: "2vci")
+                pat = r'(?<![a-z])' + re.escape(alias) + r'(?![a-z])'
+                starts = [m.start() for m in re.finditer(pat, txt_n)]
+                if not starts:
                     continue
-                start = m.start()
         else:
-            # Alias longo: busca direta por substring
-            start = txt_n.find(alias)
-            if start < 0:
+            # Alias longo: todas as ocorrências como substring
+            starts = [m.start() for m in re.finditer(re.escape(alias), txt_n)]
+            if not starts:
                 continue
 
-        # Verificar fronteira de palavra
-        pre_char  = txt_n[start - 1]   if start > 0              else ' '
-        post_char = txt_n[start + len(alias)] if start + len(alias) < len(txt_n) else ' '
-        fronteira_ok = not pre_char.isalnum() and not post_char.isalnum()
+        soma_qtd = 0
+        melhor_conf = 0.0
+        qtd_explicita = False
+        for start in starts:
+            # Fronteira de LETRA (não isalnum): "2ruidos" conta a menção,
+            # "amostruido" não — dígito colado não pode descartar quantidade.
+            pre_char  = txt_n[start - 1]   if start > 0              else ' '
+            post_char = txt_n[start + len(alias)] if start + len(alias) < len(txt_n) else ' '
+            fronteira_ok = not pre_char.isalpha() and not post_char.isalpha()
 
-        conf_base = 0.85 if fronteira_ok else 0.55
-        if len(alias) <= 5:
-            conf_base = min(conf_base, 0.70)   # alias curto → menos confiante
+            conf_base = 0.85 if fronteira_ok else 0.55
+            if len(alias) <= 5:
+                conf_base = min(conf_base, 0.70)   # alias curto → menos confiante
+            melhor_conf = max(melhor_conf, conf_base * peso_fonte)
 
-        conf = conf_base * peso_fonte
+            # Quantidade: olhar até 25 chars antes de CADA menção
+            qtd = 1
+            pre_txt = txt_n[max(0, start - 25):start]
+            m_qtd = re.search(r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[xX×\s]*$', pre_txt)
+            if m_qtd:
+                q = _parse_int(m_qtd.group(1))
+                if q and 1 <= q <= 30:
+                    qtd = q
+                    qtd_explicita = True
+            soma_qtd += qtd
 
-        # Quantidade: olhar até 25 chars antes
-        qtd = 1
-        pre_txt = txt_n[max(0, start - 25):start]
-        m_qtd = re.search(r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[xX×\s]*$', pre_txt)
-        if m_qtd:
-            q = _parse_int(m_qtd.group(1))
-            if q and 1 <= q <= 30:
-                qtd = q
-                conf = min(1.0, conf + 0.08)  # quantidade explícita → mais confiante
+        conf = melhor_conf
+        if qtd_explicita:
+            conf = min(1.0, conf + 0.08)  # quantidade explícita → mais confiante
 
-        trecho = texto[max(0, start - 20):start + len(alias) + 20].strip()[:120]
+        primeiro = starts[0]
+        trecho = texto[max(0, primeiro - 20):primeiro + len(alias) + 20].strip()[:120]
         fonte  = FonteInfo(campo=campo, trecho=trecho, confianca=round(conf, 3))
 
-        if canonical not in resultado or resultado[canonical].confianca < conf:
+        if canonical not in resultado:
             resultado[canonical] = AgenteExtraido(
                 canonical=canonical,
-                quantidade=qtd,
+                quantidade=soma_qtd,
                 tipo=_tipo_agente(canonical),
                 fontes=[fonte],
                 confianca=round(conf, 3),
@@ -539,8 +554,8 @@ def _extrair_agentes_de_texto(
             ex = resultado[canonical]
             ex.fontes.append(fonte)
             ex.confianca = min(1.0, max(ex.confianca, conf))
-            if qtd > ex.quantidade:
-                ex.quantidade = qtd
+            if soma_qtd > ex.quantidade:
+                ex.quantidade = soma_qtd
 
     # Estratégia B: "realizar N avaliações de X"
     for m in _RE_REALIZAR.finditer(texto):

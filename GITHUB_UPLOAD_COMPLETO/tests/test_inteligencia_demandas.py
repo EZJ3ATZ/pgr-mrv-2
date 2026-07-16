@@ -55,6 +55,56 @@ def test_texto_sem_agente_retorna_vazio():
     assert extrair_agentes_multifonte(titulo='Reunião de alinhamento comercial') == []
 
 
+# ── soma de quantidades por unidade (caso Belgo OS 6540528) ───────────
+
+_BELGO_DESC = """
+GGAL - 8 Ruídos, 4 VCI, 1 VMB, 1 Manganês
+GCM - 4 Ruídos, 3 VCI, 1 Chumbo
+GSIC - 6 Ruídos, 4 VCI, 1 Manganês, 1 Óxido de Ferro
+GSOL - 4 Ruídos, 3 VCI, 1 Manganês, 1 Óxido de Ferro
+GATC - 2 VCI, 2 Ruídos, 1 Benzeno, 1 Tolueno, 1 Xileno
+EMINAS - 2 Ruídos, 1 Benzeno, 1 Tolueno, 1 Xileno
+"""
+
+
+def _qtd(agentes, canonical):
+    return next(a.quantidade for a in agentes if a.canonical == canonical)
+
+
+def test_soma_mencoes_repetidas_no_mesmo_texto():
+    ags = extrair_agentes_multifonte(descricao=_BELGO_DESC)
+    assert _qtd(ags, 'Ruído Ocupacional') == 26
+    assert _qtd(ags, 'Vibração de Corpo Inteiro (VCI)') == 16
+    assert _qtd(ags, 'Manganês') == 3
+    assert _qtd(ags, 'Óxido de Ferro') == 2
+    assert _qtd(ags, 'Benzeno') == 2
+    assert _qtd(ags, 'Tolueno') == 2
+    assert _qtd(ags, 'Xileno') == 2
+    assert _qtd(ags, 'Chumbo') == 1
+
+
+def test_entre_fontes_vale_o_maximo_nao_soma():
+    # A mesma info repetida em título e descrição NÃO pode dobrar a quantidade.
+    ags = extrair_agentes_multifonte(
+        titulo='4 ruídos na obra',
+        descricao='realizar 4 ruídos na obra',
+    )
+    assert _qtd(ags, 'Ruído Ocupacional') == 4
+
+
+def test_aliases_do_mesmo_canonical_nao_somam_entre_si():
+    # "ruído ocupacional" também casa o alias "ruído" — vale o máximo, não 4+4.
+    ags = extrair_agentes_multifonte(descricao='4 ruído ocupacional no setor')
+    assert _qtd(ags, 'Ruído Ocupacional') == 4
+
+
+def test_quantidade_colada_no_agente_conta():
+    # "2VCI" / "2Ruídos" sem espaço: fronteira de letra aceita o dígito colado.
+    ags = extrair_agentes_multifonte(descricao='GGAL - 2Ruídos e 2VCI; GCM - 3 ruídos')
+    assert _qtd(ags, 'Ruído Ocupacional') == 5
+    assert _qtd(ags, 'Vibração de Corpo Inteiro (VCI)') == 2
+
+
 # ── extrair_os_multifonte ─────────────────────────────────────────────
 
 def test_os_explicita_no_titulo():
