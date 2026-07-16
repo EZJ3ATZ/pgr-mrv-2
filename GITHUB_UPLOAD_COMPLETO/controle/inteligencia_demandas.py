@@ -673,11 +673,29 @@ def extrair_agentes_multifonte(
 
     # BTX / BTEX: a sigla cobre Benzeno + Tolueno + Xileno (1 tubo de carvão,
     # análise múltipla). Quando a sigla aparece em qualquer fonte, garante o trio.
-    _txt_btx = ' '.join(_norm(t) for t, _, _ in fontes if t)
-    if re.search(r'(?<!\w)bte?x(?!\w)', _txt_btx):
+    # OS multi-unidade repete a sigla por unidade ("FX - 1 BTX ... EMINAS - 1 BTX"):
+    # soma as menções DENTRO de cada fonte; entre fontes vale o máximo.
+    _re_btx = re.compile(r'(?<![a-z])bte?x(?![a-z])')
+    _btx_qtd = 0
+    for _t, _, _ in fontes:
+        if not _t:
+            continue
+        _tn = _norm(_t)
+        _soma = 0
+        for _m in _re_btx.finditer(_tn):
+            _q = 1
+            _pre = _tn[max(0, _m.start() - 25):_m.start()]
+            _mq = re.search(r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[xX×\s]*$', _pre)
+            if _mq:
+                _pq = _parse_int(_mq.group(1))
+                if _pq and 1 <= _pq <= 30:
+                    _q = _pq
+            _soma += _q
+        _btx_qtd = max(_btx_qtd, _soma)
+    if _btx_qtd:
         _base = acumulado.get('Benzeno')
         _conf = _base.confianca if _base else 0.80
-        _qtd  = _base.quantidade if _base else 1
+        _qtd  = max(_btx_qtd, _base.quantidade if _base else 0)
         for _canon in ('Benzeno', 'Tolueno', 'Xileno'):
             if _canon not in acumulado:
                 acumulado[_canon] = AgenteExtraido(
@@ -686,6 +704,8 @@ def extrair_agentes_multifonte(
                     fontes=[FonteInfo('btx', 'BTX/BTEX', _conf)],
                     confianca=_conf,
                 )
+            elif _qtd > acumulado[_canon].quantidade:
+                acumulado[_canon].quantidade = _qtd
 
     return sorted(acumulado.values(), key=lambda a: -a.confianca)
 

@@ -105,6 +105,16 @@ def test_quantidade_colada_no_agente_conta():
     assert _qtd(ags, 'Vibração de Corpo Inteiro (VCI)') == 2
 
 
+def test_btx_soma_mencoes_por_unidade():
+    # Sigla BTX repetida por unidade (Belgo real): trio expande com a SOMA.
+    ags = extrair_agentes_multifonte(
+        descricao='FX Serviços: 1 BTX. EMINAS: 1 BTX.',
+    )
+    assert _qtd(ags, 'Benzeno') == 2
+    assert _qtd(ags, 'Tolueno') == 2
+    assert _qtd(ags, 'Xileno') == 2
+
+
 # ── extrair_os_multifonte ─────────────────────────────────────────────
 
 def test_os_explicita_no_titulo():
