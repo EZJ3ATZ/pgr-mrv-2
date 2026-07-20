@@ -11336,7 +11336,7 @@ function _planRenderizarAgentes() {
         ${faixaTxt ? `<div style="font-size:.68rem;color:var(--text3);margin-top:3px;">${faixaTxt}</div>` : ''}
         <div id="plan-vaz-aviso-${i}">${_planVazaoAvisoHtml(i)}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;align-items:center;">
-          <input type="text" value="${a.amostrador_codigo||''}" placeholder="Amostrador (cód.)" onchange="window._planAgentes[${i}].amostrador_codigo=this.value" style="${inp}width:115px;" title="Código do amostrador">
+          <input type="text" value="${a.amostrador_codigo||''}" placeholder="Amostrador (cód.)" oninput="window._planAgentes[${i}].amostrador_codigo=this.value" style="${inp}width:115px;" title="Código do amostrador">
           <select onchange="window._planAgentes[${i}].calibrador_nome=this.value" style="${inp}width:auto;" title="Calibrador de vazão usado na calibração da bomba (banco real)">
             <option value="">— Calibrador de vazão —</option>
             <option ${a.calibrador_nome==='DEFENDER 510M S/N:126958'?'selected':''}>DEFENDER 510M S/N:126958</option>
@@ -11856,17 +11856,20 @@ async function planSalvar(status) {
     }
     // Agente químico sem bomba/amostrador/vazão → a planilha de campo sai em branco.
     // TRAVA DURA (08/07): não confirma incompleto — complete ou salve como rascunho.
-    const incompletos = (window._planAgentes || []).filter(a => {
-      if (a.tipo !== 'quimico') return false;
+    // 20/07: a mensagem agora DISCRIMINA o que falta em CADA agente. Antes juntava
+    // "sem bomba, amostrador ou vazão" → com a bomba já selecionada, o usuário lia
+    // como se a bomba estivesse faltando (falso "bug"). Agora só lista o que falta.
+    const incompletos = (window._planAgentes || []).filter(a => a.tipo === 'quimico').map(a => {
       const passivo = a.vazao_faixa && a.vazao_faixa.passivo;
-      const semBomba  = !passivo && !(a.id_bomba || a.bomba_sn);
-      const semVazao  = !passivo && !String(a.vazao_real || '').trim();
-      const semAmostr = !String(a.amostrador_codigo || '').trim();
-      return semBomba || semVazao || semAmostr;
-    });
+      const falta = [];
+      if (!passivo && !(a.id_bomba || a.bomba_sn))        falta.push('bomba');
+      if (!passivo && !String(a.vazao_real || '').trim()) falta.push('vazão');
+      if (!String(a.amostrador_codigo || '').trim())      falta.push('amostrador');
+      return falta.length ? { nome: a.agente || a.tipo, falta } : null;
+    }).filter(Boolean);
     if (incompletos.length) {
-      const nomes = incompletos.map(a => a.agente || a.tipo).join(', ');
-      alert(`⛔ Não dá para confirmar: ${incompletos.length} agente(s) químico(s) sem bomba, amostrador ou vazão:\n${nomes}\n\nSem isso a planilha de campo do técnico sai EM BRANCO. Complete os equipamentos ou salve como 💾 Rascunho.`);
+      const linhas = incompletos.map(x => `• ${x.nome} — falta ${x.falta.join(', ')}`).join('\n');
+      alert(`⛔ Não dá para confirmar. Complete estes agentes químicos (ou salve como 💾 Rascunho):\n\n${linhas}\n\nSem esses dados a planilha de campo do técnico sai EM BRANCO.`);
       return;
     }
   }
@@ -12170,8 +12173,11 @@ async function ctrlNvVincularPlanejamento(pid) {
       if (typeof nvTipoChange === 'function') nvTipoChange();
     }
 
-    // ── Trava: agentes/tipos vêm do plano e não podem ser trocados à mão ──
-    window._nvPlanLocked = true;
+    // ── Plano é SUGESTÃO, não algema (decisão 20/07): o técnico manda na ponta ──
+    // A realidade de campo muda (faltou gente, mediu outro ponto, substância real
+    // diferente do previsto) → ele duplica agente, corrige substância e add/remove
+    // à vontade. O plano já pré-preencheu tudo; travar só prendia o técnico no campo.
+    window._nvPlanLocked = false;
     if (typeof _nvAplicarTravaPlano === 'function') _nvAplicarTravaPlano();
 
     _showToast(`📋 Planejamento vinculado: ${p.empresa_nome || 'OS '+p.numero_os}`, 'ok');
