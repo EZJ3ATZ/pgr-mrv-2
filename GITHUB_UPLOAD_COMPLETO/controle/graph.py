@@ -238,6 +238,132 @@ def list_org_users() -> list:
     return graph_paginate('/users?$select=id,displayName,mail,userPrincipalName,jobTitle,department')
 
 
+# ── Planner: CRIAÇÃO de tarefas (handoff CRM → OS de medição) ──────────
+# O plano "Entregas Técnicas" do grupo "Ocupacional" é o mesmo que o sync
+# de 15 min lê para gerar demandas. Criar a task certa aqui = a demanda
+# cai sozinha no pipeline (não precisa escrever no banco do portal).
+
+PLAN_ENTREGAS_TECNICAS = 'JOHzljvSKkmfSsQ7SekCnWUAA8cz'
+GRUPO_OCUPACIONAL      = '4c80214b-6801-414a-9fc7-27feff0b3de6'
+
+# Bucket de ENTRADA de novas demandas de engenharia no plano Entregas Técnicas.
+# (A task de medição nasce sem bucket de propósito; a de engenharia nasce aqui —
+# é bucket de entrada, não de conclusão, então é seguro. Fallback do id abaixo;
+# get_bucket_id_by_name redescobre por nome se a equipe recriar o bucket.)
+BUCKET_ENG_NOVAS_DEMANDAS = 'xtiwN7av_kqMhLZO2ACiMmUAJZ38'
+
+
+def criar_planner_task(plan_id: str, title: str,
+                       applied_categories: dict = None,
+                       bucket_id: str = None,
+                       assignments: dict = None) -> dict:
+    """
+    Cria uma tarefa no Planner e retorna o objeto criado (com id/@odata.etag).
+
+    applied_categories: {'category10': True} aplica o label no ATO da criação
+        (labels podem ir no POST /planner/tasks, sem PATCH separado).
+    bucket_id: opcional; se omitido a task nasce sem bucket (não corre risco de
+        cair num bucket de "concluído" e ser marcada como feita por engano).
+    """
+    payload = {'planId': plan_id, 'title': (title or 'Sem título')[:255]}
+    if bucket_id:
+        payload['bucketId'] = bucket_id
+    if applied_categories:
+        payload['appliedCategories'] = applied_categories
+    if assignments:
+        payload['assignments'] = assignments
+    return graph_post('/planner/tasks', payload)
+
+
+def set_task_description(task_id: str, description: str) -> bool:
+    """
+    Grava a descrição (campo "Notas") de uma tarefa do Planner.
+    O PATCH de /details exige o header If-Match com o @odata.etag atual —
+    por isso faz um GET antes para pegar o etag.
+    """
+    details = graph_get(f'/planner/tasks/{task_id}/details')
+    etag = details.get('@odata.etag')
+    if not etag:
+        return False
+    url = f'{GRAPH_BASE}/planner/tasks/{task_id}/details'
+    body = json.dumps({'description': description, 'previewType': 'description'}).encode()
+    headers = _headers()
+    headers['If-Match'] = etag
+    req = urllib.request.Request(url, data=body, headers=headers, method='PATCH')
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            r.read()
+            return True
+    except urllib.error.HTTPError as e:
+        body_txt = e.read().decode('utf-8', 'replace')
+        raise RuntimeError(f'Graph PATCH details {task_id} → {e.code}: {body_txt[:300]}')
+
+
+def get_medicoes_category_id(plan_id: str) -> str:
+    """
+    Descobre dinamicamente o categoryN cujo nome contém "MEDIÇÕES" no plano.
+    Assim o label não fica hardcoded — se a equipe mover o label, continua
+    funcionando. Fallback 'category10' (convenção atual do plano).
+    """
+    try:
+        cat_map = get_plan_category_map(plan_id) or {}
+        import unicodedata
+
+        def _n(s):
+            return unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower()
+        for cid, nome in cat_map.items():
+            if 'medic' in _n(nome):
+                return cid
+    except Exception as e:
+        log.warning('[graph] get_medicoes_category_id %s: %s', plan_id, e)
+    return 'category10'
+
+
+def _norm_label(s):
+    import unicodedata
+    return unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower().strip()
+
+
+def get_category_ids_by_names(plan_id, nomes):
+    """
+    Resolve uma lista de nomes de label (ex.: ['PGR/PCMSO','TREINAMENTO','PCMSO'])
+    para {categoryN: True}, casando por nome normalizado (sem acento, minúsculo).
+    Prioriza match EXATO — assim 'PCMSO' cai em 'PCMSO' (category7), não em
+    'PGR/PCMSO' (category6). Nomes não achados são ignorados. Devolve {} se nada casa.
+    """
+    out = {}
+    try:
+        cat_map = get_plan_category_map(plan_id) or {}
+        norm = {cid: _norm_label(v) for cid, v in cat_map.items() if v}
+        for nome in nomes or []:
+            alvo = _norm_label(nome)
+            if not alvo:
+                continue
+            hit = next((cid for cid, cn in norm.items() if cn == alvo), None)          # exato
+            if not hit:
+                hit = next((cid for cid, cn in norm.items() if alvo in cn), None)      # label contém alvo ('pgr' → 'pgr/pcmso')
+            if not hit:
+                hit = next((cid for cid, cn in norm.items() if cn in alvo), None)      # alvo contém label ('treinamento nr-35' → 'treinamento')
+            if hit:
+                out[hit] = True
+    except Exception as e:
+        log.warning('[graph] get_category_ids_by_names %s: %s', plan_id, e)
+    return out
+
+
+def get_bucket_id_by_name(plan_id, nome_contains, fallback=None):
+    """Descobre o id de um bucket cujo nome contém `nome_contains` (normalizado).
+    Fallback para um id fixo se não achar (bucket renomeado/recriado)."""
+    try:
+        alvo = _norm_label(nome_contains)
+        for b in get_plan_buckets(plan_id):
+            if alvo in _norm_label(b.get('name', '')):
+                return b['id']
+    except Exception as e:
+        log.warning('[graph] get_bucket_id_by_name %s: %s', plan_id, e)
+    return fallback
+
+
 # ── SharePoint / OneDrive ────────────────────────────────────────────
 
 def upload_to_sharepoint(site_id: str, drive_id: str, folder_path: str,

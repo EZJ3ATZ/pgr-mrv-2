@@ -169,6 +169,11 @@ def _is_admin_only(path):
 
 @controle_bp.before_request
 def _require_login():
+    # Webhook server-to-server (CRM Comercial → OS de medição no Planner):
+    # autentica pelo segredo compartilhado no próprio handler, NÃO por sessão
+    # de usuário. Precisa ser isento aqui senão o gate de login barra (401).
+    if request.path == '/controle/planner/criar-os':
+        return None
     # Toda rota do controle exige login — leitura e escrita.
     # Dados operacionais (empresas, OS, coletas) não são públicos.
     if not current_user.is_authenticated:
@@ -310,6 +315,161 @@ def get_sync_log():
     """Retorna historico das ultimas importacoes."""
     init_db()
     return jsonify(list_sync_log(limit=_qint('limit', 20)))
+
+
+# ── Handoff CRM Comercial → OS de medição no Planner ───────────────────
+# Chamado server-to-server pela edge function do CRM (criar-os-planner) quando
+# um negócio é GANHO com produtos de medição. Cria uma tarefa "A ABRIR" no
+# plano Entregas Técnicas com o label MEDIÇÕES; o sync de 15 min a ingere como
+# demanda (empresa casada pelo título; agentes extraídos da descrição).
+# Sem número de OS: a OS nasce depois no SOC/financeiro (fluxo do MAESTRO) —
+# o técnico preenche o nº no título quando a OS for aberta.
+# Auth: header x-crm-secret == env CRM_PLANNER_SECRET (isento do login, ver
+# _require_login acima). dry_run=True devolve o que criaria SEM tocar no Planner.
+
+def _compor_descricao_os(dados, destino='medicao'):
+    """Monta a descrição (Notas) da task no formato que o parser do portal lê.
+    Medição: os nomes dos itens vão como texto — o motor extrair_agentes_multifonte
+    reconhece Ruído/Calor/Vibração/químicos deles. Engenharia: lista os serviços/
+    documentos a entregar + os labels aplicados (a task NÃO é lida pelo sync de
+    medições, que filtra só o label MEDIÇÕES — vive só no Planner p/ a engenharia)."""
+    linhas = ['⚠ OS A ABRIR — demanda criada automaticamente pelo CRM Comercial',
+              '=' * 48]
+    if dados.get('empresa'):
+        linhas.append(f"Empresa: {dados['empresa']}")
+    if dados.get('cnpj'):
+        linhas.append(f"CNPJ: {dados['cnpj']}")
+    if dados.get('negocio_crm_id'):
+        tit = dados.get('negocio_titulo') or ''
+        linhas.append(f"Negócio (CRM): #{dados['negocio_crm_id']}" + (f" — {tit}" if tit else ''))
+    if dados.get('consultor'):
+        linhas.append(f"Consultor(a): {dados['consultor']}")
+    if dados.get('fechado_em'):
+        linhas.append(f"Fechado em: {dados['fechado_em']}")
+    if destino == 'engenharia':
+        linhas += ['', 'SERVIÇOS DE ENGENHARIA A ENTREGAR:']
+        vazio = '- (nenhum serviço informado)'
+    else:
+        linhas += ['', 'AGENTES / MEDIÇÕES A REALIZAR:']
+        vazio = '- (nenhum item de medição informado)'
+    itens = dados.get('itens') or []
+    algum = False
+    for it in itens:
+        nome = (it.get('nome') or '').strip()
+        if not nome:
+            continue
+        algum = True
+        try:
+            qn = float(it.get('quantidade'))
+        except (TypeError, ValueError):
+            qn = None
+        suf = f"  (x{int(qn)})" if qn and qn > 1 else ''
+        linhas.append(f"- {nome}{suf}")
+    if not algum:
+        linhas.append(vazio)
+    if dados.get('labels_aplicados'):
+        linhas += ['', 'Labels (Planner): ' + ', '.join(dados['labels_aplicados'])]
+    if dados.get('obs'):
+        linhas += ['', f"Obs: {dados['obs']}"]
+    linhas += ['',
+               '➡ PREENCHER O NÚMERO DA OS no título desta tarefa quando o SOC/financeiro abrir a OS.',
+               '(gerada pelo CRM — não digitar no Planner à mão)']
+    return '\n'.join(linhas)
+
+
+@controle_bp.route('/planner/criar-os', methods=['POST'])
+def planner_criar_os():
+    # Auth por segredo compartilhado (server-to-server, sem sessão).
+    segredo = os.environ.get('CRM_PLANNER_SECRET', '')
+    if not segredo or request.headers.get('x-crm-secret') != segredo:
+        return jsonify({'ok': False, 'erro': 'não autorizado'}), 401
+
+    body = request.get_json(silent=True) or {}
+    empresa = (body.get('empresa') or '').strip()
+    if not empresa:
+        return jsonify({'ok': False, 'erro': 'empresa obrigatória'}), 400
+
+    # destino: 'medicao' (default, comportamento original) ou 'engenharia'
+    destino = (body.get('destino') or 'medicao').strip().lower()
+    if destino in ('medição', 'medicoes', 'medições'):
+        destino = 'medicao'
+    if destino not in ('medicao', 'engenharia'):
+        return jsonify({'ok': False, 'erro': "destino inválido (use 'medicao' ou 'engenharia')"}), 400
+
+    dry_run = bool(body.get('dry_run'))
+    dados = {
+        'empresa':        empresa,
+        'cnpj':           (body.get('cnpj') or '').strip(),
+        'negocio_crm_id': body.get('negocio_crm_id'),
+        'negocio_titulo': (body.get('negocio_titulo') or '').strip(),
+        'consultor':      (body.get('consultor') or '').strip(),
+        'fechado_em':     (body.get('fechado_em') or '').strip(),
+        'itens':          body.get('itens') or [],
+        'obs':            (body.get('obs') or '').strip(),
+    }
+
+    titulo = f"A ABRIR - {empresa}"[:255]
+
+    from .graph import (graph_ok, criar_planner_task, set_task_description,
+                        get_medicoes_category_id, get_category_ids_by_names,
+                        get_bucket_id_by_name, get_plan_category_map,
+                        PLAN_ENTREGAS_TECNICAS, BUCKET_ENG_NOVAS_DEMANDAS)
+    plan_id = PLAN_ENTREGAS_TECNICAS
+
+    if not graph_ok():
+        return jsonify({'ok': False, 'erro': 'Graph não configurado no portal'}), 503
+
+    bucket_id = None
+    if destino == 'engenharia':
+        # Labels explícitos do CRM (nomes dos labels do Planner) ou derivados dos itens.
+        nomes = body.get('labels') or [ (it.get('nome') or '') for it in dados['itens'] ]
+        applied = get_category_ids_by_names(plan_id, nomes)
+        if not applied:
+            return jsonify({'ok': False, 'erro':
+                'nenhum label de engenharia reconhecido — envie "labels" '
+                '(ex.: ["PGR/PCMSO","TREINAMENTO","LTCAT","PPR","LIP","PCMSO","RELATÓRIO TÉCNICO"])'
+            }), 400
+        bucket_id = get_bucket_id_by_name(plan_id, 'Engenharia - Novas Demandas',
+                                          BUCKET_ENG_NOVAS_DEMANDAS)
+        cat_map = get_plan_category_map(plan_id) or {}
+        dados['labels_aplicados'] = [cat_map.get(cid, cid) for cid in applied]
+    else:
+        categoria_id = get_medicoes_category_id(plan_id)
+        applied = {categoria_id: True}
+        dados['labels_aplicados'] = ['MEDIÇÕES']
+
+    descricao = _compor_descricao_os(dados, destino=destino)
+
+    if dry_run:
+        return jsonify({'ok': True, 'dry_run': True, 'destino': destino,
+                        'plan_id': plan_id, 'labels': applied,
+                        'labels_nomes': dados['labels_aplicados'],
+                        'bucket_id': bucket_id, 'titulo': titulo,
+                        'descricao': descricao})
+
+    try:
+        task = criar_planner_task(plan_id, titulo,
+                                  applied_categories=applied, bucket_id=bucket_id)
+        task_id = task.get('id')
+        desc_ok = False
+        try:
+            desc_ok = set_task_description(task_id, descricao)
+        except Exception as e:
+            log.warning('[criar-os] descrição falhou task %s: %s', task_id, e)
+        # evento no feed operacional para rastreio
+        try:
+            registrar_evento('os_criada_crm',
+                             f'OS A ABRIR ({destino}) criada pelo CRM: {empresa[:80]}',
+                             ref_tipo='demanda')
+        except Exception:
+            pass
+        return jsonify({'ok': True, 'dry_run': False, 'destino': destino,
+                        'task_id': task_id, 'titulo': titulo,
+                        'labels': applied, 'labels_nomes': dados['labels_aplicados'],
+                        'bucket_id': bucket_id, 'descricao_ok': desc_ok})
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({'ok': False, 'erro': str(e)}), 500
 
 
 # ── Auditoria ──────────────────────────────────────────────────────────
