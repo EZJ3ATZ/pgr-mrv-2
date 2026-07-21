@@ -3170,6 +3170,12 @@ def _r_esc(s):
     return str(s).replace('&','&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;')
 
 
+# Corpo do laudo de ruído é Verdana (383 usos no template); runs gerados sem
+# rFonts herdariam Calibri (fonte minor do tema) e sairiam com fonte diferente
+# do resto do documento. Força Verdana em todo run injetado.
+_RF_RUIDO = '<w:rFonts w:ascii="Verdana" w:hAnsi="Verdana"/>'
+
+
 def _r_p(text, bold=False, size=18, color=None, center=False, fill=None):
     """Parágrafo simples de uma corrida."""
     ppr = '<w:pPr>'
@@ -3178,7 +3184,7 @@ def _r_p(text, bold=False, size=18, color=None, center=False, fill=None):
     ppr += '</w:pPr>' if ppr != '<w:pPr>' else ''
     if ppr == '<w:pPr></w:pPr>':
         ppr = '<w:pPr/>'
-    rpr = f'<w:rPr>{"<w:b/>" if bold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/>'
+    rpr = f'<w:rPr>{_RF_RUIDO}{"<w:b/>" if bold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/>'
     if color:
         rpr += f'<w:color w:val="{color}"/>'
     rpr += '</w:rPr>'
@@ -3208,8 +3214,8 @@ def _r_row2(label, value, lw=3500, vw=6967, lbold=True, size=18):
                '</w:tcBorders>')
     lpr = f'<w:tcPr><w:tcW w:w="{lw}" w:type="dxa"/><w:shd w:val="clear" w:fill="EEEEEE" w:color="auto"/>{borders}</w:tcPr>'
     vpr = f'<w:tcPr><w:tcW w:w="{vw}" w:type="dxa"/><w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/>{borders}</w:tcPr>'
-    lp  = f'<w:p><w:r><w:rPr>{"<w:b/>" if lbold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t>{_r_esc(label)}</w:t></w:r></w:p>'
-    vp  = f'<w:p><w:r><w:rPr><w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t xml:space="preserve">{_r_esc(value)}</w:t></w:r></w:p>'
+    lp  = f'<w:p><w:r><w:rPr>{_RF_RUIDO}{"<w:b/>" if lbold else ""}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t>{_r_esc(label)}</w:t></w:r></w:p>'
+    vp  = f'<w:p><w:r><w:rPr>{_RF_RUIDO}<w:sz w:val="{size}"/><w:szCs w:val="{size}"/></w:rPr><w:t xml:space="preserve">{_r_esc(value)}</w:t></w:r></w:p>'
     return f'<w:tr><w:tc>{lpr}{lp}</w:tc><w:tc>{vpr}{vp}</w:tc></w:tr>'
 
 
@@ -3220,14 +3226,14 @@ def _r_row_header(text, fill='1F497D', color='FFFFFF', span=2):
                '<w:bottom w:val="single" w:sz="6" w:color="000000"/>'
                '</w:tcBorders>')
     tcp = f'<w:tcPr><w:gridSpan w:val="{span}"/><w:shd w:val="clear" w:fill="{fill}" w:color="auto"/>{borders}</w:tcPr>'
-    rpr = f'<w:rPr><w:b/><w:color w:val="{color}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
+    rpr = f'<w:rPr>{_RF_RUIDO}<w:b/><w:color w:val="{color}"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
     return f'<w:tr><w:tc>{tcp}<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>{rpr}<w:t>{_r_esc(text)}</w:t></w:r></w:p></w:tc></w:tr>'
 
 
 def _r_row_sub(text, span=2, fill='D9D9D9'):
     """Sub-cabeçalho de seção dentro da tabela (Q3, Q5, etc.)."""
     tcp = f'<w:tcPr><w:gridSpan w:val="{span}"/><w:shd w:val="clear" w:fill="{fill}" w:color="auto"/></w:tcPr>'
-    rpr = '<w:rPr><w:b/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+    rpr = f'<w:rPr>{_RF_RUIDO}<w:b/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
     return f'<w:tr><w:tc>{tcp}<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r>{rpr}<w:t>{_r_esc(text)}</w:t></w:r></w:p></w:tc></w:tr>'
 
 
@@ -3293,23 +3299,12 @@ def _build_ruido_aval(av, idx, img_rids):
     if img_rids.get('histograma'):
         imgs_xml += _r_img_para(img_rids['histograma'], n*10+2, W, H_hist)
 
-    # ── Título QUADRO RESUMO ─────────────────────────────────────────
-    tbl_q = (
-        '<w:tbl>'
-        '<w:tblPr>'
-        '<w:tblW w:w="10467" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="1F497D" w:color="auto"/>'
-        '</w:tblPr>'
-        '<w:tblGrid><w:gridCol w:w="10467"/></w:tblGrid>'
-        '<w:tr><w:tc>'
-        '<w:tcPr><w:tcW w:w="10467" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="1F497D" w:color="auto"/></w:tcPr>'
-        '<w:p><w:pPr><w:pStyle w:val="hil1"/></w:pPr>'
-        f'<w:r><w:t>QUADRO RESUMO – AVALIAÇÃO {n:02d}</w:t></w:r>'
-        '</w:p></w:tc></w:tr></w:tbl>'
-    )
-
     # ── Tabela de dados ──────────────────────────────────────────────
+    # OBS: o título "QUADRO RESUMO" é a 1ª linha DESTA tabela (não uma tabela
+    # separada). Duas <w:tbl> adjacentes sem parágrafo entre elas se FUNDEM no
+    # Word — e com grades diferentes (1 col do título vs 2 col dos dados) a
+    # tabela saía toda desalinhada. Dobrar o título na linha-cabeçalho elimina
+    # a fusão sem depender de parágrafo-espaçador (que o Word pode colapsar).
     TOTAL = 10467
     LW, VW = 3500, 6967
 
@@ -3320,7 +3315,7 @@ def _build_ruido_aval(av, idx, img_rids):
                 f'<w:tblLayout w:type="fixed"/>'
                 f'</w:tblPr>')
 
-    rows = _r_row_header(f'AVALIAÇÃO {n:02d} — {cargo.upper()} / {setor.upper()}')
+    rows = _r_row_header(f'QUADRO RESUMO – AVALIAÇÃO {n:02d} — {cargo.upper()} / {setor.upper()}')
     rows += _r_row2('Setor',                   setor)
     rows += _r_row2('Cargo',                   cargo)
     rows += _r_row2('Funcionário(a)',           trabalhador)
@@ -3387,13 +3382,13 @@ def _build_ruido_aval(av, idx, img_rids):
         rows += (f'<w:tr><w:tc>'
                  f'<w:tcPr><w:gridSpan w:val="2"/>'
                  f'<w:shd w:val="clear" w:fill="FFFFFF" w:color="auto"/></w:tcPr>'
-                 f'<w:p><w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
+                 f'<w:p><w:r><w:rPr>{_RF_RUIDO}<w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
                  f'<w:t xml:space="preserve">{_r_esc(texto)}</w:t>'
                  f'</w:r></w:p></w:tc></w:tr>')
 
     tbl_dados = f'<w:tbl>{tbl_pr}{tbl_grid}{rows}</w:tbl>'
 
-    return tbl_tbl + imgs_xml + _r_page_break() + tbl_q + tbl_dados + _r_page_break()
+    return tbl_tbl + imgs_xml + _r_page_break() + tbl_dados + _r_page_break()
 
 
 def _find_section_tbl(xml, heading_text):
