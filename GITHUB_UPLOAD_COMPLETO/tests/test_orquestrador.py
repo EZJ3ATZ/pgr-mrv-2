@@ -10,6 +10,8 @@ Graph mockado — nada toca o Planner real; e-mails ficam pendente_envio
 import re
 import json
 
+import pytest
+
 import controle.graph as graph_mod
 import controle.orquestrador as orq
 from controle.db import get_db, init_db, row_to_dict
@@ -30,6 +32,14 @@ PAYLOAD = {
         {'nome': 'Treinamento NR-35', 'valor': 200},
     ],
 }
+
+
+@pytest.fixture(autouse=True)
+def _orq_ativo_por_padrao(monkeypatch):
+    # A maioria dos testes valida o comportamento ATIVO do orquestrador.
+    # O interruptor mestre nasce DESLIGADO em produção; aqui ligamos por padrão
+    # e os testes de modo dormente sobrescrevem com ORQ_ATIVO=0.
+    monkeypatch.setenv('ORQ_ATIVO', '1')
 
 
 def _limpar():
@@ -158,3 +168,62 @@ def test_painel_sla(monkeypatch):
     assert p['ok'] and p['ordens']
     raia = p['ordens'][0]['raias'][0]
     assert raia['horas_decorridas'] is not None and raia['horas_decorridas'] >= 0
+
+
+# ── Interruptor mestre ORQ_ATIVO (CRM não está em uso: dormente por padrão) ──
+def test_dormente_nao_grava_nada(monkeypatch):
+    """ORQ_ATIVO=0 ⇒ abrir_os vira preview mesmo com dry_run=False:
+    nada entra em os_ordens nem em demandas."""
+    _limpar()
+    monkeypatch.setenv('ORQ_ATIVO', '0')
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    assert r['ok'] and r['dry_run'] and r['dormente'] is True
+    assert re.fullmatch(r'\d{4}\.\d{4}-\d{3}', r['numero'])
+    with get_db() as conn:
+        n_os = row_to_dict(conn.execute(
+            "SELECT COUNT(*) AS c FROM os_ordens").fetchone())['c']
+        n_dem = row_to_dict(conn.execute(
+            "SELECT COUNT(*) AS c FROM demandas WHERE origem='crm_os'").fetchone())['c']
+    assert n_os == 0 and n_dem == 0
+
+
+def test_dormente_bloqueia_aprovacao(monkeypatch):
+    """Abre OS real (ativo), depois adormece: aprovar não toca o Planner
+    nem muda o status da raia."""
+    _limpar()
+    _mock_graph(monkeypatch)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)          # ativo (fixture)
+    with get_db() as conn:
+        eng = row_to_dict(conn.execute(
+            "SELECT id FROM os_raias WHERE raia='engenharia'").fetchone())
+    chamadas = []
+    def _spy(*a, **k):
+        chamadas.append((a, k))
+        return {'id': 'NAO-DEVIA'}
+    monkeypatch.setattr(graph_mod, 'criar_planner_task', _spy)
+    monkeypatch.setenv('ORQ_ATIVO', '0')
+    resp, code = orq.aprovar_raia(r['numero'], eng['id'], 'Evelyn', 'Luiz')
+    assert code == 200 and resp.get('dormente') is True
+    assert not chamadas                                     # Planner não foi chamado
+    with get_db() as conn:
+        ra = row_to_dict(conn.execute(
+            "SELECT status, planner_task_id FROM os_raias WHERE id=?",
+            (eng['id'],)).fetchone())
+    assert ra['status'] == 'aguardando_aprovacao' and not ra['planner_task_id']
+
+
+def test_dormente_bloqueia_conclusao(monkeypatch):
+    _limpar()
+    _mock_graph(monkeypatch)
+    r = orq.abrir_os({'empresa': 'Dorm Ltda', 'servicos': [{'nome': 'PGR'}]},
+                     dry_run=False)
+    with get_db() as conn:
+        rid = row_to_dict(conn.execute(
+            "SELECT id FROM os_raias LIMIT 1").fetchone())['id']
+    monkeypatch.setenv('ORQ_ATIVO', '0')
+    resp, code = orq.concluir_raia(r['numero'], rid)
+    assert code == 200 and resp.get('dormente') is True
+    with get_db() as conn:
+        ra = row_to_dict(conn.execute(
+            "SELECT status FROM os_raias WHERE id=?", (rid,)).fetchone())
+    assert ra['status'] != 'concluida'

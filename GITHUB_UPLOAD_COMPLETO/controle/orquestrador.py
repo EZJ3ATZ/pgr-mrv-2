@@ -218,8 +218,22 @@ def _envio_habilitado():
     return os.environ.get('ORQ_ENVIAR_EMAILS') == '1'
 
 
+def _orq_ativo():
+    """Interruptor MESTRE do orquestrador. Default DESLIGADO.
+
+    Com OFF (padrão), NADA é gravado nem disparado em produção — demandas,
+    Planner, os_ordens/os_raias, e-mail: abrir_os vira preview (dry_run forçado)
+    e aprovar/concluir não executam. O CRM não está em uso; ligar de propósito
+    com ORQ_ATIVO=1 no ambiente é uma decisão explícita.
+    Ver vault: Ideas/Orquestrador OS — Checklist de ativação (o que falta ligar)."""
+    return os.environ.get('ORQ_ATIVO') == '1'
+
+
 # ── Núcleo: abrir OS (fan-out) ──────────────────────────────────────────
 def abrir_os(payload, dry_run=False):
+    # Interruptor mestre: dormente ⇒ nunca grava, só devolve o preview.
+    dormente = not _orq_ativo()
+    dry_run = dry_run or dormente
     servicos = payload.get('servicos') or []
     por_raia = {}
     for s in servicos:
@@ -278,7 +292,8 @@ def abrir_os(payload, dry_run=False):
                                 {'email': montar_email_onboarding(os_row)}))
 
         if dry_run:
-            return {'ok': True, 'dry_run': True, 'numero': numero,
+            return {'ok': True, 'dry_run': True, 'dormente': dormente,
+                    'numero': numero,
                     'raias': [{'raia': r, 'status': s, 'detalhe': d}
                               for r, s, d in raias_plano]}
 
@@ -366,6 +381,11 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
 
 # ── Aprovação (Valéria/Luiz) → cria task no Planner ─────────────────────
 def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False):
+    if not _orq_ativo():
+        return {'ok': True, 'dormente': True, 'numero': numero, 'raia_id': raia_id,
+                'tecnico': tecnico,
+                'mensagem': 'Orquestrador dormente (ORQ_ATIVO=0): aprovação simulada — '
+                            'nada criado no Planner nem gravado.'}, 200
     from .graph import (graph_ok, criar_planner_task, set_task_description,
                         get_category_ids_by_names, get_bucket_id_by_name,
                         get_plan_id_by_title, PLAN_ENTREGAS_TECNICAS,
@@ -439,6 +459,9 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False):
 
 
 def concluir_raia(numero, raia_id):
+    if not _orq_ativo():
+        return {'ok': True, 'dormente': True,
+                'mensagem': 'Orquestrador dormente (ORQ_ATIVO=0): conclusão simulada.'}, 200
     with get_db() as conn:
         _ensure_schema(conn)
         row = conn.execute(
