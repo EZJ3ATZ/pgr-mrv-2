@@ -246,6 +246,10 @@ def list_org_users() -> list:
 PLAN_ENTREGAS_TECNICAS = 'JOHzljvSKkmfSsQ7SekCnWUAA8cz'
 GRUPO_OCUPACIONAL      = '4c80214b-6801-414a-9fc7-27feff0b3de6'
 
+# Grupo M365 "Ergonomia" — tem plano PRÓPRIO ("Ergonomia - Grupo Ocupacional",
+# tasks com nº de OS no título). O handoff de ergonomia cria a task LÁ.
+GRUPO_ERGONOMIA = '0fe08d77-fc05-468b-8741-d6de211878f1'
+
 # Bucket de ENTRADA de novas demandas de engenharia no plano Entregas Técnicas.
 # (A task de medição nasce sem bucket de propósito; a de engenharia nasce aqui —
 # é bucket de entrada, não de conclusão, então é seguro. Fallback do id abaixo;
@@ -349,6 +353,25 @@ def get_category_ids_by_names(plan_id, nomes):
     except Exception as e:
         log.warning('[graph] get_category_ids_by_names %s: %s', plan_id, e)
     return out
+
+
+_plan_title_cache = {}
+
+
+def get_plan_id_by_title(group_id, titulo_contains):
+    """Descobre o plano de um grupo cujo título contém `titulo_contains`
+    (normalizado). Cacheado por processo. None se não achar."""
+    key = (group_id, _norm_label(titulo_contains))
+    if key in _plan_title_cache:
+        return _plan_title_cache[key]
+    try:
+        for p in get_plans_for_group(group_id):
+            if key[1] in _norm_label(p.get('title', '')):
+                _plan_title_cache[key] = p['id']
+                return p['id']
+    except Exception as e:
+        log.warning('[graph] get_plan_id_by_title %s: %s', group_id, e)
+    return None
 
 
 def get_bucket_id_by_name(plan_id, nome_contains, fallback=None):

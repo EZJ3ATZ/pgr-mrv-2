@@ -174,6 +174,12 @@ def _require_login():
     # de usuário. Precisa ser isento aqui senão o gate de login barra (401).
     if request.path == '/controle/planner/criar-os':
         return None
+    # Orquestrador da OS: rotas /controle/os/* aceitam server-to-server pelo
+    # mesmo segredo (o handler valida); sem segredo válido, exigem sessão.
+    if request.path.startswith('/controle/os/'):
+        _seg = os.environ.get('CRM_PLANNER_SECRET', '')
+        if _seg and request.headers.get('x-crm-secret') == _seg:
+            return None
     # Toda rota do controle exige login — leitura e escrita.
     # Dados operacionais (empresas, OS, coletas) não são públicos.
     if not current_user.is_authenticated:
@@ -8452,3 +8458,9 @@ def consistencia_motivos():
         return jsonify(MOTIVOS_DIVERGENCIA)
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
+
+
+# ── Orquestrador da OS (substitui o MAESTRO) — rotas /controle/os/* ────
+# Registrado aqui (import time) para entrar no blueprint ANTES do register.
+from .orquestrador import registrar_rotas as _orq_registrar_rotas
+_orq_registrar_rotas(controle_bp)
