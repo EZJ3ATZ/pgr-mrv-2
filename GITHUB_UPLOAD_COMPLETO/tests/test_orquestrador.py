@@ -227,3 +227,38 @@ def test_dormente_bloqueia_conclusao(monkeypatch):
         ra = row_to_dict(conn.execute(
             "SELECT status FROM os_raias WHERE id=?", (rid,)).fetchone())
     assert ra['status'] != 'concluida'
+
+
+# ── Fila de aprovação (backend consumido pela UI do Assinador) ──────────────
+def test_fila_aprovacao_lista_raias_pendentes():
+    _limpar()
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)          # ativo (fixture)
+    fila = orq.fila_aprovacao()
+    assert fila['ok'] and fila['total'] >= 3
+    tipos = {x['raia'] for x in fila['fila']}
+    assert {'engenharia', 'ergonomia', 'treinamento'} <= tipos
+    eng = next(x for x in fila['fila'] if x['raia'] == 'engenharia')
+    assert eng['numero'] == r['numero'] and eng['raia_id']
+    assert eng['empresa'] == 'ORQ Teste Ltda'
+    assert any('PGR' in (i.get('nome', '')) for i in eng['itens'])
+    ergo = next(x for x in fila['fila'] if x['raia'] == 'ergonomia')
+    assert ergo.get('modalidade')                            # interna/externa
+    # filtro por tipo
+    so_eng = orq.fila_aprovacao(raias=['engenharia'])
+    assert {x['raia'] for x in so_eng['fila']} == {'engenharia'}
+
+
+def test_fila_some_apos_aprovar(monkeypatch):
+    _limpar()
+    _mock_graph(monkeypatch)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    eng = next(x for x in orq.fila_aprovacao(raias=['engenharia'])['fila'])
+    orq.aprovar_raia(r['numero'], eng['raia_id'], 'Evelyn', 'Luiz')
+    assert orq.fila_aprovacao(raias=['engenharia'])['total'] == 0
+
+
+def test_fila_vazia_quando_dormente(monkeypatch):
+    _limpar()
+    monkeypatch.setenv('ORQ_ATIVO', '0')
+    orq.abrir_os(dict(PAYLOAD), dry_run=False)               # preview, não grava
+    assert orq.fila_aprovacao()['total'] == 0

@@ -512,6 +512,37 @@ def painel():
         return {'ok': True, 'ordens': ordens}
 
 
+# ── Fila de aprovação (consumida pela UI do Assinador) ──────────────────
+def fila_aprovacao(raias=None):
+    """Raias em 'aguardando_aprovacao' (fila da Valéria/Luiz), já com os itens
+    do serviço e o técnico sugerido. `raias` opcional filtra os tipos
+    (ex.: ['engenharia','ergonomia','treinamento']).
+
+    Só leitura — não depende de ORQ_ATIVO. Com o orquestrador dormente a fila
+    fica vazia (abrir_os não grava), o que é o comportamento esperado."""
+    with get_db() as conn:
+        _ensure_schema(conn)
+        rows = conn.execute(
+            """SELECT r.id AS raia_id, r.raia, r.status, r.detalhe_json,
+                      r.tecnico_sugerido, r.iniciado_em,
+                      o.numero, o.empresa, o.cnpj, o.vidas, o.consultor,
+                      o.contato_nome, o.vencimento
+               FROM os_raias r JOIN os_ordens o ON o.id = r.os_id
+               WHERE r.status='aguardando_aprovacao'
+               ORDER BY r.id""").fetchall()
+        fila = []
+        for x in rows:
+            d = row_to_dict(x)
+            if raias and d['raia'] not in raias:
+                continue
+            det = json.loads(d.pop('detalhe_json') or '{}')
+            d['itens'] = det.get('itens') or []
+            if det.get('modalidade'):
+                d['modalidade'] = det['modalidade']
+            fila.append(d)
+        return {'ok': True, 'fila': fila, 'total': len(fila)}
+
+
 # ── Rotas ───────────────────────────────────────────────────────────────
 def registrar_rotas(bp):
     def _auth_secret():
@@ -563,3 +594,13 @@ def registrar_rotas(bp):
             if not getattr(current_user, 'is_authenticated', False):
                 return jsonify({'ok': False, 'erro': 'não autorizado'}), 401
         return jsonify(painel())
+
+    @bp.route('/os/fila')
+    def orq_fila():
+        if not _auth_secret():
+            from flask_login import current_user
+            if not getattr(current_user, 'is_authenticated', False):
+                return jsonify({'ok': False, 'erro': 'não autorizado'}), 401
+        tipos = request.args.get('raias')
+        raias = [t.strip() for t in tipos.split(',') if t.strip()] if tipos else None
+        return jsonify(fila_aprovacao(raias))
