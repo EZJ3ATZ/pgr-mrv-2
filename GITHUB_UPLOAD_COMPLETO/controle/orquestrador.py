@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 
 from flask import request, jsonify
 
-from .db import get_db, row_to_dict, registrar_evento
+from .db import get_db, row_to_dict, registrar_evento, USE_PG
 
 log = logging.getLogger(__name__)
 
@@ -75,9 +75,14 @@ _schema_ok = False
 
 
 def _ensure_schema(conn):
+    # Postgres (produção) não aceita AUTOINCREMENT do SQLite — mesma conversão
+    # do db.py (SCHEMA_PG). Sem isso o CREATE falha silencioso no executescript
+    # e toda rota quebra com "relation os_ordens does not exist".
     global _schema_ok
     if not _schema_ok:
-        conn.executescript(_SCHEMA)
+        schema = (_SCHEMA.replace('INTEGER PRIMARY KEY AUTOINCREMENT',
+                                  'SERIAL PRIMARY KEY') if USE_PG else _SCHEMA)
+        conn.executescript(schema)
         _schema_ok = True
 
 
