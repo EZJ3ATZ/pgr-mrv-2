@@ -1186,6 +1186,7 @@ def get_agentes():
                 tipo_amostrador = cod[cod.index('(')+1:cod.index(')')].replace('*','').strip()
             agentes.append({
                 'nome': nome,
+                'categoria': 'quimico',
                 'cas': entry.get('cas', cas),
                 'metodo': entry.get('metodoCod', ''),
                 'metodo_desc': entry.get('metodoDesc', ''),
@@ -1202,6 +1203,7 @@ def get_agentes():
         grupos = [
             {
                 'nome': 'BTX (Benzeno + Tolueno + Xileno)',
+                'categoria': 'quimico',
                 'cas': '71-43-2 / 108-88-3 / 1330-20-7',
                 'metodo': 'NIOSH 1501',
                 'metodo_desc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
@@ -1215,6 +1217,7 @@ def get_agentes():
             },
             {
                 'nome': 'BTXE (Benzeno + Tolueno + Xileno + Etilbenzeno)',
+                'categoria': 'quimico',
                 'cas': '71-43-2 / 108-88-3 / 1330-20-7 / 100-41-4',
                 'metodo': 'NIOSH 1501',
                 'metodo_desc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
@@ -1230,6 +1233,43 @@ def get_agentes():
         for g in grupos:
             g['vazao_faixa'] = parse_vazao(g.get('vazao', ''))
         agentes = grupos + agentes
+
+        # Agentes FÍSICOS — não vêm do guia químico (não têm CAS/amostrador/vazão).
+        # Só são anexados na tela de Referência de Agentes (?incluir_fisicos=1);
+        # os autocompletes do planejamento químico continuam recebendo só químicos.
+        if request.args.get('incluir_fisicos') in ('1', 'true', 'sim'):
+            fisicos = [
+                {'nome': 'Ruído (Dosimetria)',
+                 'metodo': 'NHO 01', 'metodo_desc': 'Avaliação da exposição ocupacional ao ruído contínuo/intermitente (Fundacentro) — NR-15 Anexo 1',
+                 'tipo_amostrador': 'DOS', 'amostrador_desc': 'Dosímetro de ruído (audiodosímetro), TWA 8h',
+                 'unidade': 'dB(A)'},
+                {'nome': 'Ruído de Impacto',
+                 'metodo': 'NHO 01 / NR-15 Anexo 2', 'metodo_desc': 'Nível de pressão sonora de pico — NR-15 Anexo 2',
+                 'tipo_amostrador': 'MNPS', 'amostrador_desc': 'Medidor de nível de pressão sonora (dosímetro/decibelímetro), resposta pico',
+                 'unidade': 'dB(C) pico'},
+                {'nome': 'Calor (Estresse Térmico — IBUTG)',
+                 'metodo': 'NHO 06', 'metodo_desc': 'Avaliação da exposição ocupacional ao calor — IBUTG (Fundacentro) — NR-15 Anexo 3',
+                 'tipo_amostrador': 'IBUTG', 'amostrador_desc': 'Medidor de IBUTG (termômetro de bulbo úmido natural, globo e bulbo seco)',
+                 'unidade': '°C'},
+                {'nome': 'Vibração de Corpo Inteiro (VCI)',
+                 'metodo': 'NHO 09', 'metodo_desc': 'Avaliação da exposição ocupacional a vibração de corpo inteiro (Fundacentro) — NR-15 Anexo 8',
+                 'tipo_amostrador': 'ACEL', 'amostrador_desc': 'Medidor de vibração com acelerômetro triaxial (assento) — aren e VDV',
+                 'unidade': 'm/s² (aren) · m/s^1,75 (VDV)'},
+                {'nome': 'Vibração de Mãos e Braços (VMB)',
+                 'metodo': 'NHO 10', 'metodo_desc': 'Avaliação da exposição ocupacional a vibração em mãos e braços (Fundacentro) — NR-15 Anexo 8',
+                 'tipo_amostrador': 'ACEL', 'amostrador_desc': 'Medidor de vibração com acelerômetro triaxial (empunhadura) — aren',
+                 'unidade': 'm/s² (aren)'},
+            ]
+            for fx in fisicos:
+                fx.setdefault('categoria', 'fisico')
+                fx.setdefault('cas', '')
+                fx.setdefault('vazao', '')
+                fx.setdefault('volume', '')
+                fx.setdefault('amostrador', fx.get('amostrador_desc', ''))
+                fx.setdefault('cuidados', '')
+                fx['vazao_faixa'] = parse_vazao('')  # passivo — não há vazão
+            agentes = fisicos + agentes
+
         return jsonify({'agentes': agentes, 'total': len(agentes)})
     except Exception as e:
         return jsonify({'erro': str(e), 'agentes': []}), 500
