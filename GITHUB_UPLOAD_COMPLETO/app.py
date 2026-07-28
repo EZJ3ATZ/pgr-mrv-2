@@ -1898,6 +1898,13 @@ def gerar_calor_bytes(d):
     xml = xml.replace('>MG<', f'>{_xe(emp.get("uf","MG"))}<')
     xml = xml.replace('47.11-3-02', _xe(emp.get('cnae','')))
     xml = xml.replace('Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - supermercados', _xe(emp.get('descricaoCnae','')))
+    # Grau de risco: o template traz o da empresa de referência (2, comércio
+    # varejista) e nada substituía — todo laudo de calor saía com 2, qualquer que
+    # fosse a empresa. Achado em 28/07/2026 montando os golden tests. Mesmo
+    # `_rp` do laudo químico (label e valor em parágrafos separados na capa).
+    _grau = str(emp.get('grauRisco','')).strip()
+    if _grau:
+        xml = _rp(xml, 'Grau de Risco', _grau)
     xml = xml.replace('>Thais Taveira<', f'>{_xe(emp.get("contato",""))}<')
     xml = xml.replace('(31)3359-3389', _xe(emp.get('telefone','')))
     # 2º telefone do template (Dahana tem dois) — remove se empresa só forneceu um

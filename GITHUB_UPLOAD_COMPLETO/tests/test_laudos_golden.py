@@ -258,14 +258,14 @@ def test_nenhum_documento_vaza_placeholder_ou_erro():
 # (xfail, verde); quando alguém consertar, vira XPASS e o pytest ACUSA — aí é hora
 # de apagar o marcador. É assim que o defeito não é esquecido nem vira gabarito.
 
-@pytest.mark.xfail(strict=True, reason=(
-    'ACHADO 28/07: gerar_calor_bytes não substitui grauRisco — o laudo de calor sai '
-    'sempre com "Grau de Risco 2", valor do template (comércio varejista), qualquer '
-    'que seja a empresa. Químico e ruído substituem certo. Corrigir em task própria.'))
-def test_calor_deveria_respeitar_o_grau_de_risco_da_empresa():
+def test_calor_respeita_o_grau_de_risco_da_empresa():
+    """Corrigido em 28/07: `gerar_calor_bytes` não substituía `grauRisco` e o laudo
+    saía sempre com "Grau de Risco 2" — valor do template (comércio varejista) —
+    qualquer que fosse a empresa. Químico e ruído já substituíam."""
     t = _gera('calor')
     i = t.find('Grau de Risco')
-    trecho = t[i:i + 40] if i >= 0 else ''
+    assert i >= 0, 'rótulo "Grau de Risco" desapareceu da capa do laudo de calor'
+    trecho = t[i:i + 40]
     assert EMPRESA['grauRisco'] in trecho, \
         f'grau de risco da empresa ({EMPRESA["grauRisco"]}) não está em {trecho!r}'
 
