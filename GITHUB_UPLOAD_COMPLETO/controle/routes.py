@@ -3194,10 +3194,21 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=Fa
             mid = _g(alvo, 'id', 0)
             prev = _g(alvo, 'qtd_pontos_prevista', 2) or 1
             novo_status = 'aguardando_lab' if aguardar_lab else 'realizado'
-            conn.execute(
-                "UPDATE medicoes SET qtd_pontos_feita=?, status=? WHERE id=?",
+            # UPDATE condicional: re-afirma o estado pendente no WHERE (mesmo padrão
+            # do fix de reserva de amostrador, commit 0ad9508). Duas planilhas da
+            # MESMA OS finalizando em paralelo (TOCTOU/CWE-362): ambas leem 'pendente'
+            # no SELECT acima, mas só UMA consegue o UPDATE — a segunda bloqueia até o
+            # commit da primeira, re-avalia o WHERE já com status finalizado e afeta 0
+            # linhas. Quem perde a corrida vira 'duplicada' em vez de gravar 2× coleta.
+            cur = conn.execute(
+                "UPDATE medicoes SET qtd_pontos_feita=?, status=? "
+                "WHERE id=? AND status NOT IN ('realizado','aguardando_lab')",
                 (prev, novo_status, mid)
             )
+            if (cur.rowcount or 0) == 0:
+                res['duplicada'] = True
+                res['tinha_pendente'] = True
+                return res
             pend = conn.execute(
                 "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
                 (demanda_id,)
@@ -4318,7 +4329,11 @@ def api_salvar_medicao_wizard():
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': tipo, 'medicao_baixada': bx['baixada']})
 
-    return jsonify({'ok': True, 'aviso': 'tipo nao mapeado, nao salvo'})
+    # Tipo não reconhecido: NUNCA responder ok:true (o front interpretaria como
+    # planilha salva). ok:false + status 200 — o ctrlFetch lança em não-2xx, então
+    # mantemos 200 e sinalizamos a falha no corpo p/ o front avisar sem quebrar.
+    return jsonify({'ok': False, 'erro': f'Tipo de medição não reconhecido: {tipo!r}. Nada foi salvo.',
+                    'tipo': tipo})
 
 
 def _safe_float(v):
