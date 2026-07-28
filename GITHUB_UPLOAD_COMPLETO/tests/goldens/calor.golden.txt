@@ -1,0 +1,445 @@
+LAUDO DE CALOR
+Higiene Ocupacional
+GOLDEN INDUSTRIA LTDA
+(Em atendimento ao Anexo 03 da NR-15 e NHO 06 da FUNDACENTRO)
+10795-1587500
+LAUDO DE CALOR
+Identificação Empresa
+Empresa
+GOLDEN INDUSTRIA LTDA
+Endereço
+Rua Teste, 100
+Complemento
+CNPJ
+12.345.678/0001-90
+CEP
+30000-000
+Cidade
+Belo Horizonte
+Bairro
+Centro
+UF
+MG
+CNAE
+25.11-0-00
+Grau de Risco
+2
+Descrição CNAE
+Fabricacao de estruturas metalicas
+Contato
+Telefone(31) 3333-3333
+E-mailcontato@golden.com.br
+CARTA DE APRESENTAÇÃO
+BELO HORIZONTE, MAIO DE 2026.
+A
+GOLDEN INDUSTRIA LTDA
+REF.: LAUDO DE CALOR
+Prezado,
+É com imenso prazer que cumprimos mais uma meta de nossos trabalhos junto a vossa empresa no intuito de cumprir com os dispositivos legais exigidos pelas normativas vigentes referentes a riscos ambientais, tendo como foco maior identificar as exposições do agente físico calor proveniente do processo produtivo da empresa, tudo em conformidade ao que estabelece a NR-15 e NR-09, através de seu Anexo 3, da Portaria 3218/78.
+Em assim sendo estamos lhe repassando este documento denominado de Laudo das Condições Ambientais / Calor, o qual tem por finalidade identificar os diversos setores possíveis condições insalubres estabelecidas pela normativa mencionada, assim como recomendações para neutralizá-los ou eliminá-los através de melhorias ambientais ou por ações individuais para cada Colaborador neles lotados.
+O Grupo Ocupacional coloca-se à disposição desta empresa, para prestar quaisquer esclarecimentos que se fizerem necessários.
+1720215360299000Atenciosamente,
+O aproveitamento deste programa, total ou parcial em outras empresas e/ou profissionais da área para quaisquer fins, sem a devida autorização de seus autores, será considerado como um ato ilegal previsto em Lei - Artigo 184 do Código Penal.
+ÍNDICE GERAL
+TOC \t "1 TOPICO;1;CALOR 2;2" I – METODOLOGIA PAGEREF _Toc229467710 \h 4
+II - EQUIPAMENTOS PAGEREF _Toc229467711 \h 6
+III - FUNDAMENTAÇÃO LEGAL PAGEREF _Toc229467712 \h 6
+IV – PLANILHAS DE AVALIAÇÕES POR PONTO PAGEREF _Toc229467713 \h 7
+Avaliação 01 – Departamento: PADARIA PAGEREF _Toc229467714 \h 7
+Avaliação 02 – Departamento: COZINHA PAGEREF _Toc229467715 \h 9
+Avaliação 03 – Departamento: SUSHI PAGEREF _Toc229467716 \h 11
+V – CERTIFICADO DE CALIBRAÇÃO DO TERMÔMETRO PAGEREF _Toc229467717 \h 12
+VI– RESPONSABILIDADE TÉCNICA PAGEREF _Toc229467719 \h 13
+VII– ANOTAÇÕES E RESPOSABILIDADE TÉCNICA PAGEREF _Toc229467720 \h 14
+I – METODOLOGIA
+As temperaturas a serem medidas são a temperatura de bulbo úmido natural (tbn) e a temperatura de globo (tg). As leituras das temperaturas foram iniciadas após a estabilização (25 minutos) do conjunto na situação térmica que foi avaliada. Foram realizadas cinco leituras para que as variações entre elas estejam dentro de um intervalo de + ou - 0,4 ºC. Os valores que foram atribuídos ao "tg", ao "tbn" e ao "tbs", correspondem às medidas de leitura, respectiva a cada temperatura, contidas no referido intervalo. O tempo de duração de cada atividade física identificada foi determinado por meio de cinco cronometragens obtidas observando-se o trabalhador na execução de seu trabalho. Foi registrado em planilha de campo. Tudo em conformidade com a NHO-06 da FUNDACENTRO e Anexo 03 da Norma Regulamentadora N°09 da Portaria 3214/78.
+O limite de tolerância da avaliação deverá ser consultado nos quadros I e II do anexo 03 da Norma Regulamentadora n°09 ou n°15, bem como o quadro 02 da NHO 06 da FUNDACENTRO.
+II - EQUIPAMENTOS
+203835027114500Termômetro de Globo Net.Temp – Chrompack Smart TEMP | S/N: IBU0000000209 | Calibração: 24/03/2026 | Certificado Nº 180.646
+III - FUNDAMENTAÇÃO LEGAL
+Portaria 3214/78 da secretaria especial do Trabalho, vinculado ao Ministério da Economia, mais precisamente em seu Anexo 3 da Norma Regulamentadora n°15 e n°09.
+NHO – 06 - FUNDACENTRO - Fundação Jorge Duprat Figueiredo de Segurança e Medicina do Trabalho.
+IV – PLANILHAS DE AVALIAÇÕES POR PONTO
+QUADROS DE REFERÊNCIA — LIMITES DE EXPOSIÇÃO OCUPACIONAL AO CALOR (NR-15, ANEXO 3 — Portaria SEPRT Nº 1.359/2019)
+O IBUTG é determinado conforme a NHO 06 (2ª edição — 2017) da Fundacentro, metodologia adotada pelo Anexo 3 da NR-15: IBUTG = 0,7·tbn + 0,3·tg para ambientes internos ou externos sem carga solar direta; IBUTG = 0,7·tbn + 0,1·tbs + 0,2·tg para ambientes externos com carga solar direta (tbn = temperatura de bulbo úmido natural; tg = temperatura de globo; tbs = temperatura de bulbo seco).
+Quadro Nº 1 — Limite de exposição ocupacional ao calor (taxa de metabolismo M × IBUTG máximo)
+M (W)
+IBUTG MÁX (ºC)
+M (W)
+IBUTG MÁX (ºC)
+M (W)
+IBUTG MÁX (ºC)
+100
+33,7
+186
+30,6
+346
+27,5
+102
+33,6
+189
+30,5
+353
+27,4
+104
+33,5
+193
+30,4
+360
+27,3
+106
+33,4
+197
+30,3
+367
+27,2
+108
+33,3
+201
+30,2
+374
+27,1
+110
+33,2
+205
+30,1
+382
+27,0
+112
+33,1
+209
+30,0
+390
+26,9
+115
+33,0
+214
+29,9
+398
+26,8
+117
+32,9
+218
+29,8
+406
+26,7
+119
+32,8
+222
+29,7
+414
+26,6
+122
+32,7
+227
+29,6
+422
+26,5
+124
+32,6
+231
+29,5
+431
+26,4
+127
+32,5
+236
+29,4
+440
+26,3
+129
+32,4
+241
+29,3
+448
+26,2
+132
+32,3
+246
+29,2
+458
+26,1
+135
+32,2
+251
+29,1
+467
+26,0
+137
+32,1
+256
+29,0
+476
+25,9
+140
+32,0
+261
+28,9
+486
+25,8
+143
+31,9
+266
+28,8
+496
+25,7
+146
+31,8
+272
+28,7
+506
+25,6
+149
+31,7
+277
+28,6
+516
+25,5
+152
+31,6
+283
+28,5
+526
+25,4
+155
+31,5
+289
+28,4
+537
+25,3
+158
+31,4
+294
+28,3
+548
+25,2
+161
+31,3
+300
+28,2
+559
+25,1
+165
+31,2
+306
+28,1
+570
+25,0
+168
+31,1
+313
+28,0
+582
+24,9
+171
+31,0
+319
+27,9
+594
+24,8
+175
+30,9
+325
+27,8
+606
+24,7
+178
+30,8
+332
+27,7
+182
+30,7
+339
+27,6
+Quadro Nº 2 — Taxa metabólica por tipo de atividade
+Atividade
+Taxa metabólica (W)
+SENTADO
+Em repouso
+100
+Trabalho leve com as mãos
+126
+Trabalho moderado com as mãos
+153
+Trabalho pesado com as mãos
+171
+Trabalho leve com um braço
+162
+Trabalho moderado com um braço
+198
+Trabalho pesado com um braço
+234
+Trabalho leve com dois braços
+216
+Trabalho moderado com dois braços
+252
+Trabalho pesado com dois braços
+288
+Trabalho leve com braços e pernas
+324
+Trabalho moderado com braços e pernas
+441
+Trabalho pesado com braços e pernas
+603
+EM PÉ, AGACHADO OU AJOELHADO
+Em repouso
+126
+Trabalho leve com as mãos
+153
+Trabalho moderado com as mãos
+180
+Trabalho pesado com as mãos
+198
+Trabalho leve com um braço
+189
+Trabalho moderado com um braço
+225
+Trabalho pesado com um braço
+261
+Trabalho leve com dois braços
+243
+Trabalho moderado com dois braços
+279
+Trabalho pesado com dois braços
+315
+Trabalho leve com o corpo
+351
+Trabalho moderado com o corpo
+468
+Trabalho pesado com o corpo
+630
+EM PÉ, EM MOVIMENTO
+Andando no plano, sem carga — 2 km/h
+198
+Andando no plano, sem carga — 3 km/h
+252
+Andando no plano, sem carga — 4 km/h
+297
+Andando no plano, sem carga — 5 km/h
+360
+Andando no plano, com carga — 10 kg, 4 km/h
+333
+Andando no plano, com carga — 30 kg, 4 km/h
+450
+Correndo no plano — 9 km/h
+787
+Correndo no plano — 12 km/h
+873
+Correndo no plano — 15 km/h
+990
+Subindo rampa, sem carga — 5º de inclinação, 4 km/h
+324
+Subindo rampa, sem carga — 15º de inclinação, 3 km/h
+378
+Subindo rampa, sem carga — 25º de inclinação, 3 km/h
+540
+Subindo rampa, com carga de 20 kg — 15º de inclinação, 4 km/h
+486
+Subindo rampa, com carga de 20 kg — 25º de inclinação, 4 km/h
+738
+Descendo rampa (5 km/h), sem carga — 5º de inclinação
+243
+Descendo rampa (5 km/h), sem carga — 15º de inclinação
+252
+Descendo rampa (5 km/h), sem carga — 25º de inclinação
+324
+Subindo escada (80 degraus/min, degrau de 0,17 m) — sem carga
+522
+Subindo escada (80 degraus/min, degrau de 0,17 m) — com carga de 20 kg
+648
+Descendo escada (80 degraus/min, degrau de 0,17 m) — sem carga
+279
+Descendo escada (80 degraus/min, degrau de 0,17 m) — com carga de 20 kg
+400
+OUTRAS ATIVIDADES
+Trabalho moderado de braços (ex.: varrer, trabalho em almoxarifado)
+320
+Trabalho moderado de levantar ou empurrar
+349
+Trabalho de empurrar carrinhos de mão, no mesmo plano, com carga
+391
+Trabalho de carregar pesos ou com movimentos vigorosos com os braços (ex.: trabalho com foice)
+495
+Trabalho pesado de levantar, empurrar ou arrastar pesos (ex.: remoção com pá, abertura de valas)
+524
+A taxa de metabolismo média (M) é ponderada pelo tempo, conforme o Quadro Nº 2, e determina o limite de exposição (IBUTG máximo) aplicável a cada avaliação pelo Quadro Nº 1.
+Avaliação 01 – Departamento: FORNO
+Local
+Tempo
+(60 min.)
+Tbn (ºC)
+Tbs (ºC)
+Tg (ºC)
+IBUTG = 0,7 tbn + 0,3 tg
+(Sem carga solar)
+IBUTG
+Boca do forno
+30
+25,0
+32,0
+38,0
+IBUTG = (0,7 x 25,0) + (0,1 x 32,0) + (0,2 x 38,0)
+28,3
+Painel de controle
+30
+24,0
+0,0
+30,0
+IBUTG = (0,7 x 24,0) + (0,3 x 30,0)
+25,8
+IBUTG(médio)=IBUTG1 x T1+IBUTG2 x T2+IBUTG x Tn60
+IBUTG (Médio) = 27,1 ºC
+Tipo de Atividade (Quadro 2 – Anexo 3 / NR09)
+Atividade 01: Operacao de forno
+Taxa metabólica (M)
+350 W
+Atividade 02: Supervisao
+250 W
+M(média)=M1 x T1+M2 x T2+Mn x Tn60
+M (média) = 300 W
+Horário da medição:
+08:00 as 17:00
+Tipo de vestimenta
+Uniforme de Trabalho (0)
+CONCLUSÃO
+O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, do Anexo Nº 3, na NR-15, para uma taxa de metabolismo média de 300 W é de 28,2 IBUTG.
+O IBUTG médio encontrado foi de 27,1 ºC, não ultrapassando o limite de tolerância.
+Avaliação 02 – Departamento: ALMOXARIFADO
+Local
+Tempo
+(60 min.)
+Tbn (ºC)
+Tbs (ºC)
+Tg (ºC)
+IBUTG = 0,7 tbn + 0,3 tg
+(Sem carga solar)
+IBUTG
+Estoque
+60
+22,0
+0,0
+26,0
+IBUTG = (0,7 x 22,0) + (0,3 x 26,0)
+23,2
+IBUTG(médio)=IBUTG1 x T1+IBUTG2 x T2+IBUTG x Tn60
+IBUTG (Médio) = 23,2 ºC
+Tipo de Atividade (Quadro 2 – Anexo 3 / NR09)
+Atividade 01: Movimentacao leve
+Taxa metabólica (M)
+150 W
+M(média)=M1 x T1+M2 x T2+Mn x Tn60
+M (média) = 150 W
+Horário da medição:
+08:00 as 17:00
+Tipo de vestimenta
+Uniforme de Trabalho (0)
+CONCLUSÃO
+O limite de tolerância para exposição ao calor, segundo o Quadro Nº 1, do Anexo Nº 3, na NR-15, para uma taxa de metabolismo média de 150 W é de 31,7 IBUTG.
+O IBUTG médio encontrado foi de 23,2 ºC, não ultrapassando o limite de tolerância.
+V – CERTIFICADO DE CALIBRAÇÃO DO TERMÔMETRO
+VI– RESPONSABILIDADE TÉCNICA
+ELABORAÇÃO
+_________________________________________
+CRISTIANO DE CASTRO MAGALHÃES GOMES
+Engenheiro de Segurança do Trabalho
+Registro CREA 57928/D MG

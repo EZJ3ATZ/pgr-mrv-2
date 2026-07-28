@@ -1,0 +1,78 @@
+# Roda a suíte a cada push. Antes disto, os testes existiam mas ninguém rodava —
+# a suíte completa leva ~6 min, o que na prática significa "nunca". Por isso são
+# dois jobs: `rapido` dá o sinal em ~1 min, `completo` fecha a conta.
+#
+# O arquivo vive na RAIZ do repositório, mas o app está em GITHUB_UPLOAD_COMPLETO/,
+# daí o `working-directory` em todo passo.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:   # permite rodar à mão pela aba Actions
+
+concurrency:
+  # push novo cancela a execução anterior do mesmo branch — não acumula fila
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: GITHUB_UPLOAD_COMPLETO
+
+jobs:
+  # ── Sinal rápido: tudo menos o orquestrador (~10s de teste) ────────────────
+  # É aqui que mora a rede de proteção dos documentos: goldens dos 4 laudos,
+  # aritmética da planilha de campo, NR-15/IBUTG, extração de agentes, races.
+  rapido:
+    name: Testes rápidos (documentos e cálculo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'   # espelha o Python local do Matheus
+          cache: pip
+          cache-dependency-path: GITHUB_UPLOAD_COMPLETO/requirements*.txt
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Rodar a suíte (sem o orquestrador)
+        env:
+          DISABLE_SCHEDULER: '1'   # o conftest já garante; explícito para leitura
+        run: python -m pytest -q --deselect tests/test_orquestrador.py
+
+  # ── Suíte completa, incluindo o orquestrador ───────────────────────────────
+  # Hoje leva ~6 min e QUASE TODO esse tempo é um bug, não cálculo: cada
+  # `abrir_os` real gasta ~33s porque `registrar_evento` (controle/db.py) abre uma
+  # 2ª conexão dentro de uma transação já aberta, bate no lock do SQLite, espera o
+  # timeout e descarta o evento em silêncio. Quando isso for corrigido, este job
+  # deve cair para segundos — se continuar em 6 min, o fix não pegou.
+  completo:
+    name: Suíte completa
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: GITHUB_UPLOAD_COMPLETO/requirements*.txt
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Rodar a suíte inteira
+        env:
+          DISABLE_SCHEDULER: '1'
+        run: python -m pytest -q --durations=10

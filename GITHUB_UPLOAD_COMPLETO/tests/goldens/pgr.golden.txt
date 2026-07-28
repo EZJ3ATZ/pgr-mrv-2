@@ -1,0 +1,2535 @@
+PGR
+Programa de Gerenciamento de Riscos
+GOLDEN INDUSTRIA LTDA
+(Em
+atendimento
+a
+NR-1
+-
+Portaria
+SEPRT
+n.º
+6.730,
+de
+09/03/20)
+PGR
+Programa de Gerenciamento de Riscos
+GOLDEN INDUSTRIA LTDA
+Identificação Empresa
+Empresa
+GOLDEN INDUSTRIA LTDA
+Endereço
+Rua Teste Nº 100
+CNPJ
+12.345.678/0001-90
+CEP
+30000-000
+Cidade
+Belo Horizonte
+Bairro
+Centro
+UF
+MG
+CNAE
+43.99-1-03
+Grau de Risco
+03
+Descrição CNAE
+Obras de alvenaria
+IDENTIFICAÇÃO DA EMPRESA DE ENGENHARIA E MEDICINA DO TRABALHO
+Empresa......................: Ocupacional Medicina do Trabalho Ltda.
+CNPJ...........................: 26.231.266/0001-39
+Endereço.....................: Av. João Pinheiro, 146 - 9° Andar
+Bairro..........................: Funcionários
+Cidade / Estado............: Belo Horizonte / MG
+CNAE..........................: 86.30-5-02
+Descrição CNAE............: Atividade médica ambulatorial com recursos para realização de exames complementares
+Grau de risco...............: 03
+Contato.......................:(31) 3514-0405 / comercial@ocupacional.com.br;
+HISTÓRICO DE REVISÕES
+REVISÃO
+DATA
+DESCRIÇÃO DA REVSÃO
+Documento base
+<DATA-DE-EMISSAO>
+Emissão de documento base
+O aproveitamento deste programa, total ou parcial em outras empresas e/ou profissionais da área para quaisquer fins, sem a devida autorização de seus autores, será considerado como um ato ilegal previsto em Lei – Artigo 184 do Código Penal.
+ÍNDICE GERAL
+TOC \t &quot;Estilo1;1;Estilo2;2&quot;
+CARTA DE APRESENTAÇÃO
+PAGEREF _Toc224892990 \h 4
+DOCUMENTO BASE
+PAGEREF _Toc224892991 \h 4
+RESPONSABILIDADES
+PAGEREF _Toc224892992 \h 4
+METAS E OBJETIVOS
+PAGEREF _Toc224892993 \h 5
+ESTRATÉGIAS
+PAGEREF _Toc224892994 \h 5
+METODOLOGIA
+PAGEREF _Toc224892995 \h 6
+LEGISLAÇÃO E NORMAS
+PAGEREF _Toc224892996 \h 10
+CLASSIFICAÇÃO DOS RISCOS OCUPACIONAIS / PADRONIZAÇÃO DAS CORES CORRESPONDENTES
+PAGEREF _Toc224892997 \h 11
+TERMOS E DEFINIÇÕES
+PAGEREF _Toc224892998 \h 11
+MATRIZ DE RISCO / NÍVEL DE RISCO OCUPACIONAL
+PAGEREF _Toc224892999 \h 12
+ANÁLISE DE ACIDENTES E DOENÇAS OCUPACIONAIS
+PAGEREF _Toc224893000 \h 14
+PREPARAÇÃO PARA EMERGÊNCIAS / PLANO DE EMERGÊNCIA
+PAGEREF _Toc224893001 \h 18
+INVENTÁRIO DE RISCO
+PAGEREF _Toc224893002 \h 23
+Unidade: GOLDEN INDUSTRIA LTDA
+PAGEREF _Toc224893003 \h 24
+Setor: Belo Horizonte - MG
+PAGEREF _Toc224893004 \h 24
+Cargo: SOLDADOR
+PAGEREF _Toc224893005 \h 24
+Cargo: PINTOR
+PAGEREF _Toc224893005 \h 24
+Cargo: AUXILIAR DE PRODUCAO
+PAGEREF _Toc224893005 \h 24
+PLANO DE AÇÃO
+PAGEREF _Toc224893006 \h 28
+CRONOGRAMA DE TREINAMENTOS
+PAGEREF _Toc224893007 \h 30
+PERIODICIDADE DE TROCA DE EPI SUGERIDAS PELA OCUPACIONAL
+PAGEREF _Toc224893008 \h 31
+DESCRIÇÃO E DETALHAMENTO DAS PROTEÇÕES INDIVIDUAIS E COLETIVAS DAS DIVERSAS FASES DA OBRA
+PAGEREF _Toc224893009 \h 32
+DESCRIÇÃO E DETALHAMENTO DAS PROTEÇÕES INDIVIDUAIS
+PAGEREF _Toc224893010 \h 38
+ÁREA DE VIVENCIA
+PAGEREF _Toc224893011 \h 40
+INSTALAÇÕES ELÉTRICAS
+PAGEREF _Toc224893012 \h 42
+SINALIZAÇÃO DE SEGURANÇA
+PAGEREF _Toc224893013 \h 45
+RESPONSABILIDADE TÉCNICA
+PAGEREF _Toc224893014 \h 46
+CARTA DE APRESENTAÇÃO
+Prezados Cliente,
+Estamos lhe encaminhando para conhecimento este documento denominado de
+PGR / PROGRAMA DE GERENCIAMENTO DE RISCOS
+com a identificação dos aludidos riscos e consequente cronograma de metas como forma de tornar o ambiente laborado dentro dos padrões exigidos pelo M.T.E.
+O referido programa foi concebido com base em inspeções realizadas, oitivas, documentos relacionados a atuação de cada classe de cargo no cumprimento de suas reais atividades, assim como seus locais de trabalho e, sobretudo, estribado estritamente sob a égide dos dispositivos legais que norteiam as matérias atinentes a riscos ambientais e suas extensões.
+O Grupo Ocupacional coloca-se à disposição desta empresa, para prestar quaisquer esclarecimentos que se fizerem necessários.
+DOCUMENTO BASE
+O PGR / Programa de Gerenciamento de Riscos foi instituído pela Norma Regulamentadora NR-1, publicada pela Portaria SEPRT Nº. 6.730, de 09 de março de 2020, sendo parte integrante da Portaria Nº. 3.214, de 08/06/78, da Secretaria do Trabalho / STRAB, que aprovou as Normas Regulamentadoras do capítulo V, título II, da CLT, relativas à Segurança e Medicina do Trabalho.
+Trata-se de um programa que tem por objetivo a prevenção da saúde e integridade física dos trabalhadores, através da antecipação, reconhecimento, avaliação e consequentemente controle dos riscos ambientais existentes ou que possam vir ocorrer no ambiente de trabalho.
+O PGR é parte das iniciativas da empresa na preservação da saúde e integridade física dos funcionários, devendo estar integrado com o Programa de Controle Médico de Saúde Ocupacional – PCMSO, previsto na NR-7, da Portaria 3214/78.
+As informações quanto aos cargos e as atividades inerentes aos mesmos são de plena responsabilidade da empresa Contratante.
+As execuções das metas estabelecidas no plano de ação do PGR são de plena responsabilidade do Contratante. O plano de ação deverá indicar os prazos para desenvolvimento das etapas e cumprimento das metas. As ações deverão ser registradas através de datas e evidências que comprovem sua realização.
+Este trabalho teve como fundamento maior a identificação dos riscos ocupacionais relativos aos perigos identificados em seu estabelecimento que, em função de sua natureza, concentração ou intensidade e tempo de exposição, são capazes de afetar a saúde e segurança do trabalhador, conforme consta na NR-1, item 1.5.4.4.1. A organização deve avaliar os riscos ocupacionais relativos aos perigos identificados em seu(s) estabelecimento(s), de forma a manter informações para adoção de medidas de prevenção.
+RESPONSABILIDADES
+RESPONSABILIDADE DO EMPREGADOR CONFORME ITEM 1.4.1 DA NR-01:
+a) cumprir e fazer cumprir as disposições legais e regulamentares sobre segurança e saúde no trabalho;
+b) informar aos trabalhadores:
+I – Os riscos ocupacionais existentes nos locais de trabalho;
+II – As medidas de prevenção adotadas pela empresa para eliminar ou reduzir tais riscos;
+III – Os resultados dos exames médicos e de exames complementares de diagnóstico aos quais os próprios trabalhadores forem submetidos; e
+IV – Os resultados das avaliações ambientais realizadas nos locais de trabalho.
+c) elaborar ordens de serviço sobre segurança e saúde no trabalho, dando ciência aos trabalhadores;
+d) permitir que representantes dos trabalhadores acompanhem a fiscalização dos preceitos legais e regulamentares sobre segurança e saúde no trabalho;
+e) determinar procedimentos que devem ser adotados em caso de acidente ou doença relacionada ao trabalho, incluindo a análise de suas causas;
+f) Disponibilizar à Inspeção do Trabalho todas as informações relativas à segurança e saúde no trabalho; e
+g) implementar medidas de prevenção, ouvidos os trabalhadores, de acordo com a seguinte ordem de prioridade:
+I – Eliminação dos fatores de risco;
+II – Minimização e controle dos fatores de risco, com a adoção de medidas de proteção coletiva;
+III – Minimização e controle dos fatores de risco, com a adoção de medidas administrativas ou de organização do trabalho; e
+IV – Adoção de medidas de proteção individual.
+RESPONSABILIDADES DA ORGANIZAÇÃO CONFORME ITEM 1.5.3.2 DA NR-01:
+a) evitar os riscos ocupacionais que possam ser originados no trabalho;
+b) identificar os perigos e possíveis lesões ou agravos à saúde;
+c) avaliar os riscos ocupacionais indicando o nível de risco;
+d) classificar os riscos ocupacionais para determinar a necessidade de adoção de medidas de prevenção;
+e) Implementar medidas de prevenção de acordo com a classificação de risco e na ordem de prioridade estabelecida na alínea &#x201C;g&#x201D; do subitem 1.4.1; e
+f) acompanhar o controle dos riscos ocupacionais.
+RESPONSABILIDADES DO TRABALHADOR CONFORME ITEM 1.4.2 DA NR-01:
+a) cumprir as disposições legais e regulamentares sobre segurança e saúde no trabalho, inclusive as ordens de serviço expedidas pelo empregador;
+b) submeter-se aos exames médicos previstos nas NR;
+c) colaborar com a organização na aplicação das NR; e
+d) usar o equipamento de proteção individual fornecido pelo empregador.
+Constitui ato faltoso a recusa injustificada do empregado ao cumprimento do disposto nas alíneas do subitem anterior. (Item 1.4.2.1 da NR-01)
+O trabalhador poderá interromper suas atividades quando constatar uma situação de trabalho onde, a seu ver, envolva um risco grave e iminente para a sua vida e saúde, informando imediatamente ao seu superior hierárquico. (Item 1.4.3 da NR-01)
+METAS E OBJETIVOS
+1 – Informar aos trabalhadores sobre os riscos aos quais estão expostos durante a execução de suas atividades laborais;
+2 – Garantir a saúde e segurança nos locais de trabalho;
+3 – Preservar a saúde e a integridade física dos trabalhadores;
+4 – Prevenir os riscos ocupacionais capazes de provocar doenças profissionais;
+5 – Assegurar aos trabalhadores, padrões de saúde e bem-estar no ambiente de trabalho, bem como a proteção ao meio ambiente e dos recursos naturais.
+ESTRATÉGIAS
+Estabelecimento de metas e prioridades tais como:
+1 – Quando na fase de antecipação ou reconhecimento, estiver gerando risco grave e iminente para a saúde dos trabalhadores;
+2 – Quando na fase de avaliação, apresentar índices superiores aos limites estabelecidos pela NR-15 da Portaria 3214/78, do M.T.E, ACGIH (American Conference of Governmental Industrial Higyenists) ou aqueles que venham a ser estabelecidos em negociação coletiva do trabalho, desde que mais rigorosos do que os critérios técnico-legais estabelecidos, que porventura estejam norteando a avaliação;
+3 – Reduzir os níveis dos agentes físicos, químicos e biológicos enquadrados nas categorias de risco;
+4 – Identificar e neutralizar os riscos de acidentes enquadrados no reconhecimento preliminar de risco;
+5 – Considerar as condições de trabalho conforme NR-17 no reconhecimento de riscos ergonômicos;
+6 – Elaborar inventário de riscos ocupacionais e plano de ação.
+7 – Reuniões periódicas para avaliação do PGR;
+8 – Obtenção do comprometimento da Gerência/Encarregados da empresa pela implementação do PGR com o envolvimento de todos os trabalhadores.
+METODOLOGIA
+FASE DE ANTECIPAÇÃO:
+1 – Obrigatoriedade de análise prévia de novos projetos ou alterações em processos, layout ou ambientais de trabalho já existentes;
+2 – A formação de grupo de trabalho multidisciplinar para análise de novos projetos ou alterações deverá ser constituída de no mínimo, Encarregado da área de implantação e Coordenador do PGR;
+3 – As visitas as empresas para conhecimento de projetos similares implantados &#x201C;Benchmarking&#x201D; ficam de responsabilidade do coordenador do PGR
+FASE DE RECONHECIMENTO:
+1 – Consulta de dados existentes na empresa, tais como: levantamentos ambientais anteriores, mapas de riscos, controles médicos, análises de acidentes e análises de riscos;
+2 – Levantamento das funções existentes e número de trabalhadores através de listagem de pessoal (modelo I SOC), inspeção nos locais de trabalho para identificação dos agentes de riscos;
+3 – Entrevista com os trabalhadores;
+4 – Discussões na CIPA, quando houver.
+FASE DE AVALIAÇÃO:
+A avaliação será feita com base na metodologia definida na NR-01, NR-09 e NR-15, da Portaria 3214/78, do Ministério do Trabalho e em normas técnicas existentes (ACGIH – American Conference of Governmental Industrial Higyenists, NIOSH – National Institute for Occupational Safety and Health).
+Para cada risco deve ser indicado o nível de risco ocupacional, determinado pela combinação da severidade das possíveis lesões ou agravos à saúde com a probabilidade ou chance de sua ocorrência. (Item 1.5.4.4.2 da NR-01)
+MEDIDAS DE CONTROLE:
+Serão adotadas medidas de controle quando, em qualquer uma das fases do programa, os riscos detectados se enquadrarem na classificação.
+As medidas de controle deverão ser classificadas e priorizadas, conforme a sua abrangência e ordem estabelecida abaixo, seguindo a determinação da NR 1:
+Medidas de proteção coletiva: medidas que eliminam ou reduzam a utilização ou a formação de agentes prejudiciais à saúde; medidas que previnam a liberação ou disseminação desses agentes no ambiente de trabalho; medidas que reduzam os níveis ou a concentração desses agentes no ambiente de trabalho; medidas destinadas à proteção do conjunto de trabalhadores, medidas que dizem respeito aos recursos de engenharia de acordo com a tecnologia disponível, incluindo os dispositivos de enclausuramento, limitação ou isolamento, os sistemas de ventilação ou exaustão, a modificação do layout, processo produtivo, máquinas e equipamentos, a substituição de produtos químicos, entre outros;
+b) Medidas administrativas e de organização do trabalho: constituem as medidas de caráter alternativo, complementar, substituinte ou emergencial, em relação às medidas de proteção coletiva ou individual, incluindo a modificação do ciclo trabalho-descanso, a redução e/ou adequação da jornada de trabalho ou do tempo de exposição ao agente ambiental, as medidas de organização, limpeza e higiene, a elaboração e implantação de programas de saúde ocupacional, entre outros;
+c) Medidas de proteção individual: para efeito deste programa, consideram-se medidas de proteção individual as medidas envolvendo a seleção, o fornecimento, o uso, a manutenção e a substituição sistemática de equipamentos de proteção individual (EPI).
+A utilização de EPI, deverá seguir as recomendações contidas na Norma Regulamentadora NR 6 do Ministério do Trabalho e Emprego.
+Os EPIs devem possuir certificado de conformidade emitido no âmbito do Sistema Nacional de Metrologia, Normalização e Qualidade Industrial – Sinmetro ou de laudos de ensaio emitidos por laboratórios acreditados pelo Instituto Nacional de Metrologia, Qualidade e Tecnologia – Inmetro
+A entrega dos EPIs será registrada nas fichas de EPIs e serão fornecidos gratuitamente aos empregados;
+Os empregados serão treinados e fiscalizados quanto ao uso dos EPIs;
+O planejamento e a implantação das medidas de controle são de responsabilidade da empresa que deverá elaborar plano de ação para implantação das mesmas.
+Os critérios e mecanismos de avaliação da eficácia das medidas de proteção estão descritos abaixo:
+1 – Verificação da especificação da medida de controle (EPC e EPI);
+2 – Consulta aos dados obtidos nas medições realizadas e no controle médico da saúde previsto na NR 7;
+3 – Verificação da hierarquia das medidas de controle;
+4 – Verificação de treinamentos realizados;
+5 – Verificação das evidências da supervisão (Checklist de inspeção);
+6 – Visita aos locais de trabalho.
+MONITORAMENTO (ITEM 1.5.4.4.6 DA NR-01):
+A avaliação de riscos deve constituir um processo contínuo e ser revista a cada dois anos ou quando da ocorrência das seguintes situações:
+a) após implementação das medidas de prevenção, para avaliação de riscos residuais;
+b) após inovações e modificações nas tecnologias, ambientes, processos, condições, procedimentos e organização do trabalho que impliquem em novos riscos ou modifiquem os riscos existentes;
+c) quando identificadas inadequações, insuficiências ou ineficácias das medidas de prevenção;
+d) na ocorrência de acidentes ou doenças relacionadas ao trabalho;
+e) quando houver mudança nos requisitos legais aplicáveis.
+REGISTRO E MANUTENÇÃO DE DADOS (ITEM 1.5.7.3.3.1 DA NR-01):
+1 – O registro e manutenção de dados são fundamentais para que, no futuro, se conheça o histórico das revisões. Deverão ser estabelecidas sistemáticas para registro e manutenção desses dados, sendo mantidos por um período mínimo de 20 anos e disponíveis para fiscalização do STRAB, CIPA e empregados.
+FORMAS DE DIVULGAÇÃO:
+As divulgações poderão ser feitas de diversas formas, como por exemplo:
+1 – Treinamentos específicos;
+2 – Reuniões setoriais;
+3 – Boletim / Jornais internos;
+4 – Quadros de avisos;
+5 – Palestras avulsas;
+6 – SIPAT;
+7 – Programas de integração de novos empregados;
+8 – CIPA – Comissão Interna de Prevenção de Acidentes;
+9 – Comunicados, cartazes ou meios eletrônicos.
+PLANO DE AÇÃO
+A organização deve elaborar plano de ação, indicando as medidas de prevenção a serem introduzidas, aprimoradas ou mantidas, conforme o subitem 1.5.4.4.5.
+Para as medidas de prevenção deve ser definido cronograma, formas de acompanhamento e aferição de resultados.
+APLICANDO O PDCA NO PLANO DE AÇÃO
+O
+PDCA
+é um método da Qualidade com foco na melhoria contínua e pode ser usada no controle de processos e solução de problemas. Sua aplicação consiste em quatro fases:
+P
+(plan: planejar): seleção de um processo, atividade ou máquina que necessite de melhoria e elaboração de medidas claras e executáveis, sempre voltadas para obtenção dos resultados esperados;
+D
+(do: fazer): implementação do plano elaborado e acompanhamento de seu progresso;
+C
+(check: verificar): análise dos resultados obtidos com a execução do plano e, se necessário, reavaliação do plano;
+A
+(act: agir): caso tenha obtido sucesso, o novo processo é documentado e se transforma em um novo padrão.
+O PDCA pode ser representado visualmente conforme mostra a figura abaixo:
+.
+COMO FUNCIONA?
+Na etapa inicial, planeja-se uma meta a ser alcançada e um plano de ação para atingi-la. A ação é executada segundo a nova diretriz e é feita a verificação da efetividade, ou seja, se a meta foi alcançada. Se os objetivos foram alcançados, esta nova sistemática de ação é padronizada; em caso de não atendimento da meta, volta-se a etapa inicial e um novo método deve ser planejado, um novo plano de ação deve ser elaborado.
+O Grupo Ocupacional desenvolveu a planilha abaixo para auxiliar no processo de implementação do PDCA conforme ações identificadas no plano de ação deste PGR.
+.
+LEGISLAÇÃO E NORMAS
+PORTARIA INTERMINISTERIAL Nº. 9, DE 07 DE OUTUBRO DE 2014
+Lista Nacional de Agentes Cancerígenos para Humanos (LINACH)
+ACGIH – (American Conference of Governmental Industrial Higyenists)
+– (Conferência Americana de Higienistas Industriais)
+NORMA REGULAMENTADORA Nº. 01 DA PORTARIA 3214/78 DO M.T.E.
+Disposições gerais e gerenciamento de riscos ambientais
+NORMA REGULAMENTADORA Nº. 09 DA PORTARIA 3214/78 DO M.T.E.
+Avaliação E Controle Das Exposições Ocupacionais A Agentes Físicos, Químicos E Biológicos
+NORMA REGULAMENTADORA Nº. 15
+A Norma Regulamentadora, NR-15, da Portaria Nº. 3.214, de 08/06/78, do Ministério do Trabalho e Emprego, através de seus Anexos de 01 a 14, estabelece as atividades e as operações insalubres, a saber:
+ANEXO Nº. 01
+Limites de tolerância para ruído contínuo ou intermitente.
+ANEXO Nº. 02
+Limites de tolerância para ruído de impacto.
+ANEXO Nº. 03
+Limites de tolerância para exposição ao calor.
+ANEXO Nº. 04
+Revogado através da Portaria 3.751, 23/11/1990.
+ANEXO Nº. 05
+Limites de tolerância para radiações ionizantes.
+ANEXO Nº. 06
+Trabalho sob condições hiperbáricas.
+ANEXO Nº. 07
+Radiações não ionizantes.
+ANEXO Nº. 08
+Vibrações.
+ANEXO Nº. 09
+Frio.
+ANEXO Nº. 10
+Umidade.
+ANEXO Nº. 11
+Agentes químicos cuja insalubridade é caracterizada por limite de tolerância e inspeção no local de trabalho.
+ANEXO Nº. 12
+Limites de Tolerância para Poeiras Minerais
+ANEXO Nº. 13
+Agentes Químicos
+ANEXO Nº. 14
+Agentes Biológicos.
+CLASSIFICAÇÃO DOS RISCOS OCUPACIONAIS / PADRONIZAÇÃO DAS CORES CORRESPONDENTES
+As cores das planilhas de reconhecimento de risco contidas no inventário de risco seguem o padrão estabelecido pela extinta Portaria N°. 25 de dezembro de 1994.
+GRUPO 01 – RISCOS FÍSICOS –
+Ruído, Radiações Ionizantes, Radiações não Ionizantes, Temperaturas Extremas (Frio / Calor), Pressões Anormais e Umidade.
+GRUPO 02 – RISCOS QUÍMICOS –
+Poeiras, Fumos, Névoas, Neblinas, Gases, Vapores, Substancias Químicas ou Compostos.
+GRUPO 03 – RISCOS BIOLÓGICOS –
+Vírus, Bactérias, Protozoários, Fungos, Parasitas, Bacilos e etc.
+GRUPO 04 – RISCOS ERGONÔMICOS –
+Esforço físico intenso, Posturas Inadequadas, Levantamento e Transporte Manual de Peso, Trabalho em Turno e Noturno, Jornada de Trabalho Prolongadas, Mobiliário Inadequado e etc.
+GRUPO 05 – RISCOS ACIDENTES / MECÂNICOS –
+Piso escorregadio, Máquinas e equipamento sem proteção, Choque elétrico, Trabalho em altura, Trabalho em espaço confinado, Animais peçonhentos, Projeção de partículas e etc.
+TERMOS E DEFINIÇÕES
+Agente físico:
+Qualquer forma de energia que, em função de sua natureza, intensidade e exposição, é capaz de causar lesão ou agravo à saúde do trabalhador. Exemplos: ruído, vibrações, pressões anormais, temperaturas extremas, radiações ionizantes, radiações não ionizantes. Observação: Critérios sobre iluminamento, conforto térmico e conforto acústico da NR-17 não constituem agente físico para fins da NR-09.
+Agente químico:
+Substância química, por si só ou em misturas, quer seja em seu estado natural, quer seja produzida, utilizada ou gerada no processo de trabalho, que em função de sua natureza, concentração e exposição, é capaz de causar lesão ou agravo à saúde do trabalhador. Exemplos: fumos de cádmio, poeira mineral contendo sílica cristalina, vapores de tolueno, névoas de ácido sulfúrico.
+Agente biológico:
+Microrganismos, parasitas ou materiais originados de organismos que, em função de sua natureza e do tipo de exposição, são capazes de acarretar lesão ou agravo à saúde do trabalhador. Exemplos: bactéria Bacillus anthracis, vírus linfotrópico da célula T humana, príon agente de doença de Creutzfeldt-Jakob, fungo Coccidioides immitis.
+Canteiro de obra
+: área de trabalho fixa e temporária, onde se desenvolvem operações de apoio e execução à construção, demolição ou reforma de uma obra.
+Empregado
+: a pessoa física que presta serviços de natureza não eventual a empregador, sob a dependência deste e mediante salário.
+Empregador:
+a empresa individual ou coletiva que, assumindo os riscos da atividade econômica, admite, assalaria e dirige a prestação pessoal de serviços. Equiparam-se ao empregador as organizações, os profissionais liberais, as instituições de beneficência, as associações recreativas ou outras instituições sem fins lucrativos, que admitam trabalhadores como empregados.
+Estabelecimento:
+local privado ou público, edificado ou não, móvel ou imóvel, próprio ou de terceiros, onde a empresa ou a organização exerce suas atividades em caráter temporário ou permanente.
+Evento perigoso:
+Ocorrência ou acontecimento com o potencial de causar lesões ou agravos à saúde.
+Frente de trabalho:
+área de trabalho móvel e temporária. Local de trabalho: área onde são executados os trabalhos.
+Obra:
+todo e qualquer serviço de engenharia de construção, montagem, instalação, manutenção ou reforma.
+Ordem de serviço de segurança e saúde no trabalho
+: instruções por escrito quanto às precauções para evitar acidentes do trabalho ou doenças ocupacionais. A ordem de serviço pode estar contemplada em procedimentos de trabalho e outras instruções de SST.
+Organização:
+pessoa ou grupo de pessoas com suas próprias funções com responsabilidades, autoridades e relações para alcançar seus objetivos. Inclui, mas não é limitado a empregador, a tomador de serviços, a empresa, a empreendedor individual,
+produtor rural, companhia, corporação, firma, autoridade, parceria, organização de caridade ou instituição, ou parte ou combinação desses, seja incorporada ou não, pública ou privada.
+Perigo ou fator de risco ocupacional/ Perigo ou fonte de risco ocupacional:
+Fonte com o potencial de causar lesões ou agravos à saúde. Elemento que isoladamente ou em combinação com outros tem o potencial intrínseco de dar origem a lesões ou agravos à saúde.
+Prevenção:
+o conjunto das disposições ou medidas tomadas ou previstas em todas as fases da atividade da organização, visando evitar, eliminar, minimizar ou controlar os riscos ocupacionais.
+Responsável técnico pela capacitação:
+profissional legalmente habilitado ou trabalhador qualificado, conforme disposto em NR específica, responsável pela elaboração das capacitações e treinamentos.
+Risco ocupacional:
+Combinação da probabilidade de ocorrer lesão ou agravo à saúde causados por um evento perigoso, exposição a agente nocivo ou exigência da atividade de trabalho e da severidade dessa lesão ou agravo à saúde.
+Setor de serviço:
+a menor unidade administrativa ou operacional compreendida no mesmo estabelecimento.
+Trabalhador:
+pessoa física inserida em uma relação de trabalho, inclusive de natureza administrativa, como os empregados e outros sem vínculo de emprego.
+MATRIZ DE RISCO / NÍVEL DE RISCO OCUPACIONAL
+CLASSIFICAÇÃO DE NÍVEL DE RISCO OCUPACIONAL (ITEM 1.5.4.4 DA NR-01)
+1.5.4.4 AVALIAÇÃO DE RISCOS OCUPACIONAIS
+1.5.4.4.1 A organização deve avaliar os riscos ocupacionais relativos aos perigos identificados em seu (s) estabelecimento (s), de forma a manter informações para adoção de medidas de prevenção.
+1.5.4.4.2. Para cada risco deve ser indicado o nível de risco ocupacional, determinado pela combinação da severidade das possíveis lesões ou agravos à saúde com a probabilidade ou chance de sua ocorrência.
+1.5.4.4.2.1 A organização deve selecionar as ferramentas e técnicas de avaliação de riscos que sejam adequadas ao risco ou circunstância em avaliação.
+1.5.4.4.3 A gradação da severidade das lesões ou agravos à saúde deve levar em conta a magnitude da consequência e o número de trabalhadores possivelmente afetados.
+1.5.4.4.3.1 A magnitude deve levar em conta as consequências de ocorrência de acidentes ampliados.
+1.5.4.4.4 Agradação da probabilidade de ocorrência das lesões ou agravos à saúde deve levar em conta:
+a) os requisitos estabelecidos em Normas Regulamentadoras;
+b) as medidas de prevenção implementadas;
+c) as exigências da atividade de trabalho; e
+d) a comparação do perfil de exposição ocupacional com valores de referência estabelecidos na NR-09.
+1.5.4.4.5. Após a avaliação, os riscos ocupacionais devem ser classificados, observado o subitem 1.5.4.4.2, para fins de identificar a necessidade de adoção de medidas de prevenção e elaboração do plano de ação.
+1.5.4.4.6 A avaliação de riscos deve constituir um processo contínuo e ser revista a cada dois anos ou quando da ocorrência das seguintes situações:
+a) após implementação das medidas de prevenção, para avaliação de riscos residuais;
+b) após inovações e modificações nas tecnologias, ambientes, processos, condições, procedimentos e organização do trabalho que impliquem em novos riscos ou modifiquem os riscos existentes;
+c) quando identificadas inadequações, insuficiências ou ineficácias das medidas de prevenção;
+d) na ocorrência de acidentes ou doenças relacionadas ao trabalho;
+e) quando houver mudança nos requisitos legais aplicáveis.
+1.5.4.4.6.1. No caso de organizações que possuírem certificações em sistema de gestão de SST, o prazo poderá ser de até 3(três) anos.
+Segue abaixo a Matriz de risco utilizada neste Programa de Gerenciamento de Riscos.
+A gradação da probabilidade da ocorrência do possível dano é feita atribuindo-se um índice de probabilidade (P) variando de 1 a 4. O índice P é definido utilizando-se várias abordagens ou critérios, conforme tabela abaixo:
+Para a gradação da gravidade do possível dano atribui-se um índice de gravidade (G) variando de 1 a 4 conforme os critérios relacionados na tabela abaixo:
+As variáveis que são levadas em consideração para esta análise são:
+Agentes físicos e químicos:
+Toxicidade, potencial carcinogênico, mutagênico e teratogênico de agentes químicos e físicos tendo como base a classificação da ACGIH e LINACH.
+Agentes biológicos:
+Dados do serviço da CCIH – Comissão de controle de infecção hospitalar para estabelecimentos destinados aos cuidados da saúde humana. Para os demais estabelecimentos será consultado o corpo médico da Ocupacional.
+Agentes ergonômicos:
+Será consultado a AET – Análise ergonômica do trabalho, ou quando não houver, AEP – Análise
+ergonômica preliminar. A AEP será realizada pelo corpo técnico da Ocupacional e irá analisar os seguintes riscos ergonômicos: Postura sentada por longos períodos; postura de pé por longos períodos; trabalho em posturas incômodas ou pouco confortáveis por longos períodos; frequente deslocamento a pé durante a jornada de trabalho; trabalho com esforço físico intenso; trabalho intensivo com teclado ou outros dispositivos de entrada de dados; levantamento e transporte manual de cargas e/ou volumes; trabalho com necessidade de variação de turnos; trabalho noturno.
+Agentes mecânicos e de acidentes:
+Dados da APR – Análise preliminar de risco, juntamente do corpo técnico da Ocupacional.
+Com a combinação de gravidade x probabilidade é determinado o nível de risco ou criticidade de cada risco.
+Descrição da Linha: Frequência (Probabilidade)
+Descrição da Coluna: Classificação do efeito (Gravidade)
+O nível de risco deverá nortear as ações a serem tomadas referente ao plano de ação do PGR, sendo o critério:
+Fonte: Matriz elaborada a partir da combinação das matrizes apresentadas por MULHAUSEN &amp; DAMIANO (1998) e pelo apêndice D da BS 8800 (BSI, 1996).
+ANÁLISE DE ACIDENTES E DOENÇAS OCUPACIONAIS
+A organização deve analisar os acidentes e as doenças relacionadas ao trabalho. (Item 1.5.5.5.1 da NR-01)
+As análises de acidentes e doenças relacionadas ao trabalho devem ser documentadas e:
+a) considerar as situações geradoras dos eventos, levando em conta as atividades efetivamente desenvolvidas, ambiente de trabalho, materiais e organização da produção e do trabalho;
+b) identificar os fatores relacionados com o evento; e
+c) fornecer evidências para subsidiar e revisar as medidas de prevenção existentes.
+(Item 1.5.5.5.2 da NR=01)
+Abaixo segue modelo de Análise de acidentes e doenças relacionados ao trabalho.
+PREPARAÇÃO PARA EMERGÊNCIAS / PLANO DE EMERGÊNCIA
+A organização deve estabelecer, implementar e manter procedimentos de respostas aos cenários de emergências, de acordo com os riscos, as características e as circunstâncias das atividades. (Item 1.5.6.1 da NR-01)
+Os procedimentos de respostas aos cenários de emergências devem prever:
+a) os meios e recursos necessários para os primeiros socorros, encaminhamento de acidentados e abandono; e
+b) as medidas necessárias para os cenários de emergências de grande magnitude, quando aplicável (Item 1.5.6.2 da NR=01)
+Abaixo medidas existentes em caso de emergências e as que são necessárias conforme legislação vigente.
+MEIOS E RECURSOS EXISTENTES:
+Extintores de incêndio com prazo de validade vigentes;
+Caixa de primeiros socorros conforme preconiza NR-07;
+AVCB – Auto de Vistoria de Corpo de Bombeiros.
+MEIOS E RECURSOS NECESSÁRIOS:
+PAE – Plano de atendimento a emergências;
+Brigada de Incêndio e matriz de responsabilidade dos integrantes.
+PLANO DE EMERGÊNCIA
+Este Plano de Controle de Emergências apresenta-se de forma que todos os funcionários englobados neste programa, tenham uma boa interpretação sobre os procedimentos para o atendimento a acidentes, possibilitando que em eventuais necessidades desempenhem suas funções dentro do previsto.
+OBJETIVO
+O objetivo do plano de emergências é preservar a vida humana evitando ou minimizando danos físicos e psíquicos as pessoas. Visa também proteger a propriedade e evitar a paralisação da produção com graves resultados econômicos e sociais. Portanto, quanto mais perfeita for a planificação, mais significativos serão os resultados.
+A empresa deverá mapear todos os possíveis cenários de riscos, seja de lesão, danos materiais ou ao meio ambiente.
+Depois de mapeado todos os possíveis cenários, levantar junto aos hospitais credenciados de cada unidade ou projeto que devem ser acionados no caso de ocorrências, com seus devidos endereços, telefones de contato, pessoa de contato, meio de locomoção e acionamento, como também responsáveis direto e indiretamente da empresa contratante que devem ser acionados de cada unidade ou projeto; Corpo de Bombeiros, Hospitais credenciados, telefones de emergências.
+A lista de acionamento do plano de emergência da contratante deve estar fixada em local visível e todos os colaboradores com conhecimento pleno de realizar o acionamento;
+• Levantamento de riscos e proposição de medidas preventivas;
+• Instalação de equipamentos de combate a incêndio, formação de brigada;
+• Formação de equipes de abandono de áreas;
+• Instalação de material de primeiros socorros e formação de equipes de atendimento a emergências.
+DEFINIÇÕES E GENERALIDADES
+O que é uma emergência?
+É uma combinação de circunstâncias que demandam uma ação imediata e que pode apresentar-se devido a uma falha de algum equipamento, falhas no controle do processo, fenômenos naturais ou falhas humanas, resultando em incêndios, derrame ou vazamento de produtos químicos, acidentes com lesão, danos à propriedade e ao meio ambiente.
+Possíveis emergências que podem ocorrer na Área Florestal:
+Incêndios florestais, máquinas e produtos combustíveis inflamáveis;
+Explosão envolvendo produtos combustíveis e inflamáveis;
+Acidente com lesão / emergências médicas;
+Possíveis emergências ambientais:
+Derrame/vazamento de produtos químicos tais como, líquidos combustíveis e inflamáveis.
+Nenhuma instalação industrial, florestal, escritório ou organização comercial está imune a uma situação de emergência. Portanto,
+poder contar com um plano de emergência não é um luxo, mas sim uma necessidade.
+Uma situação de emergência sempre pode ser controlada, quaisquer que sejam as possíveis perdas ou gravidade. O controle é resultado do Plano de Controle de Emergências, que inclui:
+Quem tem autoridade para fazer o quê;
+Ações automáticas ou que tenham que ser decididas no momento;
+Medidas para proteger o pessoal;
+Abandono de área;
+Cuidados com os feridos;
+Medidas a serem tomadas em relação aos equipamentos, materiais e ao meio ambiente.
+FLUXOGRAMA PARA COORDENAR A EMERGÊNCIA INCÊNDIO/EXPLOSÃO
+FLUXOGRAMA PARA AÇÕES NO CASO DE ACIDENTES COM VÍTIMA
+Acidentes com Vítima
+Na ocorrência de acidente com vítima, o atendimento médico à vítima é prioritário. As seguintes ações devem ser tomadas em função do tipo de acidente:
+A Vítima pode se Locomover sem Ajuda
+Encaminhá-la de imediato ao Serviço Médico com um acompanhante.
+A Vítima não pode se locomover
+Adotar procedimentos de primeiros socorros.
+No caso de outras lesões, remover a vítima até um local seguro usando uma maca, até a chegada da ambulância.
+A Vítima está presa em uma Máquina
+Procurar acalmar o acidentado.
+Se necessária ajuda para o libertar, solicitar ajuda do pessoal de operação da área.
+Procurar libertá-lo da máquina ou ferragem de maneira a não agravar a lesão.
+Providenciar maca para o local do acidente.
+Se possível, interditar o local ou providenciar que curiosos sejam afastados do local.
+Acidente com Vítima Fatal
+Encarregado da área deverá isolar a área, evitando a presença / envolvimento do público interno.
+Encarregado da área deverá notificar as seguintes pessoas:
+Engenheiro de Segurança e ou Técnico em Segurança que coordenarão a tomada de medidas cabíveis ao caso, como notificação da polícia, o acompanhamento da mesma e outras necessárias à situação.
+Serviço de Assistência Social, Presidente da CIPA
+Gerente da área onde ocorreu o acidente
+Diretoria
+Instruções Importantes
+Manter a calma. Evitar o pânico e a confusão.
+Desligar a máquina em que estiver trabalhando.
+Não desligar chaves elétricas de/ou acima de 380V. Essa manobra é de competência do eletricista de manutenção.
+Desligar sistema de alimentação de ar e água, quando de sua competência.
+Fechar fontes de suprimento de gás e combustível na válvula principal, quando de sua competência.
+Manter todos os corredores, ruas, passagens e demais acessos a equipamentos de emergência desobstruídos.
+Recolher todos os líquidos combustíveis e inflamáveis para uma área segura.
+Dirigir-se para os pontos de ajuntamento, conforme orientação e treinamento recebidos.
+Evitar dirigir-se para lugares onde poderá ficar confinado.
+DIMENSIONAMENTO DA CIPA
+A
+CIPA
+será composta de representantes do empregador e dos empregados, de acordo com o dimensionamento previsto no Quadro I da NR-5, ressalvadas as alterações disciplinadas em atos normativos para setores econômicos específicos. O número de funcionários estabelecido pelo quadro I deverá ser duplicado, sendo metade representantes do empregador (indicação) e a outra metade dos empregados (eleição).
+Quando a empresa não se enquadrar nos requisitos mínimos para elaboração da CIPA, deverá ser designado um funcionário para exercer as atividades da CIPA, de acordo com o item 5.4.13 da NR-5, que diz:
+5.4.13
+Quando o estabelecimento não se enquadrar no Quadro I e não for atendido por SESMT, nos termos da Norma Regulamentadora n° 4 (NR-04), a organização nomeará um representante da organização dentre seus empregados para auxiliar na execução das ações de prevenção em segurança e saúde no trabalho, podendo ser adotados mecanismos de participação dos empregados, por meio de negociação coletiva.
+Quadro de Dimensionamento CIPA
+Titular
+Suplente
+Designado
+Previsto
+0
+0
+1
+INVENTÁRIO DE RISCO
+O inventário geral dos riscos consiste em relatório abrangente, revisto ou atualizado, que deve conter ao menos os seguintes elementos:
+a) informações relativas ao estabelecimento, como localização geográfica, número total de trabalhadores e número de trabalhadores expostos aos riscos químicos, físicos, biológicos, ergonômicos e de acidente, descrição dos processos produtivos, áreas de trabalho e organização do trabalho;
+b) reconhecimento dos riscos por atividade ou área de trabalho ou função, com indicação dos tipos de exposições ou possíveis acidentes e danos potenciais, das causas ou fontes dos riscos, das medidas de controle existentes e da população de trabalhadores exposta;
+c) síntese dos dados obtidos nos monitoramentos de exposições a agentes químicos ou físicos e estatísticas de acidentes, incidentes e danos à saúde relacionados ao trabalho;
+d) estimativa do nível ou da importância dos riscos, considerando, no mínimo, os parâmetros probabilidade de ocorrência do dano e severidade do dano;
+e) ações recomendadas, tais como realização de avaliações de riscos aprofundadas, monitoramento de exposições, manutenção, melhoria ou implementação de medidas de prevenção e controle, ações de informação e capacitação;
+f) data de elaboração ou revisão e assinatura conjunta do profissional tecnicamente capacitado em Segurança e Saúde no Trabalho e do Responsável Técnico da empresa.
+Devem ser anexados ao inventário geral de riscos os seguintes documentos:
+a) inventário de produtos químicos;
+b) relatórios de investigação de acidentes ou incidentes ocorridos desde a última revisão;
+c) relatórios de monitoramento de exposições a agentes ambientais.
+Setor
+Cargo
+Nº. de Funcionários
+BELO HORIZONTE - MG
+SOLDADOR
+0
+BELO HORIZONTE - MG
+PINTOR
+0
+BELO HORIZONTE - MG
+AUXILIAR DE PRODUCAO
+0
+Total de Funcionários
+Masculino
+Feminino
+Menor
+Total
+Funcionários
+0
+0
+0
+0
+Unidade:
+GOLDEN INDUSTRIA LTDA
+Setor: Belo Horizonte - MG
+Ambientes diversos, abertos e fechados, da área de construção civil.
+Cargo: SOLDADOR
+Masc.: 0 Fem.: 0 Menor: 0 Total: 0
+Executar as atividades inerentes ao cargo de SOLDADOR no canteiro de obras, conforme orientações do superior imediato e normas de segurança.
+Especificação dos Riscos - Cargo: SOLDADOR
+Agente
+Ruído
+Grupo
+Físico
+Limite de Tolerância
+85,0 dB(A)
+Nível de Ação
+80,0 dB(A)
+Meio de Propagação
+Ar / Ondas Sonoras
+Frequência
+Habitual - Intermitente
+Classificação do Efeito
+Moderado
+Data
+Medição
+Empresa
+Técnica Utilizada
+20/02/2024
+82,64 dB(A)
+Fênix Consultoria
+Dosimetria - NHO 01
+Fonte Geradora
+Ruído proveniente de equipamentos e máquinas no canteiro de obra
+Medidas Existentes EPI
+Protetor auricular
+Medidas Existentes EPC
+-
+Efeito
+Pode causar ansiedade, tensão, insônia e nervosismo.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.
+O(s) EPI(s) deverá(ão) ser adquirido(s) e distribuído(s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do M.T.E.
+Observar e cumprir as normas de segurança da empresa.
+Medidas Propostas
+Foi identificada a exposição ao agente ruído, sendo necessário.
+Sugerimos o estudo para identificação das máquinas e equipamentos com maior emissão de ruído a fim de intervir na fonte geradora de forma a manter a exposição ao agente abaixo dos Limites de Tolerância.
+Realizar nova avaliação quantitativa com objetivo de avaliar a eficácia das ações adotadas. Caso os níveis de ruído não tenham sido atenuados de forma que a exposição seja abaixo dos limites legais, sugerimos ações administrativas realizando o rodízio dos trabalhadores para redução do tempo de exposição.
+Treinar os trabalhadores quanto aos riscos provenientes da exposição ao ruído e as formas de prevenção de doenças.
+Recomendamos o uso de protetor auditivo e a realização dos exames médicos, audiometria, face o que estabelece a NR-07 (PCMSO) da Portaria 3214 do M.T.E., diante do nível de ruído não ter ultrapassado o limite de tolerância (LT) de 85 dB(A), porém ter atingido o nível de ação.
+Efeitos Potenciais
+De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.
+Fundamentação Legal
+Acima do nível de ação, conforme NR-09 da Portaria 3214/78 do M.T.E.
+Observações/Metodologia
+Avaliação: Quantitativa.
+Técnica: Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. O equipamento foi fixado dentro da zona auditiva (raio medido a partir do canal auditivo
+de 150 mm a mais ou menos 50 mm), ajustado no modo de resposta lenta e com o critério de avaliação estabelecido pela legislação do Ministério do Trabalho - M.T.E. - nomeado -critério legal- que adota como parâmetro para a determinação do Limite de Exposição (LE), o critério de referência de 85 dB (A) para 8 horas de exposição, correspondendo à dose de 100 % da exposição permissível, com nível liminar de integração (NLI) de 80 dB (A) e incremento de dose de 5.
+Agente
+Poeira não Fibrogênica (PNOS-Respirável)
+Grupo
+Químico
+Limite de Tolerância
+2.640
+mg/m³
+Nível de Ação
+1.320
+mg/m³
+Meio de Propagação
+Via respiratória
+Frequência
+Habitual - intermitente
+Classificação do Efeito
+Baixo
+Data
+Medição
+Empresa
+Técnica Utilizada
+20/02/2024
+0,19 mg/m³
+Fênix Consultoria
+Bomba de Amostragem - NHO 08
+Fonte Geradora
+Proveniente do canteiro de obra
+Medidas Existentes - EPI
+Óculos de proteção lente transparente com visão Ampla CA: 18246
+Máscara descartável semifacial filtrante PFF1 sem válvula de exalação CA: 36854
+Efeito
+A ACGIH acredita que as partículas insolúveis ou de baixa solubilidade, mesmo que biologicamente inertes, podem causar efeitos adversos ao sistema respiratório.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.
+O EPI (s) deverá ser adquirido (s) e distribuído (s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do MTE; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do MTE.
+Observar e cumprir as normas de segurança da empresa.
+Medidas Propostas
+Foi identificado a exposição às poeiras (PNOS) no canteiro de obra, sendo necessário:
+A empresa deverá adotar medidas administrativas a fim de diminuir o tempo de exposição ao agente;
+Treinar os trabalhadores quanto aos riscos provenientes da exposição e/ou manuseio do agente químico e as formas de prevenção de acidentes e doenças;
+Recomendamos o uso de Equipamento de Proteção Individual tais com respirador purificador de ar PFF1 e o óculos de segurança.
+Efeitos Potenciais
+De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.
+Fundamentação Legal
+A ACGIH recomenda que as concentrações ambientais de partículas insolúveis ou de baixa solubilidade - (PNOS), sejam mantidas abaixo de 2,640 mg/m³ para partículas respiráveis até que seja estabelecido um limite de exposição para uma substância específica.
+Limite de tolerância corrigido para a jornada de trabalho brasileira (BRIEF &amp;SCALA)
+Concentração abaixo do Nível de Ação.
+Observações/Metodologia
+Avaliação Quantitativa:
+As medições foram realizadas utilizando Bomba de Amostragem. Instrumento portátil com sistema automático de controle de vazão com capacidade para mantê-la constante, dentro de um intervalo de ± 5%, durante o tempo de coleta. O equipamento foi calibrado antes e depois da avaliação através do calibrador a seco marca Bios modelo Defender 510M.
+O amostrador foi destampado ao início da avaliação bem como tampado logo após seu término, sendo colocado no trabalhador selecionado com maior exposição ao risco e posicionado o dispositivo de coleta na altura da zona respiratória. O tempo de duração da coleta de cada amostra de ar foi o necessário para amostrar um volume de ar adequado e obter a quantidade de material dentro da faixa de trabalho do método de análise a ser utilizado.
+Agente
+Posturas
+Incomodas
+Grupo
+Ergonômicos
+Frequência
+Intermitente
+Classif.
+Efeito
+Baixo
+Tempo
+de Exposição
+9h
+Orientação
+Observar,
+cumprir
+e
+exigir
+o cumprimento
+das
+normas
+de segurança
+da
+empresa.
+Medidas
+Propostas
+Controle
+médico
+de
+parâmetros
+biológicos,
+Emissão
+de
+ordem
+de
+serviço
+específica
+e
+Emissão
+de
+MPR:
+Matriz de
+Perigos
+e
+Riscos
+e
+APR:
+Análise Preliminar
+de
+Risco.
+Efeitos
+Potenciais
+Até
+o
+presente
+momento não
+houve
+nenhum
+comprometimento por
+doença
+ocupacional.
+Fundamentação
+Legal
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Observações/Metodologia
+Análise os fatores biomecânicos, ambientais e da organização do trabalho, baseado na NR 17,
+observação
+do
+trabalho,
+entrevista
+aos
+colaboradores
+e
+aplicação
+de
+questionários.
+Realização
+de
+filmagens,
+fotografias
+do
+posto
+de
+trabalho,
+da
+execução
+da
+atividade,
+mobiliário
+e
+equipamentos.
+Quando
+necessário
+e
+adequada
+a
+atividade
+foram
+utilizadas
+ferramentas
+ergonômicas
+com
+métodos
+específicos
+para
+a
+atividade
+(NIOSH,
+Woas,
+REBA,
+OCRA...)
+conforme
+a
+análise
+do
+posto
+de trabalho
+e
+a
+exigência
+biomecânica para a
+realização
+da
+atividade.
+Agente
+Objetos Perfurocortantes
+Grupo
+Acidente
+Frequência
+Intermitente
+Classif.
+Efeito
+Baixo
+Nível
+risco
+Risco
+Baixo
+Fonte
+Geradora
+Ambiente
+trabalho.
+Medidas
+Existentes
+EPI:
+Uso de capacete de segurança.
+Uso
+do
+calçado
+segurança.
+Uso
+dos
+óculos
+Segurança.
+EPC:
+Isolamento
+área
+risco
+Efeito
+As
+consequências
+uma
+queda
+um
+objeto
+incluem:
+Lesões
+nos
+membros
+inferiores;
+esmagamento/aprisionamento
+membros
+e
+escoriações.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo
+Ocupacional deverá
+ser
+comunicado
+por
+escrito,
+para
+que
+seja
+realizada
+nova
+avaliação.
+O(s)
+EPI(s)
+deverá(ão)
+ser
+adquirido(s)
+e
+distribuído(s),
+conforme
+o(s)
+risco(s)
+da(s)
+atividade(s),
+seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição
+quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06
+da
+Portaria
+3.214/78
+do
+M.T.E.
+Observar
+e
+cumprir
+as normas
+segurança
+da
+empresa.
+Medidas
+Propostas
+Treinar
+os
+trabalhadores
+quanto as
+atividades
+carga
+e
+descarga
+de materiais;
+Manter o
+ambiente
+limpo
+e
+organizado;
+Manter os materiais estocados de maneira que os limites de peso sejam respeitados,
+bem como estejam afastados das estruturas laterais do prédio a uma distância mínima
+50
+centímetros
+acordo
+com a
+NR-11;
+Utilização
+botina
+segurança
+para
+proteção
+dos
+pés
+contra
+queda
+objetos;
+Efeitos
+Potenciais
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Fundamentação
+Legal
+Estabelecido
+pela
+Norma
+Regulamentadora
+N°11
+(Transporte,
+Movimentação,
+Armazenagem
+e
+Manuseio de
+Materiais)
+da Portaria 3214/78
+do
+Ministério
+do
+Trabalho
+e
+Emprego.
+Observações/Metodologia
+Avaliação
+Qualitativa
+Técnica:
+Inspeção
+no local
+trabalho.
+Agente
+Queda
+de
+Objetos
+Grupo
+Acidente
+Frequência
+Intermitente
+Classif.
+Efeito
+Moderado
+Nível
+de
+risco
+Risco
+Baixo
+Fonte
+Geradora
+Ambiente
+de
+trabalho.
+Medidas
+Existentes
+EPI:
+Uso de capacete de segurança.
+Uso
+do
+calçado
+de
+segurança.
+Uso
+dos
+óculos
+de
+Segurança.
+EPC:
+Isolamento
+de
+área
+de
+risco
+Efeito
+As
+consequências
+de
+uma
+queda
+de
+um
+objeto
+incluem:
+Lesões
+nos
+membros
+inferiores;
+esmagamento/aprisionamento
+de
+membros
+e
+escoriações.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo
+Ocupacional deverá
+ser
+comunicado
+por
+escrito,
+para
+que
+seja
+realizada
+nova
+avaliação.
+O(s)
+EPI(s)
+deverá(ão)
+ser
+adquirido(s)
+e
+distribuído(s),
+conforme
+o(s)
+risco(s)
+da(s)
+atividade(s),
+seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição
+quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06
+da
+Portaria
+3.214/78
+do
+M.T.E.
+Observar
+e
+cumprir
+as normas
+de
+segurança
+da
+empresa.
+Medidas
+Propostas
+Treinar
+os
+trabalhadores
+quanto as
+atividades
+de
+carga
+e
+descarga
+de materiais;
+Manter o
+ambiente
+limpo
+e
+organizado;
+Manter os materiais estocados de maneira que os limites de peso sejam respeitados,
+bem como estejam afastados das estruturas laterais do prédio a uma distância mínima
+de
+50
+centímetros
+de
+acordo
+com a
+NR-11;
+Utilização
+de
+botina
+de
+segurança
+para
+proteção
+dos
+pés
+contra
+queda
+de
+objetos;
+Efeitos
+Potenciais
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Fundamentação
+Legal
+Estabelecido
+pela
+Norma
+Regulamentadora
+N°11
+(Transporte,
+Movimentação,
+Armazenagem
+e
+Manuseio de
+Materiais)
+da Portaria 3214/78
+do
+Ministério
+do
+Trabalho
+e
+Emprego.
+Observações/Metodologia
+Avaliação
+Qualitativa
+Técnica:
+Inspeção
+no local
+de
+trabalho.
+Setor: Belo Horizonte - MG
+Ambientes diversos, abertos e fechados, da área de construção civil.
+Cargo: PINTOR
+Masc.: 0 Fem.: 0 Menor: 0 Total: 0
+Realizar a pintura de superfícies internas e externas de edificações, preparar superfícies, aplicar tintas, vernizes e outros revestimentos conforme especificações técnicas.
+Especificação dos Riscos - Cargo: PINTOR
+Agente
+Ruído
+Grupo
+Físico
+Limite de Tolerância
+85,0 dB(A)
+Nível de Ação
+80,0 dB(A)
+Meio de Propagação
+Ar / Ondas Sonoras
+Frequência
+Habitual - Intermitente
+Classificação do Efeito
+Moderado
+Data
+Medição
+Empresa
+Técnica Utilizada
+20/02/2024
+82,54 dB(A)
+Fênix Consultoria
+Dosimetria - NHO 01
+Fonte Geradora
+Ruído proveniente de equipamentos e máquinas no canteiro de obra
+Medidas Existentes EPI
+Protetor auricular
+Medidas Existentes EPC
+-
+Efeito
+Pode causar ansiedade, tensão, insônia e nervosismo.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.
+O(s) EPI(s) deverá(ão) ser adquirido(s) e distribuído(s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do M.T.E.
+Observar e cumprir as normas de segurança da empresa.
+Medidas Propostas
+Foi identificada a exposição ao agente ruído, sendo necessário.
+Sugerimos o estudo para identificação das máquinas e equipamentos com maior emissão de ruído a fim de intervir na fonte geradora de forma a manter a exposição ao agente abaixo dos Limites de Tolerância.
+Realizar nova avaliação quantitativa com objetivo de avaliar a eficácia das ações adotadas. Caso os níveis de ruído não tenham sido atenuados de forma que a exposição seja abaixo dos limites legais, sugerimos ações administrativas realizando o rodízio dos trabalhadores para redução do tempo de exposição.
+Treinar os trabalhadores quanto aos riscos provenientes da exposição ao ruído e as formas de prevenção de doenças.
+Recomendamos o uso de protetor auditivo e a realização dos exames médicos, audiometria, face o que estabelece a NR-07 (PCMSO) da Portaria 3214 do M.T.E., diante do nível de ruído não ter ultrapassado o limite de tolerância (LT) de 85 dB(A), porém ter atingido o nível de ação.
+Efeitos Potenciais
+De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.
+Fundamentação Legal
+Acima do nível de ação, conforme NR-09 da Portaria 3214/78 do M.T.E.
+Observações/Metodologia
+Avaliação: Quantitativa.
+Técnica: Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. O equipamento foi fixado dentro da zona auditiva (raio medido a partir do canal auditivo
+de 150 mm a mais ou menos 50 mm), ajustado no modo de resposta lenta e com o critério de avaliação estabelecido pela legislação do Ministério do Trabalho - M.T.E. - nomeado -critério legal- que adota como parâmetro para a determinação do Limite de Exposição (LE), o critério de referência de 85 dB (A) para 8 horas de exposição, correspondendo à dose de 100 % da exposição permissível, com nível liminar de integração (NLI) de 80 dB (A) e incremento de dose de 5.
+Agente
+Poeira não Fibrogênica (PNOS-Respirável)
+Grupo
+Químico
+Limite de Tolerância
+2.640
+mg/m³
+Nível de Ação
+1.320
+mg/m³
+Meio de Propagação
+Via respiratória
+Frequência
+Habitual - intermitente
+Classificação do Efeito
+Baixo
+Data
+Medição
+Empresa
+Técnica Utilizada
+20/02/2024
+0,47 mg/m³
+Fênix Consultoria
+Bomba de Amostragem - NHO 08
+Fonte Geradora
+Proveniente do canteiro de obra
+Medidas Existentes - EPI
+Óculos de proteção lente transparente com visão Ampla CA: 18246
+Máscara descartável semifacial filtrante PFF1 sem válvula de exalação CA: 36854
+Efeito
+A ACGIH acredita que as partículas insolúveis ou de baixa solubilidade, mesmo que biologicamente inertes, podem causar efeitos adversos ao sistema respiratório.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.
+O EPI (s) deverá ser adquirido (s) e distribuído (s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do MTE; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do MTE.
+Observar e cumprir as normas de segurança da empresa.
+Medidas Propostas
+Foi identificado a exposição às poeiras (PNOS) no canteiro de obra, sendo necessário:
+A empresa deverá adotar medidas administrativas a fim de diminuir o tempo de exposição ao agente;
+Treinar os trabalhadores quanto aos riscos provenientes da exposição e/ou manuseio do agente químico e as formas de prevenção de acidentes e doenças;
+Recomendamos o uso de Equipamento de Proteção Individual tais com respirador purificador de ar PFF1 e o óculos de segurança.
+Efeitos Potenciais
+De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.
+Fundamentação Legal
+A ACGIH recomenda que as concentrações ambientais de partículas insolúveis ou de baixa solubilidade - (PNOS), sejam mantidas abaixo de 2,640 mg/m³ para partículas respiráveis até que seja estabelecido um limite de exposição para uma substância específica.
+Limite de tolerância corrigido para a jornada de trabalho brasileira (BRIEF &amp;SCALA)
+Concentração abaixo do Nível de Ação.
+Observações/Metodologia
+Avaliação Quantitativa:
+As medições foram realizadas utilizando Bomba de Amostragem. Instrumento portátil com sistema automático de controle de vazão com capacidade para mantê-la constante, dentro de um intervalo de ± 5%, durante o tempo de coleta. O equipamento foi calibrado antes e depois da avaliação através do calibrador a seco marca Bios modelo Defender 510M.
+O amostrador foi destampado ao início da avaliação bem como tampado logo após seu término, sendo colocado no trabalhador selecionado com maior exposição ao risco e posicionado o dispositivo de coleta na altura da zona respiratória. O tempo de duração da coleta de cada amostra de ar foi o necessário para amostrar um volume de ar adequado e obter a quantidade de material dentro da faixa de trabalho do método de análise a ser utilizado.
+Agente
+Posturas
+Incomodas
+Grupo
+Ergonômicos
+Frequência
+Intermitente
+Classif.
+Efeito
+Baixo
+Tempo
+de Exposição
+9h
+Orientação
+Observar,
+cumprir
+e
+exigir
+o cumprimento
+das
+normas
+de segurança
+da
+empresa.
+Medidas
+Propostas
+Controle
+médico
+de
+parâmetros
+biológicos,
+Emissão
+de
+ordem
+de
+serviço
+específica
+e
+Emissão
+de
+MPR:
+Matriz de
+Perigos
+e
+Riscos
+e
+APR:
+Análise Preliminar
+de
+Risco.
+Efeitos
+Potenciais
+Até
+o
+presente
+momento não
+houve
+nenhum
+comprometimento por
+doença
+ocupacional.
+Fundamentação
+Legal
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Observações/Metodologia
+Análise os fatores biomecânicos, ambientais e da organização do trabalho, baseado na NR 17,
+observação
+do
+trabalho,
+entrevista
+aos
+colaboradores
+e
+aplicação
+de
+questionários.
+Realização
+de
+filmagens,
+fotografias
+do
+posto
+de
+trabalho,
+da
+execução
+da
+atividade,
+mobiliário
+e
+equipamentos.
+Quando
+necessário
+e
+adequada
+a
+atividade
+foram
+utilizadas
+ferramentas
+ergonômicas
+com
+métodos
+específicos
+para
+a
+atividade
+(NIOSH,
+Woas,
+REBA,
+OCRA...)
+conforme
+a
+análise
+do
+posto
+de trabalho
+e
+a
+exigência
+biomecânica para a
+realização
+da
+atividade.
+Agente
+Queda
+de
+Objetos
+Grupo
+Acidente
+Frequência
+Intermitente
+Classif.
+Efeito
+Moderado
+Nível
+de
+risco
+Risco
+Baixo
+Fonte
+Geradora
+Ambiente
+de
+trabalho.
+Medidas
+Existentes
+EPI:
+Uso de capacete de segurança.
+Uso
+do
+calçado
+de
+segurança.
+Uso
+dos
+óculos
+de
+Segurança.
+EPC:
+Isolamento
+de
+área
+de
+risco
+Efeito
+As
+consequências
+de
+uma
+queda
+de
+um
+objeto
+incluem:
+Lesões
+nos
+membros
+inferiores;
+esmagamento/aprisionamento
+de
+membros
+e
+escoriações.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo
+Ocupacional deverá
+ser
+comunicado
+por
+escrito,
+para
+que
+seja
+realizada
+nova
+avaliação.
+O(s)
+EPI(s)
+deverá(ão)
+ser
+adquirido(s)
+e
+distribuído(s),
+conforme
+o(s)
+risco(s)
+da(s)
+atividade(s),
+seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição
+quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06
+da
+Portaria
+3.214/78
+do
+M.T.E.
+Observar
+e
+cumprir
+as normas
+de
+segurança
+da
+empresa.
+Medidas
+Propostas
+Treinar
+os
+trabalhadores
+quanto as
+atividades
+de
+carga
+e
+descarga
+de materiais;
+Manter o
+ambiente
+limpo
+e
+organizado;
+Manter os materiais estocados de maneira que os limites de peso sejam respeitados,
+bem como estejam afastados das estruturas laterais do prédio a uma distância mínima
+de
+50
+centímetros
+de
+acordo
+com a
+NR-11;
+Utilização
+de
+botina
+de
+segurança
+para
+proteção
+dos
+pés
+contra
+queda
+de
+objetos;
+Efeitos
+Potenciais
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Fundamentação
+Legal
+Estabelecido
+pela
+Norma
+Regulamentadora
+N°11
+(Transporte,
+Movimentação,
+Armazenagem
+e
+Manuseio de
+Materiais)
+da Portaria 3214/78
+do
+Ministério
+do
+Trabalho
+e
+Emprego.
+Observações/Metodologia
+Avaliação
+Qualitativa
+Técnica:
+Inspeção
+no local
+de
+trabalho.
+Setor: Belo Horizonte - MG
+Ambientes diversos, abertos e fechados, da área de construção civil.
+Cargo: AUXILIAR DE PRODUCAO
+Masc.: 0 Fem.: 0 Menor: 0 Total: 0
+Executar as atividades inerentes ao cargo de AUXILIAR DE PRODUCAO no canteiro de obras, conforme orientações do superior imediato e normas de segurança.
+Especificação dos Riscos - Cargo: AUXILIAR DE PRODUCAO
+Agente
+Ruído
+Grupo
+Físico
+Limite de Tolerância
+85,0 dB(A)
+Nível de Ação
+80,0 dB(A)
+Meio de Propagação
+Ar / Ondas Sonoras
+Frequência
+Habitual - Intermitente
+Classificação do Efeito
+Moderado
+Data
+Medição
+Empresa
+Técnica Utilizada
+20/02/2024
+80,29 dB(A)
+Fênix Consultoria
+Dosimetria - NHO 01
+Fonte Geradora
+Ruído proveniente de equipamentos e máquinas no canteiro de obra
+Medidas Existentes EPI
+Protetor auricular
+Medidas Existentes EPC
+-
+Efeito
+Pode causar ansiedade, tensão, insônia e nervosismo.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.
+O(s) EPI(s) deverá(ão) ser adquirido(s) e distribuído(s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do M.T.E.
+Observar e cumprir as normas de segurança da empresa.
+Medidas Propostas
+Foi identificada a exposição ao agente ruído, sendo necessário.
+Sugerimos o estudo para identificação das máquinas e equipamentos com maior emissão de ruído a fim de intervir na fonte geradora de forma a manter a exposição ao agente abaixo dos Limites de Tolerância.
+Realizar nova avaliação quantitativa com objetivo de avaliar a eficácia das ações adotadas. Caso os níveis de ruído não tenham sido atenuados de forma que a exposição seja abaixo dos limites legais, sugerimos ações administrativas realizando o rodízio dos trabalhadores para redução do tempo de exposição.
+Treinar os trabalhadores quanto aos riscos provenientes da exposição ao ruído e as formas de prevenção de doenças.
+Recomendamos o uso de protetor auditivo e a realização dos exames médicos, audiometria, face o que estabelece a NR-07 (PCMSO) da Portaria 3214 do M.T.E., diante do nível de ruído não ter ultrapassado o limite de tolerância (LT) de 85 dB(A), porém ter atingido o nível de ação.
+Efeitos Potenciais
+De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.
+Fundamentação Legal
+Acima do nível de ação, conforme NR-09 da Portaria 3214/78 do M.T.E.
+Observações/Metodologia
+Avaliação: Quantitativa.
+Técnica: Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. O equipamento foi fixado dentro da zona auditiva (raio medido a partir do canal auditivo
+de 150 mm a mais ou menos 50 mm), ajustado no modo de resposta lenta e com o critério de avaliação estabelecido pela legislação do Ministério do Trabalho - M.T.E. - nomeado -critério legal- que adota como parâmetro para a determinação do Limite de Exposição (LE), o critério de referência de 85 dB (A) para 8 horas de exposição, correspondendo à dose de 100 % da exposição permissível, com nível liminar de integração (NLI) de 80 dB (A) e incremento de dose de 5.
+Agente
+Poeira não Fibrogênica (PNOS-Respirável)
+Grupo
+Químico
+Limite de Tolerância
+2.640
+mg/m³
+Nível de Ação
+1.320
+mg/m³
+Meio de Propagação
+Via respiratória
+Frequência
+Habitual - intermitente
+Classificação do Efeito
+Baixo
+Data
+Medição
+Empresa
+Técnica Utilizada
+20/02/2024
+0,19 mg/m³
+Fênix Consultoria
+Bomba de Amostragem - NHO 08
+Fonte Geradora
+Proveniente do canteiro de obra
+Medidas Existentes - EPI
+Óculos de proteção lente transparente com visão Ampla CA: 18246
+Máscara descartável semifacial filtrante PFF1 sem válvula de exalação CA: 36854
+Efeito
+A ACGIH acredita que as partículas insolúveis ou de baixa solubilidade, mesmo que biologicamente inertes, podem causar efeitos adversos ao sistema respiratório.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo Ocupacional deverá ser comunicado por escrito, para que seja realizada nova avaliação.
+O EPI (s) deverá ser adquirido (s) e distribuído (s), conforme o(s) risco(s) da(s) atividade(s), seguindo as determinações relacionadas; CA do MTE; orientação e treinamento; substituição quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06 da Portaria 3.214/78 do MTE.
+Observar e cumprir as normas de segurança da empresa.
+Medidas Propostas
+Foi identificado a exposição às poeiras (PNOS) no canteiro de obra, sendo necessário:
+A empresa deverá adotar medidas administrativas a fim de diminuir o tempo de exposição ao agente;
+Treinar os trabalhadores quanto aos riscos provenientes da exposição e/ou manuseio do agente químico e as formas de prevenção de acidentes e doenças;
+Recomendamos o uso de Equipamento de Proteção Individual tais com respirador purificador de ar PFF1 e o óculos de segurança.
+Efeitos Potenciais
+De acordo com as informações levantadas na empresa, não há ocorrências de comprometimento à saúde decorrente do trabalho.
+Fundamentação Legal
+A ACGIH recomenda que as concentrações ambientais de partículas insolúveis ou de baixa solubilidade - (PNOS), sejam mantidas abaixo de 2,640 mg/m³ para partículas respiráveis até que seja estabelecido um limite de exposição para uma substância específica.
+Limite de tolerância corrigido para a jornada de trabalho brasileira (BRIEF &amp;SCALA)
+Concentração abaixo do Nível de Ação.
+Observações/Metodologia
+Avaliação Quantitativa:
+As medições foram realizadas utilizando Bomba de Amostragem. Instrumento portátil com sistema automático de controle de vazão com capacidade para mantê-la constante, dentro de um intervalo de ± 5%, durante o tempo de coleta. O equipamento foi calibrado antes e depois da avaliação através do calibrador a seco marca Bios modelo Defender 510M.
+O amostrador foi destampado ao início da avaliação bem como tampado logo após seu término, sendo colocado no trabalhador selecionado com maior exposição ao risco e posicionado o dispositivo de coleta na altura da zona respiratória. O tempo de duração da coleta de cada amostra de ar foi o necessário para amostrar um volume de ar adequado e obter a quantidade de material dentro da faixa de trabalho do método de análise a ser utilizado.
+Agente
+Esforço Físico Intenso
+Grupo
+Ergonômicos
+Frequência
+Intermitente
+Classif.
+Efeito
+Moderado
+Tempo
+de Exposição
+9h
+Orientação
+Observar,
+cumprir
+e
+exigir
+o cumprimento
+das
+normas
+de segurança
+da
+empresa.
+Medidas
+Propostas
+Controle
+médico
+de
+parâmetros
+biológicos,
+Emissão
+de
+ordem
+de
+serviço
+específica
+e
+Emissão
+de
+MPR:
+Matriz de
+Perigos
+e
+Riscos
+e
+APR:
+Análise Preliminar
+de
+Risco.
+Efeitos
+Potenciais
+Até
+o
+presente
+momento não
+houve
+nenhum
+comprometimento por
+doença
+ocupacional.
+Fundamentação
+Legal
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Observações/Metodologia
+Análise os fatores biomecânicos, ambientais e da organização do trabalho, baseado na NR 17,
+observação
+do
+trabalho,
+entrevista
+aos
+colaboradores
+e
+aplicação
+de
+questionários.
+Realização
+de
+filmagens,
+fotografias
+do
+posto
+de
+trabalho,
+da
+execução
+da
+atividade,
+mobiliário
+e
+equipamentos.
+Quando
+necessário
+e
+adequada
+a
+atividade
+foram
+utilizadas
+ferramentas
+ergonômicas
+com
+métodos
+específicos
+para
+a
+atividade
+(NIOSH,
+Woas,
+REBA,
+OCRA...)
+conforme
+a
+análise
+do
+posto
+de trabalho
+e
+a
+exigência
+biomecânica para a
+realização
+da
+atividade.
+Agente
+Posturas
+Incomodas
+Grupo
+Ergonômicos
+Frequência
+Intermitente
+Classif.
+Efeito
+Baixo
+Tempo
+de Exposição
+9h
+Orientação
+Observar,
+cumprir
+e
+exigir
+o cumprimento
+das
+normas
+de segurança
+da
+empresa.
+Medidas
+Propostas
+Controle
+médico
+de
+parâmetros
+biológicos,
+Emissão
+de
+ordem
+de
+serviço
+específica
+e
+Emissão
+de
+MPR:
+Matriz de
+Perigos
+e
+Riscos
+e
+APR:
+Análise Preliminar
+de
+Risco.
+Efeitos
+Potenciais
+Até
+o
+presente
+momento não
+houve
+nenhum
+comprometimento por
+doença
+ocupacional.
+Fundamentação
+Legal
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Observações/Metodologia
+Análise os fatores biomecânicos, ambientais e da organização do trabalho, baseado na NR 17,
+observação
+do
+trabalho,
+entrevista
+aos
+colaboradores
+e
+aplicação
+de
+questionários.
+Realização
+de
+filmagens,
+fotografias
+do
+posto
+de
+trabalho,
+da
+execução
+da
+atividade,
+mobiliário
+e
+equipamentos.
+Quando
+necessário
+e
+adequada
+a
+atividade
+foram
+utilizadas
+ferramentas
+ergonômicas
+com
+métodos
+específicos
+para
+a
+atividade
+(NIOSH,
+Woas,
+REBA,
+OCRA...)
+conforme
+a
+análise
+do
+posto
+de trabalho
+e
+a
+exigência
+biomecânica para a
+realização
+da
+atividade.
+Agente
+Queda
+de
+Objetos
+Grupo
+Acidente
+Frequência
+Intermitente
+Classif.
+Efeito
+Moderado
+Nível
+de
+risco
+Risco
+Baixo
+Fonte
+Geradora
+Ambiente
+de
+trabalho.
+Medidas
+Existentes
+EPI:
+Uso de capacete de segurança.
+Uso
+do
+calçado
+de
+segurança.
+Uso
+dos
+óculos
+de
+Segurança.
+EPC:
+Isolamento
+de
+área
+de
+risco
+Efeito
+As
+consequências
+de
+uma
+queda
+de
+um
+objeto
+incluem:
+Lesões
+nos
+membros
+inferiores;
+esmagamento/aprisionamento
+de
+membros
+e
+escoriações.
+Orientação
+Qualquer mudança na atividade, matéria prima, processo, e/ou ambiente de trabalho, o Grupo
+Ocupacional deverá
+ser
+comunicado
+por
+escrito,
+para
+que
+seja
+realizada
+nova
+avaliação.
+O(s)
+EPI(s)
+deverá(ão)
+ser
+adquirido(s)
+e
+distribuído(s),
+conforme
+o(s)
+risco(s)
+da(s)
+atividade(s),
+seguindo as determinações relacionadas; CA do M.T.E.; orientação e treinamento; substituição
+quando danificado; fiscalização, registro e obrigatoriedade de uso, conforme item 6.6 da NR-06
+da
+Portaria
+3.214/78
+do
+M.T.E.
+Observar
+e
+cumprir
+as normas
+de
+segurança
+da
+empresa.
+Medidas
+Propostas
+Treinar
+os
+trabalhadores
+quanto as
+atividades
+de
+carga
+e
+descarga
+de materiais;
+Manter o
+ambiente
+limpo
+e
+organizado;
+Manter os materiais estocados de maneira que os limites de peso sejam respeitados,
+bem como estejam afastados das estruturas laterais do prédio a uma distância mínima
+de
+50
+centímetros
+de
+acordo
+com a
+NR-11;
+Utilização
+de
+botina
+de
+segurança
+para
+proteção
+dos
+pés
+contra
+queda
+de
+objetos;
+Efeitos
+Potenciais
+De
+acordo
+com
+as
+informações
+levantadas
+na
+empresa,
+não
+há
+ocorrências
+de
+comprometimento
+à
+saúde
+decorrente
+do
+trabalho.
+Fundamentação
+Legal
+Estabelecido
+pela
+Norma
+Regulamentadora
+N°11
+(Transporte,
+Movimentação,
+Armazenagem
+e
+Manuseio de
+Materiais)
+da Portaria 3214/78
+do
+Ministério
+do
+Trabalho
+e
+Emprego.
+Observações/Metodologia
+Avaliação
+Qualitativa
+Técnica:
+Inspeção
+no local
+de
+trabalho.
+PLANO DE AÇÃO
+A organização deve elaborar plano de ação, indicando as medidas de prevenção a serem introduzidas, aprimoradas ou mantidas, conforme o subitem 1.5.4.4.5.
+Para as medidas de prevenção deve ser definido cronograma, formas de acompanhamento e aferição de resultados.
+Os prazos para o cumprimento das ações estabelecidas neste cronograma serão de responsabilidade do contratante.
+AÇÃO
+ESTRATÉGIA
+RESPONSÁVEIS
+PRAZO
+PRIORIDADE
+RISCO VINCULADO
+Elaborar Ordem de Serviços.
+Manter a elaboração de ordens de serviço sobre segurança e saúde no trabalho, dando ciência aos empregados por comunicados, cartazes ou meios eletrônicos, conforme alínea &#x201C;c&#x201D; do item 1.7 da Portaria 3214/78 do M.T.E.
+GOLDEN INDUSTRIA LTDA
+A definir
+Alta
+Todos os riscos do inventário de riscos
+Elaborar Mapa de Riscos, de acordo com o risco de cada local de trabalho.
+Realizar análise de todos os postos de trabalho identificando riscos potenciais e sua intensidade. Os mapas deverão ser afixados em cada ambiente conforme alínea &#x201C;a&#x201D; do item 5.16 da NR-05 da Portaria 3214/78 do M.T.E.
+GOLDEN INDUSTRIA LTDA
+A definir
+Moderada
+Riscos de Acidente
+Criar a maleta com material de primeiros socorros de acordo com o disposto no PCMSO.
+O material deverá estar disposto aos colaboradores e aos cuidados de pessoa treinada para esse fim, conforme item 7.5.1 da NR-7 da Portaria 3214/78 do M.T.E.
+GOLDEN INDUSTRIA LTDA
+A definir
+Alta
+Todos os riscos do inventário de riscos
+O documento-base e suas alterações e complementações deverão ser apresentados e discutidos na CIPA, conforme estabelece a NR-01 da Portaria 3214/78 do M.T.E.
+Treinar funcionário conforme estabelece NR-01 da Portaria 3214/78 de M.T.E.
+GOLDEN INDUSTRIA LTDA
+A definir
+Moderada
+Todos os riscos do inventário de riscos
+Fornecer aos empregados, gratuitamente, EPI adequado ao risco, em perfeito estado de conservação e funcionamento
+Conforme a NR-06 da Portaria 3214/78 M.T.E.
+Fornecer os EPIs destinados a proteção dos riscos ocupacionais reconhecidos neste programa bem como registrar em fichas individuais.
+GOLDEN INDUSTRIA LTDA
+A definir
+Alta
+Todos os riscos do inventário de riscos
+Orientar e treinar os trabalhadores quanto ao uso adequado, guarda e conservação dos EPIs, conforme a NR-06 da Portaria 3214/78 M.T.E.
+(Treinamento deve ocorrer sempre que for realizar um admissional, mudança nos procedimentos, condições ou operações de trabalho e retorno de afastamento ao trabalho por período superior a noventa dia).
+Exigir o uso dos EPIs.
+GOLDEN INDUSTRIA LTDA
+A definir
+Alta
+Todos os riscos do inventário de riscos
+Todos os funcionários devem receber treinamentos admissional e periódico, conforme item 18.28 – NR 18 da Portaria 3214/78 do M.T.E.
+Garantir a execução de suas atividades com segurança.
+GOLDEN INDUSTRIA LTDA
+A definir
+Alta
+Todos os riscos do inventário de riscos
+CRONOGRAMA DE TREINAMENTOS
+TREINAMENTO
+C. HORÁRIA
+RESPONSÁVEIS
+PRAZO
+Treinamento CIPA - NR-05 - Grau de Risco 03
+16h
+GOLDEN INDUSTRIA LTDA
+A definir
+Treinamento sobre proteções coletivas
+1h
+A definir
+Treinamento aos funcionários em relação a ergonomia e organização do trabalho - NR 17
+1h
+A definir
+Treinamento de levantamento de transporte manual de cargas e/ou volumes - NR 17
+2h
+A definir
+Treinamento sobre proteção respiratória
+1h
+A definir
+Treinamento sobre proteção auditiva
+1h
+A definir
+Treinamento Trabalho em Altura - NR 35
+8h
+A definir
+Treinamento Canteiro de Obra - NR 18
+4h
+A definir
+Treinamento Maquinas e Equipamentos - NR 12
+**
+A definir
+Treinamento de Transporte, movimentação, armazenamento e manuseio de materiais - NR 11
+16h
+A definir
+*De acordo com o tipo de instalação conforme NR-20.
+**De acordo com a máquina e/ou equipamento que será utilizado.
+***De acordo com o dimensionamento da brigada conforme IT-12 do corpo de bombeiro de MG.
+Para os funcionários que já possuírem capacitação nos treinamentos normatizados pela Portaria 3214/78, tais como: NR 06; NR 10; NR 12; NR 18; NR 33; NR 35 deverá ser realizado reciclagem de acordo com as respectivas normativas legais.
+PERIODICIDADE DE TROCA DE EPI SUGERIDAS PELA OCUPACIONAL
+EPI
+PERIODICIDADE DE TROCA SUGERIDA (MESES)
+LUVAS IMPERMEÁVEIS
+1
+BOTAS IMPERMEÁVEIS
+6
+RESPIRADOR SEMIFACIAL PFF1 / PFF2
+1
+ÓCULOS DE SEGURANÇA
+12
+PROTETOR AUDITIVO TIPO INSERÇÃO
+1
+PROTETOR AUDITIVO TIPO MOLDÁVEL
+DESCARTÁVEL
+PROTETOR AUDITIVO TIPO CONCHA
+6
+LUVAS DE RASPA
+3
+CAPACETE DE SEGURANÇA
+24
+CINTO DE SEGURANÇA COM TALABARTE DUPLO
+DE ACORDO COM O FABRICANTE
+BOTINA DE SEGURANÇA (COM OU SEM BIQUEIRA)
+12
+LUVAS ANTIVIBRAÇÃO.
+12
+Os equipamentos serão substituídos de acordo com as condições de uso, vigência da data de validade do equipamento, e mediante qualquer alteração que o torne impróprio para o uso em conformidade com as disposições da NR 06, sendo esta periodicidade de troca sugestiva para orientação da contratante.
+DESCRIÇÃO E DETALHAMENTO DAS PROTEÇÕES INDIVIDUAIS E COLETIVAS DAS DIVERSAS FASES DA OBRA
+1- SERVIÇOS PRELIMINARES
+1.1 Arrumação e movimentação de materiais, quedas de materiais e pessoas, operação máquinas e/ou equipamentos, acomodação, movimentação de entulhos e varredura do local.
+Arrumação e movimentação de materiais, quedas de materiais e pessoas, operação máquinas e/ou equipamentos, acomodação, movimentação de entulhos e varredura do local.
+Riscos: Ruído excessivo, partes móveis sem proteção, projeção de partículas.
+EPIs: utilizar protetor auricular tipo plug ou concha, máscara respiratória protetora para partículas sólidas, óculos de proteção e luva de raspa de couro.
+Analisar previamente a situação de trabalho, com medidas de segurança como isolamento de área, da vizinhança, modo operacional com utilização de andaimes, patamares, calhas de escoamento e outros.
+Procedimentos seguros no processo de demolição, com utilização de proteções coletivas onde se fizer necessário (bandeja, plataforma, guarda-corpo) e uso de cinto de segurança tipo paraquedista, devidamente ancorado. Conhecimento, arrumação e umedecimento prévio dos entulhos antes da remoção. Manutenção e condições gerais dos equipamentos com relação ao funcionamento e proteção das partes móveis e de contato. Pessoa habilitada - qualificada para operação.
+1.2 Movimentação de terra/entulho
+Escavação manual ou com máquina.
+Riscos: desabamento, quedas em nível e em diferença de nível, inalação de poeiras e risco de choque elétrico.
+EPIs: usar bota de borracha com solado antiderrapante, protetor auricular tipo plug ou concha e máscara contra poeiras, quando houver excesso de poeira. Pranchões (escorados horizontalmente se necessário em taludes superiores a 1,20 m), escadas de saída de emergência, muros, edificações vizinhas e todas as estruturas adjacentes devem ser escorados, o material retirado deve ficar a distância superior à metade da profundidade, medida a partir da borda do talude. Verificar a existência de cabos elétricos subterrâneos e desligar os mesmos. Não permitir a entrada de pessoas não autorizadas a este local de trabalho. Sinalizar a área escavada.
+1.3 Fundações - Fundação profunda - Tubulões
+Operação de abertura do fuste e da base dos tubulões.
+Riscos: acidente (soterramento) - utilizar elemento de ligação (cordas) e verificar estabilidade do terreno, sistema de cimento de cargas e trabalhadores e deve ser dotado de dispositivo de segurança com travamento. Caso necessário utilizar ventilação local exaustor. Deixar um trabalhador na área com treinamento de primeiros socorros. Sinalização e proteção nas aberturas no piso devido ao processo de fundação bem como na sinalização interna e externa do canteiro, quanto à entrada / saída de veículos e materiais.
+Pranchões (escorados horizontalmente se necessário em taludes superiores a 1,20 m); muros, edificações vizinhas e todas as estruturas adjacentes devem ser escorados. O material retirado deve ficar a distância superior à metade da profundidade, medida a partir da borda do talude. Tampar e/ou sinalizar na área de escavação dos tubulões.
+1.4 Armação de Tubulões
+Confecção e montagem: Armação de ferro, disco de corte.
+Riscos: Ferimento nas mãos, detritos nos olhos.
+EPIs: usar luvas de raspa, máscara contra poeiras, óculos de proteção.
+Proteções no policorte, coifa e partes móveis. Deve ficar instalado a policorte sob cobertura.
+Transporte: da bancada ao local de montagem ou colocação definitiva.
+Riscos: Problemas de postura, principalmente quando transporte nos ombros das armaduras prontas.
+EPIs: usar luvas de raspa e botina (preferencialmente com ponta de aço).
+Operação de armação dos tubulões.
+Riscos: Ferimento nas mãos, detritos nos olhos, quedas em nível.
+EPIs: utilizar luvas de raspa e óculos de proteção. Proteger as pontas dos vergalhões (esperas).
+1.5 Concretagem / Forma / Armação de Tubulões
+FORMA:
+Confecção das fôrmas:
+Riscos: Ruído (serra circular), contusões nas mãos (martelo), cortes severos nas mãos, partículas aos olhos.
+EPIs: utilizar protetor auricular tipo plug ou concha, óculos de proteção, protetor facial, avental de raspa e luva de raspa.
+Proteções no disco da serra, proteções frontal e posterior da mesa, extintor do tipo PQS.
+Montagem e desmontagem das fôrmas:
+Riscos: Quando na montagem existe o risco de queda em diferença de nível. Ao realizar a desforma existe o risco de ferimentos por pregos das madeiras, contusões nas mãos, detritos nos olhos.
+EPIs: utilizar luvas de raspa e óculos de segurança. Manter o local organizado e livre de entulhos. Retirar ou rebater pregos das madeiras da desforma
+ARMAÇÃO:
+Confecção e montagem: Armação de ferro, disco de corte.
+Riscos: Ferimento nas mãos, detritos nos olhos, quedas em diferença de nível.
+EPIs: usar luvas de raspa, máscara contra poeiras e óculos de proteção.
+Proteções no policorte, coifa e partes móveis. Deve ficar instalado a policorte sob cobertura.
+Transporte: da bancada ao local de montagem ou colocação definitiva.
+Riscos: Problemas de postura, principalmente quando transporte nos ombros das armaduras prontas.
+EPIs: usar luvas de raspa e botina (preferencialmente com ponta de aço).
+Operação de armação dos blocos e cintas.
+Riscos: Ferimento nas mãos, detritos nos olhos.
+EPIs: utilizar luvas de raspa e óculos de proteção.
+CONCRETAGEM:
+Concretagem geral, ponta do mangote, adensamento do concreto.
+Riscos: Queda em diferença de nível, estouro do mangote, respingos do concreto, queda e choque elétrico.
+EPIs: utilizar cinto de segurança, bota de borracha, óculos ou protetor facial.
+Andaime devidamente montado e fiação elétrica devidamente isolada.
+2 - ALVENARIA ESTRUTURAL
+2.1 Marcação de alvenaria de vedação:
+Riscos: Ferimento por pregos. Risco de queda em diferença de nível (ao realizar a vedação de periferia), Queda de materiais sobre membros inferiores durante o transporte dos tijolos.
+EPIs: usar cinto de segurança tipo paraquedista em periferia de laje.
+Assegurar a limpeza do andar a remover gastalhos, pregos da estrutura, aços de amarração de pilares e vigas, poeiras e materiais soltos. Realizar o transporte dos blocos (tijolos) de forma segura. Plataforma de proteção inferior. Entre as plataformas, usar tela fachadeira.
+2.2 Assentamento dos blocos (tijolos):
+Riscos: queda das paredes levantadas (principalmente quando recém-concluídas), pode acontecer reação alérgica dermatológica pelo uso da massa.
+EPIs: usar luvas de látex.
+As paredes levantadas devem ser fixadas firmemente por meio de cunhas ou bisnaga (entre a viga e o bloco).
+2.3 Colocação de prumadas externas:
+Riscos: Quedas em diferença de nível.
+EPIs: utilizar cinto de segurança tipo paraquedista, engatado a corda auxiliar.
+As periferias das lajes devem estar adequadamente protegidas (guarda corpo rígido).
+2.4 Emboço interno e externo, serviços gerais de contra pisos.
+Riscos: Irritações dermatológicas. Quedas em diferença de nível e em nível.
+EPIs: utilizar cinto de segurança tipo paraquedista, engatado a corda auxiliar.
+Aberturas nos pisos devem ter proteção provisória.
+2.5 Proteção da ponta dos vergalhões (esperas) com mangueira dobrada.
+É fundamental a instalação de proteção contra quedas de altura. O sistema de guarda-corpo com rodapé é uma delas. Essa proteção é constituída de travessas - sarrafos de 0,20 m (vinte centímetros) no rodapé e de 0,06cm (seis centímetros) nos demais - cujos vãos devem ser preenchidos por tela (tela de polietileno ou galvanizada) que garanta o fechamento seguro da abertura. Dispostos de travessão superior, intermediário e rodapé, de pontaletes de madeiras diversas, com alturas de 1,20 m, 0,70 m e 0,20 m respectivamente, com montantes verticais em madeira também, entroncados a espaçamentos de no máximo 2,0 (dois) metros.
+3 - ACABAMENTO
+3.1 Serviços de regularização de superfícies:
+Riscos: Inalação de poeiras, principalmente pelo lixamento de superfícies, dermatites e conjuntivites, queda em nível e diferença de nível.
+EPIs: utilizar máscara contra poeiras e luvas impermeáveis.
+Observar a montagem de balancim, e seguir as orientações de segurança em sua utilização.
+3.2 Pintura interna e externa:
+Riscos: Irritações dermatológicas, quedas em diferença de nível e em nível.
+EPIs: usar luvas impermeáveis, óculos de segurança, preferencialmente ampla visão, cinto de segurança, na pintura externa, engatado a corda auxiliar de segurança.
+Observar a montagem de balancim, e seguir as orientações de segurança em sua utilização.
+3.3 Revestimento da fachada:
+Riscos: Quedas em diferença de nível.
+EPIs: utilizar cinto de segurança do tipo paraquedista, engatado a corda auxiliar.
+Observar a montagem de balancim, e seguir as orientações de segurança em sua utilização.
+4 - DIVERSAS ATIVIDADES
+4.1 Impermeabilização:
+Riscos: Queimaduras pelo GLP, intoxicação, via respiratória, principalmente em locais confinados, incêndio e explosão do GLP e cortes.
+EPIs: utilizar luvas de raspa de couro, máscara respiratória, principalmente em locais confinados.
+Prestar muita atenção ao uso do bico de fogo, ter sempre por perto Extintor de incêndio, para evitar cortes pelos estiletes, utilizar sempre luvas, os locais confinados devem possuir ventilação e exaustores, trabalhar sempre em duplas.
+4.2 Instalações elétricas provisórias e definitivas
+Estudar o projeto, passar o eletrocuto e depois os fios necessários. Preparar as instalações de antena coletiva, parabólica, fio terra, etc. fazer o padrão provisório e o permanente. Colocar as tampas das caixas elétricas. Fazer os quadros de disjuntores. Testar todas as instalações.
+Riscos: Choque elétrico, cortes contusos e escoriações.
+EPIs: usar botinas de segurança sem partes metálicas, óculos de proteção e luvas isolantes.
+Não deixar partes vivas nas instalações provisórias. Não realizar serviços em circuitos energizados. Serviço autorizado somente
+a trabalhador qualificado. Utilizar materiais especificados no projeto.
+4.3 Instalações hidráulicas provisórias e definitivas
+Passar a tubulação nos locais corretos, assim como as bitolas de acordo com o projeto. Ao fazer as emendas lixar primeiramente o tubo, passar uma solução limpadora e em seguida passar cola (água fria usa-se adesivo plástico para PVC e esgoto usa-se anel). Para fazer curva no tubo não se dobra, usa as conexões apropriadas para evitar obstrução acidental da tubulação, deixa o tubo um pouco maior queimando sua extremidade, dobrando-o. Faz-se o sistema shaft com porta de PVC para facilitar a manutenção. Fazer todas as instalações hidrossanitárias.
+Riscos: intoxicação com produtos químicos (solução limpadora e cola), dermatoses e postura inadequada.
+EPIs: usar luvas impermeáveis e máscara respiratória, principalmente em locais confinados.
+4.4 Organização e limpeza no canteiro:
+Riscos: diversos de acidentes.
+EPIs: utilizar sempre capacete e botina de segurança.
+Manter sempre as vias de circulação, escadas e passagens desobstruídas. Manter os entulhos afastados da periferia das lajes.
+4.5 Andaimes
+Preparar e nivelar o piso para o apoio do andaime, verificar a capacidade de resistência às cargas atuantes. Observar o esquadro, prumo e alinhamento das torres, para não causar esforço nos quadros e/ou diagonais durante a montagem. Evitar a montagem de andaimes perto da rede elétrica. As amarrações dos andaimes deverão ser feitas, no máximo, a cada 8,0 m (oito metros) na horizontal e a cada 4,0 m (quatro metros) na vertical.
+Utilizar madeiras de boa qualidade isenta de nós ou rachaduras. É obrigatória a utilização de cintos de segurança, amarrados em pontos diferentes dos de amarração do andaime. Para subir, utilize a escada própria existente no quadro do andaime.
+Não utilizar escadas, caixotes ou qualquer improviso no topo da torre, para aumentar a altura. No caso de haver necessidade de executar plataforma no último nível do andaime, montar os guarda-corpos tubulares.
+A instalação de qualquer aparelho para içar materiais deve estar de maneira a não comprometer a estabilidade e segurança dos andaimes. Existe no mercado vários acessórios, tais como moitão, mão francesa e sapata ajustável, que podem ser incorporados aos andaimes. Diante de qualquer necessidade para modificar o equipamento, utilize-os. Nunca faça improvisações.
+Andaimes metálicos devem ser fixados em base sólida, travados, dispostos de forração completa na base em madeira de boa qualidade (tábuas de pimes), justapostas, sem nós e rachaduras, com guarda-corpo de travessas de 1,20 m e 0,70 m de altura e rodapé de 0,20 m, inclusive na cabeceira, e dispondo de tela de arame galvanizado com abertura de 1 cm (um centímetro).
+REGRAS GERAIS
+1- Efetuar isolamento físico da área em torno do andaime, a fim de evitar circulação de pessoas e/ou veículos;
+2- Andaimes do tipo tubular devem ser usados preferencialmente e deverão ser montados por pessoal treinado;
+3- Andaimes de madeira ou andaimes suspensos, somente serão permitidos, mediante a autorização da supervisão do serviço e da Segurança do Trabalho;
+4- Andaimes sobre rodas, só poderão ser usados em áreas com o piso plano concretado ou asfaltado, com possibilidade de livre deslocamento e não poderão exceder a altura de 5 metros. As rodas devem ter no mínimo 15 cm de diâmetro e estar travadas todo o tempo em que o andaime não estiver sendo deslocado;
+5- Os andaimes com rodas não poderão ser movimentados em hipótese alguma com pessoas ou ferramentas sobre a plataforma;
+6- Estes andaimes não devem ser utilizados como ancoragem para levantamento de equipamentos;
+7- Os andaimes não devem ser modificados de modo que tenham suas resistências prejudicadas. Não será permitido usar andaimes de tipos diferentes;
+8- Os pranchões dos andaimes (plataforma) deverão ter espessura mínima de 1 polegada (3,5 cm.) largura de 30 cm. Devem ser de madeira de primeira qualidade e sem defeitos, ocupar todo o espaço da plataforma. Esses pranchões devem ser travados por meio de batentes, colocados na face inferior;
+9- Os pranchões de madeira utilizados não poderão ser pintados;
+10- Todas as plataformas deverão ter seus lados expostos protegidos por guarda corpo;
+11- Os Andaimes devem estar apoiados sobre pisos firmes e rígidos. Os desníveis do terreno deverão ser compensados pela utilização de parafusos ajustadores e nunca por calços improvisados;
+12- Em pisos não rígidos, deverão ser usados pranchões sob a base do andaime a ser nivelado;
+13- Todos os andaimes e suas partes integrantes devem ser inspecionados antes de cada utilização;
+14- Especial atenção deve ser dada aos pontos de solda e encaixe. Peças danificadas devem ser substituídas de imediato;
+15- A subida em andaimes deve ser feita por escada externa ou degraus de tubo do próprio andaime;
+16- Os andaimes deverão ser amarrados com cabos e/ou cordas a cada 3 metros de altura, a partir do segundo lance;
+17- Os andaimes deverão ser contra ventados (barra diagonal) a cada 3 metros a partir do solo;
+18- Não devem ser jogadas ferramentas ou peças para a plataforma do andaime ou vice-versa;
+19- Quando usar ferramentas elétricas ou pneumáticas, amarrar os cabos ou mangueiras no próprio andaime;
+20- Os andaimes devem ser galvanizados ou pintados de amarelo;
+21- Os andaimes e as pessoas que nele subirem não poderão ficar a uma distância inferior a 2 (dois) metros de uma linha elétrica de alta ou baixa tensão energizada, (isolada ou não);
+22- As pessoas que nele subirem deverão utilizar cinto de segurança, cabo guia e/ou trava-queda.
+Em todo o perímetro e nas proximidades de vãos e/ou aberturas das superfícies de trabalho da edificação devem ser previstos e instalados elementos de fixação ou apoio para cabo-guia/cinto de segurança, a serem utilizados em atividades junto ou nessas áreas expostas de trabalho, possibilitando aos trabalhadores, dessa forma, o alcance seguro de todos os pontos da superfície de trabalho.
+Esse tipo de elemento de fixação ou apoio para cabo-guia/cinto de segurança deve permanecer instalado na estrutura depois de concluída, para uso em obras de reparos e reformas.
+4.5 Escadas
+Montantes: são elementos verticais para fixação das travessas (degraus) da escada, capazes de suportar o esforço solicitado, com comprimento máximo de 7m (sete metros) e espaçamento entre eles de no mínimo 0,45m (quarenta e cinco centímetros) e no máximo de 0,55m (cinquenta e cinco centímetros).
+Travessas (degraus): são elementos horizontais fixados nos montantes, capazes de suportar o esforço solicitado, com espaçamento entre eles de no mínimo 0,25 m (vinte e cinco centímetros) e no máximo de 0,30 m (trinta centímetros), de forma constante, devendo suportar uma carga de 160 kgf (cento e sessenta quilogramas-força) em seu ponto mais desfavorável. As travessas deverão ser fixadas aos montantes por meio de cavilhas ou outros meios que garantam sua rigidez.
+DESCRIÇÃO E DETALHAMENTO DAS PROTEÇÕES INDIVIDUAIS
+CARACTERÍSTICAS DOS EPIs:
+Protetor Auricular:
+Equipamento destinado à proteção das pessoas que trabalham em locais com ruído elevado e acima dos limites de tolerância.
+Utilização: Deverá ser utilizado pelos funcionários que trabalham nos britadores, moinhos, operação da máquina, corte de materiais por disco, esmerilhadeira, lixamento de peças metálicas, e outras onde o ruído for alto.
+Conservação: Manter sempre limpo para boa higiene e conforto. Solicitar a substituição, para higienização mensal ou de acordo com a periodicidade de utilização.
+Capacete:
+Equipamento destinado a proteger a cabeça contra impactos contundentes.
+Utilização: Deverá ser utilizado pelos colaboradores dos setores de produção constantemente, e sua conservação e guarda é de responsabilidade do empregado.
+Conservação: Manter limpo e evitar danos no casco e na carneira.
+Luvas de raspa de couro (ou equivalente):
+Equipamento utilizado para a proteção das mãos e punhos, contra riscos de ferimento por corte, lacerações etc.
+Utilização: Deverá ser utilizada nos serviços de levantamento e transporte de materiais, e em todos aqueles que tragam riscos às mãos dos funcionários da área de produção.
+Manutenção: Deverá ser solicitado um equipamento novo, quando o mesmo não apresentar condições de uso. Não deve ser submetido à umidade.
+Máscara contra poeiras:
+Equipamento destinado à proteção respiratória dos trabalhadores contra poeiras incômodas, como cimento, cal, calcário, etc.
+Utilização: Deverá ser utilizada quando no ambiente de trabalho houver poeiras inertes, cuja concentração seja desconfortável para o trabalho. Pela quantificação realizada na empresa e análise desses particulados, recomendamos o uso de máscaras simples contra poeiras (descartáveis) do tipo de fibras não tecidas e que possui tira metálica para moldar ao tipo de nariz e um elástico para prender a máscara à altura do nariz.
+Conservação: Após o uso deve ser limpo e guardado em local seco, ventilado, evitando umidade e a exposição a contaminantes. Deverá ser trocado sempre que se encontrar saturada, perfurada, rasgada ou com falta de vedação.
+Calçado de Segurança:
+Calçado destinado à proteção dos pés do trabalhador.
+Utilização: Deve ser utilizado em todos os locais de produção da empresa, durante toda a jornada de trabalho.
+Manutenção: O calçado deve ser periodicamente limpo engraxado para manter o couro macio. Não devem ser submetidos a locais com excesso de umidade, para tal deve ser utilizada bota de borracha.
+Óculos de ampla visão:
+Equipamento destinado a proteger os olhos dos trabalhadores contra partículas e poeiras em suspensão e produtos químicos.
+Utilização: Deverá ser utilizado durante o brita mento, ensacamento e carregamento de produtos, assim como no manuseio de produtos químicos, lixamento, pintura e similares.
+Conservação: Devem ser mantidos sempre limpos. Utilizar pano macio, água e sabão neutro.
+Cinto de Segurança Tipo Paraquedista com Talabarte:
+Cinto destinado à proteção contra quedas de níveis diferentes, recomendado para trabalhadores que executam atividades acima de 2 metros do nível inferior, onde haja risco de queda. Devem ser especificados e selecionados considerando-se a sua eficiência, o conforto, a carga aplicada aos mesmos e o respectivo fator de segurança, em caso de eventual queda.
+Utilização: Deve ser utilizado em toda atividade executada acima de 2,00 m (dois metros) do nível inferior, onde haja risco de queda.
+Manutenção: Deve ser guardado em local limpo e apropriado de forma que impeça que sofra impactos, a fim de preservar a eficiências e evitar danos, ser inspecionado quanto à integridade antes da sua utilização observando a existência de possíveis avarias. Os EPIs, acessórios e sistemas de ancoragem que apresentarem defeitos, degradação, deformações ou sofrerem impactos de queda devem ser inutilizados e descartados, exceto quando sua restauração for prevista em normas técnicas nacionais ou, na sua ausência, normas internacionais.
+ÁREA DE VIVENCIA
+A área de vivência deverá ter:
+a) instalações sanitárias;
+b) vestiário;
+c) local de refeições;
+As áreas de vivência devem ser mantidas em perfeito estado de conservação, higiene e limpeza.
+1 - INSTALAÇÕES SANITÁRIAS
+Entende-se como instalação sanitária o local destinado ao asseio corporal e/ou ao atendimento das necessidades fisiológicas de excreção.
+É proibida a utilização das instalações sanitárias para outros fins que não aqueles previstos no parágrafo acima.
+As instalações sanitárias devem:
+Ser mantidas em perfeito estado de conservação e higiene;
+Ter portas de acesso que impeçam o devassamento e ser construídas de modo a manter o resguardo conveniente;
+Ter paredes de material resistente e lavável, podendo ser de madeira;
+Ter pisos impermeáveis, laváveis e de acabamento antiderrapante;
+Não ter ligação direta com os locais destinados às refeições;
+Ser independente para homens e mulheres, quando necessário;
+Ter ventilação e iluminação adequadas;
+Ter instalações elétricas adequadamente protegidas;
+Ter pé-direito mínimo de 2,50m (dois metros e cinquenta), ou respeitar o que determina o Código de Obras do Município onde está localizada a obra;
+Situar-se em locais de fácil acesso e seguro, não sendo permitido um deslocamento superior a 150m (cento e cinquenta metros) do posto de trabalho aos gabinetes sanitários, mictórios e lavatórios.
+A instalação sanitária deve ser constituída de lavatório, vaso sanitário e mictório, na proporção de 1 (um) conjunto para cada grupo de 20 (vinte) trabalhadores ou fração, bem como de chuveiro, na proporção de 1 (uma) unidade para cada grupo de 10 (dez) trabalhadores ou fração.
+1.1 - LAVATÓRIOS
+Os lavatórios devem:
+Ser individual ou coletivo tipo calha;
+Possuir torneira de metal ou de plástico;
+Ficar com a parte superior a uma altura de 0,90m (noventa centímetros) do piso;
+Ser ligado diretamente à rede de esgoto, quando houver;
+Ter revestimento interno de material liso, impermeável e lavável;
+Ter espaçamento mínimo entre as torneiras de 0,60 (sessenta centímetros), quando coletivos;
+Dispor de recipiente para coleta de toalhas de papeis usadas.
+1.2 - VASOS SANITÁRIOS
+O local destinado ao vaso sanitário (gabinete sanitário) deve:
+Ter área mínima de 1,00m² (um metro quadrado);
+Ser provido de porta com trinco interno e borda inferior de no máximo a 15m (quinze centímetros) de altura;
+Ter divisórias com altura mínima de 1,80m (um metro e oitenta centímetros);
+Ter recipiente com tampa, para depósito de papeis usados, sendo obrigatório o fornecimento de papel higiênico;
+Os vasos sanitários devem:
+Ser do tipo bacia turca ou sifonado;
+Ter caixas de descarga ou válvula automática;
+Ser ligado à rede de geral de esgoto ou à fossa séptica, com interposição de sifões hidráulicos.
+1.3 - MICTÓRIOS
+Os mictórios devem:
+Ser individual ou coletivo do tipo calha;
+Ter revestimento interno de material liso, impermeável e lavável;
+Ser provido de descarga provocada ou automática;
+Ficar a uma altura máxima de 0,50m (cinquenta centímetros) do piso;
+Ser ligado diretamente à rede de esgoto ou à fossa séptica, com interposição de sifões hidráulicos.
+No mictório tipo calha, cada segmento de 0,60m (sessenta centímetros) deve corresponder a um mictório tipo cuba.
+1.4 - CHUVEIROS
+A área mínima necessária para utilização de cada chuveiro é de 0,80m² (oitenta centímetros quadrados), com altura de 2,10m (dois metros e dez centímetros) do piso.
+Os pisos dos locais onde forem instalados os chuveiros devem ter caimento que assegure o escoamento da água para a rede de esgoto, quando houver, e ser de material antiderrapante ou provido de estrados de madeira.
+Os chuveiros devem ser de metal ou plástico, individuais ou coletivos, dispondo de água quente.
+Deve haver um suporte para sabonete e cabide para toalha, correspondente a cada chuveiro.
+Os chuveiros elétricos devem ser aterrados adequadamente.
+2.0 - VESTIÁRIO
+Todo canteiro de obra deve possuir vestiário para troca de roupa dos trabalhadores que não residem no local.
+A localização do vestiário deve ser próxima aos alojamentos e/ou à entrada da obra, sem ligação direta com o local destinado às refeições.
+O vestiário deve:
+a) ter paredes de alvenaria, madeira ou material equivalente;
+b) ter pisos de concreto, cimentado, madeira ou material equivalente;
+c) ter cobertura que proteja contra as intempéries;
+d) ter área de ventilação correspondente a 1/10 (um décimo) de área do piso;
+e) ter iluminação natural e/ou artificial;
+f) ter armários individuais dotados de fechadura ou dispositivo com cadeado;
+g) ter pé-direito mínimo de 2,50m (dois metros e cinquenta centímetros), ou respeitando-se o que determina o Código de Obras do Município, da obra;
+h) ser mantidos em perfeito estado de conservação, higiene e limpeza;
+i) ter bancos em número suficiente para atender aos usuários, com largura mínima de 0,30m (trinta centímetros).
+O vestiário deve ter armários duplos individuais com as seguintes dimensões mínimas:
+a) 1,20m (um metro e vinte centímetros) de altura por 0,30m (trinta centímetros) de largura e 0,40m (quarenta centímetros) de profundidade, com separação ou prateleira, de modo que um compartimento, com a altura de 0,80m (oitenta centímetros), se destine a abrigar a roupa de uso comum e o outro compartimento, com a altura de 0,40m (quarenta centímetros), a guardar a roupa de trabalho; ou
+b) 0,80m (oitenta centímetros) de altura por 0,50m (cinquenta centímetros) de largura e 0,40m (quarenta centímetros) de profundidade com divisão no sentido vertical, de forma que os compartimentos, com largura de 0,25m (vinte e cinco centímetros), estabeleçam rigorosamente o isolamento das roupas de uso comum e de trabalho.
+3.0 - LOCAL PARA REFEIÇÕES
+Nos canteiros de obra é obrigatória a existência de local adequado para refeições.
+O local para refeições deve:
+a) ter paredes que permitam o isolamento durante as refeições;
+b) ter piso de concreto, cimentado ou de outro material lavável;
+c) ter cobertura que proteja das intempéries;
+d) ter capacidade para garantir o atendimento de todos os trabalhadores no horário das refeições;
+e) ter ventilação e iluminação natural e/ou artificial;
+f) ter lavatório instalado em suas proximidades ou no seu interior;
+g) ter mesas com tampos lisos e laváveis;
+h) ter assentos em número suficiente para atender aos usuários;
+i) ter depósito, com tampa, para detritos;
+j) não estar situado em subsolos ou porões das edificações;
+k) não ter comunicação direta com as instalações sanitárias;
+l) ter pé-direito mínimo de 2,80m (dois metros e oitenta centímetros), ou respeitando-se o que determina o Código de Obras do Município, da obra.
+Independentemente do número de trabalhadores e da existência ou não de cozinha, em todo canteiro de obra deve haver local exclusivo para o aquecimento de refeições, dotado de equipamento adequado e seguro para o aquecimento.
+É proibido preparar, aquecer e tomar refeições fora dos locais estabelecidos neste subitem.
+É obrigatório o fornecimento de água potável, filtrada e fresca, para os trabalhadores, por meio de bebedouro de jato inclinado ou outro dispositivo equivalente, sendo proibido o uso de copos coletivos.
+INSTALAÇÕES ELÉTRICAS
+O quadro geral será aterrado, além de dispor de terminal neutro para alimentar o sistema monofásico.
+Manter as portas do quadro fechadas para evitar que os funcionários encostem nas partes energizadas (vivas) e não guardem roupas, garrafas ou outros objetos dentro dele.
+Os fios e cabos serão estendidos de forma aérea e por locais que não atrapalhem a passagem de pessoas máquinas e materiais.
+Sempre que se realizarem trabalhos próximos da rede externa elétrica, os mesmos serão acompanhados por pessoa experiente para avisar quando houver risco de acidente.
+A rede de distribuição nas instalações de apoio será protegida por eletrodutos de PVC.
+Não será permitido o uso de gambiarras. Todas as conexões dos equipamentos serão pelo conjunto &quot;Plug/Tomada&quot;.
+Todos os eletricistas receberão Ordens de Serviço específicas.
+O Que é Resistência de Aterramento?
+A resistência de aterramento mede a capacidade do aterramento de descarregar a energia para a terra. Quanto menor essa resistência, melhor para a instalação, pois mais rápida será a atuação das proteções.
+Embora alguns fornecedores cheguem a exigir 1 Ohm (é a Unidade de Resistência), a norma de instalações elétricas (NBR 5410/97) não define diretamente nenhum valor, enquanto a Norma Americana de Instalação Elétrica exige um valor máximo de 25 Ohms.
+A Norma Brasileira de Proteção Contra Descargas Atmosféricas (NBR 5419/93), recomenda um valor máximo de 10 ohms. Sempre que possível esse valor deve ser adotado para todas as instalações.
+Como Instalar um Fio Terra?
+A conexão dos equipamentos elétricos ao sistema de aterramento deve permitir que, caso ocorra uma falha na isolação dos equipamentos, a corrente de falta (corrente &quot;fugitiva&quot;) passe através do fio de aterramento ao invés de percorrer o corpo de uma pessoa que eventualmente esteja tocando o equipamento (o que provocaria choque, lesões e até mesmo morte - dependendo de cada situação e da intensidade da corrente de fuga).
+Dentro de uma instalação elétrica existem diversos tipos de proteção contrachoques elétricos, contra descargas atmosféricas, contra sobre tensões, etc. Para uma melhor compreensão e busca da solução mais conveniente, deve-se estudar separadamente cada uma delas. Porém ao executar a instalação, deve ser feito um único aterramento. As normas técnicas não permitem aterramentos isolados ou independentes, para que não apareça diferença de tensão, que é a principal causa de &quot;queima&quot; dos equipamentos e colocam em riscos os usuários das instalações elétricas. Um único ponto de aterramento é que irá garantir a proteção adequada.
+O procedimento muito comum de utilizar aterramentos isolados, exclusivos ou independentes, constitui um grande equívoco. Esse procedimento não está de acordo com as regras das Normas Técnicas Brasileiras, de uso obrigatório, e coloca em risco as pessoas e aparelhos elétricos.
+Todo o quadro de distribuição deve ter um terminal de aterramento, para onde irão convergir os fios terra da instalação. Isto significa que todos os fios terra, de cada aparelho, deve ser ligados ao mesmo ponto de aterramento.
+O terminal, por sua vez, deve ser ligado ao eletrodo de aterramento, de uso obrigatório em todo padrão de entrada de energia. Essas ligações devem ser feitas da forma mais direta e curta possível.
+Dicas Fundamentais
+a) Nunca aumente o valor do disjuntor ou do fusível sem trocar a fiação;
+b) Devem ser previstos circuitos separados para iluminação e tomadas;
+c) Todas as tomadas devem ter um fio para o aterramento;
+d) Disjuntor não deve ser utilizado como interruptor;
+e) Não utilize o fio neutro como fio terra;
+f) Apenas o aterramento não é suficiente para a proteção das pessoas contra choques elétricos;
+g) As Normas Técnicas Brasileiras exigem o uso de disjuntores DR (Diferencial-Residual), que podem ser adquiridos em casas de material elétrico;
+h) Evite a utilização do chamado &quot;T&quot;. O seu uso indevido causa sobrecarga nas instalações. Instalem mais tomadas, respeitando o limite de condução de energia elétrica dos fios;
+i) Recorra sempre a serviços de um profissional bem qualificado;
+j) Os chuveiros elétricos devem possuir circuitos exclusivos.
+SINALIZAÇÃO DE SEGURANÇA
+Nos locais de apoio que compõem o canteiro de obras; nas saídas por meio de dizeres ou setas; nas partes moveis de maquinas e ou equipamentos; advertir quanto ao risco de queda; alertar quanto à obrigatoriedade do uso de EPI especifico para a atividade executada, com a devida sinalização e advertências próximas ao posto de trabalho; identificar acessos, circulação de veículos e equipamentos na obra; identificar locais com substancias tóxicas, corrosivas, inflamáveis.
+Alguns tipos de sinalização que devem ser usados:
+Fitas
+Cavaletes
+Placas de advertência
+Bandeirolas
+Grades de proteção
+Placas de uso correto de EPI´s
+Identificação dos setores
+RESPONSABILIDADE TÉCNICA
+APROVAÇÃO DO INVENTÁRIO DE RISCOS
+_________________________________________
+DRA. MARIA LUZIA MAGALHÃES GOMES
+Médico responsável pelo PGR
+CRM: 16623/MG
+Especialidade: Medicina do Trabalho
+IMPLANTAÇÃO DO PLANO DE AÇÃO
+_________________________________________
+GOLDEN INDUSTRIA LTDA

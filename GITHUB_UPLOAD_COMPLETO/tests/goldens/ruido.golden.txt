@@ -1,0 +1,217 @@
+AVALIAÇÃO AMBIENTAL - RUÍDO
+-
+Higiene Ocupacional
+-
+GOLDEN INDUSTRIA LTDA
+-
+(Em atendimento ao Anexo 01 da NR-15 e NHO 01 da FUNDACENTRO)
+952519050000
+AVALIAÇÃO AMBIENTAL – RUÍDO
+GOLDEN INDUSTRIA LTDA
+Identificação Empresa
+Empresa
+GOLDEN INDUSTRIA LTDA
+Endereço
+Rua Teste, 100
+Complemento
+CNPJ
+12.345.678/0001-90
+CEP
+30000-000
+Cidade
+Belo Horizonte
+Bairro
+Centro
+UF
+MG
+CNAE
+25.11-0-00
+Grau de Risco
+3
+Descrição CNAE
+Fabricacao de estruturas metalicas
+Responsável
+Responsavel Teste
+Telefone
+(31) 3333-3333
+Email
+contato@golden.com.br
+CARTA DE APRESENTAÇÃO
+À
+GOLDEN INDUSTRIA LTDA
+REF.: AVALIAÇÃO AMBIENTAL – RUÍDO
+Prezados,
+É com imenso prazer que cumprimos uma meta de nossos trabalhos junto a vossa empresa no intuito de cumprir com os dispositivos legais exigidos pelas normativas vigentes, tendo como foco avaliar a exposição ao agente físico ruído de forma a tornar incólume a saúde de seus colaboradores.
+Em assim sendo estamos lhe repassando este documento denominado de Avaliação Ambiental – Ruído, com a identificação do aludido risco estabelecido pelo M.T.E. e demais normativas.
+O Grupo Ocupacional coloca-se à disposição desta empresa, para prestar quaisquer esclarecimentos que se fizerem necessários.
+1795780259397500Atenciosamente,
+O aproveitamento deste programa, total ou parcial em outras empresas e/ou profissionais da área para quaisquer fins, sem a devida autorização de seus autores, será considerado como um ato ilegal previsto em Lei - Artigo 184 do Código Penal.
+RESULTADOS – AVALIAÇÃO 01
+QUADRO RESUMO – AVALIAÇÃO 01 — OPERADOR DE PRENSA / PRODUCAO
+Setor
+Producao
+Cargo
+Operador de Prensa
+Funcionário(a)
+Data da Avaliação
+Horário Início / Fim
+/
+Jornada de Trabalho
+N° Série Dosímetro
+Fonte(s) Geradora(s)
+Descrição das Atividades
+Medidas de Controle Col.
+N.A.
+EPI Utilizado
+Protetor Auditivo
+Q = 3 dB / Dosimetria NHO-01 — Exposição Ocupacional
+LAVG
+88,1 dB(A)
+NEN
+89,2 dB
+DOSE
+%
+Q = 5 dB / Dosimetria NR-15 — Legislação Trabalhista
+TWA
+dB(A)
+LAVG
+86,4 dB(A)
+DOSE
+%
+Q = 5* dB / NEN INSS — Legislação Previdenciária
+NE
+dB
+NEN
+87,0 dB
+CONCLUSÃO
+Conforme NR-15, Anexo 1 (Q=5 dB): a exposição de Operador de Prensa ULTRAPASSOU o limite de tolerância de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou individuais.
+Conforme NHO-01 / Fundacentro (Q=3 dB): a exposição de Operador de Prensa ULTRAPASSOU o limite de tolerância de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou individuais.
+RESULTADOS – AVALIAÇÃO 02
+QUADRO RESUMO – AVALIAÇÃO 02 — CONFERENTE / EXPEDICAO
+Setor
+Expedicao
+Cargo
+Conferente
+Funcionário(a)
+Data da Avaliação
+Horário Início / Fim
+/
+Jornada de Trabalho
+N° Série Dosímetro
+Fonte(s) Geradora(s)
+Descrição das Atividades
+Medidas de Controle Col.
+N.A.
+EPI Utilizado
+Protetor Auditivo
+Q = 3 dB / Dosimetria NHO-01 — Exposição Ocupacional
+LAVG
+80,0 dB(A)
+NEN
+80,5 dB
+DOSE
+%
+Q = 5 dB / Dosimetria NR-15 — Legislação Trabalhista
+TWA
+dB(A)
+LAVG
+79,2 dB(A)
+DOSE
+%
+Q = 5* dB / NEN INSS — Legislação Previdenciária
+NE
+dB
+NEN
+79,8 dB
+CONCLUSÃO
+Conforme NR-15, Anexo 1 (Q=5 dB): a exposição de Conferente NÃO ultrapassou o limite de tolerância de 85,0 dB(A).
+Conforme NHO-01 / Fundacentro (Q=3 dB): a exposição de Conferente está acima do NÍVEL DE AÇÃO de 80,0 dB(A) — necessário adotar medidas de controle para reduzir a exposição.
+ÍNDICE GERAL
+TOC \h \z \t "hil1;1" OBJETIVOS PAGEREF _Toc212137899 \h 4
+METODOLOGIAS PAGEREF _Toc212137900 \h 4
+EQUIPAMENTOS PAGEREF _Toc212137901 \h 6
+FUNDAMENTAÇÃO LEGAL PAGEREF _Toc212137902 \h 6
+RESULTADOS PAGEREF _Toc212137903 \h 7
+QUADRO RESUMO DAS AVALIAÇÕES PAGEREF _Toc212137904 \h 9
+CERTIFICADO DE CALIBRAÇÃO DOS EQUIPAMENTOS UTILIZADOS PAGEREF _Toc212137905 \h 10
+RESPONSABILIDADE TÉCNICA PAGEREF _Toc212137906 \h 13
+COPIA DA CARTEIRA DE CONSELHO DE CLASSE (CREA) PAGEREF _Toc212137907 \h 14
+OBJETIVOS
+Avaliar a intensidade / concentração do agente físico ruído durante exposição ao risco durante a (s) jornada (s) de trabalho dos cargos
+METODOLOGIAS
+LEGISLAÇÃO TRABALHISTA:
+Técnica: Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. O equipamento foi fixado dentro da zona auditiva (raio medido a partir do canal auditivo de 150 mm a mais ou menos 50 mm), ajustado no modo de resposta lenta e com o critério de avaliação estabelecido pela legislação do Ministério do Trabalho - MTE - nomeado -critério legal- que adota como parâmetro para a determinação do Limite de Exposição (LE), o critério de referência de 85 dB (A) para 8 horas de exposição, correspondendo à dose de 100 % da exposição permissível, com nível liminar de integração (NLI) de 80 dB (A) e incremento de dose de 5
+O limite de tolerância estabelecido pelo Anexo 01 da NR°15 da Portaria 3214/78 é:
+Sendo o incremento em decibéis (q = 5) que, quando adicionado a um determinado nível, implica a duplicação da dose de exposição ou a redução para a metade do tempo máximo permitido.
+LEGISLAÇÃO PREVIDENCIARIA:
+Técnica: Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. O equipamento foi fixado dentro da zona auditiva (raio medido a partir do canal auditivo de 150 mm a mais ou menos 50 mm), ajustado no modo de resposta lenta e com o critério de avaliação estabelecido pela legislação da FUNDACENTRO – NHO 01- nomeado -critério legal- que adota como parâmetro para a determinação do Limite de Exposição (LE), o critério de referência de 85 dB (A) para 8 horas de exposição, correspondendo à dose de 100 % da exposição permissível, com nível liminar de integração (NLI) de 80 dB (A) e incremento de dose de 3
+O critério de referência que embasa os limites de exposição diária adotados para ruído contínuo ou intermitente corresponde a uma dose de 100% para exposição de 8 horas ao nível de 85 dB(A).
+O critério de avaliação considera, além do critério de referência, o incremento de duplicação de dose (q) igual a 3 e o nível limiar de integração igual a 80 dB(A).
+A avaliação de exposição ocupacional ao ruído continuo ou intermitente deverá ser feita por meio da determinação da dose diária de ruído ou do nível de exposição, parâmetros representativos da exposição diária do trabalhador. Esses parâmetros são totalmente equivalentes, sendo possível, a partir de um obter-se o outro, mediante as expressões:
+Sendo:
+NE = Nível de exposição
+D = Dose Diaria de ruído em %
+Te = tempo de duração, em minutos, da jornada diária de trabalho.
+Para fins de comparação com o limite de exposição, deve-se determinar o Nível de Exposição Normalizado (NEN), que corresponde ao Nível de Exposição (NE) convertido para a jornada padrão de 8 horas diárias.
+O Nível de Exposição Normalizado – NEN é determinado pela seguinte expressão:
+Sendo:
+NE = nível médio representativo da exposição ocupacional diária
+Te = tempo de duração, em minutos, da jornada diária de trabalho.
+Neste critério o limite de exposição ocupacional diária ao ruído corresponde a NEN igual a 85 dB(A), e o limite de exposição valor teto para ruído contínuo ou intermitente é de 115 dB(A).
+Para este critério considera-se como nível de ação o valor NEN igual a 82 dB(A).
+INSTRUÇÃO NORMATIVA N°77 DO INSS QUE ALTERA A METODOLOGIA DE AVALIAÇÃO:
+A partir da instrução normativa n°77 do INSS, art. 279, temos uma mudança no critério de avaliação do ruído, sendo:
+“I - a metodologia e os procedimentos de avaliação dos agentes nocivos estabelecidos pelas Normas de Higiene Ocupacional -
+NHO da FUNDACENTRO; e
+II - os limites de tolerância estabelecidos pela NR-15 do MTE.”
+O IDD ou q estabelecido pelo Anexo 01 da NR-15 é 5, logo é necessário atualizar as formulas da NHO-01, supracitadas, para:
+NE = 16,61 x log (480/ Te x D / 100) + 85 -&gt; Substituição do 10 para o 16,61.
+NEN = NE + 16,61 x Log Te / 480 -&gt; Substituição do 10 para o 16,61.
+ALTERNATIVAS PARA CALCULAR O NEN:
+Quando as dosimetrias de ruído realizadas na empresa não tiverem 8 horas ou toda a jornada de trabalho é possível utilizar a formula:
+NEN = Lavg + 16,61 x Log T (em horas decimais) / 8
+EQUIPAMENTOS
+Para a monitoração da exposição do trabalhador ao ruído foi utilizado Audiodosímetro de ruído. Equipamentos que realizam medições em dois canais (q=3 e q=5), podendo avaliar na metodologia da NHO-01 (q3 / NEN), bem como Anexo 01 (q5 / Lavg) da NR-15 da Portaria 3214/78.
+Os audiodosimetros são do tipo 01 e atendem as normas IEC 60651/61.672 e ANSI s 1.25 – 1991. Os calibradores acústicos atendem as normas IEC 60942 – 1988 e ANSI S 1.40 – 1984.
+FUNDAMENTAÇÃO LEGAL
+Portaria 3214/78 da secretaria especial do Trabalho, vinculado ao Ministério da Economia, mais precisamente em seu Anexo 01 / 02 da Norma Regulamentadora n°15.
+ACGIH – Association Advancing Occupational and Environmental Health.
+FUNDACENTRO - Fundação Jorge Duprat Figueiredo de Segurança e Medicina do Trabalho.
+NHO 01 – Procedimento técnico – Avaliação a exposição Ocupacional ao Ruído.
+IEC 60651 atualizada pela IEC 61.672.
+ANSI S 1.25 – 1991
+ANSI S 1.40 – 1984.
+RESULTADOS
+QUADRO RESUMO DAS AVALIAÇÕES
+SETOR
+CARGO
+LEGISLAÇÃO TRABALHISTA (Lavg)
+LEGISLAÇÃO PREVIDENCIÁRIA (NEN)
+Producao
+Operador de Prensa
+● 86,4 dB(A)
+● 87,0 dB(A)
+Expedicao
+Conferente
+● 79,2 dB(A)
+● 79,8 dB(A)
+LEGENDA
+●: Avaliações regulares (Concentração encontrada &lt; Limite de Tolerância).
+●: Avaliações regulares, porém necessitam de adoção de medidas de controle (Concentração encontrada &gt; Nível de Ação).
+●: Avaliações irregulares sendo necessário adoção de medidas de controle (Concentração encontrada &gt; Limite de Tolerância).
+CERTIFICADO DE CALIBRAÇÃO DOS EQUIPAMENTOS UTILIZADOS
+RESPONSABILIDADE TÉCNICA
+ELABORAÇÃO
+_________________________________________
+CRISTIANO DE CASTRO MAGALHÃES GOMES
+Engenheiro de Segurança do Trabalho
+Registro CREA 57928/D MG
+RESPONSÁVEL PELA AVALIAÇÃO
+_________________________________________
+Elaborado por:
+TÉCNICO RESPONSÁVEL Tec. em Seg. do Trabalho
+Registro M.T.E. nº 0065338- MG
+COPIA DA CARTEIRA DE CONSELHO DE CLASSE (CREA)
+Cristiano de Castro Magalhães Gomes
+cristiano.gomes@ocupacional.com.br
+Telefone: (31) 99543-8238

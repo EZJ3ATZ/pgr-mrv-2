@@ -1,0 +1,187 @@
+ANÁLISE QUÍMICA
+-
+Higiene Ocupacional
+-
+GOLDEN INDUSTRIA LTDA
+-
+(Em atendimento as NRs, NHOs da FUNDACENTRO, ACGIH e normas internacionais NIOSH, OSHA, etc.)
+952519050000
+AVALIAÇÃO AMBIENTAL – QUÍMICA
+GOLDEN INDUSTRIA LTDA
+Identificação Empresa
+Empresa
+GOLDEN INDUSTRIA LTDA
+Título do estabelecimento (nome de fantasia)
+GOLDEN INDUSTRIA LTDA
+Endereço
+Rua Teste, 100Nº.
+Complemento
+CNPJ
+12.345.678/0001-90
+CEP
+30000-000
+Cidade
+Belo Horizonte
+Bairro
+Centro
+UF
+MG
+CNAE
+25.11-0-00
+Grau de Risco
+3
+Descrição CNAE
+Fabricacao de estruturas metalicas
+CARTA DE APRESENTAÇÃO
+À
+GOLDEN INDUSTRIA LTDA
+REF.: ANÁLISES QUÍMICAS
+Prezados (as),
+É com imenso prazer que cumprimos mais uma meta de nossos trabalhos junto a vossa empresa no intuito de cumprir com os dispositivos legais exigidos pelas normativas vigentes referentes a riscos ambientais, tendo como foco maior identificar as exposições a nível respiratório de emanações de agentes químicos provenientes do processo produtivo da empresa, tudo em conformidade ao que estabelece a NR-15, através de seu Anexo 11, da Portaria 3218/78, bem como a ACGIH – Association Advancing Occupational and Environmental Health.
+Em assim sendo, estamos lhe repassando este documento denominado de Análises Químicas, o qual tem por finalidade identificar nas atividades existentes possíveis agentes químicos presentes em concentrações superiores aos limites de tolerância estabelecidos pela normativa supramencionada, assim como recomendações para neutralizá-los ou eliminá-los através de melhorias ambientais ou por ações individuais para cada Colaborador nelas envolvidos.
+O Grupo Ocupacional coloca-se à disposição desta empresa, para prestar quaisquer esclarecimentos que se fizerem necessários.
+1859915342773000Atenciosamente,
+O aproveitamento deste programa, total ou parcial em outras empresas e/ou profissionais da área para quaisquer fins, sem a devida autorização de seus autores, será considerado como um ato ilegal previsto em Lei - Artigo 184 do Código Penal.
+ÍNDICE GERAL
+TOC \h \z \t "J1;1;J2;2;J3;3" I – METODOLOGIAS PAGEREF _Toc225948140 \h 5
+II - EQUIPAMENTOS PAGEREF _Toc225948141 \h 5
+III – TIPOS DE AMOSTRADORES PAGEREF _Toc225948142 \h 6
+IV – ACESSÓRIOS PARA COLETA DE AGENTES QUÍMICOS PAGEREF _Toc225948143 \h 7
+V - FUNDAMENTAÇÃO LEGAL PAGEREF _Toc225948144 \h 8
+VI – PLANILHAS DE AVALIAÇÕES POR CLASSE DE CARGO PAGEREF _Toc225948145 \h 9
+Pintor
+VIII – MEMORIAL FOTOGRÁFICO PAGEREF _Toc225948148 \h 13
+IX – QUADRO RESUMO DAS AVALIAÇÕES PAGEREF _Toc225948151 \h 14
+X – RESULTADOS DAS ANÁLISES LABORATORIAIS PAGEREF _Toc225948152 \h 15
+XI – CERTIFICADO DE CALIBRAÇÃO DO CALIBRADOR DE FLUXO DE AR PAGEREF _Toc225948153 \h 17
+XII– RESPONSABILIDADE TÉCNICA PAGEREF _Toc225948154 \h 22
+XII – COPIA DA CARTEIRA DE CONSELHO DE CLASSE (CREA) PAGEREF _Toc225948155 \h 23
+I – METODOLOGIAS
+COLETA
+As medições foram realizadas utilizando Bomba Gravimétrica da marca Gilian modelo BDX-II e Bomba Gravimétrica da marca SKC modelo AirLite. Instrumentos portáteis com sistema automático de controle de vazão com capacidade para mantê-las constantes, dentro de um intervalo de ± 5%, durante o tempo de coleta.
+O equipamento foi calibrado antes e depois da avaliação através do calibrador a seco marca Bios modelo Defender 510M.
+O amostrador foi destampado ao início da avaliação bem como tampado logo após seu término, sendo colocado no trabalhador selecionado com maior exposição ao risco e posicionado o dispositivo de coleta na altura da zona respiratória.
+O tempo de duração da coleta de cada amostra de ar foi o necessário para amostrar um volume de ar adequado e obter a quantidade de material dentro da faixa de trabalho do método de análise a ser utilizado.
+ANÁLISE LABORATORIAL
+As medições após serem amostradas em campo são encaminhadas para Laboratório Analítico especifico em análises laboratoriais no âmbito da Higiene Ocupacional. São emitidos relatórios químicos certificados por um Engenheiro Químico ou Químico, registrado no conselho da classe da categoria. Todos esses relatórios são anexados ao final deste documento para consulta.
+II - EQUIPAMENTOS
+4643120-190500Os equipamentos utilizados pelo Grupo Ocupacional são:
+1 – Calibrador de Fluxo de Ar a seco da marca Bios Modelo Defender 510M.
+2- Bomba Gravimétrica da marca SKC modelo AirLite.
+3- Bomba Gravimétrica da marca Gilian modelo BDX-II.
+4- Bomba Gravimétrica da marca Inlite Ventuspro.
+5- Bomba Gravimétrica da marca Formis - Turam
+131064077787500305244586487000 -127000083058000487553092011500
+III – TIPOS DE AMOSTRADORES
+Os amostradores mais comuns utilizados para as análises químicas são:
+Cassetes com filtros internos para coleta do material capturado pelas bombas de amostragens, sendo os mais comuns filtros de PVC ou de Ester de Celuloses.
+Tubos adsorventes com materiais adsorventes internos para absorção dos gases/nevoas/vapores capturados pelas bombas de amostragens, sendo os mais comuns o Carvão ativado e a Sílica Gel
+Amostradores do tipo IOM que são utilizados juntamente dos separadores de partícula do tipo IOM, para frações inaláveis.
+Amostradores do tipo Bag, para a coleta integral do ar capturado pelas bombas de amostragens.
+IV – ACESSÓRIOS PARA COLETA DE AGENTES QUÍMICOS
+Dependendo do tipo de agente químico a ser coletado, o método de análise necessita de certos tipos de acessórios para que a coleta atenda 100% as diretrizes dos métodos de coleta, sendo eles:
+Para a coleta de frações respiráveis é utilizado um acessório chamado Ciclone, podendo ser de Alumínio, de Nylon ou de Plástico.
+Para a coleta de frações inaláveis é utilizado um acessório chamado Suporte IOM.
+Para a coleta de frações torácicas é utilizado um ciclone de alumínio ou Amostrador PPI Torácico:
+Para a coleta de agentes químicos em baixas vazões (&lt;1 L/min) é utilizado redutores de vazões.
+Para a coleta de alguns gases e vapores alguns métodos de coletas necessitam a utilização de impinger, que são tubos em vidros especiais que permitem que o gás/vapor passe por dentro do liquido interno e que fique retido para a análise.
+V - FUNDAMENTAÇÃO LEGAL
+Portaria nº 3.214/78 da Secretaria Especial do Trabalho, então vinculada ao Ministério da Economia, especificamente em seus Anexos 11, 12, 13 e 13A da Norma Regulamentadora nº 15.
+ACGIH – Association Advancing Occupational and Environmental Health.
+FUNDACENTRO - Fundação Jorge Duprat Figueiredo de Segurança e Medicina do Trabalho.
+NIOSH - National Institute for Occupational Safety and Health.
+OSHA - Occupational Safety and Health Administration –
+NBR 12085 Agentes químicos no ar - Coleta de aerodispersóides por filtração - Método de ensaio;
+VI – PLANILHAS DE AVALIAÇÕES POR CLASSE DE CARGO
+Metodologia de cálculo — Correção pela Brief &amp; Scala: os limites da ACGIH são definidos para jornada de 40 horas semanais; como a jornada brasileira é de 44 horas, o Limite de Tolerância ACGIH é corrigido pelo fator de redução de Brief &amp; Scala — FR = (Hsp/Hsr) × ((168 − Hsr)/(168 − Hsp)), onde Hsp = 40 h (padrão ACGIH), Hsr = 44 h (jornada real) e 168 = horas/semana, resultando em FR = 0,88. O limite corrigido (LT ACGIH × 0,88) é o valor comparado com a concentração obtida.
+DADOS DA AMOSTRAGEM
+Cargo
+Pintor
+Trabalhador (a)
+Ana Souza
+Setor
+Acabamento
+Jornada de trabalho
+8h48
+Datas
+Data da coleta
+10/06/2026
+Data da análise
+20/06/2026
+Agentes Analisados (CAS)
+Tolueno
+Fonte Geradora:
+Laboratorio X
+Método de Coleta
+Bomba de amostragem – NHO 08
+Métodos Analíticos
+NIOSH 1501
+Filtro
+Tubo de carvao SKC 226-01
+Bomba Gravimétrica
+Bomba Gravimétrica da marca SKC AirChek A63555
+Calibrador de Fluxo de AR.
+Defender 510M – Série: 126958
+Filtro Número
+TCP1001
+Memória de Campo
+Vazão Inicial (L/min): 0,100
+Vazão Fina (L/min): 0,102
+Vazão Média (L/min):
+0,10000
+Variação da vazão (%): 2,0
+Tempo de Coleta (Min): 240
+Volume Amostrado (L): 24,0
+Tempo de exposição ao agente durante a jornada de trabalho: 480
+Acessórios utilizados: Redutor de vazão
+RESULTADOS NR-15
+Limite de Tolerância
+78
+Nível de Ação
+39
+Concentração (ppm)
+18,5
+RESULTADOS ACGIH
+Limite de Tolerância
+20
+Nível de Ação
+10
+Concentração (ppm)
+18,5
+Aplicando o fator de redução de Brief &amp; Scala (FC = 0,88) para a jornada de 44 horas semanais, o Limite de Tolerância ACGIH–TWA corrigido é 17,6 ppm. A concentração obtida (18,5 ppm) está ACIMA do LT corrigido; situação considerada IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação.
+RESULTADOS ACGIH
+Limite de Tolerância
+Não se aplica (agente sem TLV-STEL ACGIH)
+Nível de Ação
+-
+Concentração (ppm)
+18,5
+De acordo com a ACGIH, o TLV‑STEL não possui nível de ação.
+CONCLUSÃO
+Pelo que ficou evidenciado, comparando-se a concentração obtida com o respectivo Limite de Tolerância conforme a Norma Regulamentadora – 15, verifica-se que a concentração obtida (18,5) está abaixo do Limite de Tolerância (78), caracterizando situação REGULAR. Quanto à ACGIH (LT-TWA corrigido pela Brief &amp; Scala = 17,6 ppm): a concentração ultrapassa o limite corrigido, situação IRREGULAR.
+VIII – MEMORIAL FOTOGRÁFICO
+IX – QUADRO RESUMO DAS AVALIAÇÕES
+SETOR
+CARGO / LOCAL
+AGENTE AVALIADO
+RESULTADO
+Acabamento
+Pintor
+Tolueno
+18,5 (REGULAR)
+X – RESULTADOS DAS ANÁLISES LABORATORIAIS
+XI – CERTIFICADO DE CALIBRAÇÃO DO CALIBRADOR DE FLUXO DE AR
+XII– RESPONSABILIDADE TÉCNICA
+ELABORAÇÃO
+_________________________________________
+CRISTIANO DE CASTRO MAGALHÃES GOMES
+Engenheiro de Segurança do Trabalho
+Registro CREA 57928/D MG
+RESPONSÁVEL PELA COLETA
+_________________________________________
+Luiz Roberto de Assis
+Registro: MG81584
+XII – COPIA DA CARTEIRA DE CONSELHO DE CLASSE (CREA)
+Cristiano de Castro Magalhães Gomes
+cristiano.gomes@ocupacional.com.br
+Telefone: (31) 99543-8238

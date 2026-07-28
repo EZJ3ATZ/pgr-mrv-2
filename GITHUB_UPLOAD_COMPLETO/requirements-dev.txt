@@ -1,0 +1,7 @@
+# Dependências só de teste — não vão para produção.
+# O requirements.txt roda o app; este roda a suíte.
+#   py -m pip install -r requirements.txt -r requirements-dev.txt
+#   py -m pytest -q
+-r requirements.txt
+pytest>=8.0
+pypdf>=4.0        # extração de texto dos PDFs de planilha de campo nos testes
