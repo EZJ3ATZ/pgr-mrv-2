@@ -109,6 +109,60 @@ def test_quimico_nao_traz_residuo_do_template():
     assert '65.50-2-00' not in t, 'CNAE do template reapareceu'
 
 
+def test_quimico_resumo_e_conclusao_nao_se_contradizem():
+    """O bug de 28/07: o quadro resumo (seção IX) dizia "18,5 (REGULAR)" enquanto a
+    conclusão (seção VI) dizia IRREGULAR pela ACGIH — o LT-TWA de 20 ppm corrigido
+    pela Brief & Scala cai para 17,6 e a concentração de 18,5 passa. Quem lia só o
+    resumo via REGULAR numa exposição acima do limite corrigido.
+
+    As duas seções agora dividem `_classificar_quimico`. Este teste é a trava: se
+    alguém mexer numa e não na outra, quebra aqui."""
+    t = _gera('quimico')
+    corpo_acgih_irregular = 'a concentração ultrapassa o limite corrigido, situação IRREGULAR' in t
+    resumo_acgih_irregular = 'ACGIH: IRREGULAR' in t
+    assert corpo_acgih_irregular == resumo_acgih_irregular, (
+        f'seção VI e IX discordam sobre a ACGIH: corpo diz irregular='
+        f'{corpo_acgih_irregular}, resumo diz irregular={resumo_acgih_irregular}')
+    # e o resumo tem que nomear as DUAS normas, não um veredicto solto
+    assert 'NR-15: REGULAR' in t, 'resumo não nomeia o veredicto da NR-15'
+    assert 'ACGIH: IRREGULAR' in t, 'resumo não nomeia o veredicto da ACGIH'
+
+
+@pytest.mark.parametrize('conc,ltnr15,lttwa,esperado_nr15,esperado_acgih', [
+    ('18,5', '78', '20',  True,  False),   # o caso real: NR-15 passa, ACGIH (17,6) não
+    ('10,0', '78', '20',  True,  True),    # abaixo dos dois
+    ('90,0', '78', '20',  False, False),   # acima dos dois
+    ('17,6', '78', '20',  True,  False),   # exatamente no LT corrigido → não é "< LT"
+    ('17,5', '78', '20',  True,  True),    # logo abaixo do corrigido
+])
+def test_classificador_quimico_por_limite(conc, ltnr15, lttwa, esperado_nr15, esperado_acgih):
+    """A conta do Brief & Scala (LT-TWA × 0,88) e a comparação por limite, isoladas."""
+    from app import _classificar_quimico
+    r = _classificar_quimico({'concentracao': conc, 'ltNR15': ltnr15, 'ltTWA': lttwa})
+    assert r['nr15'][1] is esperado_nr15, f'NR-15 errado p/ {conc} vs {ltnr15}'
+    assert r['acgih'][2] is esperado_acgih, (
+        f'ACGIH errado p/ {conc} vs {lttwa}×0,88={float(lttwa) * 0.88}')
+    assert r['ok_geral'] is (esperado_nr15 and esperado_acgih)
+
+
+def test_classificador_nao_detectado_e_regular():
+    """"<" ou N.D. = abaixo do limite de detecção, logo abaixo de qualquer LT (#9)."""
+    from app import _classificar_quimico
+    for conc in ('< 0,5', 'N.D.', 'ND', ''):
+        r = _classificar_quimico({'concentracao': conc, 'ltNR15': '78', 'ltTWA': '20'})
+        assert r['nd'] is True and r['ok_geral'] is True, f'{conc!r} deveria ser regular'
+
+
+def test_classificador_stel_so_conta_ate_15min():
+    """TLV-STEL é limite de curta duração: só se aplica quando a coleta tem <= 15 min
+    (item 2 do Bernardo — não exibir STEL quando não se aplica)."""
+    from app import _classificar_quimico
+    base = {'concentracao': '50', 'ltNR15': '78', 'ltSTEL': '40'}
+    assert _classificar_quimico({**base, 'tempoColeta': '10'})['stel'] is not None
+    assert _classificar_quimico({**base, 'tempoColeta': '240'})['stel'] is None, \
+        'STEL aplicado a coleta de 4h — não é limite de curta duração'
+
+
 def test_ruido_quadro_resumo_traz_TODAS_as_avaliacoes():
     """Regressão 12/06: quadro resumo não era populado e mantinha linha fantasma."""
     t = _gera('ruido')

@@ -1528,9 +1528,75 @@ def _q_sec_head(xml, text):
     return ts, te
 
 
+def _qf_num(v):
+    """Primeiro número de um campo de limite/concentração ('20 ppm' → 20.0)."""
+    try:
+        return float(str(v).split()[0].replace(',', '.'))
+    except Exception:
+        return None
+
+
+def _fmt_num(x):
+    """4 casas, sem zeros à direita, decimal com vírgula (padrão do laudo)."""
+    return (f'{x:.4f}'.rstrip('0').rstrip('.')).replace('.', ',')
+
+
+def _classificar_quimico(ev):
+    """Veredicto por limite de UMA avaliação química. FONTE ÚNICA da seção VI
+    (conclusão por avaliação) e da IX (quadro resumo).
+
+    Existe porque as duas seções faziam a própria conta e podiam discordar: a IX
+    comparava com UM limite só (`ltNR15`, ou `ltTWA` como fallback) e estampava
+    "18,5 (REGULAR)" numa avaliação que a VI concluía IRREGULAR pela ACGIH —
+    o LT-TWA de 20 ppm corrigido pela Brief & Scala cai para 17,6 e a concentração
+    passava. Quem batia o olho só no resumo lia REGULAR numa exposição acima do
+    limite corrigido. Achado em 28/07/2026 e corrigido a pedido do Matheus.
+
+    Devolve dict:
+      conc     float | None   — concentração
+      nd       bool           — "<" ou N.D.: abaixo do limite de detecção
+      nr15     (limite, ok)   | None
+      acgih    (lt_corrigido, unidade, ok) | None   — LT-TWA × 0,88
+      stel     (limite, ok)   | None                — só quando duração <= 15 min
+      ok_geral bool | None    — todos os limites aplicáveis atendidos
+    """
+    conc_txt = str(ev.get('concentracao', '') or '').strip()
+    nd = ('<' in conc_txt) or conc_txt.upper() in ('N.D.', 'ND', 'NÃO DETECTADO', '')
+    cv = _qf_num(conc_txt)
+
+    r = {'conc': cv, 'nd': nd, 'nr15': None, 'acgih': None, 'stel': None,
+         'ok_geral': None}
+    if nd:
+        # Não detectado = abaixo do LD e portanto de qualquer LT (#9 Bernardo).
+        r['ok_geral'] = True
+        return r
+
+    ltn = _qf_num(ev.get('ltNR15', ''))
+    if ltn is not None and cv is not None:
+        r['nr15'] = (ltn, cv < ltn)
+
+    ltw = _qf_num(ev.get('ltTWA', ''))
+    if ltw is not None and cv is not None:
+        _um = re.search(r'(mg/m³|mg/m3|µg/m³|μg/m³|ppm|mg|f/cc)',
+                        str(ev.get('ltTWA', '')), re.I)
+        ltc = ltw * 0.88                      # Brief & Scala, jornada de 44h
+        r['acgih'] = (ltc, (_um.group(1).lower() if _um else 'ppm'), cv < ltc)
+
+    lts = _qf_num(ev.get('ltSTEL', ''))
+    dur = _qf_num(ev.get('tempoColeta', ''))
+    if lts is not None and cv is not None and dur is not None and dur <= 15:
+        r['stel'] = (lts, cv < lts)           # STEL só se aplica a <= 15 min
+
+    veredictos = [v[-1] for v in (r['nr15'], r['acgih'], r['stel']) if v is not None]
+    r['ok_geral'] = all(veredictos) if veredictos else None
+    return r
+
+
 def _build_ix_xml(evals):
     """Build section IX Quadro Resumo table from evaluations."""
-    cws   = [2500, 2500, 2500, 1860]
+    # RESULTADO ganhou largura (1860 → 2460) porque agora cabe mais de um
+    # veredicto na célula; os outros 3 cederam 200 cada e o total não muda.
+    cws   = [2300, 2300, 2300, 2460]
     total = sum(cws)
     bdr   = ('<w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
              '<w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>'
@@ -1557,25 +1623,36 @@ def _build_ix_xml(evals):
     rows = ''
     for ev in evals:
         conc = ev.get('concentracao', 'N.D.')
-        lt   = ev.get('ltNR15', '') or ev.get('ltTWA', '')
         cs   = str(conc).strip()
-        # Não detectado ("<" ou N.D.) = abaixo do limite de detecção → REGULAR, em VERDE (#9 Bernardo)
-        _nd  = ('<' in cs) or cs.upper() in ('N.D.', 'ND', 'NÃO DETECTADO', '')
-        if _nd:
+        cl   = _classificar_quimico(ev)
+        # Um veredicto POR LIMITE, nomeando a norma — o resumo tem que contar a
+        # mesma história da conclusão da seção VI (#8 Bernardo).
+        if cl['nd']:
             fill = 'C6EFCE'
             res  = (cs + ' (NÃO DETECTADO)') if (cs and cs.upper() not in ('N.D.', 'ND')) else 'N.D. (NÃO DETECTADO)'
         else:
-            try:
-                cv  = float(cs.split()[0].replace(',', '.'))
-                ltv = float(str(lt).split()[0].replace(',', '.')) if lt else None
-                if ltv is not None and cv < ltv:
-                    fill, res = 'C6EFCE', f'{conc} (REGULAR)'
-                elif ltv is not None:
-                    fill, res = 'FFC7CE', f'{conc} (IRREGULAR)'
-                else:
-                    fill, res = 'FFFFFF', conc or 'N.D.'
-            except Exception:
-                fill, res = 'FFFFFF', conc or 'N.D.'
+            partes = []
+            if cl['nr15'] is not None:
+                partes.append('NR-15: ' + ('REGULAR' if cl['nr15'][1] else 'IRREGULAR'))
+            if cl['acgih'] is not None:
+                partes.append('ACGIH: ' + ('REGULAR' if cl['acgih'][2] else 'IRREGULAR'))
+            if cl['stel'] is not None:
+                partes.append('STEL: ' + ('REGULAR' if cl['stel'][1] else 'IRREGULAR'))
+            res = f'{conc} ({" · ".join(partes)})' if partes else (conc or 'N.D.')
+
+            # Cor: verde só quando TODOS os limites são atendidos. Quando a NR-15
+            # passa mas a ACGIH não, vai AMARELO em vez de vermelho — legalmente
+            # conforme e tecnicamente acima não é a mesma coisa que estourar a
+            # NR-15, e pintar tudo de vermelho apagaria essa diferença.
+            _nr15_ok = cl['nr15'][1] if cl['nr15'] is not None else None
+            if cl['ok_geral'] is None:
+                fill = 'FFFFFF'
+            elif cl['ok_geral']:
+                fill = 'C6EFCE'
+            elif _nr15_ok is False:
+                fill = 'FFC7CE'
+            else:
+                fill = 'FFEB9C'
         # CARGO p/ amostragem pessoal; LOCAL/ambiente (campo trabalhador) p/ amostragem
         # de área/fixa, em vez de "NÃO INFORMADO" (Matheus: usar o ambiente da planilha de campo).
         _cl = (ev.get('cargo', '') or '').strip()
@@ -2303,13 +2380,9 @@ def gerar_quimico_bytes(d):
                  'a adoção imediata de medidas de controle e nova avaliação após '
                  'implementação.')
 
-    def _qf(v):
-        # Mesma conversão usada em _build_ix_xml (quadro resumo IX) —
-        # garante que VI e IX classifiquem REGULAR/IRREGULAR do mesmo jeito
-        try:
-            return float(str(v).split()[0].replace(',', '.'))
-        except Exception:
-            return None
+    # Mesmo parser do quadro resumo IX (`_classificar_quimico`) — VI e IX precisam
+    # classificar REGULAR/IRREGULAR do mesmo jeito, então dividem a função.
+    _qf = _qf_num
 
     blocks = []
     for i, ev in enumerate(evals):
