@@ -26,7 +26,11 @@ EMPRESA = {
     'cep': '30000-000',
     'cnae': '25.11-0-00',
     'descricaoCnae': 'Fabricacao de estruturas metalicas',
-    'grauRisco': '3',
+    # 4, não 3, de propósito: o template do PGR traz '03' e o do calor traz '2'.
+    # Com grau 3 o PGR sairia '03' — idêntico ao valor do template — e o golden
+    # ficaria CEGO: não distinguiria "substituiu certo" de "não substituiu nada".
+    # O zero-padding de 1 dígito tem teste próprio.
+    'grauRisco': '4',
     'telefone': '(31) 3333-3333',
     'email': 'contato@golden.com.br',
     'responsavel': 'Responsavel Teste',
@@ -148,6 +152,11 @@ PGR = {
     'cidade': 'Belo Horizonte',
     'uf': 'MG',
     'cargos': ['SOLDADOR', 'PINTOR', 'AUXILIAR DE PRODUCAO'],
+    # Vêm do CADASTRO da empresa (a rota /gerar busca com
+    # `db.dados_cadastro_empresa`), não do formulário — o form do PGR não pede.
+    'cnae': EMPRESA['cnae'],
+    'descricao_cnae': EMPRESA['descricaoCnae'],
+    'grau_risco': EMPRESA['grauRisco'],
 }
 
 

@@ -40,7 +40,9 @@ def _gera(qual):
     elif qual == 'pgr':
         blob = A.gerar_docx_bytes(
             PGR['nome'], PGR['cnpj'], PGR['rua'], PGR['numero'], PGR['complemento'],
-            PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'])
+            PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'],
+            cnae=PGR['cnae'], descricao_cnae=PGR['descricao_cnae'],
+            grau_risco=PGR['grau_risco'])
     else:
         raise AssertionError(f'gerador desconhecido: {qual}')
     return normalizar(docx_texto(blob))
@@ -297,12 +299,73 @@ def test_calor_deveria_aguentar_tbn_nao_numerico_sem_500():
     assert ibutg >= 0
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    'ACHADO 28/07: o PGR não substitui CNAE, descrição do CNAE nem grau de risco — '
-    'todo PGR sai com CNAE 43.99-1-03 / "Obras" / Grau de Risco 03, da empresa de '
-    'referência do template. A rota /gerar nem coleta esses campos, então o fix '
-    'precisa de decisão: o form passa a pedir, ou puxa da empresa cadastrada?'))
-def test_pgr_deveria_respeitar_o_cnae_da_empresa():
+def test_pgr_respeita_cnae_descricao_e_grau_do_cadastro():
+    """Corrigido em 28/07: o PGR não substituía CNAE, descrição do CNAE nem grau de
+    risco, então todo documento saía com os da empresa de referência do template
+    (43.99-1-03 / "Obras de alvenaria" / grau 03). Decisão do Matheus: puxar do
+    CADASTRO da empresa (`db.dados_cadastro_empresa`), já que o form não pede."""
     t = _gera('pgr')
     assert '43.99-1-03' not in t, 'CNAE do template ainda no PGR'
-    assert 'Obras' not in t, 'descrição CNAE do template ainda no PGR'
+    assert 'Obras de alvenaria' not in t, 'descrição CNAE do template ainda no PGR'
+    assert PGR['cnae'] in t, 'CNAE do cadastro não chegou ao PGR'
+    assert PGR['descricao_cnae'] in t, 'descrição do CNAE do cadastro não chegou'
+    # grau '4' do cadastro sai como '04' (o template usa 2 dígitos) e o '03' do
+    # template não pode sobrar em NENHUM dos dois lugares: capa e linha do
+    # treinamento de CIPA, cujo dimensionamento depende do grau.
+    assert 'Grau de Risco 04' in t, 'grau do cadastro não chegou à linha da CIPA'
+    assert 'Grau de Risco 03' not in t, 'grau do template sobrou no PGR'
+    assert '\n04\n' in ('\n' + t + '\n'), 'grau do cadastro não chegou à capa'
+
+
+def test_pgr_grau_de_1_digito_ganha_zero_a_esquerda():
+    """O template escreve o grau com 2 dígitos ('03'). Cadastro com '3' tem de sair
+    '03' para o documento não misturar duas tipografias."""
+    import app as A
+    blob = A.gerar_docx_bytes(
+        PGR['nome'], PGR['cnpj'], PGR['rua'], PGR['numero'], PGR['complemento'],
+        PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'],
+        cnae='11.11-1-11', descricao_cnae='X', grau_risco='3')
+    t = normalizar(docx_texto(blob))
+    assert 'Grau de Risco 03' in t, "grau '3' deveria sair como '03'"
+
+
+def test_pgr_marca_faltante_com_interrogacao_em_vez_do_template():
+    """Cadastro sem os dados NÃO pode cair no valor do template (que é de outra
+    empresa). Vira '???', a convenção que o PGR já usa para medição sem data
+    confirmada — em branco no meio da capa passaria batido."""
+    import app as A
+    blob = A.gerar_docx_bytes(
+        PGR['nome'], PGR['cnpj'], PGR['rua'], PGR['numero'], PGR['complemento'],
+        PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'],
+        cnae='', descricao_cnae='', grau_risco='')
+    t = normalizar(docx_texto(blob))
+    assert '43.99-1-03' not in t, 'sem CNAE no cadastro, vazou o do template'
+    assert 'Obras de alvenaria' not in t, 'sem descrição, vazou a do template'
+    assert 'Grau de Risco 03' not in t, 'sem grau no cadastro, vazou o do template'
+    assert '???' in t, 'campo ausente deveria aparecer como ???'
+
+
+def test_dados_cadastro_empresa_casa_por_cnpj_e_por_nome():
+    """A busca tem de usar a MESMA precedência do `enriquecer_empresa` (CNPJ, depois
+    nome exato) — senão o caminho laudo→cadastro e o cadastro→laudo discordam sobre
+    qual empresa é qual."""
+    from controle.db import dados_cadastro_empresa, get_db, init_db
+    init_db()
+    with get_db() as conn:
+        conn.execute("DELETE FROM empresas WHERE nome LIKE 'CADASTRO TESTE%'")
+        conn.execute("INSERT INTO empresas (nome, cnpj, cnae, descricao_cnae, grau_risco) "
+                     "VALUES ('CADASTRO TESTE A', '99.888.777/0001-66', '25.11-0-00', "
+                     "'Estruturas metalicas', '3')")
+        conn.execute("INSERT INTO empresas (nome, cnae, grau_risco) "
+                     "VALUES ('CADASTRO TESTE B', '10.20-3-00', '4')")
+
+    por_cnpj = dados_cadastro_empresa('nome que nao existe', '99.888.777/0001-66')
+    assert por_cnpj['cnae'] == '25.11-0-00' and por_cnpj['grau_risco'] == '3', \
+        'CNPJ deveria ter precedência sobre o nome'
+
+    por_nome = dados_cadastro_empresa('cadastro teste b')   # case-insensitive
+    assert por_nome['cnae'] == '10.20-3-00' and por_nome['grau_risco'] == '4'
+    assert por_nome['descricao_cnae'] == '', 'campo ausente deveria vir vazio, não None'
+
+    nada = dados_cadastro_empresa('EMPRESA QUE NAO EXISTE', '')
+    assert nada == {'id': None, 'cnae': '', 'descricao_cnae': '', 'grau_risco': ''}

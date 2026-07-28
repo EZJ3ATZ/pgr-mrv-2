@@ -27,7 +27,7 @@ MG
 CNAE
 25.11-0-00
 Grau de Risco
-3
+4
 Descrição CNAE
 Fabricacao de estruturas metalicas
 Responsável

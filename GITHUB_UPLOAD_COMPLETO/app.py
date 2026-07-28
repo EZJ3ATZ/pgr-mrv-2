@@ -857,12 +857,30 @@ def build_cargo_section(cargo, cidade, uf):
 
     return sc + titulo + risk
 
-def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, uf, cargos):
+def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, uf, cargos,
+                     cnae='', descricao_cnae='', grau_risco=''):
+    """Gera o PGR. `cnae`/`descricao_cnae`/`grau_risco` vêm do CADASTRO da empresa
+    (`db.dados_cadastro_empresa`) — antes de 28/07/2026 não eram substituídos e o
+    documento saía com os da empresa de referência do template para todo cliente.
+    Campo sem valor no cadastro vira '???', a convenção que o PGR já usa para
+    medição sem data confirmada (GHE_SEM_DATA) — some no meio da capa é pior."""
     data_atual = mes_ano()
     partes = [p for p in [rua, (f'Nº {numero}' if numero else ''), complemento] if p.strip()]
     endereco = ' '.join(partes) or 'A definir'
     part1 = load_tpl('part1')
     part3 = load_tpl('part3')
+
+    # Faltando no cadastro → '???' (não o valor do template, que é de outra
+    # empresa, nem vazio, que passa batido no meio da tabela da capa).
+    _pgr_cnae = xs(str(cnae or '').strip()) or '???'
+    _pgr_desc = xs(str(descricao_cnae or '').strip()) or '???'
+    _pgr_grau = str(grau_risco or '').strip()
+    # O template escreve o grau com 2 dígitos ('03'); mantém a tipografia quando
+    # o cadastro tem só '3', para o documento não ficar com dois estilos.
+    if _pgr_grau.isdigit() and len(_pgr_grau) == 1:
+        _pgr_grau = _pgr_grau.zfill(2)
+    _pgr_grau = xs(_pgr_grau) or '???'
+
     def subst(t):
         t = t.replace('63.370.132 MARCIO DA SILVA', xs(nome))
         t = t.replace('63.370.132/0001-25', xs(cnpj))
@@ -873,6 +891,16 @@ def gerar_docx_bytes(nome, cnpj, rua, numero, complemento, cep, bairro, cidade, 
         t = t.replace('RIBEIRÃO DAS NEVES - MG</w:t>', f'{xs(cidade).upper()} - {xs(uf).upper()}</w:t>')
         t = t.replace('Setor: Ribeirão das Neves - MG</w:t>', f'Setor: {xs(cidade)} - {xs(uf)}</w:t>')
         t = t.replace(f'>{ORIG["data"]}<', f'>{data_atual}<')
+        # ── CNAE / descrição / grau de risco, do cadastro da empresa ──────
+        # Ordem importa: a string mais longa primeiro. Em part1 (capa) o valor do
+        # grau está em parágrafo separado do rótulo e '>03<' é ÚNICO no arquivo;
+        # em part3 ele vem no MESMO run, dentro do nome do treinamento
+        # ("Treinamento CIPA - NR-05 - Grau de Risco 03"), que também tem de
+        # acompanhar a empresa — o dimensionamento da CIPA depende do grau.
+        t = t.replace('43.99-1-03', _pgr_cnae)
+        t = t.replace('Obras de alvenaria', _pgr_desc)
+        t = t.replace('Grau de Risco 03', f'Grau de Risco {_pgr_grau}')
+        t = t.replace('>03<', f'>{_pgr_grau}<')
         return t
     p1 = subst(part1)
     p3 = subst(part3)
@@ -1146,8 +1174,27 @@ def gerar():
         alertas.append(f'Campos não preenchidos: {", ".join(faltando)}. '
                        f'O PGR será gerado com esses campos em branco.')
 
+    # 4. CNAE / descrição / grau de risco vêm do CADASTRO (decisão 28/07/2026).
+    # O form do PGR não pede esses campos; antes disto o documento saía com os da
+    # empresa de referência do template para todo cliente.
+    from controle.db import dados_cadastro_empresa
+    _cad = dados_cadastro_empresa(nome, cnpj)
+    _sem = [lbl for lbl, val in (('CNAE', _cad['cnae']),
+                                 ('Descrição do CNAE', _cad['descricao_cnae']),
+                                 ('Grau de Risco', _cad['grau_risco'])) if not val]
+    if _sem:
+        _onde = ('a empresa não está cadastrada' if _cad['id'] is None
+                 else 'o cadastro da empresa está sem esses dados')
+        alertas.append(
+            f'{", ".join(_sem)}: {_onde}. Esses campos sairão como "???" no PGR — '
+            f'preencha o cadastro da empresa e gere de novo. '
+            f'(CNAE e descrição se preenchem sozinhos ao gerar um laudo de calor, '
+            f'químico ou ruído; o grau de risco é preenchido à mão.)')
+
     try:
-        docx_bytes = gerar_docx_bytes(nome,cnpj,rua,numero,compl,cep,bairro,cidade,uf,cargos)
+        docx_bytes = gerar_docx_bytes(nome,cnpj,rua,numero,compl,cep,bairro,cidade,uf,cargos,
+                                     cnae=_cad['cnae'], descricao_cnae=_cad['descricao_cnae'],
+                                     grau_risco=_cad['grau_risco'])
         nome_safe = re.sub(r'[/\\:*?"<>|]','_',nome)
         filename = f"PGR - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
 

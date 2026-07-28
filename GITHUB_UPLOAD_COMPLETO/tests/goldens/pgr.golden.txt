@@ -31,11 +31,11 @@ Centro
 UF
 MG
 CNAE
-43.99-1-03
+25.11-0-00
 Grau de Risco
-03
+04
 Descrição CNAE
-Obras de alvenaria
+Fabricacao de estruturas metalicas
 IDENTIFICAÇÃO DA EMPRESA DE ENGENHARIA E MEDICINA DO TRABALHO
 Empresa......................: Ocupacional Medicina do Trabalho Ltda.
 CNPJ...........................: 26.231.266/0001-39
@@ -2166,7 +2166,7 @@ TREINAMENTO
 C. HORÁRIA
 RESPONSÁVEIS
 PRAZO
-Treinamento CIPA - NR-05 - Grau de Risco 03
+Treinamento CIPA - NR-05 - Grau de Risco 04
 16h
 GOLDEN INDUSTRIA LTDA
 A definir

@@ -909,6 +909,11 @@ def _migrate(conn):
     # (enriquecer_empresa). Reusado nos próximos laudos/planilhas (cruzamento).
     for _c in ('cep', 'endereco', 'numero', 'bairro', 'cnae', 'descricao_cnae'):
         _add_col(conn, 'empresas', _c, 'TEXT')
+    # grau_risco (NR-4, Quadro I — decorre do CNAE). Fica FORA do backfill
+    # automático de propósito: os formulários de laudo trazem '3' como default,
+    # então gravar o que veio do form encheria o cadastro de grau 3 falso. É
+    # preenchido à mão por empresa e consumido pelo PGR (28/07/2026).
+    _add_col(conn, 'empresas', 'grau_risco', 'TEXT')
 
     # ── demandas: campos Planner ──
     demandas_extra = {
@@ -2523,6 +2528,43 @@ def upsert_empresa(cnpj, nome, **extra):
              extra.get('telefone'), extra.get('email'), extra.get('cidade'), extra.get('uf'))
         )
         return cur.lastrowid
+
+
+def dados_cadastro_empresa(nome, cnpj=None):
+    """CNAE, descrição do CNAE e grau de risco do CADASTRO da empresa.
+
+    O PGR não coletava esses 3 campos em nenhum lugar, então o documento saía com
+    os valores da empresa de referência do template (CNAE 43.99-1-03 / "Obras de
+    alvenaria" / grau 03) para TODO cliente. Decisão do Matheus em 28/07/2026:
+    puxar do cadastro, que é a fonte de verdade.
+
+    Casa por CNPJ e, sem CNPJ, por nome exato — MESMA precedência do
+    `enriquecer_empresa` (que faz o caminho inverso: laudo → cadastro), para os
+    dois concordarem sobre qual empresa é qual.
+
+    Devolve sempre o dict, com string vazia no que não achou:
+      {id, cnae, descricao_cnae, grau_risco}
+    """
+    nome = str(nome or '').strip()
+    cnpj = str(cnpj or '').strip()
+    vazio = {'id': None, 'cnae': '', 'descricao_cnae': '', 'grau_risco': ''}
+    if not (nome or cnpj):
+        return vazio
+    with get_db() as conn:
+        row = None
+        if cnpj:
+            row = conn.execute('SELECT * FROM empresas WHERE cnpj = ?', (cnpj,)).fetchone()
+        if not row and nome:
+            row = conn.execute(
+                'SELECT * FROM empresas WHERE LOWER(TRIM(nome)) = LOWER(TRIM(?)) '
+                'ORDER BY COALESCE(pendente, 0) ASC, id ASC LIMIT 1', (nome,)).fetchone()
+        if not row:
+            return vazio
+        d = row_to_dict(row)
+        return {'id': d.get('id'),
+                'cnae': (d.get('cnae') or '').strip(),
+                'descricao_cnae': (d.get('descricao_cnae') or '').strip(),
+                'grau_risco': (d.get('grau_risco') or '').strip()}
 
 
 def enriquecer_empresa(dados):
