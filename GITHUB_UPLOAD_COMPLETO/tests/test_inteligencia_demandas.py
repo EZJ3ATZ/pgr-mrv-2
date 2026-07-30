@@ -115,6 +115,70 @@ def test_btx_soma_mencoes_por_unidade():
     assert _qtd(ags, 'Xileno') == 2
 
 
+# ── "N medições de X" (caso Easy Equipamentos OS 6605694) ─────────────
+# A OS listava 7 agentes e a tela mostrava 4: "medições" não estava na lista
+# de unidades de contagem (quantidade virava 1) e agente fora do dicionário
+# sumia calado.
+
+_EASY_DESC = """Empresa: EASY EQUIPAMENTOS ODONTOLOGICOS LTDA
+CNPJ: 03.440.703/0001-29
+Serviço: Avaliações ambientais
+
+1 medição de Ácido Nítrico
+1 medição de Ácido Clorídrico
+1 medição de Sais de Cianeto
+1 medição de Hidróxido de Sódio
+1 medição de Prata
+1 medição de Níquel
+7 medições de Ruído"""
+
+
+def test_medicoes_conta_quantidade():
+    # "7 medições de Ruído" precisa virar 7, não 1.
+    ags = extrair_agentes_multifonte(descricao='7 medições de Ruído')
+    assert _qtd(ags, 'Ruído Ocupacional') == 7
+
+
+def test_easy_extrai_os_sete_agentes():
+    ags = extrair_agentes_multifonte(descricao=_EASY_DESC)
+    assert len(ags) == 7, [a.canonical for a in ags]
+    assert _qtd(ags, 'Ruído Ocupacional') == 7
+    assert sum(a.quantidade for a in ags) == 13
+    nomes = _canonicos(ags)
+    for esperado in ('Ácido Nítrico', 'Ácido Clorídrico', 'Cianetos',
+                     'Prata', 'Níquel', 'Soda Cáustica (NaOH)'):
+        assert esperado in nomes, f'{esperado} sumiu: {nomes}'
+
+
+def test_agente_fora_do_dicionario_nao_some():
+    # Lista de substâncias é aberta: o que não está no dicionário ainda
+    # precisa chegar ao técnico (com confiança menor).
+    ags = extrair_agentes_multifonte(descricao='3 medições de Fosfina')
+    assert _qtd(ags, 'Fosfina') == 3
+
+
+def test_agente_livre_preserva_preposicao_minuscula():
+    ags = extrair_agentes_multifonte(descricao='1 medição de Metacrilato de Metila')
+    assert 'Metacrilato de Metila' in _canonicos(ags)
+
+
+def test_agente_livre_nao_inventa_a_partir_de_prosa():
+    # Âncora "N <unidade> de X" existe, mas X é item de processo — não é agente.
+    for texto in ('1 medição de campo prevista para segunda',
+                  '1 avaliação de cliente novo',
+                  '3 medições de funcionários do setor',
+                  '1 medição de prazo de entrega do laudo'):
+        assert extrair_agentes_multifonte(descricao=texto) == [], texto
+
+
+def test_medicoes_nao_derruba_soma_multiunidade():
+    # Estratégia de menção isolada não pode reduzir a soma por unidade.
+    ags = extrair_agentes_multifonte(
+        descricao='GGAL - 3 medições de ruído. GCM - 4 medições de ruído.'
+    )
+    assert _qtd(ags, 'Ruído Ocupacional') == 7
+
+
 # ── extrair_os_multifonte ─────────────────────────────────────────────
 
 def test_os_explicita_no_titulo():

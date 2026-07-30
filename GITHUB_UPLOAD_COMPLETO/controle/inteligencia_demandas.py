@@ -199,6 +199,50 @@ AGENTES_SST: Dict[str, List[str]] = {
         'acido sulfurico', 'ácido sulfúrico', 'h2so4',
         'neblina acida', 'neblina ácida',
     ],
+    'Ácido Nítrico': [
+        'acido nitrico', 'ácido nítrico', 'hno3', 'nitrico', 'nítrico',
+    ],
+    'Ácido Fluorídrico': [
+        'acido fluoridrico', 'ácido fluorídrico', 'hf', 'fluoridrico',
+        'fluorídrico', 'fluoreto de hidrogenio',
+    ],
+    'Ácido Fosfórico': [
+        'acido fosforico', 'ácido fosfórico', 'h3po4', 'fosforico',
+    ],
+    'Ácido Acético': [
+        'acido acetico', 'ácido acético', 'acetico', 'acético',
+    ],
+    'Cianetos': [
+        'cianeto', 'cianetos', 'sais de cianeto',
+        'cianeto de sodio', 'cianeto de potassio', 'acido cianidrico',
+        'ácido cianídrico', 'hcn',
+    ],
+    'Prata': [
+        'prata', 'compostos de prata', 'nitrato de prata',
+    ],
+    'Cobre': [
+        'cobre', 'fumos de cobre', 'compostos de cobre',
+    ],
+    'Alumínio': [
+        'aluminio', 'alumínio', 'fumos de aluminio',
+        'poeira de aluminio',
+    ],
+    'Estanho': [
+        'estanho', 'compostos de estanho',
+    ],
+    'Cobalto': [
+        'cobalto', 'compostos de cobalto',
+    ],
+    'Cloro': [
+        'cloro', 'cl2', 'gas cloro', 'gás cloro',
+    ],
+    'Isocianatos (MDI/TDI)': [
+        'isocianato', 'isocianatos', 'mdi', 'tdi', 'hdi',
+    ],
+    'Sulfeto de Hidrogênio': [
+        'sulfeto de hidrogenio', 'sulfeto de hidrogênio', 'h2s',
+        'gas sulfidrico', 'gás sulfídrico', 'acido sulfidrico',
+    ],
     'Agrotóxicos / Pesticidas': [
         'agrotoxicos', 'agrotóxicos', 'pesticidas', 'praguicidas',
         'defensivos agricolas', 'defensivos agrícolas', 'herbicidas',
@@ -437,9 +481,27 @@ _RE_REALIZAR = re.compile(
     r'realizar\s+(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s+(?:avalia[cç][aã][oe]s?\s+(?:de\s+)?)?(.{3,60})',
     re.I,
 )
-# Padrão "N pontos de X" / "N coletas de X"
+# Unidades de contagem que aparecem entre o número e o agente:
+# "7 MEDIÇÕES de Ruído", "3 pontos de Calor", "2 coletas de Benzeno".
+# "medição/medições" faltava aqui e é a palavra mais usada nas OS reais —
+# sem ela "7 medições de Ruído" era lido como quantidade 1.
+_UNIDADE_QTD = (
+    r'medi[cç][oõ]es|medi[cç][aã]o|pontos?|amostras?|coletas?|'
+    r'avalia[cç][oõ]es|avalia[cç][aã]o|dosimetrias?|monitoramentos?'
+)
+
+# Padrão "N pontos de X" / "N coletas de X" / "N medições de X"
 _RE_PONTOS = re.compile(
-    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*(?:pontos?|amostras?|coletas?|avalia[cç][oõ]es?)\s+(?:de\s+)?(.{3,50})',
+    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*(?:' + _UNIDADE_QTD + r')\s+(?:de\s+)?(.{3,50})',
+    re.I,
+)
+
+# Lookback de quantidade imediatamente antes de uma menção de agente.
+# Aceita tanto "8 Ruídos" (número colado) quanto "7 medições de Ruído"
+# (número separado do agente pela unidade de contagem).
+_RE_QTD_LOOKBACK = re.compile(
+    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s*'
+    r'(?:(?:' + _UNIDADE_QTD + r')\s+(?:de\s+|do\s+|da\s+|dos\s+|das\s+)?)?$',
     re.I,
 )
 # Padrão quantidade antes: "4 ruídos" / "4x ruído" / "quatro ruídos"
@@ -457,6 +519,118 @@ _ALIASES_AMBIGUOS  = {'co', 'pb', 'mn', 'ni', 'cd', 'hg', 'uv', 'iv'}
 # solto (o agente é sempre detectado pelo nome por extenso: "arsênio", "umidade",
 # "ergonomia"). Sem isto, o artigo "as" de qualquer texto virava "Arsênio".
 _ALIAS_PALAVRA_PT  = {'as', 'ur', 'ler'}
+
+
+def _upsert_max(
+    resultado: Dict[str, AgenteExtraido],
+    canonical: str,
+    qtd: int,
+    conf: float,
+    fonte: FonteInfo,
+) -> None:
+    """Grava o agente mantendo o MÁXIMO de quantidade e confiança já vistos.
+
+    As estratégias B/C leem uma menção isolada; a estratégia A soma todas as
+    menções do texto (OS multi-unidade). Sobrescrever direto fazia a leitura
+    isolada derrubar a soma — aqui a quantidade nunca regride.
+    """
+    ex = resultado.get(canonical)
+    if ex is None:
+        resultado[canonical] = AgenteExtraido(
+            canonical=canonical, quantidade=qtd,
+            tipo=_tipo_agente(canonical), fontes=[fonte], confianca=conf,
+        )
+        return
+    if conf > ex.confianca:
+        ex.confianca = conf
+        ex.fontes.append(fonte)
+    if qtd > ex.quantidade:
+        ex.quantidade = qtd
+
+
+# Palavras que denunciam que o "agente" capturado é, na verdade, item de
+# processo/documento — nunca vira medição de campo.
+_RUIDO_GENERICO = re.compile(
+    r'\b(laudo|treinamento|aet|ltcat|pcmso|ppra|pgr\b|ppp\b|proposta|'
+    r'faturamento|visita|reuni[aã]o|cliente|contato|email|e-mail|'
+    r'cronograma|relat[oó]rio|documento|planilha|assinatura|'
+    r'funcion[aá]rio|colaborador|cargo|fun[cç][aã]o|setor|GHE|'
+    r'campo|equipe|t[eé]cnico|prazo|entrega|dia|semana|m[eê]s)\b',
+    re.I,
+)
+
+# "N <unidade> de <AGENTE>" — âncora explícita de medição no texto da OS.
+_RE_AGENTE_LIVRE = re.compile(
+    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s*'
+    r'(?:' + _UNIDADE_QTD + r')\s+de\s+'
+    r'([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\-/()\.]{2,58})',
+    re.I,
+)
+
+
+def _agentes_desconhecidos(
+    texto: str,
+    peso_fonte: float,
+) -> List[Tuple[str, int, float, str]]:
+    """Captura agentes citados com âncora explícita mas ausentes do dicionário.
+
+    Só aceita a forma "N medições/pontos/coletas de X" — âncora forte o
+    bastante para não inventar agente a partir de prosa solta. Devolve
+    [(nome, quantidade, confianca, trecho), ...].
+    """
+    achados: List[Tuple[str, int, float, str]] = []
+    vistos: set = set()
+
+    for m in _RE_AGENTE_LIVRE.finditer(texto or ''):
+        bruto = m.group(2)
+        # Corta na primeira pontuação forte: pega "Sais de Cianeto" de
+        # "Sais de Cianeto\n1 medição de ..." sem arrastar a linha seguinte.
+        nome = re.split(r'[\n\r,;.:•|]', bruto)[0].strip(' -–—/')
+        if len(nome) < 3 or len(nome) > 58:
+            continue
+        if _RUIDO_GENERICO.search(nome):
+            continue
+        if not re.search(r'[A-Za-zÀ-ÿ]{3}', nome):
+            continue
+
+        nome_n = _norm(nome)
+        # Já é conhecido pelo dicionário? Então as estratégias A/B/C tratam.
+        if any(a in nome_n for a, _ in _ALIAS_SORTED
+               if len(a) >= _ALIAS_CURTO_MINLEN):
+            continue
+        if nome_n in vistos:
+            continue
+        vistos.add(nome_n)
+
+        qtd = _parse_int(m.group(1)) or 1
+        if not 1 <= qtd <= 99:
+            qtd = 1
+        # Abaixo dos agentes de dicionário, acima do corte de exibição (0.55):
+        # aparece para o técnico, mas sinalizado como menos confiante.
+        conf = round(0.70 * peso_fonte, 3)
+        trecho = m.group(0).strip()[:120]
+        achados.append((_titulo_quimico(nome), qtd, conf, trecho))
+
+    return achados
+
+
+# Preposições que ficam em minúscula no nome do agente: o .title() cru
+# devolvia "Metacrilato De Metila" na tela do técnico.
+_PREPOSICOES = {'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'a', 'o'}
+
+
+def _titulo_quimico(nome: str) -> str:
+    """Title-case respeitando preposições e siglas já em maiúscula."""
+    palavras = nome.split()
+    out = []
+    for i, p in enumerate(palavras):
+        if i > 0 and p.lower() in _PREPOSICOES:
+            out.append(p.lower())
+        elif p.isupper() and len(p) > 1:
+            out.append(p)          # sigla: MEK, TDI, BTX
+        else:
+            out.append(p.capitalize())
+    return ' '.join(out)
 
 
 def _extrair_agentes_de_texto(
@@ -526,7 +700,7 @@ def _extrair_agentes_de_texto(
             # Quantidade: olhar até 25 chars antes de CADA menção
             qtd = 1
             pre_txt = txt_n[max(0, start - 25):start]
-            m_qtd = re.search(r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[xX×\s]*$', pre_txt)
+            m_qtd = _RE_QTD_LOOKBACK.search(pre_txt)
             if m_qtd:
                 q = _parse_int(m_qtd.group(1))
                 if q and 1 <= q <= 30:
@@ -565,14 +739,10 @@ def _extrair_agentes_de_texto(
             if alias in agente_txt and len(alias) >= 4:
                 conf = round(0.90 * peso_fonte, 3)
                 fonte = FonteInfo(campo=campo, trecho=m.group(0)[:100], confianca=conf)
-                if canonical not in resultado or resultado[canonical].confianca < conf:
-                    resultado[canonical] = AgenteExtraido(
-                        canonical=canonical, quantidade=q or 1,
-                        tipo=_tipo_agente(canonical), fontes=[fonte], confianca=conf,
-                    )
+                _upsert_max(resultado, canonical, q or 1, conf, fonte)
                 break
 
-    # Estratégia C: "N pontos/coletas de X"
+    # Estratégia C: "N pontos/coletas/medições de X"
     for m in _RE_PONTOS.finditer(texto):
         q = _parse_int(m.group(1))
         agente_txt = _norm(m.group(2)[:50])
@@ -580,12 +750,19 @@ def _extrair_agentes_de_texto(
             if alias in agente_txt and len(alias) >= 4:
                 conf = round(0.88 * peso_fonte, 3)
                 fonte = FonteInfo(campo=campo, trecho=m.group(0)[:100], confianca=conf)
-                if canonical not in resultado or resultado[canonical].confianca < conf:
-                    resultado[canonical] = AgenteExtraido(
-                        canonical=canonical, quantidade=q or 1,
-                        tipo=_tipo_agente(canonical), fontes=[fonte], confianca=conf,
-                    )
+                _upsert_max(resultado, canonical, q or 1, conf, fonte)
                 break
+
+    # Estratégia D: agente FORA do dicionário ("1 medição de Sais de Cianeto").
+    # O dicionário é fechado e a lista de substâncias de higiene ocupacional é
+    # aberta — sem isto, todo reagente não previsto sumia calado da OS.
+    for canonical, qtd, conf, trecho in _agentes_desconhecidos(texto, peso_fonte):
+        if canonical not in resultado:
+            resultado[canonical] = AgenteExtraido(
+                canonical=canonical, quantidade=qtd, tipo='quimico',
+                fontes=[FonteInfo(campo=campo, trecho=trecho, confianca=conf)],
+                confianca=conf,
+            )
 
     return resultado
 
