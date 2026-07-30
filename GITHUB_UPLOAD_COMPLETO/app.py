@@ -1639,6 +1639,72 @@ def _classificar_quimico(ev):
     return r
 
 
+def _veredicto_quimico(ev):
+    """Veredicto de UMA avaliação no formato que a tela consome.
+
+    Mesma `_classificar_quimico` do laudo — a aba de resultados do laboratório
+    NÃO refaz a conta em JavaScript. Antes ela comparava com um limite só
+    (`ltNR15 || ltTWA`) e sem a correção Brief & Scala, então mostrava REGULAR
+    em avaliação que o laudo assinava como IRREGULAR: com LT-TWA 20 ppm (17,6
+    corrigido) uma concentração de 18,5 aparecia verde na tela e reprovava no
+    documento. É o mesmo furo que a seção IX tinha e que foi corrigido em
+    28/07/2026 — a tela ficou para trás.
+
+    nivel: nd | ok | atencao | ruim | sem_limite
+      atencao = NR-15 atendida mas ACGIH/STEL acima (legalmente conforme,
+      tecnicamente exposto) — mesma distinção que o quadro IX pinta de amarelo.
+    """
+    cl = _classificar_quimico(ev)
+    if cl['nd']:
+        return {'txt': 'NÃO DETECTADO', 'nivel': 'nd', 'detalhe': 'abaixo do limite de detecção'}
+
+    partes = []
+    if cl['nr15'] is not None:
+        partes.append('NR-15: ' + ('REGULAR' if cl['nr15'][1] else 'IRREGULAR'))
+    if cl['acgih'] is not None:
+        partes.append('ACGIH: ' + ('REGULAR' if cl['acgih'][2] else 'IRREGULAR')
+                      + f' (LT {_fmt_num(cl["acgih"][0])} {cl["acgih"][1]} corrigido)')
+    if cl['stel'] is not None:
+        partes.append('STEL: ' + ('REGULAR' if cl['stel'][1] else 'IRREGULAR'))
+
+    if cl['ok_geral'] is None:
+        return {'txt': 'sem limite', 'nivel': 'sem_limite',
+                'detalhe': 'nenhum limite informado para este agente'}
+    if cl['ok_geral']:
+        return {'txt': 'REGULAR', 'nivel': 'ok', 'detalhe': ' · '.join(partes)}
+
+    nr15_ok = cl['nr15'][1] if cl['nr15'] is not None else None
+    return {'txt': 'IRREGULAR',
+            'nivel': 'ruim' if nr15_ok is False else 'atencao',
+            'detalhe': ' · '.join(partes)}
+
+
+@app.route('/quimico/classificar', methods=['POST'])
+@login_required
+def quimico_classificar():
+    """Veredicto das avaliações químicas para a aba de resultados do lab.
+
+    A tela manda a lista e recebe o MESMO veredicto que sairá no laudo.
+    """
+    d = request.get_json(silent=True) or {}
+    avals = d.get('avaliacoes') or []
+    if not isinstance(avals, list):
+        return jsonify({'erro': 'avaliacoes deve ser uma lista'}), 400
+    if len(avals) > 500:
+        return jsonify({'erro': 'no máximo 500 avaliações por vez'}), 400
+    out = []
+    for ev in avals:
+        if not isinstance(ev, dict):
+            out.append({'txt': '—', 'nivel': 'sem_limite', 'detalhe': ''})
+            continue
+        try:
+            out.append(_veredicto_quimico(ev))
+        except Exception:
+            # Uma avaliação malformada não pode derrubar a grade inteira.
+            out.append({'txt': '—', 'nivel': 'sem_limite', 'detalhe': 'não foi possível avaliar'})
+    return jsonify({'resultados': out})
+
+
 def _build_ix_xml(evals):
     """Build section IX Quadro Resumo table from evaluations."""
     # RESULTADO ganhou largura (1860 → 2460) porque agora cabe mais de um

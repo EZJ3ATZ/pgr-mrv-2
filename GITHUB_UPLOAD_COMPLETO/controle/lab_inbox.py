@@ -355,6 +355,60 @@ def _alertar_resultados_atrasados(conn, dias=None):
     return novos
 
 
+def _alertar_nunca_despachados(conn, dias=None):
+    """Amostrador coletado que NUNCA teve o despacho ao laboratório registrado.
+
+    Ponto cego que o `_alertar_resultados_atrasados` não cobre: ele exige
+    `data_envio_lab` preenchida, então amostrador que saiu de campo e nunca foi
+    despachado (ou cujo despacho não foi lançado) fica invisível — em
+    30/07/2026 eram 7 dos 8 em `status='laboratorio'`, dois deles parados havia
+    66 dias sem que ninguém fosse avisado.
+
+    A data de envio não é carimbada na coleta de propósito (routes.py:1808, fix
+    03/07/2026 — carimbar zerava a métrica coleta→lab); este alerta vigia o
+    intervalo em vez de preencher a data.
+
+    Idade conta de `data_medicao`; quando ela falta (registro antigo/importado),
+    cai para `atualizado_em`. Evento `lab_nunca_despachado`, 1x por amostrador.
+    """
+    limite = int(dias or os.environ.get('LAB_SEM_ENVIO_DIAS', '7'))
+    hoje = datetime.now().date()
+    rows = [row_to_dict(r) for r in conn.execute(
+        "SELECT id, codigo, data_medicao, atualizado_em FROM amostradores "
+        "WHERE COALESCE(arquivado,0)=0 AND status='laboratorio' "
+        "AND COALESCE(data_envio_lab,'')='' AND COALESCE(data_resultado,'')=''"
+    ).fetchall()]
+    novos = 0
+    for r in rows:
+        base, origem = None, ''
+        for campo, rotulo in (('data_medicao', 'medido'), ('atualizado_em', 'sem data de medição, parado')):
+            try:
+                base = datetime.strptime(str(r[campo])[:10], '%Y-%m-%d').date()
+                origem = rotulo
+                break
+            except (ValueError, TypeError):
+                continue
+        if base is None:
+            continue
+        idade = (hoje - base).days
+        if idade <= limite:
+            continue
+        ja = conn.execute(
+            "SELECT 1 FROM eventos WHERE tipo='lab_nunca_despachado' "
+            "AND ref_id=? AND ref_tipo='amostrador' LIMIT 1", (r['id'],)).fetchone()
+        if ja:
+            continue
+        conn.execute(
+            "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
+            "VALUES (?,?,?,?,CURRENT_TIMESTAMP)",
+            ('lab_nunca_despachado',
+             f"amostrador {r.get('codigo')}: {origem} há {idade} dias e o envio ao "
+             f"laboratório nunca foi registrado (limite {limite}d)",
+             r['id'], 'amostrador'))
+        novos += 1
+    return novos
+
+
 def _kv_set(conn, chave, valor):
     """Grava em ms_sync_state (cria a tabela se preciso)."""
     conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
@@ -520,6 +574,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     aplicadas = 0
     medicoes_baixadas = 0
     alertas_atraso = 0
+    alertas_sem_envio = 0
     if apply:
         with get_db() as conn:
             for p in plano:
@@ -548,6 +603,11 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 alertas_atraso = _alertar_resultados_atrasados(conn)
             except Exception as e:
                 log.warning('[lab_inbox] alerta de atraso falhou: %s', e)
+            # Coletado e nunca despachado → o alerta acima não vê (exige data de envio)
+            try:
+                alertas_sem_envio = _alertar_nunca_despachados(conn)
+            except Exception as e:
+                log.warning('[lab_inbox] alerta de nunca despachado falhou: %s', e)
             if max_visto and max_visto != watermark:
                 _kv_set(conn, 'lab_watermark', max_visto)
             if pendentes is not None:
@@ -561,6 +621,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 'resultado_auto_datados': auto_resultado,
                 'medicoes_baixadas_lab': medicoes_baixadas,
                 'alertas_atraso': alertas_atraso,
+                'alertas_sem_envio': alertas_sem_envio,
                 'resultados_total': len(resultados),
                 'por_categoria': cat_count,
                 'fetch_erros': fetch_erros,
@@ -583,6 +644,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
         'resultado_detectado': len(resultado_por_id),
         'medicoes_baixadas_lab': medicoes_baixadas,
         'alertas_atraso': alertas_atraso,
+        'alertas_sem_envio': alertas_sem_envio,
         'codigos_fora_do_sistema': sorted(fora)[:30],
         'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],

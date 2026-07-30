@@ -8515,6 +8515,107 @@ def consistencia_motivos():
         return jsonify({'erro': str(e)}), 500
 
 
+# ── Cadeia de Custódia — formulário IT02-M do laboratório ──────────────
+# Gerada no ato de despachar: os dados já estão nas coletas (o técnico
+# redigitava), e o despacho carimba data_envio_lab, que é o que faltava para
+# o alerta de atraso enxergar o amostrador.
+
+def _cc_ids(d):
+    """IDs de amostrador do payload, só inteiros."""
+    out = []
+    for x in (d.get('amostrador_ids') or d.get('ids') or []):
+        try:
+            out.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+@controle_bp.route('/cadeia-custodia/preview', methods=['POST'])
+@login_required
+def cadeia_custodia_preview():
+    """Mostra o que vai para a cadeia ANTES de gerar — inclusive os avisos de
+    campo obrigatório vazio. Não grava nada."""
+    from .cadeia_custodia import coletar_dados
+    d = request.get_json(silent=True) or {}
+    ids = _cc_ids(d)
+    if not ids:
+        return jsonify({'erro': 'informe amostrador_ids'}), 400
+    try:
+        dados = coletar_dados(ids, d.get('demanda_id'), d.get('agentes'))
+    except Exception as e:
+        log.exception('[cadeia] preview falhou')
+        return jsonify({'erro': str(e)}), 500
+    return jsonify({
+        'empresa': dados.get('empresa') or {},
+        'avisos': dados.get('avisos') or [],
+        # Lista para o técnico escolher o agente de CADA amostrador — nunca
+        # preenchida sozinha: a OS diz o que a empresa contratou no total, não
+        # o que cada tubo carrega, e chutar multiplicaria o custo da análise.
+        'agentes_sugeridos': dados.get('agentes_sugeridos') or [],
+        'linhas': [{k: (v.isoformat() if hasattr(v, 'isoformat') else v)
+                    for k, v in ln.items()} for ln in (dados.get('linhas') or [])],
+    })
+
+
+@controle_bp.route('/cadeia-custodia/gerar', methods=['POST'])
+@login_required
+def cadeia_custodia_gerar():
+    """Gera o xlsx e (por padrão) carimba o despacho ao laboratório.
+
+    `marcar_envio=false` gera sem carimbar — para reimprimir uma cadeia de
+    amostrador já despachado sem mexer na data original.
+    """
+    from .cadeia_custodia import (coletar_dados, gerar_xlsx, nome_arquivo,
+                                  marcar_despacho, completar_empresa)
+    d = request.get_json(silent=True) or {}
+    ids = _cc_ids(d)
+    if not ids:
+        return jsonify({'erro': 'informe amostrador_ids'}), 400
+    try:
+        # Dado da empresa digitado na tela entra no CADASTRO antes de montar a
+        # cadeia — 99% das empresas estão sem CNPJ, que o lab marca como
+        # obrigatório. Digitado uma vez, fica.
+        if d.get('empresa'):
+            previa = coletar_dados(ids, d.get('demanda_id'))
+            emp_id = (previa.get('empresa') or {}).get('id')
+            if emp_id:
+                completar_empresa(emp_id, d['empresa'])
+        dados = coletar_dados(ids, d.get('demanda_id'), d.get('agentes'))
+        if not dados.get('linhas'):
+            return jsonify({'erro': 'nenhum amostrador válido'}), 400
+        # AGENTE é obrigatório no formulário: sem ele o laboratório não sabe o
+        # que analisar e a importação eletrônica é rejeitada. `forcar=true`
+        # libera (o técnico pode preencher à mão depois).
+        sem_agente = [ln['codigo'] for ln in dados['linhas'] if not ln.get('agentes')]
+        if sem_agente and not d.get('forcar'):
+            return jsonify({
+                'erro': 'Escolha o agente de cada amostrador antes de gerar',
+                'sem_agente': sem_agente,
+                'agentes_sugeridos': dados.get('agentes_sugeridos') or [],
+            }), 422
+        data_envio = d.get('data_envio')
+        blob = gerar_xlsx(dados, data_envio)
+        if d.get('marcar_envio', True):
+            marcar_despacho(ids, data_envio,
+                            d.get('dias_validade', 45), d.get('lote', ''))
+            usuario = getattr(current_user, 'email', 'sistema')
+            registrar_evento(
+                'cadeia_custodia_gerada',
+                f"Cadeia de custódia — {(dados.get('empresa') or {}).get('nome') or 's/empresa'} "
+                f"({len(ids)} amostradores)",
+                usuario=usuario, ip=request.remote_addr)
+    except FileNotFoundError as e:
+        return jsonify({'erro': str(e)}), 500
+    except Exception as e:
+        log.exception('[cadeia] geração falhou')
+        return jsonify({'erro': str(e)}), 500
+    return send_file(
+        io.BytesIO(blob),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True, download_name=nome_arquivo(dados, d.get('data_envio')))
+
+
 # ── Orquestrador da OS (substitui o MAESTRO) — rotas /controle/os/* ────
 # Registrado aqui (import time) para entrar no blueprint ANTES do register.
 from .orquestrador import registrar_rotas as _orq_registrar_rotas

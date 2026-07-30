@@ -185,6 +185,12 @@ AGENTES_SST: Dict[str, List[str]] = {
         'alcool', 'álcool', 'etanol', 'metanol', 'isopropanol', 'ipa',
         'alcool etilico', 'álcool etílico',
     ],
+    # Éter glicólico, NÃO álcool etílico — mas "butóxi etanol" contém "etanol"
+    # e caía em Álcool, que tem outro limite de tolerância.
+    '2-Butóxi Etanol (EGBE)': [
+        '2-butoxi etanol', '2-butóxi etanol', 'butoxietanol', 'egbe',
+        'eter monobutilico do etilenoglicol',
+    ],
     'Gases e Vapores (geral)': [
         'gases', 'vapores', 'gases e vapores', 'compostos organicos volateis',
         'cov', 'voc', 'solventes organicos', 'hidrocarbonetos',
@@ -374,6 +380,8 @@ _CONTIDO_EM: Dict[str, set] = {
     'Cloro':   {'Clorofórmio', 'Bromofórmio', 'Diclorometano'},
     'Benzeno': {'Etilbenzeno', 'Estireno', 'Anilina'},
     'Hexano':  {'Heptano'},
+    'Ferro':   {'Óxido de Ferro'},          # "Ferro, óxido (Fe2O3)" casa os dois
+    'Álcool':  {'2-Butóxi Etanol (EGBE)'},  # "butóxi etanol" contém "etanol"
 }
 
 
@@ -637,6 +645,10 @@ _RE_COMPLEMENTO = re.compile(
 # do motor — não podem virar agente próprio, senão duplicam com a expansão.
 _RE_SIGLA_GRUPO = re.compile(r'(?<![a-z])bte?x(?![a-z])', re.I)
 
+# Fim do item numa lista. A vírgula só separa quando NÃO está entre dígitos —
+# "Ruído, Calor" são dois itens; "1,3-Butadieno" e "2,4-D" são um nome só.
+_RE_CORTE_ITEM = re.compile(r'[\n\r;.:•|]|(?<!\d),|,(?!\d)')
+
 # Verbo conjugado / termo de planilha: denuncia frase, não nome de agente.
 _RE_FRASE = re.compile(
     r'\b(ser[aã]o?|seria|foi|foram|est[aã]o|substitu[ií]|troca[dr]|'
@@ -658,8 +670,11 @@ _RE_RAZAO_SOCIAL = re.compile(
 # Nome de agente não começa com preposição/conjunção — "Para Esta Obra
 # Específica" e "E BTE Um Ponto" vinham de captura torta.
 _RE_INICIO_INVALIDO = re.compile(
+    # (?![-,]) preserva a nomenclatura orto/meta/para do catálogo do lab —
+    # "o-Ftalaldeído", "m-Xileno", "p-Nitroanilina" começam com letra solta
+    # seguida de hífen e seriam descartados como artigo.
     r'^(?:e|ou|de|do|da|dos|das|em|no|na|para|pra|com|por|que|se|'
-    r'a|o|as|os|um|uma|ao|aos)\b',
+    r'a|o|as|os|um|uma|ao|aos)\b(?![-,])',
     re.I,
 )
 
@@ -669,10 +684,13 @@ _RE_INICIO_INVALIDO = re.compile(
 _RE_AGENTE_LIVRE = re.compile(
     r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[ \t]*[xX×]?[ \t]*[-–—]?[ \t]*'
     r'(?:' + _UNIDADE_QTD + r')[ \t]+(?:de[ \t]+|do[ \t]+|da[ \t]+)?'
+    # Início: letra, OU número de nomenclatura química ("2-Nitropropano",
+    # "1,3-Butadieno", "2,4-D") — 15 substâncias do catálogo do laboratório
+    # começam assim e eram descartadas por exigir letra na 1ª posição.
     # NUNCA atravessar quebra de linha: com \s no lugar de [ \t] o nome
     # engolia as linhas seguintes e o finditer pulava os itens de baixo —
     # numa lista de 13 medições só a 1ª e a última eram vistas.
-    r'([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 \t\-/()\.]{2,58})',
+    r'((?:[A-Za-zÀ-ÿ]|\d+[,\-])[A-Za-zÀ-ÿ0-9 \t\-,/()\.]{2,58})',
     re.I,
 )
 
@@ -712,7 +730,9 @@ def _agentes_desconhecidos(
         bruto = m.group(2)
         # Corta na primeira pontuação forte: pega "Sais de Cianeto" de
         # "Sais de Cianeto\n1 medição de ..." sem arrastar a linha seguinte.
-        nome = re.split(r'[\n\r,;.:•|]', bruto)[0].strip(' -–—/')
+        # A vírgula ENTRE DÍGITOS não separa: é nomenclatura química
+        # ("1,3-Butadieno", "2,4-D") — cortar ali deixava só "1".
+        nome = _RE_CORTE_ITEM.split(bruto)[0].strip(' -–—/')
         # Corta o complemento de lugar/finalidade: "BTEX no abastecimento"
         # é uma medição de BTEX, não de um agente chamado "BTEX No
         # Abastecimento". O agente é o que vem ANTES do conectivo.
@@ -734,9 +754,11 @@ def _agentes_desconhecidos(
         # Começa com preposição/conjunção → captura torta, não nome.
         if _RE_INICIO_INVALIDO.match(nome.strip()):
             continue
-        # Nome químico real raramente passa de 6 palavras ("Éter Etílico de
-        # Dietileno Glicol" tem 5); acima disso é frase capturada por engano.
-        if len(nome.split()) > 6:
+        # Teto de palavras: o nome mais longo do catálogo do laboratório é
+        # "Acetato do Éter Metílico do Propileno Glicol" (7). Acima de 8 é
+        # frase capturada por engano — o resto do lixo já cai nos filtros
+        # de frase, razão social e início inválido.
+        if len(nome.split()) > 8:
             continue
         # Sobrou só a unidade de contagem ("Avaliação", "Medição") — o texto
         # não disse de QUE agente se trata.
@@ -773,7 +795,19 @@ _PREPOSICOES = {'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'a', 'o'}
 
 
 def _titulo_quimico(nome: str) -> str:
-    """Title-case respeitando preposições e siglas já em maiúscula."""
+    """Title-case respeitando preposições e siglas já em maiúscula.
+
+    Nome com capitalização MISTA já veio grafado como o químico se escreve
+    ("2-Nitropropano", "o-Ftalaldeído", "2-Butóxi etanol") — reescrever
+    devolvia "2-nitropropano"/"O-ftalaldeído". Só normaliza o que está todo
+    em CAIXA ALTA ou todo em minúscula.
+    """
+    letras = [c for c in nome if c.isalpha()]
+    tem_maiuscula = any(c.isupper() for c in letras)
+    tem_minuscula = any(c.islower() for c in letras)
+    if tem_maiuscula and tem_minuscula:
+        return nome.strip()
+
     palavras = nome.split()
     out = []
     for i, p in enumerate(palavras):

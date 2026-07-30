@@ -7705,14 +7705,14 @@ function qRenderAvals() {
       </div>
       <div style="border-top:1px solid var(--border);margin:10px 0 8px;padding-top:10px;font-size:.8rem;font-weight:700;color:var(--text2);letter-spacing:.5px;">RESULTADOS</div>
       <div class="grid3 field">
-        <div><label>Concentração</label><input type="text" value="${qEsc(av.concentracao)}" placeholder="Ex: 0,4324 PPM" onchange="qAvals[${i}].concentracao=this.value"></div>
-        <div><label>LT NR-15</label><input type="text" value="${qEsc(av.ltNR15)}" onchange="qAvals[${i}].ltNR15=this.value"></div>
+        <div><label>Concentração</label><input type="text" value="${qEsc(av.concentracao)}" placeholder="Ex: 0,4324 PPM" onchange="qSetCampoAval(${i},'concentracao',this.value)"></div>
+        <div><label>LT NR-15</label><input type="text" value="${qEsc(av.ltNR15)}" onchange="qSetCampoAval(${i},'ltNR15',this.value)"></div>
         <div><label>NA NR-15</label><input type="text" value="${qEsc(av.naNR15)}" onchange="qAvals[${i}].naNR15=this.value"></div>
       </div>
       <div class="grid3 field">
-        <div><label>LT ACGIH TWA</label><input type="text" value="${qEsc(av.ltTWA)}" onchange="qAvals[${i}].ltTWA=this.value"></div>
+        <div><label>LT ACGIH TWA</label><input type="text" value="${qEsc(av.ltTWA)}" onchange="qSetCampoAval(${i},'ltTWA',this.value)"></div>
         <div><label>NA ACGIH TWA</label><input type="text" value="${qEsc(av.naTWA)}" onchange="qAvals[${i}].naTWA=this.value"></div>
-        <div><label>LT ACGIH STEL</label><input type="text" value="${qEsc(av.ltSTEL)}" onchange="qAvals[${i}].ltSTEL=this.value"></div>
+        <div><label>LT ACGIH STEL</label><input type="text" value="${qEsc(av.ltSTEL)}" onchange="qSetCampoAval(${i},'ltSTEL',this.value)"></div>
       </div>
       <div class="field">
         <label>Conclusão <span style="font-size:.75rem;color:var(--text3)">(vazio = texto padrão)</span></label>
@@ -7724,21 +7724,89 @@ function qRenderAvals() {
 }
 
 // ── Resultados em massa (grade) ────────────────────────────────────
-// Converte "0,4324 PPM" → 0.4324 (mesma leitura do backend _qf).
-function _qNum(v) {
-  // "<0,007 ppm" → 0.007 (resultado abaixo do LQ conta como o valor → REGULAR).
-  const t = String(v == null ? '' : v).trim().split(/\s+/)[0].replace(/^[<>]+/, '').replace(',', '.');
-  const n = parseFloat(t);
-  return isNaN(n) ? null : n;
+// O veredicto NÃO é calculado aqui: vem de /quimico/classificar, que usa a
+// mesma _classificar_quimico do laudo. A conta local comparava com UM limite
+// (ltNR15 || ltTWA) e sem a correção Brief & Scala (×0,88), então pintava de
+// verde avaliação que o documento assinado reprovava — 18,5 ppm com LT-TWA 20
+// (17,6 corrigido) aparecia REGULAR na tela e IRREGULAR no laudo.
+const QCOR = {
+  ok:         'var(--green)',
+  ruim:       'var(--red)',      // estourou a NR-15
+  atencao:    'var(--yellow)',   // NR-15 ok, ACGIH/STEL acima
+  nd:         'var(--green)',
+  sem_limite: 'var(--text3)',
+};
+let _qSitCache = [];      // índice → {txt, nivel, detalhe} vindo do backend
+let _qSitTimer = null;
+let _qSitSeq   = 0;       // descarta resposta de requisição já superada
+
+function qSituacao(av, i) {
+  // Linha ainda não preenchida é NEUTRA. O backend trata concentração vazia
+  // como "não detectado" (regra do laudo, onde o campo em branco significa
+  // ausência real) — na grade isso pintaria de verde uma linha que o técnico
+  // sequer digitou. A checagem vem antes do cache de propósito.
+  if (String(av && av.concentracao || '').trim() === '')
+    return { txt: '—', cor: 'var(--text3)', detalhe: '' };
+  const v = _qSitCache[i];
+  if (v) return { txt: v.txt, cor: QCOR[v.nivel] || 'var(--text3)', detalhe: v.detalhe || '' };
+  return { txt: '…', cor: 'var(--text3)', detalhe: 'calculando' };
 }
-// Mesma regra do laudo: REGULAR se C < LT (NR-15, senão TWA); senão IRREGULAR.
-function qSituacao(av) {
-  const c = _qNum(av.concentracao);
-  if (c === null) return { txt: '—', cor: 'var(--text3)' };
-  const lt = _qNum(av.ltNR15 || av.ltTWA);
-  if (lt === null) return { txt: 'sem limite', cor: 'var(--yellow)' };
-  return c >= lt ? { txt: 'IRREGULAR', cor: 'var(--red)' }
-                 : { txt: 'REGULAR',   cor: 'var(--green)' };
+
+// Campo que ENTRA no veredicto (concentração ou limite): grava, invalida a
+// linha e repergunta ao backend. Sem isto, mexer no LT deixava o badge com o
+// veredicto do limite anterior.
+function qSetCampoAval(i, campo, valor) {
+  if (!qAvals[i]) return;
+  qAvals[i][campo] = valor;
+  _qSitCache[i] = null;
+  qPintarSituacoes();
+  qSitAgendar();
+}
+
+// Pede o veredicto ao backend (debounce: digitar não dispara a cada tecla).
+function qSitAgendar(ms) {
+  clearTimeout(_qSitTimer);
+  _qSitTimer = setTimeout(qSitBuscar, ms == null ? 400 : ms);
+}
+
+async function qSitBuscar() {
+  if (!qAvals.length) { _qSitCache = []; return; }
+  const seq = ++_qSitSeq;
+  try {
+    const r = await fetch('/quimico/classificar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        avaliacoes: qAvals.map(a => ({
+          concentracao: a.concentracao || '', ltNR15: a.ltNR15 || '',
+          ltTWA: a.ltTWA || '', ltSTEL: a.ltSTEL || '',
+          tempoColeta: a.tempoColeta || '',
+        })),
+      }),
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const j = await r.json();
+    if (seq !== _qSitSeq) return;            // chegou tarde, já há pedido novo
+    _qSitCache = j.resultados || [];
+  } catch (e) {
+    if (seq !== _qSitSeq) return;
+    // Sem veredicto é melhor que veredicto errado: a tela não recalcula sozinha.
+    _qSitCache = qAvals.map(() => ({ txt: 'erro', nivel: 'sem_limite',
+                                     detalhe: 'não foi possível consultar o servidor' }));
+  }
+  qPintarSituacoes();
+}
+
+// Repinta só os badges (não re-renderiza a grade → não perde o foco do input).
+function qPintarSituacoes() {
+  qAvals.forEach((av, i) => {
+    const el = document.getElementById('q-massa-sit-' + i);
+    if (!el) return;
+    const s = qSituacao(av, i);
+    el.textContent = s.txt;
+    el.style.color = s.cor;
+    el.title = s.detalhe || '';
+  });
 }
 
 function qRenderResultadosMassa() {
@@ -7751,7 +7819,7 @@ function qRenderResultadosMassa() {
   const INP = 'background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:6px 8px;font-family:inherit;font-size:.83rem;';
   const TH  = 'padding:6px 8px;font-size:.7rem;color:var(--text3);font-weight:600;white-space:nowrap;';
   const rows = qAvals.map((av, i) => {
-    const sit  = qSituacao(av);
+    const sit  = qSituacao(av, i);
     const quem = qEsc(av.trabalhador || av.cargo || ('Avaliação ' + (i + 1)));
     return `
       <tr style="border-bottom:1px solid var(--border);">
@@ -7761,7 +7829,7 @@ function qRenderResultadosMassa() {
         <td style="padding:6px 8px;color:var(--text3);font-size:.78rem;white-space:nowrap;">${qEsc(av.filtroNumero || '—')}</td>
         <td style="padding:4px 8px;"><input type="text" value="${qEsc(av.dataAnalise)}" placeholder="dd/mm/aaaa" onchange="qAvals[${i}].dataAnalise=this.value" style="width:108px;${INP}"></td>
         <td style="padding:4px 8px;"><input type="text" value="${qEsc(av.concentracao)}" placeholder="Ex: 0,4324 PPM" oninput="qMassaSetConc(${i},this.value)" style="width:128px;${INP}"></td>
-        <td style="padding:6px 8px;"><span id="q-massa-sit-${i}" style="font-size:.74rem;font-weight:700;color:${sit.cor};">${sit.txt}</span></td>
+        <td style="padding:6px 8px;"><span id="q-massa-sit-${i}" title="${qEsc(sit.detalhe || '')}" style="font-size:.74rem;font-weight:700;color:${sit.cor};">${sit.txt}</span></td>
       </tr>`;
   }).join('');
   c.innerHTML = `
@@ -7774,13 +7842,25 @@ function qRenderResultadosMassa() {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+  // Grade montada: busca os veredictos que ainda não estão em cache. Curto,
+  // porque aqui a mudança veio de re-render (importar, editar limite), não de
+  // digitação tecla a tecla.
+  if (qAvals.some((a, i) => !_qSitCache[i] && String(a.concentracao || '').trim() !== '')) {
+    qSitAgendar(80);
+  }
 }
 
-// Escreve a concentração e atualiza só o badge da linha (sem re-render → não perde o foco).
+// Escreve a concentração e pede o veredicto ao backend (debounce → não dispara
+// a cada tecla). Sem re-render da grade, então o foco do input não se perde.
 function qMassaSetConc(i, v) {
   qAvals[i].concentracao = v;
+  _qSitCache[i] = null;                    // invalida só esta linha
   const el = document.getElementById('q-massa-sit-' + i);
-  if (el) { const s = qSituacao(qAvals[i]); el.textContent = s.txt; el.style.color = s.cor; }
+  if (el) {
+    const s = qSituacao(qAvals[i], i);
+    el.textContent = s.txt; el.style.color = s.cor; el.title = s.detalhe || '';
+  }
+  qSitAgendar();
 }
 
 function qMassaAplicarDataTodas() {
