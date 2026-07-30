@@ -53,6 +53,8 @@ AGENTES_SST: Dict[str, List[str]] = {
         'vci', 'vibracao vci', 'vibração vci', 'iso 2631',
         'vibracao de corpo inteiro', 'vibração de corpo inteiro',
         'vibracao total', 'vibração total',
+        'vibracoes de corpo inteiro', 'vibrações de corpo inteiro',
+        'vibracoes corpo inteiro', 'corpo inteiro',
     ],
     'Vibração de Mão-Braço (VMB)': [
         'vibracao mao braco', 'vibração mão braço', 'vmb', 'vibracao vmb',
@@ -123,6 +125,55 @@ AGENTES_SST: Dict[str, List[str]] = {
     'Hexano': [
         'hexano', 'n-hexano', 'hexane', 'n hexano',
     ],
+    'Heptano': [
+        'heptano', 'n-heptano', 'heptane',
+    ],
+    # Etilbenzeno e Estireno CONTÊM "benzeno"/"estireno" como substring — sem
+    # entrada própria caíam em Benzeno, que é outra substância (e outro limite
+    # de tolerância).
+    'Etilbenzeno': [
+        'etilbenzeno', 'etil benzeno', 'ethylbenzene',
+    ],
+    'Estireno': [
+        'estireno', 'styrene', 'vinilbenzeno',
+    ],
+    # Clorofórmio contém "cloro" — sem entrada própria virava o gás Cloro.
+    'Clorofórmio': [
+        'cloroformio', 'clorofórmio', 'chloroform', 'triclorometano',
+    ],
+    'Diclorometano': [
+        'diclorometano', 'cloreto de metileno', 'dcm',
+    ],
+    'Bromofórmio': [
+        'bromoformio', 'bromofórmio', 'tribromometano',
+    ],
+    'Querosene': [
+        'querosene', 'queroseno', 'querosene de aviacao', 'qav',
+    ],
+    'Anilina': [
+        'anilina', 'aminobenzeno', 'fenilamina',
+    ],
+    'Névoas de Óleo': [
+        'nevoas de oleo', 'névoas de óleo', 'nevoas de oleos',
+        'névoas de óleos', 'neblina de oleo', 'oleo mineral',
+        'óleo mineral', 'nevoa oleosa',
+    ],
+    'Etileno Glicol': [
+        'etileno glicol', 'etilenoglicol', 'monoetilenoglicol', 'meg',
+    ],
+    'Éter Etílico': [
+        'eter etilico', 'éter etílico', 'dietil eter', 'etoxietano',
+    ],
+    'Hidróxido de Potássio': [
+        'hidroxido de potassio', 'hidróxido de potássio', 'koh',
+        'potassa caustica',
+    ],
+    'Negro de Fumo': [
+        'negro de fumo', 'carbon black', 'fuligem',
+    ],
+    'Fosfina': [
+        'fosfina', 'ph3', 'fosfeto de hidrogenio',
+    ],
     'MEK (Butanona)': [
         'mek', 'butanona', 'metil etil cetona', 'methyl ethyl ketone',
         '2-butanona',
@@ -148,6 +199,7 @@ AGENTES_SST: Dict[str, List[str]] = {
     'Óxido de Ferro': [
         'oxido de ferro', 'óxido de ferro', 'fe2o3', 'oxido ferrico',
         'óxido férrico', 'fumos de ferro', 'oxido de ferro (fe2o3)',
+        'ferro (oxido)', 'ferro (óxido)', 'ferro oxido',
     ],
     'Óxido de Zinco': [
         'oxido de zinco', 'óxido de zinco', 'zno', 'fumos de zinco',
@@ -314,6 +366,16 @@ _FISICOS = {
 _QUIMICOS = {k for k in AGENTES_SST if k not in _FISICOS and k not in
              {'Ergonomia', 'Biológico', 'PCMSO', 'PGR', 'LTCAT', 'PPP', 'PPRA',
               'Laudo de Insalubridade', 'Laudo de Periculosidade'}}
+
+# Agente cujo NOME é substring do nome de outro: só sobrevive se o específico
+# não estiver presente. Sem isto "1 medição de Clorofórmio" devolvia
+# Clorofórmio + Cloro, e "Etilbenzeno" devolvia Etilbenzeno + Benzeno.
+_CONTIDO_EM: Dict[str, set] = {
+    'Cloro':   {'Clorofórmio', 'Bromofórmio', 'Diclorometano'},
+    'Benzeno': {'Etilbenzeno', 'Estireno', 'Anilina'},
+    'Hexano':  {'Heptano'},
+}
+
 
 def _tipo_agente(canonical: str) -> str:
     if canonical in _FISICOS:       return 'fisico'
@@ -505,7 +567,7 @@ _RE_PONTOS = re.compile(
 # Aceita tanto "8 Ruídos" (número colado) quanto "7 medições de Ruído"
 # (número separado do agente pela unidade de contagem).
 _RE_QTD_LOOKBACK = re.compile(
-    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s*'
+    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s*[-–—]?\s*'
     r'(?:(?:' + _UNIDADE_QTD + r')\s+(?:de\s+|do\s+|da\s+|dos\s+|das\s+)?)?$',
     re.I,
 )
@@ -580,17 +642,57 @@ _RE_FRASE = re.compile(
     r'\b(ser[aã]o?|seria|foi|foram|est[aã]o|substitu[ií]|troca[dr]|'
     r'acordad[oa]|combinad[oa]|solicitad[oa]|informad[oa]|realizad[oa]|'
     r'quantidade|qtd|total|obs|conforme|acordo|inclu[ií]|adicionad[oa]|'
-    r'pendente|aguardand|verificar|confirmar)\b',
+    r'pendente|aguardand|verificar|confirmar|quantitativ[oa]s?|'
+    r'qualitativ[oa]s?|especific[ao]s?|obra|unidade|matriz|filial)\b',
+    re.I,
+)
+
+# Razão social: a linha cita a EMPRESA, não um agente.
+_RE_RAZAO_SOCIAL = re.compile(
+    r'\b(ltda|s[\./]?a\b|eireli|epp\b|\bme\b|mei\b|cia\b|'
+    r'minera[çc][aã]o|constru[çt]|transporte|ind[uú]stria|com[eé]rcio|'
+    r'servi[çc]os|engenharia|empreendimentos)\b',
+    re.I,
+)
+
+# Nome de agente não começa com preposição/conjunção — "Para Esta Obra
+# Específica" e "E BTE Um Ponto" vinham de captura torta.
+_RE_INICIO_INVALIDO = re.compile(
+    r'^(?:e|ou|de|do|da|dos|das|em|no|na|para|pra|com|por|que|se|'
+    r'a|o|as|os|um|uma|ao|aos)\b',
     re.I,
 )
 
 # "N <unidade> de <AGENTE>" — âncora explícita de medição no texto da OS.
+# Aceita separador antes da unidade ("1 - Medição X") e o "de" opcional
+# ("1 - Medição Querosene"), formatos reais das OS antigas do Planner.
 _RE_AGENTE_LIVRE = re.compile(
-    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s*'
-    r'(?:' + _UNIDADE_QTD + r')\s+de\s+'
-    r'([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9\s\-/()\.]{2,58})',
+    r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[ \t]*[xX×]?[ \t]*[-–—]?[ \t]*'
+    r'(?:' + _UNIDADE_QTD + r')[ \t]+(?:de[ \t]+|do[ \t]+|da[ \t]+)?'
+    # NUNCA atravessar quebra de linha: com \s no lugar de [ \t] o nome
+    # engolia as linhas seguintes e o finditer pulava os itens de baixo —
+    # numa lista de 13 medições só a 1ª e a última eram vistas.
+    r'([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 \t\-/()\.]{2,58})',
     re.I,
 )
+
+
+def _ja_no_dicionario(nome_n: str) -> bool:
+    """True se o nome já casa algum alias conhecido — usando a MESMA regra de
+    fronteira das estratégias A/B/C.
+
+    Checar só aliases longos deixava a sigla curta escapar: "04 Pontos de VMB"
+    devolvia o canônico "Vibração de Mão-Braço (VMB)" E um agente solto "VMB".
+    """
+    for alias, _ in _ALIAS_SORTED:
+        if alias in _ALIAS_PALAVRA_PT:
+            continue
+        if len(alias) >= _ALIAS_CURTO_MINLEN:
+            if alias in nome_n:
+                return True
+        elif re.search(r'(?<![a-z])' + re.escape(alias) + r'(?![a-z])', nome_n):
+            return True
+    return False
 
 
 def _agentes_desconhecidos(
@@ -626,6 +728,12 @@ def _agentes_desconhecidos(
         # virava um agente com esse nome inteiro.
         if _RE_FRASE.search(nome):
             continue
+        # Razão social — "Mineração Santiago Ltda" não é agente.
+        if _RE_RAZAO_SOCIAL.search(nome):
+            continue
+        # Começa com preposição/conjunção → captura torta, não nome.
+        if _RE_INICIO_INVALIDO.match(nome.strip()):
+            continue
         # Nome químico real raramente passa de 6 palavras ("Éter Etílico de
         # Dietileno Glicol" tem 5); acima disso é frase capturada por engano.
         if len(nome.split()) > 6:
@@ -641,8 +749,7 @@ def _agentes_desconhecidos(
         if _RE_SIGLA_GRUPO.search(nome_n):
             continue
         # Já é conhecido pelo dicionário? Então as estratégias A/B/C tratam.
-        if any(a in nome_n for a, _ in _ALIAS_SORTED
-               if len(a) >= _ALIAS_CURTO_MINLEN):
+        if _ja_no_dicionario(nome_n):
             continue
         if nome_n in vistos:
             continue
@@ -893,6 +1000,14 @@ def extrair_agentes_multifonte(
     _GAS_VOC = {'Benzeno', 'Tolueno', 'Xileno', 'Hexano', 'MEK (Butanona)', 'Acetona', 'Álcool'}
     if any(c in acumulado for c in _GAS_VOC):
         acumulado.pop('Gases e Vapores (geral)', None)
+
+    # Dedup por SUBSTRING de nome: o alias curto casa dentro do nome da
+    # substância maior ("cloro" dentro de "clorofórmio", "benzeno" dentro de
+    # "etilbenzeno") e os dois apareciam juntos. Quando o específico está
+    # presente, o que só existia por substring é espúrio.
+    for _contido, _especificos in _CONTIDO_EM.items():
+        if _contido in acumulado and any(e in acumulado for e in _especificos):
+            acumulado.pop(_contido, None)
 
     # BTX / BTEX: a sigla cobre Benzeno + Tolueno + Xileno (1 tubo de carvão,
     # análise múltipla). Quando a sigla aparece em qualquer fonte, garante o trio.

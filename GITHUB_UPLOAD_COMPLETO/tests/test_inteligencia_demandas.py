@@ -200,6 +200,63 @@ def test_medicoes_nao_derruba_soma_multiunidade():
     assert _qtd(ags, 'Ruído Ocupacional') == 7
 
 
+# ── formato antigo "N - Medição X" (caso Petronas OS 60102) ───────────
+# Lista de 13 medições em que só 8 eram lidas: o nome do agente aceitava \s
+# (incluindo \n), então o regex atravessava linhas e o finditer pulava itens.
+
+_PETRONAS_DESC = """16 - Medições de Ruído
+2 - Medições VMB
+3 - Medições de Nevoas de Óleos
+2 - Medições de Calor
+2 - Medições Etanol
+1 - Medição Tolueno
+1 - Medição Querosene
+1 - Medição Hidroxido de Sódio
+1 - Medição Hidroxido de Potassio
+1 - Medição Heptano
+1 - Medição Eter Etilico
+1 - Medição Cloroformio
+1 - Medição Anilina"""
+
+
+def test_lista_multilinha_nao_pula_itens():
+    nomes = _canonicos(extrair_agentes_multifonte(descricao=_PETRONAS_DESC))
+    for esperado in ('Querosene', 'Heptano', 'Anilina', 'Clorofórmio',
+                     'Éter Etílico', 'Névoas de Óleo', 'Hidróxido de Potássio',
+                     'Tolueno', 'Soda Cáustica (NaOH)'):
+        assert esperado in nomes, f'{esperado} sumiu: {sorted(nomes)}'
+
+
+def test_formato_com_hifen_conta_quantidade():
+    ags = extrair_agentes_multifonte(descricao=_PETRONAS_DESC)
+    assert _qtd(ags, 'Ruído Ocupacional') == 16
+    assert _qtd(ags, 'Vibração de Mão-Braço (VMB)') == 2
+    assert _qtd(ags, 'Névoas de Óleo') == 3
+
+
+def test_unidade_sem_preposicao_de():
+    # "1 - Medição Querosene" (sem "de") é formato real das OS antigas.
+    ags = extrair_agentes_multifonte(descricao='1 - Medição Querosene')
+    assert _canonicos(ags) == {'Querosene'}
+
+
+def test_substancia_nao_vira_o_agente_contido_no_nome():
+    # "Clorofórmio" contém "cloro"; "Etilbenzeno" contém "benzeno".
+    assert _canonicos(extrair_agentes_multifonte(
+        descricao='1 medição de Cloroformio')) == {'Clorofórmio'}
+    assert _canonicos(extrair_agentes_multifonte(
+        descricao='1 medição de Etilbenzeno')) == {'Etilbenzeno'}
+    # mas o agente sozinho continua sendo lido
+    assert _canonicos(extrair_agentes_multifonte(
+        descricao='2 medições de Cloro')) == {'Cloro'}
+
+
+def test_sigla_curta_conhecida_nao_duplica_no_fallback():
+    # "04 Pontos de VMB" devolvia o canônico E um agente solto "VMB".
+    assert _canonicos(extrair_agentes_multifonte(
+        descricao='04 Pontos de VMB')) == {'Vibração de Mão-Braço (VMB)'}
+
+
 # ── extrair_os_multifonte ─────────────────────────────────────────────
 
 def test_os_explicita_no_titulo():
