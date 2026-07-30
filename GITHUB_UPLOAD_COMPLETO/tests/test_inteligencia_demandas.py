@@ -171,6 +171,27 @@ def test_agente_livre_nao_inventa_a_partir_de_prosa():
         assert extrair_agentes_multifonte(descricao=texto) == [], texto
 
 
+def test_sigla_de_grupo_nao_vira_agente_proprio():
+    # BTX/BTEX já expande em Benzeno+Tolueno+Xileno — não pode aparecer
+    # também como agente "BTX", senão a coleta é contada duas vezes.
+    for texto in ('2 medições de BTX', '1 medição de BTEX no abastecimento'):
+        nomes = _canonicos(extrair_agentes_multifonte(descricao=texto))
+        assert nomes == {'Benzeno', 'Tolueno', 'Xileno'}, (texto, nomes)
+
+
+def test_btx_com_medicoes_conta_quantidade():
+    ags = extrair_agentes_multifonte(descricao='2 medições de BTX')
+    assert _qtd(ags, 'Benzeno') == 2
+
+
+def test_agente_livre_corta_complemento_de_lugar():
+    # "Fosfina na caldeira" é medição de Fosfina, não de um agente chamado
+    # "Fosfina Na Caldeira".
+    ags = extrair_agentes_multifonte(descricao='3 medições de Fosfina na caldeira')
+    assert _canonicos(ags) == {'Fosfina'}
+    assert _qtd(ags, 'Fosfina') == 3
+
+
 def test_medicoes_nao_derruba_soma_multiunidade():
     # Estratégia de menção isolada não pode reduzir a soma por unidade.
     ags = extrair_agentes_multifonte(

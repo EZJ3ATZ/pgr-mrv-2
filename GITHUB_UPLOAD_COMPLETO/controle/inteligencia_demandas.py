@@ -58,6 +58,10 @@ AGENTES_SST: Dict[str, List[str]] = {
         'vibracao mao braco', 'vibração mão braço', 'vmb', 'vibracao vmb',
         'vibração vmb', 'iso 5349', 'vibração de mão braço',
         'vibracao mao-braco', 'vibracao de mao e braco',
+        'mao-braco', 'mão-braço', 'maos e bracos', 'mãos e braços',
+        'vibracao localizada', 'vibração localizada',
+        'vibracoes localizadas', 'vibrações localizadas',
+        'vibracao de extremidades', 'extremidades',
     ],
     'Vibração (geral)': [
         'vibracao', 'vibração', 'vibracao mecanica', 'vibração mecânica',
@@ -65,7 +69,8 @@ AGENTES_SST: Dict[str, List[str]] = {
     'Iluminamento': [
         'iluminamento', 'iluminancia', 'iluminação', 'iluminacao',
         'luximetria', 'lux', 'nivel de iluminamento', 'avaliacao luminosa',
-        'avaliação luminosa',
+        'avaliação luminosa', 'luminancia', 'luminância',
+        'luminacia',   # grafia errada recorrente nas OS do Planner
     ],
     'Frio': [
         'frio', 'exposicao ao frio', 'exposição ao frio', 'ambiente frio',
@@ -559,6 +564,26 @@ _RUIDO_GENERICO = re.compile(
     re.I,
 )
 
+# Conectivo que inicia complemento de lugar/finalidade — o agente termina aqui.
+_RE_COMPLEMENTO = re.compile(
+    r'\s+(?:no|na|nos|nas|em|para|pra|junto|durante|conforme|'
+    r'a\s+ser|que\s+|com\s+o|com\s+a)\s+',
+    re.I,
+)
+
+# Siglas que representam um GRUPO de agentes e são expandidas em outro ponto
+# do motor — não podem virar agente próprio, senão duplicam com a expansão.
+_RE_SIGLA_GRUPO = re.compile(r'(?<![a-z])bte?x(?![a-z])', re.I)
+
+# Verbo conjugado / termo de planilha: denuncia frase, não nome de agente.
+_RE_FRASE = re.compile(
+    r'\b(ser[aã]o?|seria|foi|foram|est[aã]o|substitu[ií]|troca[dr]|'
+    r'acordad[oa]|combinad[oa]|solicitad[oa]|informad[oa]|realizad[oa]|'
+    r'quantidade|qtd|total|obs|conforme|acordo|inclu[ií]|adicionad[oa]|'
+    r'pendente|aguardand|verificar|confirmar)\b',
+    re.I,
+)
+
 # "N <unidade> de <AGENTE>" — âncora explícita de medição no texto da OS.
 _RE_AGENTE_LIVRE = re.compile(
     r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s*'
@@ -586,14 +611,35 @@ def _agentes_desconhecidos(
         # Corta na primeira pontuação forte: pega "Sais de Cianeto" de
         # "Sais de Cianeto\n1 medição de ..." sem arrastar a linha seguinte.
         nome = re.split(r'[\n\r,;.:•|]', bruto)[0].strip(' -–—/')
+        # Corta o complemento de lugar/finalidade: "BTEX no abastecimento"
+        # é uma medição de BTEX, não de um agente chamado "BTEX No
+        # Abastecimento". O agente é o que vem ANTES do conectivo.
+        nome = _RE_COMPLEMENTO.split(nome)[0].strip(' -–—/')
         if len(nome) < 3 or len(nome) > 58:
             continue
         if _RUIDO_GENERICO.search(nome):
             continue
         if not re.search(r'[A-Za-zÀ-ÿ]{3}', nome):
             continue
+        # Frase, não nome de agente: verbo conjugado ou termo de planilha.
+        # Sem isto, "Vibrações serão substituídas por 3 medições de metais"
+        # virava um agente com esse nome inteiro.
+        if _RE_FRASE.search(nome):
+            continue
+        # Nome químico real raramente passa de 6 palavras ("Éter Etílico de
+        # Dietileno Glicol" tem 5); acima disso é frase capturada por engano.
+        if len(nome.split()) > 6:
+            continue
+        # Sobrou só a unidade de contagem ("Avaliação", "Medição") — o texto
+        # não disse de QUE agente se trata.
+        if re.fullmatch(r'(?:' + _UNIDADE_QTD + r')', _norm(nome), re.I):
+            continue
 
         nome_n = _norm(nome)
+        # Sigla de GRUPO já expandida em outro ponto (BTX/BTEX vira
+        # Benzeno+Tolueno+Xileno): capturar aqui duplicaria o agente.
+        if _RE_SIGLA_GRUPO.search(nome_n):
+            continue
         # Já é conhecido pelo dicionário? Então as estratégias A/B/C tratam.
         if any(a in nome_n for a, _ in _ALIAS_SORTED
                if len(a) >= _ALIAS_CURTO_MINLEN):
@@ -862,7 +908,7 @@ def extrair_agentes_multifonte(
         for _m in _re_btx.finditer(_tn):
             _q = 1
             _pre = _tn[max(0, _m.start() - 25):_m.start()]
-            _mq = re.search(r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)[xX×\s]*$', _pre)
+            _mq = _RE_QTD_LOOKBACK.search(_pre)
             if _mq:
                 _pq = _parse_int(_mq.group(1))
                 if _pq and 1 <= _pq <= 30:
