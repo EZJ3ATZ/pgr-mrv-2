@@ -3869,6 +3869,7 @@
       <!-- Barra de ações em lote (aparece ao selecionar) -->
       <div id="ctrl-amostr-bulk-bar" style="display:none;align-items:center;gap:10px;padding:10px 14px;margin-bottom:10px;background:rgba(42,157,157,.08);border:1px solid var(--bd-teal);border-radius:8px;">
         <span id="ctrl-amostr-bulk-count" style="font-size:.82rem;font-weight:700;color:var(--primary-l);">0 selecionados</span>
+        <button onclick="ccAbrir()" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;" title="Gera a cadeia no formulário do laboratório e registra o envio">🧪 Cadeia de Custódia</button>
         <button onclick="ctrlAbrirConcluirLote()" style="background:var(--green);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;">✓ Concluído</button>
         <button onclick="ctrlDeselAllAmostr()" style="background:transparent;color:var(--text3);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:.8rem;cursor:pointer;">Limpar seleção</button>
       </div>
@@ -5052,6 +5053,53 @@
     <div class="ctrl-actions">
       <button class="ctrl-btn-cancel" onclick="ctrlFecharBaixaLote()">Cancelar</button>
       <button class="ctrl-btn-ok" onclick="ctrlConfirmarBaixaLote()">✓ Confirmar Baixa</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cadeia de Custódia — formulário IT02-M do laboratório -->
+<div class="ctrl-overlay" id="cc-overlay" onclick="if(event.target===this) ccFechar()">
+  <div class="ctrl-modal" style="max-width:760px;">
+    <h3>🧪 Cadeia de Custódia</h3>
+
+    <div class="ctrl-info-box" style="margin-bottom:14px;">
+      <div style="font-size:.82rem;line-height:1.6;">
+        Gera o formulário do laboratório já preenchido com os dados da coleta e
+        <b>registra o envio</b> destes amostradores.
+        <div style="margin-top:8px;color:var(--text3);">
+          <b>1.</b> Confira os dados abaixo — vêm da coleta, não precisa digitar.<br>
+          <b>2.</b> Escolha <b>o agente de cada amostrador</b> (obrigatório: é o que o laboratório vai analisar).<br>
+          <b>3.</b> Clique em Gerar. O arquivo baixa e a data de envio é carimbada.
+        </div>
+      </div>
+    </div>
+
+    <div id="cc-avisos" style="display:none;margin-bottom:12px;"></div>
+
+    <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:210px;">
+        <label>Empresa avaliada</label>
+        <input type="text" id="cc-empresa" readonly style="background:var(--surface2);">
+      </div>
+      <div style="width:190px;">
+        <label>CNPJ <span id="cc-cnpj-hint" style="font-weight:400;color:var(--text3);font-size:.72rem;"></span></label>
+        <input type="text" id="cc-cnpj" placeholder="00.000.000/0001-00">
+      </div>
+      <div style="width:150px;">
+        <label>Data do envio</label>
+        <input type="date" id="cc-data">
+      </div>
+    </div>
+
+    <div id="cc-linhas" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;"></div>
+
+    <div class="ctrl-actions">
+      <label style="display:flex;align-items:center;gap:6px;margin-right:auto;font-size:.78rem;color:var(--text3);font-weight:400;">
+        <input type="checkbox" id="cc-marcar" checked style="width:auto;margin:0;">
+        Registrar envio ao laboratório
+      </label>
+      <button class="ctrl-btn-cancel" onclick="ccFechar()">Cancelar</button>
+      <button class="ctrl-btn-ok" id="cc-btn-gerar" onclick="ccGerar()">⬇ Gerar cadeia</button>
     </div>
   </div>
 </div>
@@ -14051,6 +14099,148 @@ async function ctrlConfirmarBaixaLote() {
     ctrlLoadAmostr();
     ctrlLoadStats();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ── Cadeia de Custódia — formulário IT02-M do laboratório ─────────────
+// O agente NÃO é preenchido sozinho: a OS diz o que a empresa contratou no
+// total, não o que foi em cada tubo. Chutar mandaria o lab analisar N
+// substâncias por amostra e multiplicaria o custo da análise.
+let _ccDados = null;
+
+async function ccAbrir() {
+  const ids = _ctrlAmostrChecked();
+  if (!ids.length) { alert('Selecione ao menos um amostrador'); return; }
+  document.getElementById('cc-data').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('cc-linhas').innerHTML =
+    '<div style="padding:16px;text-align:center;color:var(--text3);font-size:.85rem;">Carregando dados da coleta…</div>';
+  document.getElementById('cc-overlay').classList.add('show');
+  try {
+    const r = await fetch('/controle/cadeia-custodia/preview', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({amostrador_ids: ids}),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.erro || 'falhou');
+    _ccDados = j;
+    ccRender();
+  } catch (e) {
+    document.getElementById('cc-linhas').innerHTML =
+      `<div style="padding:16px;color:var(--red);font-size:.85rem;">Não foi possível carregar: ${e.message}</div>`;
+  }
+}
+
+function ccFechar() {
+  document.getElementById('cc-overlay').classList.remove('show');
+  _ccDados = null;
+}
+
+function ccRender() {
+  const d = _ccDados || {};
+  const emp = d.empresa || {};
+  document.getElementById('cc-empresa').value = emp.nome || '(sem empresa)';
+  const cnpj = document.getElementById('cc-cnpj');
+  cnpj.value = emp.cnpj || '';
+  document.getElementById('cc-cnpj-hint').textContent =
+    emp.cnpj ? '' : '— digite uma vez, fica salvo';
+
+  const sug = d.agentes_sugeridos || [];
+  const opcoes = sug.map(a => `<option value="${qEsc(a)}">`).join('');
+  const linhas = (d.linhas || []).map((ln, i) => `
+    <div style="padding:10px 12px;border-bottom:1px solid var(--border);">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <b style="font-size:.82rem;font-family:monospace;">${qEsc(ln.codigo)}</b>
+        <span style="font-size:.76rem;color:var(--text3);">
+          ${qEsc(ln.funcionario || '—')} · ${qEsc(ln.funcao || '—')} · ${qEsc(ln.setor || '—')}
+        </span>
+        <span style="font-size:.74rem;color:var(--text3);margin-left:auto;">
+          ${ln.data || '—'} · ${ln.hora_ini || '—'}→${ln.hora_fim || '—'}
+          · ${ln.vazao ?? '—'} L/min · ${ln.volume ?? '—'} L
+        </span>
+      </div>
+      <div style="margin-top:6px;">
+        <input type="text" class="cc-ag" data-cod="${qEsc(ln.codigo)}"
+               list="cc-ag-list" placeholder="Agente que este amostrador coleta (obrigatório)"
+               value="${qEsc((ln.agentes || []).join('; '))}"
+               style="width:100%;font-size:.82rem;">
+      </div>
+    </div>`).join('');
+  document.getElementById('cc-linhas').innerHTML =
+    `<datalist id="cc-ag-list">${opcoes}</datalist>` + (linhas ||
+    '<div style="padding:16px;color:var(--text3);font-size:.85rem;">Nenhum amostrador.</div>');
+
+  const box = document.getElementById('cc-avisos');
+  const avisos = (d.avisos || []).filter(a => !/AGENTE não informado/.test(a));
+  if (avisos.length) {
+    box.style.display = 'block';
+    box.innerHTML = `<div style="background:rgba(234,179,8,.10);border:1px solid var(--yellow);
+      border-radius:6px;padding:8px 12px;font-size:.78rem;line-height:1.5;">
+      ${avisos.map(a => qEsc(a)).join('<br>')}</div>`;
+  } else {
+    box.style.display = 'none';
+  }
+  if (sug.length) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'padding:8px 12px;font-size:.74rem;color:var(--text3);background:var(--surface2);';
+    hint.textContent = 'Sugestões da OS: ' + sug.join(' · ');
+    document.getElementById('cc-linhas').prepend(hint);
+  }
+}
+
+function _ccAgentes() {
+  const out = {};
+  document.querySelectorAll('.cc-ag').forEach(inp => {
+    const v = (inp.value || '').split(';').map(s => s.trim()).filter(Boolean);
+    if (v.length) out[inp.dataset.cod] = v;
+  });
+  return out;
+}
+
+async function ccGerar() {
+  const ids = _ctrlAmostrChecked();
+  if (!ids.length) { alert('Nenhum amostrador selecionado'); return; }
+  const agentes = _ccAgentes();
+  const faltando = (_ccDados.linhas || [])
+    .filter(ln => !(agentes[ln.codigo] || []).length).map(ln => ln.codigo);
+  if (faltando.length) {
+    alert('Informe o agente destes amostradores antes de gerar:\n\n' + faltando.join('\n') +
+          '\n\nÉ o que o laboratório vai analisar — sem isso a cadeia é recusada.');
+    return;
+  }
+  const btn = document.getElementById('cc-btn-gerar');
+  const txt = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Gerando…';
+  try {
+    const r = await fetch('/controle/cadeia-custodia/gerar', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        amostrador_ids: ids, agentes,
+        data_envio: document.getElementById('cc-data').value,
+        marcar_envio: document.getElementById('cc-marcar').checked,
+        empresa: {cnpj: document.getElementById('cc-cnpj').value.trim()},
+      }),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j.erro || `erro ${r.status}`);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+    const nome = m ? decodeURIComponent(m[1]) : 'Cadeia de Custodia.xlsx';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nome; a.click();
+    URL.revokeObjectURL(url);
+    ccFechar();
+    // ctrlLoadAmostr é o nome real do recarregador da lista (não existe
+    // ctrlCarregarAmostradores nem ctrlToast neste app).
+    if (typeof ctrlLoadAmostr === 'function') ctrlLoadAmostr();
+    if (typeof ctrlDeselAllAmostr === 'function') ctrlDeselAllAmostr();
+  } catch (e) {
+    alert('Não foi possível gerar: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txt;
+  }
 }
 
 function ctrlAbrirConcluirLote() {
