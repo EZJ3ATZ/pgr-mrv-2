@@ -11,7 +11,11 @@ except ImportError:
     PDF_OK = False
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max (fotos)
+# 50MB atendia foto de campo, mas nao autos trabalhistas: o PDF de autos
+# completos do PJe usado como referencia tem 95MB em 723 paginas, e 50MB
+# devolvia 413 antes de o modulo Pericias ver o arquivo. Werkzeug faz spool em
+# disco acima de 500KB, entao o teto maior nao carrega tudo em RAM.
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB (autos do PJe)
 
 def _secret_key():
     """Chave de sessão. Nunca usa a chave publica do repo em producao.
@@ -122,6 +126,15 @@ try:
 except Exception as _ce:
     import traceback
     print(f'[campo] erro ao carregar blueprint: {_ce}')
+    traceback.print_exc()
+
+try:
+    from controle.pericias import pericias_bp
+    app.register_blueprint(pericias_bp)
+    print('[pericias] blueprint registrado OK')
+except Exception as _pe:
+    import traceback
+    print(f'[pericias] erro ao carregar blueprint: {_pe}')
     traceback.print_exc()
 
 
