@@ -415,10 +415,13 @@ def diagnostico_banco() -> dict:
                 USE_PG = False
             # Funções de data diferem entre SQLite e PostgreSQL
             if USE_PG:
+                # COALESCE(...)<>'' em vez de IS NOT NULL: a coluna guarda ''
+                # como "sem data" (295 casos em data_medicao), e ''::date estoura
+                # com invalid input syntax no Postgres.
                 _parados_sql = """
                     SELECT COUNT(*) FROM amostradores
                     WHERE status='laboratorio'
-                      AND data_envio_lab IS NOT NULL
+                      AND COALESCE(data_envio_lab,'') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
                       AND data_envio_lab::date < CURRENT_DATE - 30
                 """
                 _vencendo_sql = """
@@ -435,7 +438,7 @@ def diagnostico_banco() -> dict:
                 _parados_sql = """
                     SELECT COUNT(*) FROM amostradores
                     WHERE status='laboratorio'
-                      AND data_envio_lab IS NOT NULL
+                      AND COALESCE(data_envio_lab,'') GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'
                       AND julianday('now') - julianday(data_envio_lab) > 30
                 """
                 _vencendo_sql = """

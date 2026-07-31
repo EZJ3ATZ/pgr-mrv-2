@@ -3842,6 +3842,7 @@
           <option value="tipo_asc">🔤 Tipo A-Z</option>
         </select>
         <span style="flex:1;"></span>
+        <button class="ctrl-import-btn" onclick="ccAbrir()" style="background:var(--accent);color:#fff;" title="Gera o formulário do laboratório com os dados da coleta e registra o envio">🧪 Cadeia de Custódia</button>
         <button class="ctrl-import-btn" onclick="ctrlSwitchAmostrView('venc')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Controle de vencimento / envios ao laboratório">⏱ Vencimento</button>
         <div style="position:relative;display:inline-block;">
           <button class="ctrl-import-btn" onclick="ctrlAmostrToggleMenu('ctrl-menu-add')" style="background:var(--brand);">+ Adicionar ▾</button>
@@ -14166,7 +14167,13 @@ let _ccDados = null;
 
 async function ccAbrir() {
   const ids = _ctrlAmostrChecked();
-  if (!ids.length) { alert('Selecione ao menos um amostrador'); return; }
+  if (!ids.length) {
+    // Mensagem diz O QUE FAZER: o Wesley abriu a aba, não achou nada e voltou
+    // a gerar a planilha à mão. O botão dependia de já haver seleção.
+    alert('Marque na lista abaixo os amostradores que vão para o laboratório ' +
+          '(a caixinha à esquerda de cada linha) e clique de novo em Cadeia de Custódia.');
+    return;
+  }
   document.getElementById('cc-data').value = new Date().toISOString().slice(0, 10);
   document.getElementById('cc-linhas').innerHTML =
     '<div style="padding:16px;text-align:center;color:var(--text3);font-size:.85rem;">Carregando dados da coleta…</div>';

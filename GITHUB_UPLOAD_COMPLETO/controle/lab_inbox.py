@@ -368,6 +368,76 @@ def _alertar_resultados_atrasados(conn, dias=None):
     return novos
 
 
+_COLS_DATA_AMOSTRADOR = ('data_medicao', 'data_envio_lab', 'data_resultado',
+                         'data_conclusao', 'cert_validade')
+
+
+def normalizar_datas_vazias(conn=None):
+    """Troca string vazia por NULL nas colunas de data de `amostradores`.
+
+    `COUNT(col)` conta '' como valor: data_medicao reportava 364 preenchidas
+    havendo 69 reais (295 eram ''). Qualquer painel que use COUNT(col) mede
+    errado, e `''::date` estoura no Postgres. Semanticamente idêntico —
+    '' e NULL já significam "sem data" em todo o código.
+    """
+    def _run(c):
+        total = 0
+        for col in _COLS_DATA_AMOSTRADOR:
+            try:
+                cur = c.execute(
+                    f"UPDATE amostradores SET {col}=NULL WHERE {col}=''")
+                total += getattr(cur, 'rowcount', 0) or 0
+            except Exception as e:
+                log.warning('[lab_inbox] normalizar %s falhou: %s', col, e)
+        return total
+    if conn is not None:
+        return _run(conn)
+    with get_db() as c:
+        return _run(c)
+
+
+def sincronizar_data_medicao_dos_laudos(conn=None):
+    """Preenche `amostradores.data_medicao` vazia com a data de amostragem que o
+    laudo já declara em `ra_laudos`.
+
+    Retroativo: o `_upsert_ra_laudo` passou a propagar na hora de gravar, mas os
+    laudos já lidos ficaram para trás — eram 73 dos 77, e sem essa data o ciclo
+    completo (medição → envio → resultado) existia em 6 de 487.
+    Nunca sobrescreve data já preenchida.
+    """
+    def _run(c):
+        _ensure_ra_laudos(c)
+        rows = [row_to_dict(r) for r in c.execute(
+            "SELECT rl.amostrador_id AS aid, rl.data_amostragem AS dt "
+            "FROM ra_laudos rl JOIN amostradores a ON a.id = rl.amostrador_id "
+            "WHERE COALESCE(rl.data_amostragem,'') <> '' "
+            "AND COALESCE(a.data_medicao,'') = ''").fetchall()]
+        # Mesmo amostrador pode ter vários laudos: vale a amostragem MAIS ANTIGA
+        # (é quando o tubo saiu a campo).
+        melhor = {}
+        for r in rows:
+            iso = _iso_br(r.get('dt'))
+            if not iso:
+                continue
+            aid = r.get('aid')
+            if aid not in melhor or iso < melhor[aid]:
+                melhor[aid] = iso
+        n = 0
+        for aid, iso in melhor.items():
+            try:
+                c.execute("UPDATE amostradores SET data_medicao=?, "
+                          "atualizado_em=CURRENT_TIMESTAMP "
+                          "WHERE id=? AND COALESCE(data_medicao,'')=''", (iso, aid))
+                n += 1
+            except Exception as e:
+                log.warning('[lab_inbox] propagar data_medicao #%s falhou: %s', aid, e)
+        return n
+    if conn is not None:
+        return _run(conn)
+    with get_db() as c:
+        return _run(c)
+
+
 def _completar_casou_por_ra_laudos(resultados):
     """Preenche `casou` de itens gravados por versão anterior, olhando ra_laudos.
 
@@ -656,6 +726,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     medicoes_baixadas = 0
     alertas_atraso = 0
     alertas_sem_envio = 0
+    datas_do_laudo = 0
     if apply:
         with get_db() as conn:
             for p in plano:
@@ -689,6 +760,14 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 alertas_sem_envio = _alertar_nunca_despachados(conn)
             except Exception as e:
                 log.warning('[lab_inbox] alerta de nunca despachado falhou: %s', e)
+            # Data da coleta que o laudo declara → amostrador (só onde falta).
+            # Roda no sync porque é a ponta que faltava para medir prazo, e o
+            # alerta acima conta idade a partir dela.
+            try:
+                datas_do_laudo = sincronizar_data_medicao_dos_laudos(conn)
+                normalizar_datas_vazias(conn)
+            except Exception as e:
+                log.warning('[lab_inbox] sincronizar data_medicao falhou: %s', e)
             if max_visto and max_visto != watermark:
                 _kv_set(conn, 'lab_watermark', max_visto)
             if pendentes is not None:
@@ -704,6 +783,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 'medicoes_baixadas_lab': medicoes_baixadas,
                 'alertas_atraso': alertas_atraso,
                 'alertas_sem_envio': alertas_sem_envio,
+                'datas_do_laudo': datas_do_laudo,
                 'resultados_total': len(resultados),
                 'por_categoria': cat_count,
                 'fetch_erros': fetch_erros,
@@ -727,6 +807,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
         'medicoes_baixadas_lab': medicoes_baixadas,
         'alertas_atraso': alertas_atraso,
         'alertas_sem_envio': alertas_sem_envio,
+        'datas_do_laudo': datas_do_laudo,
         'codigos_fora_do_sistema': sorted(fora)[:30],
         'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],
@@ -959,8 +1040,29 @@ def _ensure_ra_laudos(conn):
         "assunto TEXT, data_email TEXT, criado_em TEXT)")
 
 
+def _iso_br(data_br):
+    """'30/06/2026' → '2026-06-30'. O PDF do laudo traz data no formato BR e as
+    colunas de amostradores guardam ISO — misturar quebra todo cálculo de prazo."""
+    m = re.match(r'^\s*(\d{2})/(\d{2})/(\d{4})\s*$', str(data_br or ''))
+    if not m:
+        return ''
+    dia, mes, ano = m.groups()
+    try:
+        datetime(int(ano), int(mes), int(dia))     # rejeita 31/02
+    except ValueError:
+        return ''
+    return f'{ano}-{mes}-{dia}'
+
+
 def _upsert_ra_laudo(conn, aid, cod, email, d):
-    """Grava o laudo extraído (DELETE+INSERT por amostrador+RA — DB-agnóstico)."""
+    """Grava o laudo extraído (DELETE+INSERT por amostrador+RA — DB-agnóstico).
+
+    Também propaga a DATA DA AMOSTRAGEM do laudo para `amostradores.data_medicao`
+    quando ela está vazia: o PDF traz essa data em 100% dos laudos lidos, mas 73
+    dos 77 amostradores estavam sem ela, e sem a ponta inicial não há como medir
+    coleta → envio → resultado (o ciclo completo existia em 6 de 487, 1,2%).
+    Nunca sobrescreve data já preenchida — o que o técnico lançou vence.
+    """
     ra = d.get('ra_num') or ''
     conn.execute("DELETE FROM ra_laudos WHERE amostrador_id=? AND ra_num=?", (aid, ra))
     conn.execute(
@@ -972,6 +1074,11 @@ def _upsert_ra_laudo(conn, aid, cod, email, d):
          d.get('tecnico', ''), d.get('metodo', ''), d.get('data_amostragem', ''),
          d.get('data_recebimento', ''), json.dumps(d.get('resultados', []), ensure_ascii=False),
          email.get('subject', ''), email.get('data', '')))
+    iso = _iso_br(d.get('data_amostragem'))
+    if iso:
+        conn.execute(
+            "UPDATE amostradores SET data_medicao=?, atualizado_em=CURRENT_TIMESTAMP "
+            "WHERE id=? AND COALESCE(data_medicao,'')=''", (iso, aid))
 
 
 def backfill_ras(apply=False, top=200):

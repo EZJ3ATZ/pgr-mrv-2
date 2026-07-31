@@ -151,6 +151,7 @@ _ADMIN_ONLY_EXACT = frozenset({
     '/controle/demandas/re-extrair',
     '/controle/coletas/dedup',
     '/controle/equipamentos/rebuild-frota',
+    '/controle/amostradores/sincronizar-datas-laudo',
 })
 
 
@@ -8529,6 +8530,33 @@ def _cc_ids(d):
         except (TypeError, ValueError):
             continue
     return out
+
+
+@controle_bp.route('/amostradores/sincronizar-datas-laudo', methods=['POST'])
+@login_required
+def api_sincronizar_datas_laudo():
+    """Preenche data_medicao vazia com a data de amostragem que o laudo declara.
+
+    Ferramenta de manutenção (admin): o sync já faz isso a cada rodada, este
+    endpoint é para não esperar. O ciclo completo (medição → envio → resultado)
+    existia em 6 de 487 amostradores porque a data da coleta ficava só em
+    `ra_laudos`, extraída do PDF, sem chegar ao amostrador.
+    """
+    init_db()
+    from .lab_inbox import sincronizar_data_medicao_dos_laudos, normalizar_datas_vazias
+    try:
+        propagadas = sincronizar_data_medicao_dos_laudos()
+        normalizadas = normalizar_datas_vazias()
+    except Exception as e:
+        log.exception('[datas-laudo] falhou')
+        return jsonify({'erro': str(e)}), 500
+    usuario = getattr(current_user, 'email', 'sistema')
+    registrar_evento('amostrador_atualizado',
+                     f'Datas do laudo → amostrador: {propagadas} data(s) de medição '
+                     f'preenchida(s), {normalizadas} campo(s) vazio(s) normalizado(s)',
+                     usuario=usuario, ip=request.remote_addr)
+    return jsonify({'ok': True, 'data_medicao_preenchida': propagadas,
+                    'campos_vazios_normalizados': normalizadas})
 
 
 @controle_bp.route('/cadeia-custodia/preview', methods=['POST'])
