@@ -3798,6 +3798,7 @@
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('prev', this)">Previsão</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('plan', this)" style="background:var(--blue);color:#fff;font-weight:700;">📋 Planejamento</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:var(--green);color:#fff;font-weight:700;">📍 Planilha de Campo</div>
+      <div class="ctrl-subtab" onclick="ctrlSwitchSub('cadeia', this)" style="background:var(--accent);color:#fff;font-weight:700;">🧪 Cadeia de Custódia</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('audit', this)">🕵 Auditoria</div>
     </div>
@@ -4700,6 +4701,31 @@
 
     <!-- Agentes sem guia -->
     <div id="ctrl-prev-semguia" style="margin-top:14px;"></div>
+  </div>
+
+  <!-- Sub: Cadeia de Custódia — conferência do método antes de a amostra sair -->
+  <div id="ctrl-sub-cadeia" style="display:none;">
+    <div style="background:rgba(16,185,129,.06);border-left:3px solid var(--green);padding:12px 16px;border-radius:6px;margin-bottom:14px;font-size:.82rem;line-height:1.6;">
+      <b>Medições realizadas, conferidas contra a guia de métodos.</b>
+      Informe <b>o agente de cada amostrador</b> — é o que o laboratório vai analisar,
+      e é o que define qual método se aplica. A conferência de vazão, volume e tipo de
+      amostrador aparece na hora. Depois que o tubo sai para o laboratório não tem volta.
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2);font-weight:400;">
+        <input type="checkbox" id="cc-med-pendentes" checked onchange="ccMedCarregar()" style="width:auto;margin:0;">
+        Só o que ainda não foi enviado ao laboratório
+      </label>
+      <span style="flex:1;"></span>
+      <span id="cc-med-resumo" style="font-size:.8rem;color:var(--text3);"></span>
+      <button class="ctrl-import-btn" onclick="ccMedCarregar()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);">↻ Atualizar</button>
+      <button class="ctrl-import-btn" id="cc-med-btn-gerar" onclick="ccMedGerar()" style="background:var(--accent);">⬇ Gerar cadeia dos selecionados</button>
+    </div>
+
+    <!-- nomes da guia de métodos: digitar fora da guia = sem método a conferir -->
+    <datalist id="cc-med-guia"></datalist>
+    <div id="cc-med-lista"><div style="padding:18px;text-align:center;color:var(--text3);font-size:.85rem;">Carregando…</div></div>
   </div>
 
   <!-- Sub: Importar -->
@@ -9425,7 +9451,7 @@ function ctrlSwitchSub(name, el) {
   }
   _ctrlSubAtiva = name;
   _ctrlStatsCache = null;
-  ['amostr','empresa','demand','prev','nova','plan','import','audit'].forEach(s => {
+  ['amostr','empresa','demand','prev','nova','plan','import','audit','cadeia'].forEach(s => {
     const div = document.getElementById('ctrl-sub-'+s);
     if (div) div.style.display = (s===name?'block':'none');
   });
@@ -9438,6 +9464,7 @@ function ctrlSwitchSub(name, el) {
   if (name === 'prev') ctrlLoadPrevisao();
   if (name === 'plan') planInit();
   if (name === 'audit') ctrlLoadAudit();
+  if (name === 'cadeia') ccMedCarregar();
 }
 
 function ctrlSwitchAmostrView(view) {
@@ -14157,6 +14184,208 @@ async function ctrlConfirmarBaixaLote() {
     ctrlLoadAmostr();
     ctrlLoadStats();
   } catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ── Aba Cadeia de Custódia: medições + conferência do método ──────────
+// O agente é informado AQUI. `coletas_quimico_amostr.substancia` está vazia em
+// 100% dos registros porque o agente só era escrito na planilha, à mão — sem ele
+// o sistema não sabe o que cada tubo carrega nem qual método conferir.
+let _ccMed = [];
+let _ccMedTimer = null;
+
+const CC_VER = {
+  ok:         {cor: 'var(--green)',  txt: 'dentro do método'},
+  fora:       {cor: 'var(--red)',    txt: 'FORA do método'},
+  sem_metodo: {cor: 'var(--text3)',  txt: 'sem método na guia'},
+  sem_dado:   {cor: 'var(--yellow)', txt: 'falta dado p/ conferir'},
+};
+
+async function ccMedGuia() {
+  const dl = document.getElementById('cc-med-guia');
+  if (!dl || dl.dataset.pronto) return;
+  try {
+    const d = await (await fetch('/controle/agentes', {credentials: 'include'})).json();
+    const nomes = Array.isArray(d) ? d : (d.agentes || d.nomes || []);
+    dl.innerHTML = nomes
+      .map(a => typeof a === 'string' ? a : (a.nome || a.agente || ''))
+      .filter(Boolean).sort()
+      .map(n => `<option value="${_esc(n)}">`).join('');
+    dl.dataset.pronto = '1';
+  } catch (_) { /* autocomplete é conforto; digitar à mão continua valendo */ }
+}
+
+async function ccMedCarregar() {
+  const lista = document.getElementById('cc-med-lista');
+  if (!lista) return;
+  ccMedGuia();
+  const pend = document.getElementById('cc-med-pendentes')?.checked ? '1' : '0';
+  const ags = _ccMedAgentes();
+  const qs = `?pendentes=${pend}` +
+    (Object.keys(ags).length ? `&agentes=${encodeURIComponent(JSON.stringify(ags))}` : '');
+  try {
+    const r = await fetch('/controle/cadeia-custodia/medicoes' + qs, {credentials: 'include'});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.erro || 'falhou');
+    _ccMed = j.medicoes || [];
+    ccMedRender(j.resumo || {});
+  } catch (e) {
+    lista.innerHTML = `<div style="padding:18px;color:var(--red);font-size:.85rem;">Não foi possível carregar: ${_esc(e.message)}</div>`;
+  }
+}
+
+function _ccMedAgentes() {
+  const o = {};
+  document.querySelectorAll('.cc-med-ag').forEach(i => {
+    const v = (i.value || '').trim();
+    if (v) o[i.dataset.cod] = v;
+  });
+  return o;
+}
+
+function ccMedRender(resumo) {
+  const lista = document.getElementById('cc-med-lista');
+  const res = document.getElementById('cc-med-resumo');
+  if (res) {
+    res.innerHTML = `${resumo.total || 0} medição(ões) · ` +
+      `<b style="color:var(--green);">${resumo.ok || 0}</b> ok · ` +
+      `<b style="color:var(--red);">${resumo.fora || 0}</b> fora · ` +
+      `<b style="color:var(--text3);">${resumo.sem_metodo || 0}</b> sem método`;
+  }
+  if (!_ccMed.length) {
+    lista.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text3);font-size:.85rem;">Nenhuma medição química registrada.</div>';
+    return;
+  }
+  const TH = 'padding:7px 8px;font-size:.7rem;color:var(--text3);font-weight:600;white-space:nowrap;text-align:left;';
+  lista.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:1.5px solid var(--border2);">
+          <th style="${TH}width:30px;"><input type="checkbox" onchange="ccMedSelTodos(this.checked)" title="Selecionar todos"></th>
+          <th style="${TH}">Amostrador</th><th style="${TH}">Empresa / funcionário</th>
+          <th style="${TH}">Agente (o que o lab vai analisar)</th>
+          <th style="${TH}">Método</th><th style="${TH}">Vazão · Volume</th><th style="${TH}">Conferência</th>
+        </tr></thead>
+        <tbody>${_ccMed.map((m, i) => ccMedLinha(m, i)).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function ccMedLinha(m, i) {
+  const v = CC_VER[m.veredicto] || CC_VER.sem_dado;
+  const INP = 'background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:5px 7px;font-family:inherit;font-size:.8rem;width:100%;';
+  return `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 8px;">
+        <input type="checkbox" class="cc-med-chk" data-i="${i}" ${m.ja_enviado ? 'disabled title="já enviado ao laboratório"' : ''}>
+      </td>
+      <td style="padding:6px 8px;font-family:monospace;font-size:.78rem;white-space:nowrap;">
+        ${_esc(m.codigo)}<div style="color:var(--text3);font-family:inherit;font-size:.72rem;">${_esc(m.tipo || '—')} · ${_esc(m.data || '—')}</div>
+      </td>
+      <td style="padding:6px 8px;font-size:.78rem;max-width:190px;">
+        ${_esc(m.empresa || '—')}<div style="color:var(--text3);font-size:.72rem;">${_esc(m.funcionario || '—')}${m.setor ? ' · ' + _esc(m.setor) : ''}</div>
+      </td>
+      <td style="padding:5px 8px;min-width:200px;">
+        <input type="text" class="cc-med-ag" data-cod="${_esc(m.codigo)}" list="cc-med-guia"
+               value="${_esc(m.agente || '')}" placeholder="digite o agente" style="${INP}"
+               oninput="ccMedAgendarRevalidacao()">
+      </td>
+      <td style="padding:6px 8px;font-size:.76rem;white-space:nowrap;">${_esc(m.metodo || '—')}</td>
+      <td style="padding:6px 8px;font-size:.76rem;white-space:nowrap;">
+        ${m.vazao ?? '—'} L/min<div style="color:var(--text3);font-size:.72rem;">${m.volume ?? '—'} L${m.duracao_min ? ' · ' + m.duracao_min + ' min' : ''}</div>
+      </td>
+      <td style="padding:6px 8px;font-size:.74rem;max-width:230px;">
+        <b style="color:${v.cor};">${v.txt}</b>
+        ${(m.problemas || []).length ? `<div style="color:var(--red);font-size:.72rem;line-height:1.4;margin-top:2px;">${m.problemas.map(p => _esc(p)).join('<br>')}</div>` : ''}
+      </td>
+    </tr>`;
+}
+
+// Revalida com debounce: cada tecla não dispara requisição.
+function ccMedAgendarRevalidacao() {
+  clearTimeout(_ccMedTimer);
+  _ccMedTimer = setTimeout(ccMedRevalidar, 600);
+}
+
+async function ccMedRevalidar() {
+  // Preserva seleção e foco: só troca método/conferência de cada linha.
+  const sel = new Set([...document.querySelectorAll('.cc-med-chk:checked')].map(c => c.dataset.i));
+  const foco = document.activeElement?.classList?.contains('cc-med-ag')
+    ? document.activeElement.dataset.cod : null;
+  const pos = foco ? document.activeElement.selectionStart : null;
+  await ccMedCarregar();
+  document.querySelectorAll('.cc-med-chk').forEach(c => { if (sel.has(c.dataset.i)) c.checked = true; });
+  if (foco) {
+    const el = document.querySelector(`.cc-med-ag[data-cod="${foco}"]`);
+    if (el) { el.focus(); if (pos != null) try { el.setSelectionRange(pos, pos); } catch (_) {} }
+  }
+}
+
+function ccMedSelTodos(on) {
+  document.querySelectorAll('.cc-med-chk:not([disabled])').forEach(c => { c.checked = on; });
+}
+
+async function ccMedGerar() {
+  const marcados = [...document.querySelectorAll('.cc-med-chk:checked')].map(c => _ccMed[+c.dataset.i]);
+  if (!marcados.length) {
+    alert('Marque as medições que vão para o laboratório (a caixinha à esquerda de cada linha).');
+    return;
+  }
+  const ags = _ccMedAgentes();
+  const semAgente = marcados.filter(m => !ags[m.codigo]).map(m => m.codigo);
+  if (semAgente.length) {
+    alert('Informe o agente destes amostradores antes de gerar:\n\n' + semAgente.join('\n') +
+          '\n\nÉ o que o laboratório vai analisar.');
+    return;
+  }
+  const fora = marcados.filter(m => m.veredicto === 'fora');
+  if (fora.length && !confirm(
+      'Estas medições estão FORA do método:\n\n' +
+      fora.map(m => `${m.codigo}: ${(m.problemas || []).join('; ')}`).join('\n') +
+      '\n\nO laboratório pode contestar o resultado. Gerar a cadeia assim mesmo?')) {
+    return;
+  }
+  const btn = document.getElementById('cc-med-btn-gerar');
+  const txt = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Gerando…';
+  try {
+    // 1) grava o agente na COLETA — o dado que nunca existia no banco
+    const escolhidos = {};
+    marcados.forEach(m => { escolhidos[m.codigo] = ags[m.codigo]; });
+    const rg = await fetch('/controle/cadeia-custodia/agentes', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({agentes: escolhidos}),
+    });
+    if (!rg.ok) {
+      const j = await rg.json().catch(() => ({}));
+      throw new Error(j.erro || 'não foi possível gravar o agente');
+    }
+    // 2) gera a cadeia (o endpoint carimba data_envio_lab)
+    const ids = marcados.map(m => m.amostrador_id).filter(x => x != null);
+    if (!ids.length) throw new Error('amostradores sem cadastro no inventário');
+    const agentesPorCod = {};
+    marcados.forEach(m => { agentesPorCod[m.codigo] = [ags[m.codigo]]; });
+    const r = await fetch('/controle/cadeia-custodia/gerar', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({amostrador_ids: ids, agentes: agentesPorCod,
+                            demanda_id: marcados[0].demanda_id}),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(j.erro || `erro ${r.status}`);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const mm = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = mm ? decodeURIComponent(mm[1]) : 'Cadeia de Custodia.xlsx';
+    a.click(); URL.revokeObjectURL(url);
+    await ccMedCarregar();
+  } catch (e) {
+    alert('Não foi possível gerar: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = txt;
+  }
 }
 
 // ── Cadeia de Custódia — formulário IT02-M do laboratório ─────────────

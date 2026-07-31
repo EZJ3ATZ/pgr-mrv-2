@@ -8559,6 +8559,139 @@ def api_sincronizar_datas_laudo():
                     'campos_vazios_normalizados': normalizadas})
 
 
+@controle_bp.route('/cadeia-custodia/medicoes')
+@login_required
+def cadeia_custodia_medicoes():
+    """Medições químicas realizadas, cada uma conferida contra a guia de métodos.
+
+    É a aba "Gerar Cadeia de Custódia": mostra o que foi coletado e se vazão,
+    volume e tipo de amostrador batem com o método ANTES de a amostra sair —
+    depois que o tubo vai ao laboratório não tem volta.
+    """
+    from .validacao_metodo import validar_coleta, melhor_metodo, SEM_METODO
+    init_db()
+    # `agentes` = {'TCP2912AV3': 'Tolueno', ...} — escolha que o técnico está
+    # fazendo na tela, para conferir ANTES de gravar. Sem ela usa o que está na
+    # coleta, que hoje está vazio em 100% dos registros (o agente nunca chegava
+    # ao banco: nascia direto na planilha).
+    escolhidos = {}
+    _raw = request.args.get('agentes')
+    if _raw:
+        try:
+            escolhidos = {str(k).strip().upper(): v
+                          for k, v in json.loads(_raw).items()}
+        except Exception:
+            escolhidos = {}
+    só_pendentes = (request.args.get('pendentes') or '1') not in ('0', 'false', 'no')
+    try:
+        limite = min(int(request.args.get('limit') or 300), 1000)
+    except ValueError:
+        limite = 300
+    with get_db() as conn:
+        # DISTINCT por amostrador: a coleta pode ter linha duplicada (visto em
+        # EC98029A, 2 registros idênticos) e a aba não pode contar 2x.
+        rows = [row_to_dict(r) for r in conn.execute(
+            """SELECT cqa.id_amostrador, cqa.tipo_amostrador, cqa.substancia,
+                      cqa.vazao_media, cqa.volume_l, cqa.tempo_min,
+                      cqa.hora_inicio, cqa.hora_final,
+                      cq.empresa_nome, cq.nome_funcionario, cq.funcao, cq.setor,
+                      cq.responsavel_coleta, cq.data_coleta, cq.demanda_id,
+                      a.id AS amostrador_id, a.status, a.data_envio_lab
+               FROM coletas_quimico_amostr cqa
+               JOIN coletas_quimico cq ON cq.id = cqa.coleta_id
+               LEFT JOIN amostradores a
+                      ON UPPER(TRIM(a.codigo)) = UPPER(TRIM(cqa.id_amostrador))
+               ORDER BY cq.data_coleta DESC, cqa.id_amostrador""").fetchall()]
+
+    vistos, itens = set(), []
+    for r in rows:
+        cod = str(r.get('id_amostrador') or '').strip()
+        if not cod or cod.upper() in vistos:
+            continue
+        vistos.add(cod.upper())
+        # Já despachado ao laboratório → fora da fila de conferência
+        if só_pendentes and str(r.get('data_envio_lab') or '').strip():
+            continue
+        agente = (escolhidos.get(cod.upper()) or r.get('substancia') or '').strip()
+        metodos = _buscar_metodos_agente(agente) if agente else []
+        m = melhor_metodo(metodos, r.get('tipo_amostrador'))
+        v = validar_coleta(m, vazao=r.get('vazao_media'), volume=r.get('volume_l'),
+                           tipo_amostrador=r.get('tipo_amostrador'),
+                           tempo_min=r.get('tempo_min'),
+                           hora_inicio=r.get('hora_inicio'),
+                           hora_final=r.get('hora_final'))
+        if not agente:
+            # Sem agente não há método a conferir — a cadeia cobra a escolha
+            # depois; aqui só sinaliza para não parecer aprovado.
+            v['veredicto'] = SEM_METODO
+            v['problemas'] = ['agente da amostra não informado na coleta']
+        itens.append({
+            'amostrador_id': r.get('amostrador_id'), 'codigo': cod,
+            'tipo': r.get('tipo_amostrador') or '', 'agente': agente,
+            'empresa': r.get('empresa_nome') or '', 'demanda_id': r.get('demanda_id'),
+            'funcionario': r.get('nome_funcionario') or '', 'funcao': r.get('funcao') or '',
+            'setor': r.get('setor') or '', 'tecnico': r.get('responsavel_coleta') or '',
+            'data': str(r.get('data_coleta') or '')[:10],
+            'status': r.get('status') or '', 'ja_enviado': bool(str(r.get('data_envio_lab') or '').strip()),
+            'vazao': r.get('vazao_media'), 'hora_inicio': r.get('hora_inicio') or '',
+            'hora_final': r.get('hora_final') or '',
+            'metodo': v.get('metodo_cod'), 'volume': v.get('volume_calculado'),
+            'duracao_min': v.get('duracao_min'),
+            'veredicto': v['veredicto'], 'problemas': v['problemas'],
+            'itens': v.get('itens') or [],
+        })
+        if len(itens) >= limite:
+            break
+
+    resumo = {'total': len(itens)}
+    for k in ('ok', 'fora', 'sem_metodo', 'sem_dado'):
+        resumo[k] = sum(1 for x in itens if x['veredicto'] == k)
+    return jsonify({'medicoes': itens, 'resumo': resumo})
+
+
+@controle_bp.route('/cadeia-custodia/agentes', methods=['POST'])
+@login_required
+def cadeia_custodia_gravar_agentes():
+    """Grava na COLETA o agente de cada amostrador.
+
+    É o dado que nunca existia no banco: `coletas_quimico_amostr.substancia`
+    está vazia em 100% dos registros porque o agente só era escrito na planilha
+    da cadeia, à mão. Sem ele o sistema não sabe o que cada tubo carrega, não dá
+    para conferir contra a guia de métodos e o laudo não tem com o que casar.
+
+    Body: {"agentes": {"TCP2912AV3": "Tolueno", ...}}
+    """
+    init_db()
+    d = request.get_json(silent=True) or {}
+    mapa = d.get('agentes') or {}
+    if not isinstance(mapa, dict) or not mapa:
+        return jsonify({'erro': 'informe agentes: {codigo: agente}'}), 400
+    if len(mapa) > 500:
+        return jsonify({'erro': 'no máximo 500 por vez'}), 400
+    gravados, ignorados = [], []
+    with get_db() as conn:
+        for cod, agente in mapa.items():
+            cod = str(cod or '').strip()
+            agente = str(agente or '').strip()
+            if not cod or not agente:
+                ignorados.append(cod or '(vazio)')
+                continue
+            cur = conn.execute(
+                "UPDATE coletas_quimico_amostr SET substancia=? "
+                "WHERE UPPER(TRIM(id_amostrador))=?", (agente, cod.upper()))
+            if (getattr(cur, 'rowcount', 0) or 0) > 0:
+                gravados.append(cod)
+            else:
+                ignorados.append(cod)
+    if gravados:
+        registrar_evento(
+            'coleta_atualizada',
+            f'Agente informado na coleta de {len(gravados)} amostrador(es): '
+            + ', '.join(gravados[:8]) + ('…' if len(gravados) > 8 else ''),
+            usuario=getattr(current_user, 'email', 'sistema'), ip=request.remote_addr)
+    return jsonify({'ok': True, 'gravados': gravados, 'sem_coleta': ignorados})
+
+
 @controle_bp.route('/cadeia-custodia/preview', methods=['POST'])
 @login_required
 def cadeia_custodia_preview():
