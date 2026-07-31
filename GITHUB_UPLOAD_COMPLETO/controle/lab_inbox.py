@@ -135,6 +135,19 @@ def _fetch_lab_emails(boxes, top=150):
     return out, erros
 
 
+_RA_RE = re.compile(r'RA\s*[:\-]?\s*(\d{6,})', re.I)
+
+
+def _ra_do_assunto(assunto):
+    """Número do RA no assunto: 'ENC: RA 81962593 - ...' → '81962593'.
+
+    É a chave de dedupe da fila. Usar o assunto inteiro fazia o mesmo laudo
+    reencaminhado contar como resultado novo.
+    """
+    m = _RA_RE.search(assunto or '')
+    return m.group(1) if m else None
+
+
 def _codigo_do_anexo_ra(nome):
     """Código do amostrador no NOME do laudo: '81959338-1-TCP4058AV2-EMP-...-Manifesto.pdf'
     → 'TCP4058AV2' (3º segmento separado por '-')."""
@@ -355,6 +368,55 @@ def _alertar_resultados_atrasados(conn, dias=None):
     return novos
 
 
+def _completar_casou_por_ra_laudos(resultados):
+    """Preenche `casou` de itens gravados por versão anterior, olhando ra_laudos.
+
+    Sem isto a fila só ficaria correta depois do próximo sync (que é quem
+    relista os anexos) — e até lá continuaria cobrando vinculação de RA já lido.
+    """
+    faltam = [r for r in resultados if r.get('ra_num') and not r.get('casou')]
+    if not faltam:
+        return resultados
+    try:
+        with get_db() as conn:
+            _ensure_ra_laudos(conn)
+            for r in faltam:
+                rows = conn.execute(
+                    "SELECT amostrador_cod FROM ra_laudos WHERE ra_num=? OR ra_num LIKE ?",
+                    (r['ra_num'], r['ra_num'] + '-%')).fetchall()
+                cods = [row_to_dict(x).get('amostrador_cod') for x in rows]
+                r['casou'] = sorted({c for c in cods if c})
+    except Exception as e:
+        log.warning('[lab_inbox] completar casou por ra_laudos falhou: %s', e)
+    return resultados
+
+
+def _classificar_acao_resultados(resultados):
+    """Diz o que cada RA da fila realmente precisa. Muta a lista no lugar.
+
+    A fila mostrava TODO e-mail de resultado com o botão "Vincular", inclusive
+    os que o casamento automático já tinha resolvido — dava a impressão de que
+    nada era lido sozinho. Pior: quando o código do laudo não está no
+    inventário, o seletor livre deixava gravar o resultado em OUTRO amostrador,
+    concluindo o tubo errado em silêncio.
+
+    acao:
+      resolvido  — casou por anexo, nada pendente (some da fila)
+      cadastrar  — o laudo traz código que não existe no inventário
+      manual     — nada extraído do nome do anexo (sem PDF, nome fora do padrão)
+    """
+    for r in resultados:
+        casou = r.get('casou') or []
+        faltam = r.get('nao_cadastrados') or []
+        if faltam:
+            r['acao'] = 'cadastrar'
+        elif casou:
+            r['acao'] = 'resolvido'
+        else:
+            r['acao'] = 'manual'
+    return resultados
+
+
 def _alertar_nunca_despachados(conn, dias=None):
     """Amostrador coletado que NUNCA teve o despacho ao laboratório registrado.
 
@@ -482,10 +544,18 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
         cat = _classificar(e['from'], e['subject'])
         cat_count[cat or 'ignorado'] += 1
         if cat == 'resultado':
-            _k = ((e['subject'] or '').strip().lower(), e['data'])
-            if _k not in _res_vistos:
+            # Dedupe pelo NÚMERO DO RA, não pelo assunto: o mesmo laudo
+            # reencaminhado ("ENC: RA 81962593") tem assunto diferente e entrava
+            # como resultado novo — 8 linhas na fila para 5 RAs distintos.
+            _ra = _ra_do_assunto(e['subject'])
+            _k = _ra or ((e['subject'] or '').strip().lower(), e['data'])
+            novo = _k not in _res_vistos
+            if novo:
                 _res_vistos.add(_k)
-                resultados.append({'assunto': e['subject'], 'data': e['data'], 'caixa': e.get('caixa', '')})
+                resultados.append({'assunto': e['subject'], 'data': e['data'],
+                                   'caixa': e.get('caixa', ''), 'ra_num': _ra,
+                                   'casou': [], 'nao_cadastrados': []})
+            item = next((x for x in resultados if x.get('ra_num') == _ra), None) if _ra else None
             # data_resultado por amostrador: o código vem no NOME do laudo (PDF).
             # Só precisa LISTAR os anexos (leve) — não baixa o conteúdo.
             if e.get('anexos') and e.get('id'):
@@ -501,10 +571,21 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                     # match robusto + MULTI-código: o lab às vezes cola vários códigos
                     # num segmento só do nome (ex.: 'FV75A1X7P75B1'). Antes pegava só o
                     # 3º segmento como 1 código e o RA escapava.
-                    for amos in _amostradores_do_laudo(nome, look):
+                    achou = _amostradores_do_laudo(nome, look)
+                    for amos in achou:
                         aid, dt = amos['id'], e['data']
                         if dt and (aid not in resultado_por_id or dt < resultado_por_id[aid]):
                             resultado_por_id[aid] = dt
+                        if item and amos.get('codigo') not in item['casou']:
+                            item['casou'].append(amos.get('codigo'))
+                    # Código no nome do laudo que NÃO está no inventário: o lab
+                    # mandou resultado de um tubo que nunca entrou no sistema.
+                    # Não é "faltou vincular" — é cadastro ausente, e vincular a
+                    # outro amostrador gravaria o resultado no tubo errado.
+                    if item and not achou:
+                        cod = _codigo_do_anexo_ra(nome)
+                        if cod and cod not in item['nao_cadastrados']:
+                            item['nao_cadastrados'].append(cod)
             continue
         if cat not in ('remessa', 'recebimento', 'pendentes'):
             continue
@@ -613,6 +694,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             if pendentes is not None:
                 _kv_set(conn, 'lab_pendentes', json.dumps(pendentes, ensure_ascii=False))
             if resultados:
+                _classificar_acao_resultados(resultados)
                 _kv_set(conn, 'lab_resultados', json.dumps(resultados[:30], ensure_ascii=False))
             _kv_set(conn, 'lab_sync_result', json.dumps({
                 'mailboxes_lidas': len(boxes),
@@ -670,14 +752,35 @@ def get_pendentes_salvos():
 
 
 def get_resultados_salvos():
-    """Lê a última lista de resultados/laudos (RA) recebidos do lab (aba Vencimento)."""
+    """Lê a última lista de resultados/laudos (RA) recebidos do lab (aba Vencimento).
+
+    Fila gravada por versão anterior não tem `ra_num` nem `acao`: completa na
+    leitura para a tela não tratar tudo como pendente de vinculação manual.
+    """
     try:
         with get_db() as conn:
             conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
             row = conn.execute("SELECT valor FROM ms_sync_state WHERE chave='lab_resultados'").fetchone()
         if row:
-            d = row_to_dict(row)
-            return json.loads(d.get('valor') or '[]')
+            itens = json.loads(row_to_dict(row).get('valor') or '[]')
+            if not isinstance(itens, list):
+                return []
+            for r in itens:
+                if isinstance(r, dict) and not r.get('ra_num'):
+                    r['ra_num'] = _ra_do_assunto(r.get('assunto'))
+            # Dedupe por RA — a fila antiga conta o reencaminhado como novo.
+            vistos, out = set(), []
+            for r in itens:
+                if not isinstance(r, dict):
+                    continue
+                k = r.get('ra_num') or (r.get('assunto'), r.get('data'))
+                if k in vistos:
+                    continue
+                vistos.add(k)
+                out.append(r)
+            _completar_casou_por_ra_laudos(out)
+            _classificar_acao_resultados([r for r in out if not r.get('acao')])
+            return out
     except Exception:
         pass
     return []

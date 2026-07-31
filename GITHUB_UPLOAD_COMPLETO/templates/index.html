@@ -13124,16 +13124,36 @@ async function ctrlAmostrHeader(force) {
     const box = document.getElementById('ctrl-amostr-resultados');
     const rs = d.lab_resultados || [];
     if (box) {
-      if (rs.length) {
-        window._ctrlRAs = rs;
+      // A fila só cobra o que ainda precisa de ação. O que o casamento
+      // automático já resolveu (pelo código no nome do anexo) sai da lista —
+      // antes aparecia com botão "Vincular" e parecia não ter sido lido.
+      window._ctrlRAs = rs;
+      const pend = rs.map((r, i) => ({r, i})).filter(x => (x.r.acao || 'manual') !== 'resolvido');
+      const lidos = rs.length - pend.length;
+      if (pend.length || lidos) {
         box.style.display = 'block';
-        box.innerHTML = `<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:9px;padding:10px 14px;">
-          <div style="font-size:.82rem;margin-bottom:6px;"><b style="color:var(--green);">📥 ${rs.length} resultado(s) recebido(s) do laboratório</b> <span style="color:var(--text3);font-size:.74rem;">— vincule ao amostrador para concluir o ciclo</span></div>
-          ${rs.map((r, i) => `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:.76rem;">
-            <span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(r.assunto||'—')}</span>
+        const linha = ({r, i}) => {
+          const cad = (r.acao === 'cadastrar');
+          const cods = (r.nao_cadastrados || []).join(', ');
+          return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:.76rem;">
+            <span style="flex:1;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              ${_esc(r.assunto||'—')}
+              ${cad ? `<br><span style="color:var(--yellow);font-size:.72rem;">⚠ amostrador ${_esc(cods)} não está no inventário — cadastre antes de vincular</span>` : ''}
+            </span>
             <span style="color:var(--text3);white-space:nowrap;">${r.data?String(r.data).split('-').reverse().join('/'):'—'}</span>
-            <button onclick="ctrlAmostrAbrirRA(${i})" style="background:rgba(57,153,255,.12);border:1px solid rgba(57,153,255,.4);color:var(--blue);border-radius:6px;padding:3px 11px;cursor:pointer;font-size:.73rem;font-family:inherit;">🔗 Vincular</button>
-          </div>`).join('')}
+            ${cad
+              ? `<button onclick="ctrlAmostrCadastrarDoRA(${i})" style="background:rgba(250,204,21,.14);border:1px solid var(--yellow);color:var(--yellow);border-radius:6px;padding:3px 11px;cursor:pointer;font-size:.73rem;font-family:inherit;">＋ Cadastrar</button>`
+              : `<button onclick="ctrlAmostrAbrirRA(${i})" style="background:rgba(57,153,255,.12);border:1px solid rgba(57,153,255,.4);color:var(--blue);border-radius:6px;padding:3px 11px;cursor:pointer;font-size:.73rem;font-family:inherit;">🔗 Vincular</button>`}
+          </div>`;
+        };
+        box.innerHTML = `<div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);border-radius:9px;padding:10px 14px;">
+          <div style="font-size:.82rem;margin-bottom:6px;">
+            ${pend.length
+              ? `<b style="color:var(--green);">📥 ${pend.length} resultado(s) do laboratório aguardando ação</b>`
+              : `<b style="color:var(--green);">📥 Resultados do laboratório em dia</b>`}
+            ${lidos ? `<span style="color:var(--text3);font-size:.74rem;"> — ${lidos} já lido(s) automaticamente pelo código do anexo</span>` : ''}
+          </div>
+          ${pend.map(linha).join('')}
         </div>`;
       } else box.style.display = 'none';
     }
@@ -13203,12 +13223,49 @@ async function ctrlAmostrRegResultado(id) {
 }
 
 // Vincular um RA do e-mail a um amostrador no laboratório
+// Cadastra o amostrador que o laudo cita mas não existe no inventário.
+// Reusa o modal de novo amostrador com o código já preenchido: sem isso o
+// técnico caía no seletor livre e gravava o resultado em OUTRO tubo.
+function ctrlAmostrCadastrarDoRA(idx) {
+  const ra = (window._ctrlRAs || [])[idx];
+  if (!ra) return;
+  const cods = ra.nao_cadastrados || [];
+  if (!cods.length) { ctrlAmostrAbrirRA(idx); return; }
+  ctrlAbrirNovoAmostrador();
+  const cod = cods[0];
+  document.getElementById('ctrl-na-codigo').value = cod;
+  // prefixo alfabético do código é o tipo (TCP4806AV3 → TCP)
+  const m = /^([A-Za-z]{2,4})(?=\d)/.exec(cod);
+  if (m) document.getElementById('ctrl-na-tipo').value = m[1].toUpperCase();
+  document.getElementById('ctrl-na-obs').value =
+    `Cadastrado a partir do laudo ${ra.ra_num || ''} recebido do laboratório`.trim();
+  if (cods.length > 1) {
+    const er = document.getElementById('ctrl-na-erro');
+    er.textContent = `Este laudo cita ${cods.length} amostradores fora do inventário: ${cods.join(', ')}. Cadastre um por vez.`;
+    er.style.display = 'block';
+  }
+}
+
 function ctrlAmostrAbrirRA(idx) {
   const ra = (window._ctrlRAs||[])[idx];
   if (!ra) return;
+  // Guarda: o laudo cita tubo que não está no inventário. Escolher outro
+  // amostrador aqui gravaria o resultado no errado, e concluído em silêncio.
+  const faltam = ra.nao_cadastrados || [];
+  if (faltam.length) {
+    alert('Este laudo é do amostrador ' + faltam.join(', ') +
+          ', que não está no inventário.\n\nCadastre esse amostrador antes de vincular — ' +
+          'escolher outro aqui gravaria o resultado no tubo errado.');
+    return;
+  }
   const labs = (ctrlAmostrCache||[]).filter(a => (a.status||'').toLowerCase()==='laboratorio');
   if (!labs.length) { alert('Nenhum amostrador com status "No laboratório" para vincular.'); return; }
   const html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:10px;background:var(--surface2);border-radius:7px;padding:10px;">${_esc(ra.assunto||'—')}<br><span style="color:var(--text3);">recebido em ${ra.data?String(ra.data).split('-').reverse().join('/'):'—'}</span></div>
+    <div style="font-size:.74rem;color:var(--yellow);background:rgba(250,204,21,.10);border:1px solid rgba(250,204,21,.35);border-radius:7px;padding:8px 10px;margin-bottom:10px;line-height:1.5;">
+      ⚠ O casamento automático (pelo código no nome do anexo) não resolveu este laudo.
+      Confirme no PDF de qual amostrador ele é — escolher o tubo errado aqui grava o
+      resultado no amostrador errado e o conclui.
+    </div>
     <label style="font-size:.74rem;color:var(--text3);">Amostrador (no laboratório)</label>
     <select id="ctrl-ra-amostr" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:inherit;font-size:.84rem;margin:4px 0 10px;">
       ${labs.map(a => `<option value="${a.id}">${a.codigo} · ${a.tipo||'—'} · ${_esc(a.empresa_nome||'sem empresa')}${a.tempo_parado!=null?` · ${a.tempo_parado}d parado`:''}</option>`).join('')}
