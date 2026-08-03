@@ -31,6 +31,13 @@
     .btn-red   { background: rgba(224,82,82,.15); color: var(--red); }
     .btn-gray  { background: var(--surface2); color: var(--text2); }
     select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: inherit; cursor: pointer; }
+    input[type=text] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-family: inherit; width: 100%; }
+    input[type=text]:focus { outline: none; border-color: var(--brand); }
+    h2 { font-size: 16px; font-weight: 700; margin: 40px 0 6px; }
+    .btn-brand { background: rgba(45,212,191,.15); color: var(--brand); }
+    .addbar { display: flex; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; }
+    .addbar .f-nome { flex: 3; } .addbar .f-reg { flex: 1; } .addbar .f-cargo { flex: 1; }
+    tr.off td { opacity: .45; }
     .msg { display: none; position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 13px; color: var(--brand); z-index: 9999; }
     .msg.show { display: block; }
   </style>
@@ -85,6 +92,54 @@
     </tbody>
   </table>
 
+  <h2>Catálogo de TSTs — nome × registro MTE</h2>
+  <p class="sub">Alimenta o select de técnico dos documentos (laudos, relatório de
+    visita, planejamento). Quem está aqui aparece na lista mesmo sem ter login no
+    sistema. O registro é normalizado para 7 dígitos + /UF ao salvar.</p>
+
+  <div class="addbar">
+    <div class="f-nome"><input type="text" id="nt-nome" placeholder="Nome completo do técnico"></div>
+    <div class="f-reg"><input type="text" id="nt-reg" placeholder="0086038/MG"></div>
+    <div class="f-cargo"><input type="text" id="nt-cargo" placeholder="TST" value="TST"></div>
+    <button class="btn btn-brand" onclick="addTecnico()">+ Incluir</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:45%">Nome</th>
+        <th style="width:18%">Registro MTE</th>
+        <th style="width:12%">Cargo</th>
+        <th style="width:10%">Status</th>
+        <th style="width:15%">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tec-tbody">
+      {% for t in tecnicos %}
+      <tr id="tec-{{ t.id }}" class="{% if t.ativo != 1 %}off{% endif %}">
+        <td><input type="text" value="{{ t.nome }}" data-f="nome"></td>
+        <td><input type="text" value="{{ t.registro_mte or '' }}" data-f="registro_mte"></td>
+        <td><input type="text" value="{{ t.cargo or 'TST' }}" data-f="cargo"></td>
+        <td id="tec-badge-{{ t.id }}">
+          {% if t.ativo == 1 %}
+          <span class="badge badge-ativo">No select</span>
+          {% else %}
+          <span class="badge badge-inativo">Fora</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-brand" onclick="salvarTecnico({{ t.id }})">Salvar</button>
+          <button class="btn {% if t.ativo == 1 %}btn-red{% else %}btn-green{% endif %}"
+                  id="tec-toggle-{{ t.id }}"
+                  onclick="toggleTecnico({{ t.id }}, {% if t.ativo == 1 %}0{% else %}1{% endif %})">
+            {% if t.ativo == 1 %}Remover{% else %}Reativar{% endif %}
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
   <div class="msg" id="msg"></div>
 
   <script>
@@ -113,6 +168,62 @@
         row.querySelector('.btn').outerHTML = `<button class="btn btn-green" onclick="ativar(${uid})">Ativar</button>`;
         showMsg('Usuário desativado.');
       }
+    }
+
+    // ── Catálogo de TSTs ──────────────────────────────────────────────
+    async function postTecnico(body) {
+      const r = await fetch('/controle/admin/tecnicos-mte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { showMsg(d.erro || 'Erro ao salvar'); return null; }
+      return d.tecnico;
+    }
+
+    async function salvarTecnico(tid) {
+      const row = document.getElementById('tec-' + tid);
+      const get = f => row.querySelector(`input[data-f="${f}"]`).value.trim();
+      const t = await postTecnico({
+        id: tid, nome: get('nome'),
+        registro_mte: get('registro_mte'), cargo: get('cargo') || 'TST'
+      });
+      if (!t) return;
+      // Devolve o registro já normalizado (0086038/MG) para a tela
+      row.querySelector('input[data-f="registro_mte"]').value = t.registro_mte || '';
+      showMsg('Técnico salvo!');
+    }
+
+    async function addTecnico() {
+      const nome  = document.getElementById('nt-nome').value.trim();
+      const reg   = document.getElementById('nt-reg').value.trim();
+      const cargo = document.getElementById('nt-cargo').value.trim() || 'TST';
+      if (!nome) { showMsg('Informe o nome.'); return; }
+      const t = await postTecnico({ nome, registro_mte: reg, cargo });
+      if (!t) return;
+      showMsg('Técnico incluído!');
+      location.reload();
+    }
+
+    async function toggleTecnico(tid, ativo) {
+      if (!ativo && !confirm('Tirar este técnico do select dos documentos?')) return;
+      const r = await fetch(`/controle/admin/tecnicos-mte/${tid}/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo })
+      });
+      if (!r.ok) { showMsg('Erro ao atualizar'); return; }
+      const row = document.getElementById('tec-' + tid);
+      row.classList.toggle('off', !ativo);
+      document.getElementById('tec-badge-' + tid).innerHTML = ativo
+        ? '<span class="badge badge-ativo">No select</span>'
+        : '<span class="badge badge-inativo">Fora</span>';
+      const btn = document.getElementById('tec-toggle-' + tid);
+      btn.textContent = ativo ? 'Remover' : 'Reativar';
+      btn.className = 'btn ' + (ativo ? 'btn-red' : 'btn-green');
+      btn.setAttribute('onclick', `toggleTecnico(${tid}, ${ativo ? 0 : 1})`);
+      showMsg(ativo ? 'Técnico reativado.' : 'Técnico fora do select.');
     }
 
     async function setRole(uid, role) {

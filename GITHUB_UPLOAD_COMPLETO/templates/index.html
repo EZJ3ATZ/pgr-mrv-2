@@ -9102,6 +9102,19 @@ if (typeof rRenderAvals === 'function') {
 }
 
 // ── Inicialização ─────────────────────────────────────────────────────
+// MTE do técnico SELECIONADO (não do usuário logado — o relatório de campo
+// mandava sempre o registro de quem estava logado, então documento assinado
+// por outro técnico saía com MTE errado). Nome desconhecido volta vazio e o
+// backend resolve pelo catálogo.
+function mteDoTecnico(nome) {
+  const alvo = String(nome || '').trim().toLowerCase();
+  if (!alvo) return (window._me && window._me.registro_mte) || '';
+  const hit = (window._tecnicos || []).find(
+    t => String(t.nome || '').trim().toLowerCase() === alvo);
+  if (hit) return hit.registro_mte || '';
+  return '';
+}
+
 // ── Carrega técnicos do sistema nos selects ──────────────────────────
 async function loadTecnicos() {
   try {
@@ -9112,6 +9125,7 @@ async function loadTecnicos() {
     const tecnicos = Array.isArray(tecRes) ? tecRes : [];
     const me = meRes;
     window._me = me;  // cache global (usado p/ pré-preencher MTE no relatório)
+    window._tecnicos = tecnicos;  // usado por mteDoTecnico()
 
     // IDs dos selects que devem listar técnicos (auto-seleciona o usuário logado)
     const selectIds = ['r-tecnico', 'plan-tecnico', 'cr-tecnico', 'ctrl-nv-avaliador'];
@@ -17451,7 +17465,7 @@ async function nvGerarRelatorioCampo() {
     os:          document.getElementById('ctrl-nv-os')?.value||'',
     data_coleta: document.getElementById('ctrl-nv-data')?.value||'',
     tecnico:     document.getElementById('ctrl-nv-avaliador')?.value||'',
-    tecnico_mte: (window._me && window._me.registro_mte) || '',
+    tecnico_mte: mteDoTecnico(document.getElementById('ctrl-nv-avaliador')?.value||''),
     fotos:       window._nvFotos||[],
   };
 

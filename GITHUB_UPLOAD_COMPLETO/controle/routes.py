@@ -42,25 +42,33 @@ controle_bp = Blueprint('controle', __name__, url_prefix='/controle')
 
 
 def _mte_do_tecnico(nome):
-    """Pré-preenche o nº MTE do relatório: busca pelo nome do técnico na
-    tabela usuarios; se não achar, usa o MTE do usuário logado. Assim o
-    técnico não precisa digitar o registro MTE em toda visita."""
+    """Pré-preenche o nº MTE do documento a partir do nome do técnico: procura
+    em usuarios E no catálogo de TSTs (tecnicos_mte) — quem não tem login,
+    como boa parte do time de medições, só é achado pelo catálogo. Nome que
+    não casa com ninguém volta VAZIO (só cai no usuário logado se o documento
+    for dele): melhor sair sem registro que sair com registro de outra pessoa."""
     nome = (nome or '').strip()
-    try:
-        if nome:
-            with get_db() as conn:
-                row = conn.execute(
-                    "SELECT registro_mte FROM usuarios "
-                    "WHERE LOWER(TRIM(nome))=LOWER(TRIM(?)) "
-                    "AND COALESCE(registro_mte,'') <> '' LIMIT 1",
-                    (nome,)
-                ).fetchone()
-            if row:
-                return (row_to_dict(row).get('registro_mte') or '').strip()
-    except Exception:
-        pass
+    if nome:
+        try:
+            from .db import mte_por_nome
+            mte = mte_por_nome(nome)
+            if mte:
+                return mte
+        except Exception as e:
+            print(f'[_mte_do_tecnico] {e}')
+    # Fallback no usuário logado SÓ quando o documento é dele (ou o nome veio
+    # vazio). Antes valia para qualquer nome: técnico sem registro cadastrado
+    # saía no documento com o MTE de quem estava logado.
     if current_user.is_authenticated:
-        return (getattr(current_user, 'registro_mte', '') or '').strip()
+        proprio = not nome
+        if not proprio:
+            try:
+                from .db import _mesma_pessoa
+                proprio = _mesma_pessoa(nome, getattr(current_user, 'nome', '') or '')
+            except Exception:
+                proprio = False
+        if proprio:
+            return (getattr(current_user, 'registro_mte', '') or '').strip()
     return ''
 
 
@@ -8338,8 +8346,57 @@ def admin_usuarios():
             'SELECT id, nome, email, registro_mte, role, ativo, criado_em FROM usuarios ORDER BY ativo ASC, criado_em DESC'
         ).fetchall()
     usuarios = [row_to_dict(r) for r in rows]
+    from .db import list_tecnicos_mte
+    tecnicos = list_tecnicos_mte(incluir_inativos=True)
     from flask import render_template
-    return render_template('admin_usuarios.html', usuarios=usuarios)
+    return render_template('admin_usuarios.html', usuarios=usuarios,
+                           tecnicos=tecnicos)
+
+
+# ── Admin: catálogo de TSTs (nome ↔ registro MTE) ─────────────────────
+# Alimenta o select de técnico dos documentos. Admin-only: o técnico comum
+# só consome a lista, não a edita.
+@controle_bp.route('/admin/tecnicos-mte', methods=['GET', 'POST'])
+@login_required
+def admin_tecnicos_mte():
+    chk = _require_admin()
+    if chk: return chk
+    from .db import list_tecnicos_mte, salvar_tecnico_mte
+    if request.method == 'GET':
+        return jsonify(list_tecnicos_mte(incluir_inativos=True))
+    d = request.json or {}
+    try:
+        res = salvar_tecnico_mte(
+            nome=d.get('nome'),
+            registro=d.get('registro_mte'),
+            cargo=d.get('cargo') or 'TST',
+            ativo=1 if d.get('ativo', 1) else 0,
+            tid=d.get('id'),
+        )
+    except ValueError as e:
+        return jsonify({'erro': str(e)}), 400
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+    registrar_evento('admin_tecnico_mte', f"{res['nome']} → {res['registro_mte']}",
+                     usuario=current_user.nome, ip=request.remote_addr)
+    return jsonify({'ok': True, 'tecnico': res})
+
+
+@controle_bp.route('/admin/tecnicos-mte/<int:tid>/toggle', methods=['POST'])
+@login_required
+def admin_tecnico_mte_toggle(tid):
+    """Desativa (some do select) ou reativa. Nunca deleta: o seed do deploy
+    só insere quem não existe, então apagar faria a pessoa voltar sozinha."""
+    chk = _require_admin()
+    if chk: return chk
+    d = request.json or {}
+    ativo = 1 if d.get('ativo') else 0
+    with get_db() as conn:
+        conn.execute('UPDATE tecnicos_mte SET ativo=?, atualizado_em=? WHERE id=?',
+                     (ativo, datetime.now().isoformat(timespec='seconds'), tid))
+    registrar_evento('admin_tecnico_mte_toggle', f'id={tid} ativo={ativo}',
+                     usuario=current_user.nome, ip=request.remote_addr)
+    return jsonify({'ok': True})
 
 
 @controle_bp.route('/admin/usuarios/<int:uid>/ativar', methods=['POST'])

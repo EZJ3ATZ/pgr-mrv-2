@@ -677,6 +677,21 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     criado_em  TEXT DEFAULT CURRENT_TIMESTAMP,
     expira_em  TEXT NOT NULL
 );
+
+-- Catálogo nome ↔ registro MTE. Existe porque quem assina/executa não é
+-- necessariamente quem tem login: o select de técnico dos documentos vinha
+-- só de `usuarios` e o time de medições ficava fora da lista.
+CREATE TABLE IF NOT EXISTS tecnicos_mte (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome          TEXT NOT NULL,
+    nome_norm     TEXT,
+    registro_mte  TEXT,
+    cargo         TEXT DEFAULT 'TST',
+    ativo         INTEGER DEFAULT 1,
+    origem        TEXT DEFAULT 'seed',
+    criado_em     TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TEXT
+);
 """
 
 SCHEMA_INDEXES = """
@@ -702,6 +717,7 @@ CREATE INDEX IF NOT EXISTS idx_raw_planner_task  ON planner_raw_tasks(planner_ta
 CREATE INDEX IF NOT EXISTS idx_raw_bucket        ON planner_raw_tasks(planner_bucket);
 CREATE INDEX IF NOT EXISTS idx_raw_sync_status   ON planner_raw_tasks(sync_status);
 CREATE INDEX IF NOT EXISTS idx_raw_synced_at     ON planner_raw_tasks(synced_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tecmte_norm ON tecnicos_mte(nome_norm);
 CREATE INDEX IF NOT EXISTS idx_eventos_tipo      ON eventos(tipo);
 CREATE INDEX IF NOT EXISTS idx_eventos_ref       ON eventos(ref_id, ref_tipo);
 CREATE INDEX IF NOT EXISTS idx_eventos_criado    ON eventos(criado_em);
@@ -1339,6 +1355,9 @@ def _migrate(conn):
     # ── usuarios: registro_mte ──
     _add_col(conn, 'usuarios', 'registro_mte', 'TEXT')
 
+    # ── catálogo de TSTs (nome ↔ MTE) ──
+    _seed_tecnicos_mte(conn)
+
     # ── planejamentos: dias_estimados e cnpj ──
     _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
     _add_col(conn, 'planejamentos', 'cnpj', 'TEXT')
@@ -1428,6 +1447,223 @@ def row_to_dict(row):
     if isinstance(row, dict):
         return row
     return dict(row)
+
+
+# ── Catálogo de TSTs: nome ↔ registro MTE ──────────────────────────────
+# Lista consolidada pelo grupo em 03/08/2026. Registros normalizados para o
+# padrão da casa (7 posições + /UF) — quem informou sem os zeros à esquerda
+# ("57462-MG") foi completado. Isto é CADASTRO, não login: o técnico entra
+# aqui para aparecer no select dos documentos mesmo sem usar o sistema.
+# Admin edita/inclui em /controle/admin/usuarios (o seed nunca sobrescreve
+# nem ressuscita quem foi editado ou desativado à mão).
+TECNICOS_MTE_SEED = [
+    ('Matheus Vinícius Costa',                    '0086038/MG'),
+    ('Vitoria Batista Ribeiro',                   '0071934/MG'),
+    ('Heloisa Magalhães Assis',                   '0071884/MG'),
+    ('Maria Letícia Profeta de Souza',            '0082402/MG'),
+    ('Guilherme Henrique Alkimim de Souza',       '0057462/MG'),
+    ('Evelyn Nathally Duarte',                    '0071640/MG'),
+    ('Larissa Elen Ferreira Gomes',               '0082855/MG'),
+    ('Tauane dos Santos Virginio',                '0070341/MG'),
+    ('Giovana Franciele de Carvalho Brito',       '0085489/MG'),
+    ('Karina Lorrayne dos Santos Nepomuceno',     '0074997/MG'),
+    ('Valéria de Jesus',                          '0026468/MG'),
+    ('Bárbara Diamantino Santos',                 '0062238/MG'),
+    ('Wesley Vieira Rodrigues',                   '0079720/MG'),
+    ('Raniere Costa Vales',                       '0078034/RJ'),
+    ('Isabelle Maria Vieira Aguiar Kalil',        '0058872/MG'),
+    ('Denise dos Santos Soares',                  '0037083/MG'),
+    ('Luiz Roberto de Assis Menezes',             '0081584/MG'),
+    ('Kellen Ferreira',                           '0062879/MG'),
+    ('Izaelen Gutemberg Rodrigues Alves Ribeiro', '0084944/MG'),
+    ('Mario Lúcio Alves de Souza Aguiar',         '0013214/MG'),
+    ('Rafael Junior Souza Nascimento',            '0073339/MG'),
+    ('Arthur Fernandes Menezes',                  '0068404/MG'),
+    ('Rosane Xavier Kalil',                       '0059387/MG'),
+    ('Rômulo Augusto Dias',                       '0045121/MG'),
+    ('Sued Mimrop Rodrigues da Silva',            '0065338/MG'),
+    ('Kelly Elissama Firmino',                    '0072372/MG'),
+    ('Tainara Gomes da Silva',                    '0062311/MG'),
+    ('Helbert Gonçalves de Oliveira',             '0045376/MG'),
+]
+
+
+def norm_nome(s):
+    """Chave de comparação de nome: sem acento, sem pontuação, minúsculo."""
+    import unicodedata, re as _re
+    s = unicodedata.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode()
+    s = _re.sub(r'[^A-Za-z0-9 ]', ' ', s).lower()
+    return _re.sub(r'\s+', ' ', s).strip()
+
+
+def norm_registro_mte(s):
+    """Normaliza registro MTE para o padrão da casa: 7 dígitos + /UF.
+    '57462-MG' → '0057462/MG' · '007803.4/RJ' → '0078034/RJ'. Registro de
+    engenheiro (CREA) e texto irreconhecível voltam intactos."""
+    import re as _re
+    raw = str(s or '').strip().upper()
+    if not raw or 'CREA' in raw:
+        return raw
+    m = _re.search(r'([A-Z]{2})\s*$', raw)
+    uf = m.group(1) if m else ''
+    digits = _re.sub(r'\D', '', raw[:m.start()] if m else raw)
+    if not digits:
+        return raw
+    num = digits.zfill(7) if len(digits) <= 7 else digits
+    return f'{num}/{uf}' if uf else num
+
+
+def _mesma_pessoa(a, b):
+    """Nome de login curto vs nome completo do cadastro é a MESMA pessoa
+    ('Matheus Costa' = 'Matheus Vinícius Costa'): exige 1º nome e último
+    sobrenome iguais + todos os tokens do curto contidos no longo. Sem isso
+    a pessoa apareceria duas vezes no select do documento."""
+    ta, tb = norm_nome(a).split(), norm_nome(b).split()
+    if not ta or not tb:
+        return False
+    if ta == tb:
+        return True
+    curto, longo = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    return (curto[0] == longo[0] and curto[-1] == longo[-1]
+            and set(curto).issubset(set(longo)))
+
+
+def _seed_tecnicos_mte(conn):
+    """Popula o catálogo com a lista do grupo. Idempotente: só INSERE quem
+    ainda não existe — registro corrigido ou nome desativado pelo admin não
+    é sobrescrito nem volta do túmulo no próximo deploy."""
+    try:
+        rows = conn.execute('SELECT nome_norm FROM tecnicos_mte').fetchall()
+        existentes = {(row_to_dict(r).get('nome_norm') or '') for r in rows}
+        novos = 0
+        for nome, reg in TECNICOS_MTE_SEED:
+            nn = norm_nome(nome)
+            if not nn or nn in existentes:
+                continue
+            conn.execute(
+                'INSERT INTO tecnicos_mte (nome, nome_norm, registro_mte, cargo, ativo, origem) '
+                'VALUES (?,?,?,?,1,?)',
+                (nome, nn, norm_registro_mte(reg), 'TST', 'seed')
+            )
+            existentes.add(nn)
+            novos += 1
+        if novos:
+            print(f'[db] catálogo TST: {novos} inseridos')
+        # Espelha o MTE em quem TEM login e está com o campo vazio — assim o
+        # select já vem preenchido para quem usa o sistema.
+        urows = [row_to_dict(r) for r in conn.execute(
+            "SELECT id, nome FROM usuarios WHERE COALESCE(registro_mte,'') = ''"
+        ).fetchall()]
+        if urows:
+            crows = [row_to_dict(r) for r in conn.execute(
+                "SELECT nome, registro_mte FROM tecnicos_mte "
+                "WHERE ativo=1 AND COALESCE(registro_mte,'') <> ''").fetchall()]
+            for u in urows:
+                for c in crows:
+                    if _mesma_pessoa(u['nome'], c['nome']):
+                        conn.execute('UPDATE usuarios SET registro_mte=? WHERE id=?',
+                                     (c['registro_mte'], u['id']))
+                        print(f"[db] MTE de {u['nome']} ← {c['registro_mte']}")
+                        break
+    except Exception as e:
+        print(f'[db] seed tecnicos_mte: {e}')
+
+
+def list_tecnicos_mte(incluir_inativos=False):
+    """Catálogo cru, para a tela de admin."""
+    sql = ('SELECT id, nome, registro_mte, cargo, ativo, origem, criado_em, '
+           'atualizado_em FROM tecnicos_mte')
+    if not incluir_inativos:
+        sql += ' WHERE ativo=1'
+    sql += ' ORDER BY nome'
+    with get_db() as conn:
+        return [row_to_dict(r) for r in conn.execute(sql).fetchall()]
+
+
+def list_tecnicos_documento():
+    """Fonte única do select de técnico dos documentos: usuários com login +
+    catálogo de TSTs. Dedupe por pessoa (o usuário vence, porque tem id para
+    auto-selecionar) e o MTE vazio do usuário é completado pelo catálogo."""
+    with get_db() as conn:
+        urows = [row_to_dict(r) for r in conn.execute(
+            'SELECT id, nome, registro_mte FROM usuarios WHERE ativo=1').fetchall()]
+        crows = [row_to_dict(r) for r in conn.execute(
+            'SELECT id, nome, registro_mte, cargo FROM tecnicos_mte WHERE ativo=1').fetchall()]
+    out = []
+    for u in urows:
+        mte = (u.get('registro_mte') or '').strip()
+        if not mte:
+            for c in crows:
+                if _mesma_pessoa(u['nome'], c['nome']):
+                    mte = (c.get('registro_mte') or '').strip()
+                    break
+        out.append({'id': u['id'], 'nome': u['nome'], 'registro_mte': mte,
+                    'cargo': 'TST', 'origem': 'usuario'})
+    for c in crows:
+        if any(_mesma_pessoa(c['nome'], u['nome']) for u in urows):
+            continue
+        # id textual ('c12') — nunca colide com o id numérico do usuário
+        # logado na hora de auto-selecionar a opção no select.
+        out.append({'id': f"c{c['id']}", 'nome': c['nome'],
+                    'registro_mte': (c.get('registro_mte') or '').strip(),
+                    'cargo': c.get('cargo') or 'TST', 'origem': 'catalogo'})
+    out.sort(key=lambda x: norm_nome(x['nome']))
+    return out
+
+
+def mte_por_nome(nome):
+    """Registro MTE a partir de um nome livre (o que vem do formulário).
+    Procura em usuarios e no catálogo: exato primeiro, depois nome curto."""
+    nome = (nome or '').strip()
+    if not nome:
+        return ''
+    alvo = norm_nome(nome)
+    try:
+        with get_db() as conn:
+            cands = []
+            for sql in ("SELECT nome, registro_mte FROM usuarios "
+                        "WHERE ativo=1 AND COALESCE(registro_mte,'') <> ''",
+                        "SELECT nome, registro_mte FROM tecnicos_mte "
+                        "WHERE ativo=1 AND COALESCE(registro_mte,'') <> ''"):
+                cands += [row_to_dict(r) for r in conn.execute(sql).fetchall()]
+        for c in cands:
+            if norm_nome(c['nome']) == alvo:
+                return (c['registro_mte'] or '').strip()
+        for c in cands:
+            if _mesma_pessoa(nome, c['nome']):
+                return (c['registro_mte'] or '').strip()
+    except Exception as e:
+        print(f'[mte_por_nome] {e}')
+    return ''
+
+
+def salvar_tecnico_mte(nome, registro, cargo='TST', ativo=1, tid=None):
+    """Insere ou atualiza um técnico do catálogo. Sem tid, casa pelo nome
+    normalizado (evita duplicar a mesma pessoa)."""
+    nome = (nome or '').strip()
+    if not nome:
+        raise ValueError('Nome é obrigatório')
+    nn = norm_nome(nome)
+    reg = norm_registro_mte(registro)
+    agora = datetime.now().isoformat(timespec='seconds')
+    with get_db() as conn:
+        if tid is None:
+            row = conn.execute('SELECT id FROM tecnicos_mte WHERE nome_norm=?',
+                               (nn,)).fetchone()
+            tid = row_to_dict(row)['id'] if row else None
+        if tid:
+            conn.execute(
+                'UPDATE tecnicos_mte SET nome=?, nome_norm=?, registro_mte=?, '
+                'cargo=?, ativo=?, atualizado_em=? WHERE id=?',
+                (nome, nn, reg, cargo or 'TST', 1 if ativo else 0, agora, tid))
+        else:
+            cur = conn.execute(
+                'INSERT INTO tecnicos_mte (nome, nome_norm, registro_mte, cargo, '
+                'ativo, origem, atualizado_em) VALUES (?,?,?,?,?,?,?)',
+                (nome, nn, reg, cargo or 'TST', 1 if ativo else 0, 'manual', agora))
+            tid = cur.lastrowid
+    return {'id': tid, 'nome': nome, 'registro_mte': reg,
+            'cargo': cargo or 'TST', 'ativo': 1 if ativo else 0}
 
 
 # ── Amostradores ───────────────────────────────────────────────────────

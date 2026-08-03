@@ -2895,15 +2895,22 @@ def gerar_quimico():
 @app.route('/api/tecnicos')
 @login_required
 def api_tecnicos():
-    """Retorna todos os usuários ativos para uso como técnico elaborador."""
+    """Técnicos elaboradores do select dos documentos: usuários com login +
+    catálogo de TSTs (quem executa/assina sem usar o sistema). Já vem com o
+    registro MTE, para ninguém digitar registro à mão."""
     try:
-        with get_db() as conn:
-            rows = conn.execute(
-                'SELECT id, nome, registro_mte FROM usuarios WHERE ativo=1 ORDER BY nome'
-            ).fetchall()
-        return jsonify([row_to_dict(r) for r in rows])
-    except Exception:
-        return jsonify([])
+        from controle.db import list_tecnicos_documento
+        return jsonify(list_tecnicos_documento())
+    except Exception as e:
+        print(f'[api_tecnicos] {e}')
+        try:
+            with get_db() as conn:
+                rows = conn.execute(
+                    'SELECT id, nome, registro_mte FROM usuarios WHERE ativo=1 ORDER BY nome'
+                ).fetchall()
+            return jsonify([row_to_dict(r) for r in rows])
+        except Exception:
+            return jsonify([])
 
 
 @app.route('/api/me', methods=['GET', 'PATCH'])
