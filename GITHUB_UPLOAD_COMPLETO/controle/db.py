@@ -1549,22 +1549,29 @@ def _seed_tecnicos_mte(conn):
             novos += 1
         if novos:
             print(f'[db] catálogo TST: {novos} inseridos')
-        # Espelha o MTE em quem TEM login e está com o campo vazio — assim o
-        # select já vem preenchido para quem usa o sistema.
+        # Espelha o MTE em quem TEM login: campo vazio é preenchido, e registro
+        # sem UF ("0072372", caso da Kelly em prod) é completado quando os
+        # dígitos são os mesmos do catálogo — senão o documento sai "MTE
+        # 0072372" e o padrão da casa é "0072372/MG". Registro com dígitos
+        # DIFERENTES nunca é tocado: aí é divergência para humano resolver.
         urows = [row_to_dict(r) for r in conn.execute(
-            "SELECT id, nome FROM usuarios WHERE COALESCE(registro_mte,'') = ''"
-        ).fetchall()]
-        if urows:
-            crows = [row_to_dict(r) for r in conn.execute(
-                "SELECT nome, registro_mte FROM tecnicos_mte "
-                "WHERE ativo=1 AND COALESCE(registro_mte,'') <> ''").fetchall()]
-            for u in urows:
-                for c in crows:
-                    if _mesma_pessoa(u['nome'], c['nome']):
-                        conn.execute('UPDATE usuarios SET registro_mte=? WHERE id=?',
-                                     (c['registro_mte'], u['id']))
-                        print(f"[db] MTE de {u['nome']} ← {c['registro_mte']}")
-                        break
+            'SELECT id, nome, registro_mte FROM usuarios').fetchall()]
+        crows = [row_to_dict(r) for r in conn.execute(
+            "SELECT nome, registro_mte FROM tecnicos_mte "
+            "WHERE ativo=1 AND COALESCE(registro_mte,'') <> ''").fetchall()]
+        _digs = lambda s: ''.join(ch for ch in str(s or '') if ch.isdigit()).lstrip('0')
+        for u in urows:
+            atual = (u.get('registro_mte') or '').strip()
+            for c in crows:
+                if not _mesma_pessoa(u['nome'], c['nome']):
+                    continue
+                novo = c['registro_mte']
+                if atual and not (_digs(atual) == _digs(novo) and '/' not in atual):
+                    break   # já tem registro próprio e completo — não mexer
+                conn.execute('UPDATE usuarios SET registro_mte=? WHERE id=?',
+                             (novo, u['id']))
+                print(f"[db] MTE de {u['nome']}: {atual or '(vazio)'} → {novo}")
+                break
     except Exception as e:
         print(f'[db] seed tecnicos_mte: {e}')
 
