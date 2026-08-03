@@ -1359,6 +1359,7 @@ def _migrate(conn):
     _corrigir_nomes_cadastro(conn)   # antes do seed, ver docstring
     _seed_tecnicos_mte(conn)
     _desativar_tecnicos_desligados(conn)   # depois do seed, senão volta ativo
+    _corrigir_registros(conn)              # idem: o seed não atualiza quem existe
 
     # ── planejamentos: dias_estimados e cnpj ──
     _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
@@ -1463,7 +1464,9 @@ TECNICOS_MTE_SEED = [
     ('Vitoria Batista Ribeiro',                   '0071934/MG'),
     ('Heloisa Magalhães Assis',                   '0071884/MG'),
     ('Maria Letícia Profeta de Souza',            '0082402/MG'),
-    ('Guilherme Henrique Alkimim de Souza',       '0057462/MG'),
+    # A lista do grupo trouxe "57462-MG", mas o registro confirmado por ele é
+    # 0074881/MG (mesmo valor que saiu no certificado, Assinador 056a8c8).
+    ('Guilherme Henrique Alkimim de Souza',       '0074881/MG'),
     ('Evelyn Nathally Duarte',                    '0071640/MG'),
     ('Larissa Elen Ferreira Gomes',               '0082855/MG'),
     ('Tauane dos Santos Virginio',                '0070341/MG'),
@@ -1569,6 +1572,27 @@ _COLS_NOME_PESSOA = (
 TECNICOS_DESLIGADOS = [
     'Rômulo Augusto Dias',    # desligado 03/08/2026
 ]
+
+# Registro que já foi semeado errado e precisa ser corrigido no banco — o seed
+# só INSERE quem falta, então mudar a lista acima não conserta quem já entrou.
+CORRECOES_REGISTRO = [
+    # veio "57462-MG" da lista do grupo; o confirmado é 0074881/MG
+    ('Guilherme Henrique Alkimim de Souza', '0074881/MG'),
+]
+
+
+def _corrigir_registros(conn):
+    """Idempotente. Não toca em registro editado à mão para OUTRO valor que não
+    o errado conhecido — só troca quando ainda está com o valor antigo."""
+    for nome, certo in CORRECOES_REGISTRO:
+        try:
+            conn.execute(
+                'UPDATE tecnicos_mte SET registro_mte=?, atualizado_em=? '
+                'WHERE nome_norm=? AND registro_mte <> ?',
+                (norm_registro_mte(certo), datetime.now().isoformat(timespec='seconds'),
+                 norm_nome(nome), norm_registro_mte(certo)))
+        except Exception as e:
+            print(f'[migrate] registro {nome}: {e}')
 
 
 def _desativar_tecnicos_desligados(conn):
