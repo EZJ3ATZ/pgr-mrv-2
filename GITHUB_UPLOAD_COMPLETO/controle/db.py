@@ -1356,6 +1356,7 @@ def _migrate(conn):
     _add_col(conn, 'usuarios', 'registro_mte', 'TEXT')
 
     # ── catálogo de TSTs (nome ↔ MTE) ──
+    _corrigir_nomes_cadastro(conn)   # antes do seed, ver docstring
     _seed_tecnicos_mte(conn)
 
     # ── planejamentos: dias_estimados e cnpj ──
@@ -1457,7 +1458,7 @@ def row_to_dict(row):
 # Admin edita/inclui em /controle/admin/usuarios (o seed nunca sobrescreve
 # nem ressuscita quem foi editado ou desativado à mão).
 TECNICOS_MTE_SEED = [
-    ('Matheus Vinícius Costa',                    '0086038/MG'),
+    ('Matheus Vinícius Costa Carvalho',           '0086038/MG'),
     ('Vitoria Batista Ribeiro',                   '0071934/MG'),
     ('Heloisa Magalhães Assis',                   '0071884/MG'),
     ('Maria Letícia Profeta de Souza',            '0082402/MG'),
@@ -1526,6 +1527,55 @@ def _mesma_pessoa(a, b):
     curto, longo = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
     return (curto[0] == longo[0] and curto[-1] == longo[-1]
             and set(curto).issubset(set(longo)))
+
+
+# Nome de cadastro que estava incompleto/minúsculo. O documento imprime o nome
+# do `usuarios`, então "Kelly Firmino" saía em laudo no lugar do nome completo.
+# Corrigido a pedido do Matheus em 03/08/2026.
+CORRECOES_NOME = [
+    ('Kelly Firmino',            'Kelly Elissama Firmino'),
+    ('matheus costa',            'Matheus Vinícius Costa Carvalho'),
+    ('Matheus Costa',            'Matheus Vinícius Costa Carvalho'),
+    ('Matheus Vinícius Costa',   'Matheus Vinícius Costa Carvalho'),
+]
+
+# Onde o nome da pessoa é gravado como TEXTO e o app FILTRA por ele ("minhas
+# coletas", "meus planejamentos"). Renomear só `usuarios` deixaria o histórico
+# órfão do filtro.
+# FORA de propósito:
+#   eventos.usuario / sync_log.usuario → log de auditoria, registra quem fez na
+#     época; reescrever histórico de auditoria é adulteração, não correção.
+#   demandas.responsavel → quem manda é o display name do Planner, o sync
+#     sobrescreve no ciclo seguinte.
+_COLS_NOME_PESSOA = (
+    ('usuarios', 'nome'), ('tecnicos_mte', 'nome'),
+    ('coletas_ruido', 'tecnico'), ('coletas_outros', 'avaliador'),
+    ('coletas_quimico', 'responsavel_coleta'),
+    ('amostradores', 'avaliador'), ('baixas', 'avaliador'),
+    ('planejamentos', 'tecnico'), ('visitas_tecnicas', 'tecnico'),
+    ('metricas_operacionais', 'tecnico'),
+    ('demandas', 'contato_feito_por'), ('contatos_empresa', 'feito_por'),
+)
+
+
+def _corrigir_nomes_cadastro(conn):
+    """Aplica CORRECOES_NOME. Idempotente (segunda passada não acha nada).
+    Roda ANTES do seed do catálogo: se rodasse depois, o seed já teria inserido
+    o nome novo e o rename bateria no índice único de nome_norm."""
+    for errado, certo in CORRECOES_NOME:
+        if errado == certo:
+            continue
+        for tab, col in _COLS_NOME_PESSOA:
+            try:
+                conn.execute(f'UPDATE {tab} SET {col}=? WHERE {col}=?', (certo, errado))
+            except Exception as e:
+                print(f'[migrate] nome {tab}.{col}: {e}')
+    try:
+        for _, certo in CORRECOES_NOME:
+            conn.execute('UPDATE tecnicos_mte SET nome_norm=? WHERE nome=?',
+                         (norm_nome(certo), certo))
+    except Exception as e:
+        print(f'[migrate] nome_norm: {e}')
 
 
 def _seed_tecnicos_mte(conn):
