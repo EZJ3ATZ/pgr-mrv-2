@@ -1570,7 +1570,8 @@ _COLS_NOME_PESSOA = (
 # Fonte de "está ativo?": coluna STATUS da aba Dados da BI / RH. NUNCA o AD:
 # a conta do Rômulo seguia habilitada no dia do desligamento.
 TECNICOS_DESLIGADOS = [
-    'Rômulo Augusto Dias',    # desligado 03/08/2026
+    'Rômulo Augusto Dias',    # desligado 03/08/2026 (Assinador 056a8c8)
+    'Kellen Ferreira',        # STATUS=DESLIGADO na aba Dados da BI (linha 6)
 ]
 
 # Registro que já foi semeado errado e precisa ser corrigido no banco — o seed
