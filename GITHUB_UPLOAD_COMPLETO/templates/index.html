@@ -4737,6 +4737,10 @@
       Informe <b>o agente de cada amostrador</b> — é o que o laboratório vai analisar,
       e é o que define qual método se aplica. A conferência de vazão, volume e tipo de
       amostrador aparece na hora. Depois que o tubo sai para o laboratório não tem volta.
+      <br><b>O mesmo agente pode ser medido de mais de uma forma:</b> quando a guia traz
+      vários métodos, escolha na coluna <b>Método</b> qual foi usado — o sistema sugere
+      pelo amostrador, mas quem decide é você. O regime (TWA / STEL) é assumido pela
+      duração da coleta e aparece abaixo do método.
     </div>
 
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
@@ -14236,9 +14240,19 @@ let _ccMedTimer = null;
 
 const CC_VER = {
   ok:         {cor: 'var(--green)',  txt: 'dentro do método'},
+  // Limite de valor único da guia ('1 L/MIN') é alvo de calibração, não teto:
+  // até 5% de desvio é atenção, não reprovação. Faixa declarada segue dura.
+  atencao:    {cor: 'var(--yellow)', txt: 'atenção — desvio de calibração'},
   fora:       {cor: 'var(--red)',    txt: 'FORA do método'},
   sem_metodo: {cor: 'var(--text3)',  txt: 'sem método na guia'},
   sem_dado:   {cor: 'var(--yellow)', txt: 'falta dado p/ conferir'},
+};
+
+const CC_REGIME = {
+  TWA:     'TWA — jornada',
+  STEL:    'STEL — curta duração',
+  TETO:    'TETO — valor teto',
+  VAPORES: 'vapores e misturas',
 };
 
 async function ccMedGuia() {
@@ -14261,8 +14275,10 @@ async function ccMedCarregar() {
   ccMedGuia();
   const pend = document.getElementById('cc-med-pendentes')?.checked ? '1' : '0';
   const ags = _ccMedAgentes();
+  const mets = _ccMedMetodos();
   const qs = `?pendentes=${pend}` +
-    (Object.keys(ags).length ? `&agentes=${encodeURIComponent(JSON.stringify(ags))}` : '');
+    (Object.keys(ags).length ? `&agentes=${encodeURIComponent(JSON.stringify(ags))}` : '') +
+    (Object.keys(mets).length ? `&metodos=${encodeURIComponent(JSON.stringify(mets))}` : '');
   try {
     const r = await fetch('/controle/cadeia-custodia/medicoes' + qs, {credentials: 'include'});
     const j = await r.json();
@@ -14283,12 +14299,23 @@ function _ccMedAgentes() {
   return o;
 }
 
+// Método escolhido por amostrador. Chave = 'metodoCod|amostradorCod' porque o
+// código do método repete na guia (Benzeno tem duas entradas 'PASSIVO SKC').
+function _ccMedMetodos() {
+  const o = {};
+  document.querySelectorAll('.cc-med-met').forEach(s => {
+    if (s.value) o[s.dataset.cod] = s.value;
+  });
+  return o;
+}
+
 function ccMedRender(resumo) {
   const lista = document.getElementById('cc-med-lista');
   const res = document.getElementById('cc-med-resumo');
   if (res) {
     res.innerHTML = `${resumo.total || 0} medição(ões) · ` +
       `<b style="color:var(--green);">${resumo.ok || 0}</b> ok · ` +
+      `<b style="color:var(--yellow);">${resumo.atencao || 0}</b> atenção · ` +
       `<b style="color:var(--red);">${resumo.fora || 0}</b> fora · ` +
       `<b style="color:var(--text3);">${resumo.sem_metodo || 0}</b> sem método`;
   }
@@ -14330,15 +14357,41 @@ function ccMedLinha(m, i) {
                value="${_esc(m.agente || '')}" placeholder="digite o agente" style="${INP}"
                oninput="ccMedAgendarRevalidacao()">
       </td>
-      <td style="padding:6px 8px;font-size:.76rem;white-space:nowrap;">${_esc(m.metodo || '—')}</td>
+      <td style="padding:5px 8px;font-size:.76rem;min-width:150px;">${ccMedMetodoCel(m)}</td>
       <td style="padding:6px 8px;font-size:.76rem;white-space:nowrap;">
         ${m.vazao ?? '—'} L/min<div style="color:var(--text3);font-size:.72rem;">${m.volume ?? '—'} L${m.duracao_min ? ' · ' + m.duracao_min + ' min' : ''}</div>
       </td>
       <td style="padding:6px 8px;font-size:.74rem;max-width:230px;">
         <b style="color:${v.cor};">${v.txt}</b>
         ${(m.problemas || []).length ? `<div style="color:var(--red);font-size:.72rem;line-height:1.4;margin-top:2px;">${m.problemas.map(p => _esc(p)).join('<br>')}</div>` : ''}
+        ${(m.avisos || []).length ? `<div style="color:var(--yellow);font-size:.72rem;line-height:1.4;margin-top:2px;">${m.avisos.map(p => _esc(p)).join('<br>')}</div>` : ''}
       </td>
     </tr>`;
+}
+
+// Coluna Método: select quando o agente tem mais de um jeito de ser medido.
+// 116 dos 374 agentes da guia estão nessa situação — antes a tela mostrava um
+// método escolhido no escuro (o primeiro da lista) e conferia contra ele.
+function ccMedMetodoCel(m) {
+  const lista = m.metodos || [];
+  const regime = m.regime
+    ? `<span title="regime assumido pela duração da coleta">${_esc(CC_REGIME[m.regime] || m.regime)}</span>`
+    : (m.passivo ? 'passivo — sem bomba' : '');
+  const alerta = (lista.length > 1 && m.metodo_incerto)
+    ? `<div style="color:var(--yellow);font-size:.7rem;">⚠ confirme o método</div>` : '';
+  const sub = (regime || alerta)
+    ? `<div style="color:var(--text3);font-size:.7rem;margin-top:2px;">${regime}</div>${alerta}` : '';
+  if (lista.length < 2) return `${_esc(m.metodo || '—')}${sub}`;
+  const SEL = 'background:var(--surface2);border:1px solid var(--border2);border-radius:6px;' +
+              'color:var(--text);padding:4px 6px;font-family:inherit;font-size:.75rem;max-width:190px;';
+  const opts = lista.map(x => {
+    const sig = (/\(([A-Z][A-Z0-9]+)\*+\)/.exec(x.amostrador || '') || [])[1] || x.amostrador || '';
+    return `<option value="${_esc(x.chave)}" ${x.chave === m.metodo_chave ? 'selected' : ''}>` +
+           `${_esc(x.cod)}${sig ? ' · ' + _esc(sig) : ''}</option>`;
+  }).join('');
+  return `<select class="cc-med-met" data-cod="${_esc(m.codigo)}" style="${SEL}"
+                  onchange="ccMedRevalidar()"
+                  title="${_esc(lista.length)} métodos na guia para este agente">${opts}</select>${sub}`;
 }
 
 // Revalida com debounce: cada tecla não dispara requisição.

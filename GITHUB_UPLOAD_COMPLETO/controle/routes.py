@@ -8815,7 +8815,8 @@ def cadeia_custodia_medicoes():
     volume e tipo de amostrador batem com o método ANTES de a amostra sair —
     depois que o tubo vai ao laboratório não tem volta.
     """
-    from .validacao_metodo import validar_coleta, melhor_metodo, SEM_METODO
+    from .validacao_metodo import (validar_coleta, escolher_metodo, chave_metodo,
+                                   escolha_incerta, SEM_METODO)
     init_db()
     # `agentes` = {'TCP2912AV3': 'Tolueno', ...} — escolha que o técnico está
     # fazendo na tela, para conferir ANTES de gravar. Sem ela usa o que está na
@@ -8829,6 +8830,18 @@ def cadeia_custodia_medicoes():
                           for k, v in json.loads(_raw).items()}
         except Exception:
             escolhidos = {}
+    # `metodos` = {'FVPH': 'OSHA 1019|SKC 225-9030 (FVPH****)'} — o método que o
+    # técnico escolheu na tela. 116 dos 374 agentes da guia têm mais de um jeito
+    # de serem medidos (Benzeno tem 4); sem escolha o sistema pré-seleciona pelo
+    # amostrador usado, mas quem decide é o técnico.
+    metodos_escolhidos = {}
+    _rawm = request.args.get('metodos')
+    if _rawm:
+        try:
+            metodos_escolhidos = {str(k).strip().upper(): str(v or '')
+                                  for k, v in json.loads(_rawm).items()}
+        except Exception:
+            metodos_escolhidos = {}
     só_pendentes = (request.args.get('pendentes') or '1') not in ('0', 'false', 'no')
     try:
         limite = min(int(request.args.get('limit') or 300), 1000)
@@ -8861,7 +8874,8 @@ def cadeia_custodia_medicoes():
             continue
         agente = (escolhidos.get(cod.upper()) or r.get('substancia') or '').strip()
         metodos = _buscar_metodos_agente(agente) if agente else []
-        m = melhor_metodo(metodos, r.get('tipo_amostrador'))
+        m = escolher_metodo(metodos, metodos_escolhidos.get(cod.upper()),
+                            r.get('tipo_amostrador'))
         v = validar_coleta(m, vazao=r.get('vazao_media'), volume=r.get('volume_l'),
                            tipo_amostrador=r.get('tipo_amostrador'),
                            tempo_min=r.get('tempo_min'),
@@ -8885,13 +8899,24 @@ def cadeia_custodia_medicoes():
             'metodo': v.get('metodo_cod'), 'volume': v.get('volume_calculado'),
             'duracao_min': v.get('duracao_min'),
             'veredicto': v['veredicto'], 'problemas': v['problemas'],
+            'avisos': v.get('avisos') or [],
             'itens': v.get('itens') or [],
+            # Regime conferido (TWA/STEL/vapores) — sai da DURAÇÃO da coleta,
+            # porque a guia escreve os dois no mesmo campo e a faixa fundida
+            # reprovava TWA legítimo e aprovava STEL longo demais.
+            'regime': v.get('regime') or '', 'passivo': v.get('passivo') or False,
+            'metodo_chave': chave_metodo(m), 'metodo_desc': v.get('metodo_desc') or '',
+            'metodos': [{'chave': chave_metodo(x), 'cod': x.get('metodoCod') or '',
+                         'amostrador': x.get('amostradorCod') or '',
+                         'vazao': x.get('vazao') or '', 'volume': x.get('volume') or ''}
+                        for x in (metodos or [])],
+            'metodo_incerto': escolha_incerta(metodos, r.get('tipo_amostrador')),
         })
         if len(itens) >= limite:
             break
 
     resumo = {'total': len(itens)}
-    for k in ('ok', 'fora', 'sem_metodo', 'sem_dado'):
+    for k in ('ok', 'atencao', 'fora', 'sem_metodo', 'sem_dado'):
         resumo[k] = sum(1 for x in itens if x['veredicto'] == k)
     return jsonify({'medicoes': itens, 'resumo': resumo})
 
