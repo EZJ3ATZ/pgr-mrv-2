@@ -1358,6 +1358,7 @@ def _migrate(conn):
     # ── catálogo de TSTs (nome ↔ MTE) ──
     _corrigir_nomes_cadastro(conn)   # antes do seed, ver docstring
     _seed_tecnicos_mte(conn)
+    _desativar_tecnicos_desligados(conn)   # depois do seed, senão volta ativo
 
     # ── planejamentos: dias_estimados e cnpj ──
     _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
@@ -1558,6 +1559,30 @@ _COLS_NOME_PESSOA = (
     ('metricas_operacionais', 'tecnico'),
     ('demandas', 'contato_feito_por'), ('contatos_empresa', 'feito_por'),
 )
+
+
+# Quem saiu da empresa. A lista do grupo (03/08) trouxe gente já desligada, e
+# nome de desligado no select vira documento assinado por quem não trabalha mais
+# aqui. Desativa (ativo=0) em vez de apagar — apagar faria o seed ressuscitar.
+# Fonte de "está ativo?": coluna STATUS da aba Dados da BI / RH. NUNCA o AD:
+# a conta do Rômulo seguia habilitada no dia do desligamento.
+TECNICOS_DESLIGADOS = [
+    'Rômulo Augusto Dias',    # desligado 03/08/2026
+]
+
+
+def _desativar_tecnicos_desligados(conn):
+    """Idempotente: quem já está ativo=0 não é tocado de novo."""
+    for nome in TECNICOS_DESLIGADOS:
+        try:
+            cur = conn.execute(
+                'UPDATE tecnicos_mte SET ativo=0, atualizado_em=? '
+                'WHERE nome_norm=? AND ativo=1',
+                (datetime.now().isoformat(timespec='seconds'), norm_nome(nome)))
+            if getattr(cur, 'rowcount', 0):
+                print(f'[db] catálogo TST: {nome} desativado (desligado)')
+        except Exception as e:
+            print(f'[migrate] desligado {nome}: {e}')
 
 
 def _corrigir_nomes_cadastro(conn):
