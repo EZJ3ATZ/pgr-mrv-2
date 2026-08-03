@@ -1490,6 +1490,12 @@ TECNICOS_MTE_SEED = [
     ('Kelly Elissama Firmino',                    '0072372/MG'),
     ('Tainara Gomes da Silva',                    '0062311/MG'),
     ('Helbert Gonçalves de Oliveira',             '0045376/MG'),
+    # Estavam na aba Dados da BI com registro e ficaram fora da coleta do grupo.
+    # Sobrenome da Janaina vem da BI (o AD só tem "Janaina"); o do Luiz Fernando
+    # vem do AD (`coordenacao@`, surname Tavares) — ele NÃO é o Luiz Roberto.
+    ('Janaina Bispo',                             '0074738/MG', 'TST'),
+    ('Luiz Fernando Tavares',                     '0040977/MG',
+     'Supervisor de Segurança do Trabalho'),
 ]
 
 
@@ -1519,18 +1525,22 @@ def norm_registro_mte(s):
 
 
 def _mesma_pessoa(a, b):
-    """Nome de login curto vs nome completo do cadastro é a MESMA pessoa
-    ('Matheus Costa' = 'Matheus Vinícius Costa'): exige 1º nome e último
-    sobrenome iguais + todos os tokens do curto contidos no longo. Sem isso
-    a pessoa apareceria duas vezes no select do documento."""
+    """Nome curto vs nome completo é a MESMA pessoa ('Matheus Costa' =
+    'Matheus Vinícius Costa'): 1º nome igual + todos os tokens do curto contidos
+    no longo. Sem isso a pessoa aparece duas vezes no select do documento.
+
+    Exigir também o ÚLTIMO sobrenome igual (como era até 03/08) deixava de fora
+    o nome curto da BI que corta sobrenome do fim: "Luiz Fernando" ×
+    "Luiz Fernando Tavares" dava False e o registro dele saía vazio. Mesma regra
+    do `_mesmo_tst` do Assinador. Não confunde pessoas diferentes que só
+    compartilham o 1º nome: "Luiz Fernando" ⊄ "Luiz Roberto de Assis Menezes"."""
     ta, tb = norm_nome(a).split(), norm_nome(b).split()
     if not ta or not tb:
         return False
     if ta == tb:
         return True
     curto, longo = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
-    return (curto[0] == longo[0] and curto[-1] == longo[-1]
-            and set(curto).issubset(set(longo)))
+    return curto[0] == longo[0] and set(curto).issubset(set(longo))
 
 
 # Nome de cadastro que estava incompleto/minúsculo. O documento imprime o nome
@@ -1543,6 +1553,9 @@ CORRECOES_NOME = [
     ('matheus costa',                   'Matheus Vinícius Costa'),
     ('Matheus Costa',                   'Matheus Vinícius Costa'),
     ('Matheus Vinícius Costa Carvalho', 'Matheus Vinícius Costa'),
+    # Login dele é só "Luiz Fernando"; o AD (coordenacao@) diz Tavares. Sem
+    # alinhar, o catálogo entra como pessoa nova e ele aparece 2x no select.
+    ('Luiz Fernando',                   'Luiz Fernando Tavares'),
 ]
 
 # Onde o nome da pessoa é gravado como TEXTO e o app FILTRA por ele ("minhas
@@ -1638,14 +1651,17 @@ def _seed_tecnicos_mte(conn):
         rows = conn.execute('SELECT nome_norm FROM tecnicos_mte').fetchall()
         existentes = {(row_to_dict(r).get('nome_norm') or '') for r in rows}
         novos = 0
-        for nome, reg in TECNICOS_MTE_SEED:
+        for entrada in TECNICOS_MTE_SEED:
+            # 3º item (cargo) é opcional — quase todos são TST, mas quem executa
+            # visita e assina não é só TST (o Luiz Fernando é supervisor).
+            nome, reg, cargo = (tuple(entrada) + ('TST',))[:3]
             nn = norm_nome(nome)
             if not nn or nn in existentes:
                 continue
             conn.execute(
                 'INSERT INTO tecnicos_mte (nome, nome_norm, registro_mte, cargo, ativo, origem) '
                 'VALUES (?,?,?,?,1,?)',
-                (nome, nn, norm_registro_mte(reg), 'TST', 'seed')
+                (nome, nn, norm_registro_mte(reg), cargo or 'TST', 'seed')
             )
             existentes.add(nn)
             novos += 1
@@ -2620,6 +2636,7 @@ def list_coletas_feitas(limit=300):
                     'id':           d.get('id'),
                     'tabela':       tbl,
                     'tipo':         tipo_real,
+                    'demanda_id':   d.get('demanda_id'),
                     'empresa_nome': d.get('empresa_nome') or '',
                     'os':           d.get('os') or d.get('numero_os') or '',
                     'data_coleta':  d.get('data_coleta') or '',
