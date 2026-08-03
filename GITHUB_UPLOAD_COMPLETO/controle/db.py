@@ -1458,7 +1458,7 @@ def row_to_dict(row):
 # Admin edita/inclui em /controle/admin/usuarios (o seed nunca sobrescreve
 # nem ressuscita quem foi editado ou desativado à mão).
 TECNICOS_MTE_SEED = [
-    ('Matheus Vinícius Costa Carvalho',           '0086038/MG'),
+    ('Matheus Vinícius Costa',                    '0086038/MG'),
     ('Vitoria Batista Ribeiro',                   '0071934/MG'),
     ('Heloisa Magalhães Assis',                   '0071884/MG'),
     ('Maria Letícia Profeta de Souza',            '0082402/MG'),
@@ -1532,11 +1532,13 @@ def _mesma_pessoa(a, b):
 # Nome de cadastro que estava incompleto/minúsculo. O documento imprime o nome
 # do `usuarios`, então "Kelly Firmino" saía em laudo no lugar do nome completo.
 # Corrigido a pedido do Matheus em 03/08/2026.
+# O nome de destino NUNCA aparece como origem — senão a correção fica em ciclo
+# e o resultado passa a depender da ordem da lista.
 CORRECOES_NOME = [
-    ('Kelly Firmino',            'Kelly Elissama Firmino'),
-    ('matheus costa',            'Matheus Vinícius Costa Carvalho'),
-    ('Matheus Costa',            'Matheus Vinícius Costa Carvalho'),
-    ('Matheus Vinícius Costa',   'Matheus Vinícius Costa Carvalho'),
+    ('Kelly Firmino',                   'Kelly Elissama Firmino'),
+    ('matheus costa',                   'Matheus Vinícius Costa'),
+    ('Matheus Costa',                   'Matheus Vinícius Costa'),
+    ('Matheus Vinícius Costa Carvalho', 'Matheus Vinícius Costa'),
 ]
 
 # Onde o nome da pessoa é gravado como TEXTO e o app FILTRA por ele ("minhas
