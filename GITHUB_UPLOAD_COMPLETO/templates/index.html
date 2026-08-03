@@ -4504,14 +4504,19 @@
       <div class="nv-card">
         <div class="nv-card-title" id="nv-s3-generic-title">Etapa 3 — Campo</div>
         <div id="nv-gen-plano-hint" style="display:none;background:rgba(34,197,94,.07);border-left:3px solid var(--green);padding:9px 12px;border-radius:6px;margin-bottom:12px;font-size:.78rem;color:var(--text2);"></div>
-        <div class="nv-g2 nv-f" style="margin-bottom:12px;">
+        <!-- Bloco COMPARTILHADO: só quando a visita tem UM dos dois (calor OU vibração).
+             Com calor E vibração juntos, cada agente tem horário próprio na sua
+             própria seção — antes os dois liam estes mesmos campos e o horário
+             saía duplicado no relatório (Wesley 03/08). -->
+        <div id="nv-gen-campo-row" class="nv-g2 nv-f" style="margin-bottom:12px;">
           <div><label>Acompanhante</label><input type="text" id="nv-gen-acomp" placeholder="Nome"></div>
           <div class="nv-g2">
             <div><label>Hora de Início</label><input type="time" id="nv-gen-hora-ini"></div>
             <div><label>Término</label><input type="time" id="nv-gen-hora-fim"></div>
           </div>
         </div>
-        <div class="nv-f"><label>Observações de Campo</label><textarea id="nv-gen-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas, intercorrências..."></textarea></div>
+        <div id="nv-gen-obs-row" class="nv-f"><label>Observações de Campo</label><textarea id="nv-gen-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas, intercorrências..."></textarea></div>
+        <div id="nv-gen-split-note" style="display:none;font-size:.76rem;color:var(--blue);background:rgba(57,153,255,.08);border:1px solid rgba(57,153,255,.25);border-radius:6px;padding:7px 10px;">ℹ️ Esta visita tem <b>Calor e Vibração</b> — cada um tem acompanhante, horário e observações <b>próprios</b>, preenchidos na seção de cada agente abaixo.</div>
       </div>
 
       <!-- Medições IBUTG (só aparece quando tipo=calor) -->
@@ -4520,6 +4525,17 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
             <div class="nv-card-title" style="margin:0;">🌡️ Medições IBUTG — NR-15 Anexo 3</div>
             <button onclick="nvCalorAddSetor()" style="background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Setor</button>
+          </div>
+          <!-- Horário PRÓPRIO do calor — aparece só quando a visita tem calor E vibração -->
+          <div id="nv-calor-campo-row" style="display:none;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <div class="nv-g2 nv-f" style="margin-bottom:10px;">
+              <div><label>Acompanhante — Calor</label><input type="text" id="nv-calor-acomp" placeholder="Nome"></div>
+              <div class="nv-g2">
+                <div><label>Hora de Início — Calor</label><input type="time" id="nv-calor-hora-ini"></div>
+                <div><label>Término — Calor</label><input type="time" id="nv-calor-hora-fim"></div>
+              </div>
+            </div>
+            <div class="nv-f"><label>Observações de Campo — Calor</label><textarea id="nv-calor-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas na medição de calor..."></textarea></div>
           </div>
           <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Para cada setor medido: local, TBS, TBN, TG e regime de trabalho dos colaboradores.</div>
           <div id="nv-calor-setores"></div>
@@ -4537,6 +4553,17 @@
               <button onclick="nvVibrPuxarTrabs()" title="Copia nome/cargo/setor dos trabalhadores já digitados em outras medições desta visita" style="background:transparent;border:1px solid rgba(167,139,250,.5);color:#a78bfa;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">↧ Puxar trabalhadores</button>
               <button onclick="nvVibrAddPonto()" style="background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:.8rem;font-family:inherit;font-weight:600;">+ Trabalhador</button>
             </div>
+          </div>
+          <!-- Horário PRÓPRIO da vibração — aparece só quando a visita tem calor E vibração -->
+          <div id="nv-vibr-campo-row" style="display:none;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+            <div class="nv-g2 nv-f" style="margin-bottom:10px;">
+              <div><label>Acompanhante — Vibração</label><input type="text" id="nv-vibr-acomp" placeholder="Nome"></div>
+              <div class="nv-g2">
+                <div><label>Hora de Início — Vibração</label><input type="time" id="nv-vibr-hora-ini"></div>
+                <div><label>Término — Vibração</label><input type="time" id="nv-vibr-hora-fim"></div>
+              </div>
+            </div>
+            <div class="nv-f"><label>Observações de Campo — Vibração</label><textarea id="nv-vibr-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas na medição de vibração..."></textarea></div>
           </div>
           <div style="font-size:.72rem;color:var(--text3);margin-bottom:10px;">Planilha única — escolha VMB ou VCI em cada trabalhador. Para cada avaliado: nome, cargo/função, setor, tempo de exposição e o equipamento/veículo (marca e ano). Os resultados (aren / VDV) saem do histograma do aparelho — não se preenche aqui.</div>
           <div id="nv-vibr-pontos"></div>
@@ -11730,7 +11757,9 @@ async function planilhasLoad() {
   const lista = document.getElementById('pf-lista');
   if (lista) lista.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div>';
   try {
-    const r = await ctrlFetch('/controle/coletas/feitas');
+    // Uma linha por VISITA (não por agente) — abrir devolve a planilha de campo
+    // completa da visita, a mesma que o sistema gera ao finalizar a medição.
+    const r = await ctrlFetch('/controle/coletas/visitas');
     _pfDados = Array.isArray(r) ? r : [];
     planilhasRender();
   } catch(e) {
@@ -11764,11 +11793,11 @@ function planilhasRender() {
   if (!lista) return;
   const q = (document.getElementById('pf-busca')?.value || '').toLowerCase().trim();
   const dados = _pfDados.filter(c => !q ||
-    [c.empresa_nome, c.os, c.tecnico, c.tipo].some(v => String(v||'').toLowerCase().includes(q)));
+    [c.empresa_nome, c.os, c.tecnico, (c.tipos||[]).join(' ')].some(v => String(v||'').toLowerCase().includes(q)));
   // resumo por técnico (mostra que a medição foi contabilizada)
   const porTec = {};
   _pfDados.forEach(c => { const t = c.tecnico || 'Sem técnico'; porTec[t] = (porTec[t]||0)+1; });
-  if (resumo) resumo.textContent = `${_pfDados.length} planilha(s)` +
+  if (resumo) resumo.textContent = `${_pfDados.length} visita(s)` +
     (Object.keys(porTec).length ? ' · ' + Object.entries(porTec).map(([t,n])=>`${t}: ${n}`).join('  ·  ') : '');
   if (!dados.length) {
     lista.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:.82rem;">Nenhuma planilha encontrada.</div>';
@@ -11778,28 +11807,26 @@ function planilhasRender() {
   lista.innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
       <thead><tr style="text-align:left;border-bottom:1px solid var(--border);color:var(--text3);font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;">
-        <th style="padding:8px 10px;">Data</th><th style="padding:8px 10px;">Empresa</th><th style="padding:8px 10px;">OS</th><th style="padding:8px 10px;">Tipo</th><th style="padding:8px 10px;">Técnico</th>
+        <th style="padding:8px 10px;">Data</th><th style="padding:8px 10px;">Empresa</th><th style="padding:8px 10px;">OS</th><th style="padding:8px 10px;">Agentes medidos</th><th style="padding:8px 10px;">Técnico</th>
       </tr></thead>
       <tbody>
         ${dados.map(c => `
-          <tr onclick="planilhaAbrir('${c.tabela}', ${c.id}, '${c.tipo}')" title="Abrir / gerar a planilha" style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.035)'" onmouseout="this.style.background=''">
+          <tr onclick="planilhaAbrir('${_esc(c.chave)}')" title="Abrir a planilha de campo da visita (todos os agentes num só PDF)" style="border-bottom:1px solid var(--border);cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,.035)'" onmouseout="this.style.background=''">
             <td style="padding:8px 10px;color:var(--text2);white-space:nowrap;">${fmtData(c.data_coleta)}</td>
             <td style="padding:8px 10px;color:var(--text);">${_esc(c.empresa_nome)||'—'}</td>
             <td style="padding:8px 10px;color:var(--text2);">${_esc(c.os)||'—'}</td>
-            <td style="padding:8px 10px;white-space:nowrap;">${_PF_TIPO_LABEL[c.tipo]||_esc(c.tipo)||'—'}</td>
+            <td style="padding:8px 10px;">${(c.tipos||[]).map(t=>`<span style="display:inline-block;font-size:.72rem;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;margin:1px 3px 1px 0;white-space:nowrap;">${_PF_TIPO_LABEL[t]||_esc(t)}</span>`).join('')||'—'}</td>
             <td style="padding:8px 10px;">${c.tecnico ? _esc(c.tecnico) : '<span style="color:var(--yellow);">⚠ sem técnico</span>'}</td>
           </tr>`).join('')}
       </tbody>
     </table>`;
 }
 
-// Abre/gera a planilha de campo a partir da coleta salva (ver o que foi feito + regerar)
-function planilhaAbrir(tabela, id, tipo) {
-  if (!id) return;
-  if (tabela === 'coletas_ruido')   { window.open('/controle/coletas/ruido/'   + id + '/ficha', '_blank'); return; }
-  if (tabela === 'coletas_quimico') { window.open('/controle/coletas/quimico/' + id + '/ficha', '_blank'); return; }
-  if (tabela === 'coletas_outros')  { window.open('/controle/coletas/outros/'  + id + '/ficha', '_blank'); return; }
-  _showToast('Planilha não disponível para este tipo.', 'warn');
+// Abre a planilha de campo COMPLETA da visita — o mesmo PDF que o sistema gera
+// ao finalizar a medição, com todos os agentes em um só documento.
+function planilhaAbrir(chave) {
+  if (!chave) return;
+  window.open('/controle/coletas/visita/planilha?chave=' + encodeURIComponent(chave), '_blank');
 }
 
 // ── Aba dedicada: Inventário de Equipamentos ──────────────────────────
@@ -15974,6 +16001,51 @@ window.addEventListener('load', () => {
   }, 1500);
 });
 
+// ── Calor × Vibração: horário por agente ───────────────────────────────
+// Os dois tipos dividiam o mesmo bloco de Acompanhante/Horário/Observações
+// (nv-gen-*). Numa visita com os DOIS, o relatório saía com o horário da
+// vibração igual ao do calor (Wesley 03/08). Quando os dois estão na visita,
+// cada agente ganha o seu próprio bloco; com um só, segue como sempre foi.
+function _nvGenSplit() {
+  return (_nvTipos || []).includes('calor') && (_nvTipos || []).includes('vibracao');
+}
+
+// Prefixo dos campos de um tipo genérico: próprios quando há os dois na visita.
+function _nvGenPrefixo(tipo) {
+  if (!_nvGenSplit()) return 'nv-gen';
+  return tipo === 'calor' ? 'nv-calor' : 'nv-vibr';
+}
+
+// Lê acompanhante/horário/observações do tipo — da fonte certa em cada caso.
+function _nvCampoGenerico(tipo) {
+  const p = _nvGenPrefixo(tipo);
+  const v = id => (document.getElementById(id)?.value || '');
+  return { acomp: v(p + '-acomp'), hora_ini: v(p + '-hora-ini'),
+           hora_fim: v(p + '-hora-fim'), obs: v(p + '-obs') };
+}
+
+// Mostra/esconde os blocos e, ao entrar no modo dividido, semeia os campos de
+// cada agente com o que já estava no bloco compartilhado (não perde digitação).
+function _nvGenSplitAplicar() {
+  const split = _nvGenSplit();
+  const set = (id, disp) => { const el = document.getElementById(id); if (el) el.style.display = disp; };
+  if (split) {
+    ['acomp', 'hora-ini', 'hora-fim', 'obs'].forEach(campo => {
+      const src = document.getElementById('nv-gen-' + campo);
+      if (!src || !src.value) return;
+      ['nv-calor-', 'nv-vibr-'].forEach(pfx => {
+        const dst = document.getElementById(pfx + campo);
+        if (dst && !dst.value) dst.value = src.value;
+      });
+    });
+  }
+  set('nv-gen-campo-row',   split ? 'none' : '');
+  set('nv-gen-obs-row',     split ? 'none' : '');
+  set('nv-gen-split-note',  split ? '' : 'none');
+  set('nv-calor-campo-row', split ? '' : 'none');
+  set('nv-vibr-campo-row',  split ? '' : 'none');
+}
+
 function nvShowStep3() {
   const temRuido   = _nvTipos.includes('ruido');
   const temQuimico = _nvTipos.includes('quimico');
@@ -16013,6 +16085,10 @@ function nvShowStep3() {
     if (linhas.length) { genHint.innerHTML = '✅ Vindo do planejamento — ' + linhas.join('<br>'); genHint.style.display = ''; }
     else genHint.style.display = 'none';
   }
+  // Calor + Vibração na MESMA visita: cada um passa a ter acompanhante/horário/obs
+  // próprios (o bloco compartilhado sai de cena). Com um só dos dois, nada muda.
+  _nvGenSplitAplicar();
+
   // Seção IBUTG: só quando tipo calor
   const ibutgSec = document.getElementById('nv-calor-ibutg-section');
   if (ibutgSec) {
@@ -17030,14 +17106,24 @@ function _nvRunValidacoesCore(res) {
     } else {
       checks.push({ok:true, msg:'Vibração selecionada'});
     }
-    const hIni = document.getElementById('nv-gen-hora-ini')?.value;
-    const hFim = document.getElementById('nv-gen-hora-fim')?.value;
-    checks.push({ok:!!(hIni&&hFim), warn:!(hIni&&hFim), msg:(hIni&&hFim)?`Horário de campo: <b>${hIni}–${hFim}</b>`:'Horário de início/término não informado'});
+    const cvV = _nvCampoGenerico('vibracao');
+    const hIni = cvV.hora_ini, hFim = cvV.hora_fim;
+    checks.push({ok:!!(hIni&&hFim), warn:!(hIni&&hFim), msg:(hIni&&hFim)?`Horário de campo (vibração): <b>${hIni}–${hFim}</b>`:'Vibração: horário de início/término não informado'});
   }
 
   if (tipos.includes('calor')) {
     const setores = (window._nvCalorSetores || []);
     checks.push({ok:setores.length>0, warn:setores.length===0, msg:setores.length>0?`${setores.length} setor(es) de calor registrado(s)`:'Nenhum setor de calor adicionado'});
+    const cvC = _nvCampoGenerico('calor');
+    checks.push({ok:!!(cvC.hora_ini&&cvC.hora_fim), warn:!(cvC.hora_ini&&cvC.hora_fim),
+      msg:(cvC.hora_ini&&cvC.hora_fim)?`Horário de campo (calor): <b>${cvC.hora_ini}–${cvC.hora_fim}</b>`:'Calor: horário de início/término não informado'});
+    // Calor e vibração juntos com horário idêntico: quase sempre é o campo não
+    // preenchido de um dos dois — foi exatamente o que gerou o PDF duplicado.
+    if (tipos.includes('vibracao')) {
+      const cvV2 = _nvCampoGenerico('vibracao');
+      if (cvC.hora_ini && cvV2.hora_ini && cvC.hora_ini === cvV2.hora_ini && cvC.hora_fim === cvV2.hora_fim)
+        checks.push({warn:true, msg:'Calor e vibração estão com o <b>mesmo horário</b> — confirme se as duas medições foram realmente simultâneas.'});
+    }
     setores.forEach((s, i) => {
       // Campo = local + atividade (taxa metabólica). Temperaturas/IBUTG saem no histograma (escritório).
       checks.push({ok:true, msg:`Setor ${i+1} (${s.setor||'sem nome'}): atividade <b>${s.M||'—'} W</b> · temperaturas/IBUTG no histograma (escritório)`});
@@ -17347,18 +17433,18 @@ async function nvSalvarMedicao() {
       cal_ini:document.getElementById('nv-cr-cal-ini')?.value||'', cal_fim:document.getElementById('nv-cr-cal-fim')?.value||'',
       trabalhadores:_nvCrTrabs
     };
-    const campoGenerico = {
-      acomp:       document.getElementById('nv-gen-acomp')?.value||'',
-      hora_ini:    document.getElementById('nv-gen-hora-ini')?.value||'',
-      hora_fim:    document.getElementById('nv-gen-hora-fim')?.value||'',
-      obs:         document.getElementById('nv-gen-obs')?.value||'',
+    // Acompanhante/horário/obs vêm da fonte do PRÓPRIO tipo — numa visita com
+    // calor e vibração juntos os dois liam o mesmo campo e gravavam o mesmo
+    // horário no banco (e no relatório). Ver _nvCampoGenerico.
+    const campoGenericoDe = (tp) => ({
+      ..._nvCampoGenerico(tp),
       pontos:      document.getElementById('nv-plan-pontos-calor')?.value||'',
       regime:      document.getElementById('nv-plan-regime')?.value||'',
       tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
       fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
       ibutg_setores: window._nvCalorSetores || [],
       vibr_pontos:   window._nvVibrPontos   || [],
-    };
+    });
     // Coletar agentes não medidos (do planejamento vinculado)
     const agentesPlano = window._nvAgentesPlano || [];
     const naoMedidos = [];
@@ -17381,7 +17467,7 @@ async function nvSalvarMedicao() {
       const p = { ...base, tipo: tp };
       if (tp === 'ruido')        p.campo_ruido    = campoRuido;
       else if (tp === 'quimico') p.campo_quimico  = (_nvCqAgentes[0] || {});
-      else                       p.campo_generico = campoGenerico;  // calor / vibração
+      else                       p.campo_generico = campoGenericoDe(tp);  // calor / vibração
       // Agentes não medidos: registrar só uma vez (no primeiro POST)
       if (_primeiro && naoMedidos.length > 0) p.agentes_nao_executados = naoMedidos;
       const r = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
@@ -17498,10 +17584,7 @@ async function nvGerarRelatorioCampo() {
       return { endpoint:'/controle/relatorio/vibracao',
         fname:`planilha_vibracao_${_slug}.pdf`,
         payload:{ ...base,
-          acomp:    document.getElementById('nv-gen-acomp')?.value||'',
-          hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
-          hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
-          obs:      document.getElementById('nv-gen-obs')?.value||'',
+          ..._nvCampoGenerico('vibracao'),
           subtipo:  _nvVibrSubtipoCalc(itemVib),
           aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
           pontos:   window._nvVibrPontos || [],
@@ -17512,10 +17595,7 @@ async function nvGerarRelatorioCampo() {
       return { endpoint:'/controle/relatorio/calor',
         fname:`planilha_calor_${_slug}.pdf`,
         payload:{ ...base,
-          acomp:    document.getElementById('nv-gen-acomp')?.value||'',
-          hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
-          hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
-          obs:      document.getElementById('nv-gen-obs')?.value||'',
+          ..._nvCampoGenerico('calor'),
           setores:  (window._nvCalorSetores||[]).map(s=>({setor:s.setor,duracao:s.duracao,tbs:s.tbs,tbn:s.tbn,tg:s.tg,ibutg_interno:s.ibutg_interno,ibutg_externo:s.ibutg_externo,M:s.M,regime:s.regime})),
           sig_avaliado: nvSigGetData('nv-sig-avaliado'),
           sig_empresa:  nvSigGetData('nv-sig-empresa') } };
@@ -17576,10 +17656,7 @@ async function nvGerarRelatorioCampo() {
     },
     vibracao: {
       ...base,
-      acomp:    document.getElementById('nv-gen-acomp')?.value||'',
-      hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
-      hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
-      obs:      document.getElementById('nv-gen-obs')?.value||'',
+      ..._nvCampoGenerico('vibracao'),
       subtipo:  _nvVibrSubtipoCalc(itemVib),
       aparelho: itemVib.aparelho || itemVib.vib_aparelho || '',
       pontos:   window._nvVibrPontos || [],
@@ -17587,10 +17664,7 @@ async function nvGerarRelatorioCampo() {
     },
     calor: {
       ...base,
-      acomp:    document.getElementById('nv-gen-acomp')?.value||'',
-      hora_ini: document.getElementById('nv-gen-hora-ini')?.value||'',
-      hora_fim: document.getElementById('nv-gen-hora-fim')?.value||'',
-      obs:      document.getElementById('nv-gen-obs')?.value||'',
+      ..._nvCampoGenerico('calor'),
       setores:  (window._nvCalorSetores||[]).map(s=>({setor:s.setor,duracao:s.duracao,tbs:s.tbs,tbn:s.tbn,tg:s.tg,ibutg_interno:s.ibutg_interno,ibutg_externo:s.ibutg_externo,M:s.M,regime:s.regime})),
     },
     sig_avaliado: nvSigGetData('nv-sig-avaliado'),

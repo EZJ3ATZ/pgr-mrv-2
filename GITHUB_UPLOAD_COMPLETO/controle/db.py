@@ -2649,6 +2649,99 @@ def list_coletas_feitas(limit=300):
     return out[:limit]
 
 
+def visita_chave(demanda_id, empresa_nome, data_coleta):
+    """Chave da VISITA — o que junta as coletas de uma mesma ida a campo.
+
+    A OS é o pivô quando existe (demanda_id). Sem OS (medição avulsa), cai em
+    empresa + dia. Usada pela aba 'Planilhas Feitas' para reunir as coletas de
+    ruído/químico/calor/vibração numa única planilha, como o técnico gerou ao
+    finalizar a medição."""
+    try:
+        did = int(demanda_id)
+    except (TypeError, ValueError):
+        did = None
+    if did:
+        return f'd{did}'
+    emp = (empresa_nome or '').strip().lower()
+    return 'e' + emp + '|' + str(data_coleta or '')[:10]
+
+
+def list_visitas_feitas(limit=300):
+    """Lista as VISITAS finalizadas — uma linha por ida a campo, não por agente.
+
+    Reúne as coletas das 3 tabelas pela chave da visita (ver visita_chave) e
+    devolve os tipos medidos, o técnico e os ids de cada coleta, para que a tela
+    regenere a planilha de campo COMPLETA da visita."""
+    itens = list_coletas_feitas(limit=1000)
+    grupos = {}
+    for c in itens:
+        ch = visita_chave(c.get('demanda_id'), c.get('empresa_nome'), c.get('data_coleta'))
+        g = grupos.get(ch)
+        if not g:
+            g = {'chave': ch, 'demanda_id': c.get('demanda_id'),
+                 'empresa_nome': c.get('empresa_nome') or '', 'os': c.get('os') or '',
+                 'data_coleta': c.get('data_coleta') or '', 'tecnicos': [],
+                 'tipos': [], 'itens': [], 'criado_em': c.get('criado_em') or ''}
+            grupos[ch] = g
+        # 'vibracao_vci'/'vibracao_vbma' são a MESMA seção do relatório
+        tp = c.get('tipo') or ''
+        tp_sec = 'vibracao' if tp.startswith('vibracao') else tp
+        if tp_sec and tp_sec not in g['tipos']:
+            g['tipos'].append(tp_sec)
+        if c.get('tecnico') and c['tecnico'] not in g['tecnicos']:
+            g['tecnicos'].append(c['tecnico'])
+        if not g['os'] and c.get('os'):
+            g['os'] = c['os']
+        if not g['empresa_nome'] and c.get('empresa_nome'):
+            g['empresa_nome'] = c['empresa_nome']
+        if not g['data_coleta'] and c.get('data_coleta'):
+            g['data_coleta'] = c['data_coleta']
+        if (c.get('criado_em') or '') > (g['criado_em'] or ''):
+            g['criado_em'] = c['criado_em']
+        g['itens'].append({'id': c.get('id'), 'tabela': c.get('tabela'), 'tipo': tp})
+    out = list(grupos.values())
+    # Mesma ordem das seções do relatório de campo, para a tela bater com o PDF
+    ordem = ['ruido', 'quimico', 'vibracao', 'calor']
+    for g in out:
+        g['tecnico'] = ' · '.join(g.pop('tecnicos')) or ''
+        g['qtd_coletas'] = len(g['itens'])
+        g['tipos'] = ([t for t in ordem if t in g['tipos']]
+                      + [t for t in g['tipos'] if t not in ordem])
+    out.sort(key=lambda x: (x.get('criado_em') or x.get('data_coleta') or ''), reverse=True)
+    return out[:limit]
+
+
+def coletas_da_visita(chave):
+    """Todas as coletas (linhas completas) de uma visita, por tabela.
+
+    Devolve {'ruido': [...], 'quimico': [...], 'outros': [...]} já com os filhos
+    (trabalhadores / amostradores) carregados."""
+    fontes = [('ruido', 'coletas_ruido'), ('quimico', 'coletas_quimico'),
+              ('outros', 'coletas_outros')]
+    res = {'ruido': [], 'quimico': [], 'outros': []}
+    with get_db() as conn:
+        for chave_res, tbl in fontes:
+            try:
+                rows = conn.execute(f'SELECT * FROM {tbl} ORDER BY criado_em DESC LIMIT 1000').fetchall()
+            except Exception:
+                rows = []
+            for r in rows:
+                d = row_to_dict(r)
+                ch = visita_chave(d.get('demanda_id'), d.get('empresa_nome'), d.get('data_coleta'))
+                if ch != chave:
+                    continue
+                if tbl == 'coletas_ruido':
+                    d['trabalhadores'] = [row_to_dict(x) for x in conn.execute(
+                        'SELECT * FROM coletas_ruido_func WHERE coleta_id=? ORDER BY seq',
+                        (d['id'],)).fetchall()]
+                elif tbl == 'coletas_quimico':
+                    d['amostradores'] = [row_to_dict(x) for x in conn.execute(
+                        'SELECT * FROM coletas_quimico_amostr WHERE coleta_id=? ORDER BY seq',
+                        (d['id'],)).fetchall()]
+                res[chave_res].append(d)
+    return res
+
+
 def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
     """Analytics operacional de amostradores (TASK C) — derivado dos
     timestamps reais, por isso reflete automaticamente cada mudança de status.

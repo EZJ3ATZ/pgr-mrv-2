@@ -2977,6 +2977,187 @@ def api_coletas_feitas():
     return jsonify(list_coletas_feitas(limit))
 
 
+@controle_bp.route('/coletas/visitas')
+def api_visitas_feitas():
+    """Lista as VISITAS finalizadas — uma linha por ida a campo, com os tipos
+    medidos. Alimenta a aba 'Planilhas Feitas' (antes: uma linha por agente)."""
+    init_db()
+    from .db import list_visitas_feitas
+    try:
+        limit = min(int(request.args.get('limit', 300) or 300), 1000)
+    except Exception:
+        limit = 300
+    return jsonify(list_visitas_feitas(limit))
+
+
+def _visita_payload_campo_completo(chave):
+    """Remonta, a partir do banco, o MESMO payload que o wizard envia para
+    /relatorio/campo-completo ao finalizar a medição.
+
+    É o que faz a aba 'Planilhas Feitas' devolver a planilha da visita inteira
+    (ruído + químico + calor + vibração num só PDF) em vez de uma ficha por
+    agente. Devolve None se a visita não tem nenhuma coleta."""
+    import json as _json
+    from .db import coletas_da_visita
+    grupos = coletas_da_visita(chave)
+    ruidos, quimicos, outros = grupos['ruido'], grupos['quimico'], grupos['outros']
+    if not (ruidos or quimicos or outros):
+        return None
+
+    # Base da visita: o cabeçalho é o mesmo em todas as coletas; a primeira que
+    # tiver o campo preenchido manda (nem toda tabela guarda todos eles).
+    todas = ruidos + quimicos + outros
+    def _prim(campo, *alts):
+        for c in todas:
+            for k in (campo,) + alts:
+                v = c.get(k)
+                if v not in (None, ''):
+                    return v
+        return ''
+    base = {
+        'empresa_nome': _prim('empresa_nome'),
+        'os':           _prim('os', 'numero_os'),
+        'data_coleta':  str(_prim('data_coleta'))[:10],
+        'tecnico':      _prim('tecnico', 'avaliador', 'responsavel_coleta', 'tecnico_login'),
+        'unidade':      _prim('unidade'),
+        'cidade':       _prim('cidade'),
+        'resp_empresa': _prim('resp_empresa', 'acompanhante'),
+    }
+    base['tecnico_mte'] = _mte_do_tecnico(base['tecnico'])
+
+    tipos, d = [], {'base': base}
+
+    if ruidos:
+        r = ruidos[0]
+        tipos.append('ruido')
+        d['ruido'] = {
+            'acomp':       r.get('acompanhante') or '',
+            'cargo_acomp': r.get('cargo_acompanhante') or '',
+            'hora_ini':    r.get('hora_inicio') or '',
+            'hora_fim':    r.get('hora_termino') or '',
+            'calibrador':  r.get('calibrador') or '',
+            'trabalhadores': [{
+                'nome':  t.get('nome') or '',
+                'cargo': t.get('cargo') or '',
+                'setor': t.get('setor') or '',
+                'sn':    t.get('serie_dosimetro') or '',
+            } for t in (r.get('trabalhadores') or [])],
+        }
+
+    # Acessórios e EPIs foram gravados como TEXTO ('Ciclone Nylon, Suporte IOM');
+    # o bloco químico do relatório marca caixinhas por flag. Volta texto → flag
+    # para o PDF regenerado ficar igual ao gerado em campo.
+    _AC_FLAGS = [('ac_ciclone_al', 'ciclone alum'), ('ac_ciclone_ny', 'ciclone nylon'),
+                 ('ac_redutor', 'redutor'), ('ac_iom', 'iom'),
+                 ('ac_termo', 'termo'), ('ac_supcass', 'cassete')]
+    _EPI_FLAGS = [('epi_luvas', 'luva'), ('epi_oculos', 'culos'),
+                  ('epi_capacete', 'capacete'), ('epi_prot_auric', 'auricular'),
+                  ('epi_resp', 'respirador'), ('epi_avental', 'avental'),
+                  ('epi_macacao', 'maca')]
+
+    def _flags(texto, pares):
+        t = (texto or '').lower()
+        return {k: True for k, agulha in pares if agulha in t}
+
+    if quimicos:
+        tipos.append('quimico')
+        # Um agente por coleta química (o wizard salva 1 coleta por agente).
+        d['quimico'] = {'agentes': [{
+            **_flags(q.get('acessorios'), _AC_FLAGS),
+            **_flags(q.get('epis'), _EPI_FLAGS),
+            'substancias':  q.get('substancias') or '',
+            'fracao':       q.get('fracao') or '',
+            'tempo_exp':    q.get('tempo_exposto') or '',
+            'turno':        q.get('turno') or '',
+            'func_nome':    q.get('nome_funcionario') or '',
+            'func_funcao':  q.get('funcao') or '',
+            'func_setor':   q.get('setor') or '',
+            'func_jornada': q.get('jornada') or '',
+            'func_local':   q.get('local_atividade') or '',
+            'func_atv':     q.get('atividade') or '',
+            'ventilacao':   q.get('ventilacao') or '',
+            'ambiente':     q.get('ambiente') or '',
+            'meteo':        q.get('condicoes_meteo') or '',
+            'temperatura':  q.get('temperatura') or '',
+            'umidade':      q.get('umidade') or '',
+            'outras_cond':  q.get('outras_condicoes') or '',
+            'bomba':        q.get('bomba') or '',
+            'id_bomba':     q.get('id_bomba') or '',
+            'cal_bomba':    q.get('data_cal_bomba') or '',
+            'calibrador':   q.get('id_calibrador') or '',
+            'epc':          q.get('epc') or '',
+            'obs':          q.get('observacao') or '',
+            'amostradores': [{
+                'id_amostrador': a.get('id_amostrador') or '',
+                'vazao_inicial': a.get('vazao_inicial'),
+                'vazao_final':   a.get('vazao_final'),
+                'hora_inicio':   a.get('hora_inicio') or '',
+                'hora_final':    a.get('hora_final') or '',
+                'intervalos':    a.get('intervalos') or '',
+            } for a in (q.get('amostradores') or [])],
+        } for q in quimicos]}
+
+    # Calor / vibração: cada linha de coletas_outros com os detalhes em dados_json
+    for o in outros:
+        try:
+            extras = _json.loads(o.get('dados_json') or '{}') or {}
+        except Exception:
+            extras = {}
+        tp = (o.get('tipo') or '')
+        comum = {
+            'acomp':    o.get('acompanhante') or '',
+            'hora_ini': o.get('hora_inicio') or '',
+            'hora_fim': o.get('hora_termino') or '',
+            'obs':      o.get('observacao') or '',
+        }
+        if tp == 'calor':
+            if 'calor' not in tipos:
+                tipos.append('calor')
+            d['calor'] = {**comum, 'setores': extras.get('ibutg_setores') or []}
+        elif tp.startswith('vibracao'):
+            if 'vibracao' not in tipos:
+                tipos.append('vibracao')
+            pontos = extras.get('vibr_pontos') or []
+            sub = extras.get('tipo_vibr') or ''
+            if not sub:
+                sub = 'vbma' if tp.endswith('vbma') else ('vci' if tp.endswith('vci') else '')
+            # 2ª linha de vibração (VCI + VMB gravados separados): junta os pontos
+            ja = d.get('vibracao')
+            if ja:
+                ja['pontos'] = (ja.get('pontos') or []) + pontos
+                if sub and ja.get('subtipo') and sub != ja['subtipo']:
+                    ja['subtipo'] = 'ambos'
+            else:
+                d['vibracao'] = {**comum, 'subtipo': sub,
+                                 'aparelho': extras.get('fonte_vibr') or '',
+                                 'pontos': pontos}
+
+    # Ordem das seções igual à do relatório gerado em campo
+    ordem = ['ruido', 'quimico', 'vibracao', 'calor']
+    d['tipos'] = [t for t in ordem if t in tipos]
+    return d
+
+
+@controle_bp.route('/coletas/visita/planilha')
+def planilha_da_visita():
+    """Regenera a planilha de campo COMPLETA de uma visita já finalizada —
+    o mesmo PDF que o sistema gera ao finalizar a medição."""
+    init_db()
+    chave = (request.args.get('chave') or '').strip()
+    if not chave:
+        return jsonify({'erro': 'informe a chave da visita'}), 400
+    payload = _visita_payload_campo_completo(chave)
+    if not payload:
+        return jsonify({'erro': 'visita não encontrada'}), 404
+    try:
+        buf, nome = _campo_completo_pdf(_sanitize_rl(payload))
+    except ImportError:
+        return jsonify({'erro': 'reportlab nao instalado'}), 500
+    # inline: abre no visualizador do browser (a tela abre em aba nova)
+    return send_file(buf, as_attachment=False, download_name=nome,
+                     mimetype='application/pdf')
+
+
 def _coletas_dedup_plano():
     """Plano de deduplicação (read-only). Agrupa coletas que representam a MESMA
     medição — mesma OS (demanda_id; fallback no nº da OS) + mesmo tipo; químico
@@ -4864,17 +5045,28 @@ def _quimico_agente_flowables(ag, idx, W, data_fmt='', dia_semana=''):
 def gerar_relatorio_campo_completo():
     """Gera UM PDF com seções de todos os tipos medidos na visita."""
     try:
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import cm
-        from reportlab.lib import colors
-        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
-                                        Table, TableStyle, HRFlowable, KeepTogether)
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+        buf, nome = _campo_completo_pdf(_sanitize_rl(request.json or {}))
     except ImportError:
         return jsonify({'erro': 'reportlab nao instalado'}), 500
+    return send_file(buf, as_attachment=True, download_name=nome,
+                     mimetype='application/pdf')
 
-    d = _sanitize_rl(request.json or {})
+
+def _campo_completo_pdf(d):
+    """Monta o PDF da planilha de campo completa e devolve (buffer, nome_arquivo).
+
+    Extraído da rota POST para ser reaproveitado pela aba 'Planilhas Feitas',
+    que regenera a MESMA planilha a partir do que está no banco — em vez de uma
+    ficha separada por agente. `d` já deve vir por _sanitize_rl.
+    Levanta ImportError se o reportlab não estiver instalado."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                    Table, TableStyle, HRFlowable, KeepTogether)
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
     tipos   = [t for t in d.get('tipos', []) if t in ('ruido', 'quimico', 'vibracao', 'calor')]
     base    = d.get('base', d)   # compatibilidade: base pode vir no topo
 
@@ -5182,9 +5374,7 @@ def gerar_relatorio_campo_completo():
     buf.seek(0)
     nome_safe = re.sub(r'[^\w-]', '_', empresa_nome)[:35]
     data_safe = data_fmt.replace('/', '-')
-    return send_file(buf, as_attachment=True,
-        download_name=f'planilha_campo_{nome_safe}_{data_safe}.pdf',
-        mimetype='application/pdf')
+    return buf, f'planilha_campo_{nome_safe}_{data_safe}.pdf'
 
 
 # ── Relatório PDF de Ruído ────────────────────────────────────────────
