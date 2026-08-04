@@ -3041,6 +3041,8 @@ def _visita_payload_campo_completo(chave):
                 'cargo': t.get('cargo') or '',
                 'setor': t.get('setor') or '',
                 'sn':    t.get('serie_dosimetro') or '',
+                'pausa':      t.get('pausa') or '',
+                'almoco_fim': t.get('almoco_fim') or '',
             } for t in (r.get('trabalhadores') or [])],
         }
 
@@ -3118,8 +3120,14 @@ def _visita_payload_campo_completo(chave):
             if 'vibracao' not in tipos:
                 tipos.append('vibracao')
             pontos = extras.get('vibr_pontos') or []
-            sub = extras.get('tipo_vibr') or ''
-            if not sub:
+            # tipo_vibr vem do select como texto ("VCI — Vibração de Corpo
+            # Inteiro"); o gerador do PDF espera o código (vci/vbma/ambos)
+            _st = (extras.get('tipo_vibr') or '').lower()
+            if 'vbma' in _st or 'vmb' in _st:
+                sub = 'vbma'
+            elif 'vci' in _st or 'corpo' in _st:
+                sub = 'vci'
+            else:
                 sub = 'vbma' if tp.endswith('vbma') else ('vci' if tp.endswith('vci') else '')
             # 2ª linha de vibração (VCI + VMB gravados separados): junta os pontos
             ja = d.get('vibracao')
@@ -3128,8 +3136,10 @@ def _visita_payload_campo_completo(chave):
                 if sub and ja.get('subtipo') and sub != ja['subtipo']:
                     ja['subtipo'] = 'ambos'
             else:
+                # "Aparelho" na planilha é o INSTRUMENTO (SmartVib), não a fonte
+                # de vibração — a fonte já sai na coluna Veículo/Modelo/Ano
                 d['vibracao'] = {**comum, 'subtipo': sub,
-                                 'aparelho': extras.get('fonte_vibr') or '',
+                                 'aparelho': extras.get('vib_aparelho') or '',
                                  'pontos': pontos}
 
     # Ordem das seções igual à do relatório gerado em campo
@@ -4502,6 +4512,9 @@ def api_salvar_medicao_wizard():
             'regime':       d.get('regime') or gen.get('regime', ''),
             'tipo_vibr':    d.get('tipo_vibr') or gen.get('tipo_vibr', ''),
             'fonte_vibr':   d.get('fonte_vibr') or gen.get('fonte_vibr', ''),
+            # instrumento de medição (chrompack_1/2) — sem ele a planilha
+            # remontada não tem como preencher o campo "Aparelho"
+            'vib_aparelho': d.get('vib_aparelho') or gen.get('vib_aparelho', ''),
             # Dados detalhados da medição → viram extras em dados_json (save_coleta_outros)
             'ibutg_setores': ibutg_setores,                 # calor: TBS/TBN/TG/IBUTG por setor
             'vibr_pontos':   gen.get('vibr_pontos', []),    # vibração: trabalhadores/pontos

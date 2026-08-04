@@ -422,6 +422,8 @@ CREATE TABLE IF NOT EXISTS coletas_ruido_func (
     setor           TEXT,
     almoco          INTEGER DEFAULT 0,
     serie_dosimetro TEXT,
+    pausa           TEXT,
+    almoco_fim      TEXT,
     FOREIGN KEY (coleta_id) REFERENCES coletas_ruido(id) ON DELETE CASCADE
 );
 
@@ -1149,6 +1151,11 @@ def _migrate(conn):
                       ('planejamento_id', 'INTEGER'),
                       ('tecnico_login', 'TEXT')]:
         _add_col(conn, 'coletas_ruido', col, tipo)
+
+    # ── coletas_ruido_func: horário de almoço (a coluna 'almoco' é só flag 0/1;
+    #    o hh:mm que o técnico digita ia pro PDF e se perdia no banco) ──
+    _add_col(conn, 'coletas_ruido_func', 'pausa', 'TEXT')
+    _add_col(conn, 'coletas_ruido_func', 'almoco_fim', 'TEXT')
 
     # ── coletas_quimico_amostr ──
     _add_col(conn, 'coletas_quimico_amostr', 'bomba', 'TEXT')
@@ -3508,11 +3515,16 @@ def save_coleta_ruido(data):
             for i, func in enumerate(funcs, 1):
                 conn.execute(
                     'INSERT INTO coletas_ruido_func '
-                    '(coleta_id,seq,nome,cargo,setor,almoco,serie_dosimetro) '
-                    'VALUES (?,?,?,?,?,?,?)',
+                    '(coleta_id,seq,nome,cargo,setor,almoco,serie_dosimetro,pausa,almoco_fim) '
+                    'VALUES (?,?,?,?,?,?,?,?,?)',
                     (cid, i, func.get('nome', ''), func.get('cargo', ''),
-                     func.get('setor', ''), 1 if func.get('almoco') else 0,
-                     func.get('serie_dosimetro', func.get('dosimetro', ''))))
+                     func.get('setor', ''),
+                     1 if (func.get('almoco') or func.get('pausa')) else 0,
+                     # o wizard manda o nº do dosímetro como 'sn'
+                     func.get('serie_dosimetro') or func.get('dosimetro') or func.get('sn') or '',
+                     # 'almoco' legado pode ser flag (0/1) — só aproveita se for hh:mm
+                     func.get('pausa') or (func.get('almoco') if isinstance(func.get('almoco'), str) else '') or '',
+                     func.get('almoco_fim') or ''))
     return cid
 
 

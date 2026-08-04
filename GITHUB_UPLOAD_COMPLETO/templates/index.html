@@ -17489,12 +17489,16 @@ async function nvSalvarMedicao() {
     // Acompanhante/horário/obs vêm da fonte do PRÓPRIO tipo — numa visita com
     // calor e vibração juntos os dois liam o mesmo campo e gravavam o mesmo
     // horário no banco (e no relatório). Ver _nvCampoGenerico.
+    const _itVibSalvar = (window._ctrlNvItens||[]).find(it => it.tipo === 'vibracao') || {};
     const campoGenericoDe = (tp) => ({
       ..._nvCampoGenerico(tp),
       pontos:      document.getElementById('nv-plan-pontos-calor')?.value||'',
       regime:      document.getElementById('nv-plan-regime')?.value||'',
       tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
       fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
+      // instrumento (chrompack_1/2) — ia só pro PDF; sem salvar, a planilha
+      // remontada em "Planilhas Feitas" ficava sem o Aparelho
+      vib_aparelho: _itVibSalvar.aparelho || _itVibSalvar.vib_aparelho || '',
       ibutg_setores: window._nvCalorSetores || [],
       vibr_pontos:   window._nvVibrPontos   || [],
     });
