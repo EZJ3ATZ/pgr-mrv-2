@@ -170,6 +170,23 @@ def test_painel_sla(monkeypatch):
     assert raia['horas_decorridas'] is not None and raia['horas_decorridas'] >= 0
 
 
+def test_painel_filtro_por_negocio():
+    # Rastreio do vendedor (pedido da M. Fernanda): o CRM consulta o painel
+    # por negocio_crm_id e recebe SÓ as OS daquele negócio, sem LIMIT.
+    _limpar()
+    orq.abrir_os({'empresa': 'A Ltda', 'negocio_crm_id': '123',
+                  'servicos': [{'nome': 'PGR'}]}, dry_run=False)
+    orq.abrir_os({'empresa': 'B Ltda', 'negocio_crm_id': '456',
+                  'servicos': [{'nome': 'Ruído'}]}, dry_run=False)
+    p = orq.painel(negocio='123')
+    assert p['ok'] and len(p['ordens']) == 1
+    assert p['ordens'][0]['empresa'] == 'A Ltda'
+    assert p['ordens'][0]['raias']          # raias vêm junto p/ montar o status
+    assert orq.painel(negocio='999')['ordens'] == []
+    # int também vale (o CRM manda number)
+    assert len(orq.painel(negocio=456)['ordens']) == 1
+
+
 # ── Interruptor mestre ORQ_ATIVO (CRM não está em uso: dormente por padrão) ──
 def test_dormente_nao_grava_nada(monkeypatch):
     """ORQ_ATIVO=0 ⇒ abrir_os vira preview mesmo com dry_run=False:

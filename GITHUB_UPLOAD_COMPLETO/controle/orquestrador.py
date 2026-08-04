@@ -490,11 +490,19 @@ def concluir_raia(numero, raia_id):
 
 
 # ── Painel / SLA (requisito 6: tempo por setor) ─────────────────────────
-def painel():
+def painel(negocio=None):
+    """Sem filtro: últimas 100 OS (visão geral). Com `negocio` (id do negócio
+    no CRM): TODAS as OS daquele negócio, sem LIMIT — o rastreio do vendedor
+    não pode perder OS antiga quando o volume passar de 100."""
     with get_db() as conn:
         _ensure_schema(conn)
-        ordens = [row_to_dict(x) for x in conn.execute(
-            "SELECT * FROM os_ordens ORDER BY id DESC LIMIT 100").fetchall()]
+        if negocio:
+            ordens = [row_to_dict(x) for x in conn.execute(
+                "SELECT * FROM os_ordens WHERE negocio_crm_id=? ORDER BY id DESC",
+                (str(negocio),)).fetchall()]
+        else:
+            ordens = [row_to_dict(x) for x in conn.execute(
+                "SELECT * FROM os_ordens ORDER BY id DESC LIMIT 100").fetchall()]
         for o in ordens:
             raias = [row_to_dict(x) for x in conn.execute(
                 "SELECT * FROM os_raias WHERE os_id=? ORDER BY id", (o['id'],)).fetchall()]
@@ -593,7 +601,7 @@ def registrar_rotas(bp):
             from flask_login import current_user
             if not getattr(current_user, 'is_authenticated', False):
                 return jsonify({'ok': False, 'erro': 'não autorizado'}), 401
-        return jsonify(painel())
+        return jsonify(painel(negocio=request.args.get('negocio')))
 
     @bp.route('/os/fila')
     def orq_fila():
