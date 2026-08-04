@@ -427,6 +427,19 @@ CREATE TABLE IF NOT EXISTS coletas_ruido_func (
     FOREIGN KEY (coleta_id) REFERENCES coletas_ruido(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS visita_anexos (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id   INTEGER,
+    empresa_nome TEXT,
+    data_coleta  TEXT,
+    tipo         TEXT,
+    seq          INTEGER DEFAULT 1,
+    legenda      TEXT,
+    cargo        TEXT,
+    data_b64     TEXT,
+    criado_em    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS coletas_quimico (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     demanda_id          INTEGER,
@@ -713,6 +726,8 @@ CREATE INDEX IF NOT EXISTS idx_col_ruido_func    ON coletas_ruido_func(coleta_id
 CREATE INDEX IF NOT EXISTS idx_col_quim_empresa  ON coletas_quimico(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_col_quim_status   ON coletas_quimico(status);
 CREATE INDEX IF NOT EXISTS idx_col_quim_amostr   ON coletas_quimico_amostr(coleta_id);
+CREATE INDEX IF NOT EXISTS idx_vis_anexos_dem    ON visita_anexos(demanda_id);
+CREATE INDEX IF NOT EXISTS idx_vis_anexos_emp    ON visita_anexos(empresa_nome, data_coleta);
 CREATE INDEX IF NOT EXISTS idx_col_outros_tipo    ON coletas_outros(tipo);
 CREATE INDEX IF NOT EXISTS idx_col_outros_empresa ON coletas_outros(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_raw_planner_task  ON planner_raw_tasks(planner_task_id);
@@ -2746,6 +2761,101 @@ def coletas_da_visita(chave):
                         'SELECT * FROM coletas_quimico_amostr WHERE coleta_id=? ORDER BY seq',
                         (d['id'],)).fetchall()]
                 res[chave_res].append(d)
+    return res
+
+
+def _anexos_where(demanda_id, empresa_nome, data_coleta):
+    """WHERE de visita p/ visita_anexos — mesma lógica da visita_chave:
+    demanda_id quando existe; senão empresa + dia."""
+    try:
+        did = int(demanda_id)
+    except (TypeError, ValueError):
+        did = None
+    if did:
+        return 'demanda_id=?', [did]
+    return ("(demanda_id IS NULL OR demanda_id=0) AND "
+            "LOWER(COALESCE(empresa_nome,''))=? AND "
+            "substr(COALESCE(data_coleta,''),1,10)=?",
+            [(empresa_nome or '').strip().lower(), str(data_coleta or '')[:10]])
+
+
+def save_visita_anexos(demanda_id, empresa_nome, data_coleta,
+                       fotos=None, sig_avaliado=None, sig_empresa=None):
+    """Persiste fotos e assinaturas da visita (o wizard mandava no payload e o
+    save descartava — a planilha remontada saía sem elas).
+
+    Substituição GRANULAR por categoria: fotos=None não mexe nas fotos
+    (fotos=[] limpa); assinatura só é gravada se vier com conteúdo — um POST
+    parcial nunca apaga o que outro já salvou."""
+    try:
+        did = int(demanda_id)
+    except (TypeError, ValueError):
+        did = None
+    where, params = _anexos_where(demanda_id, empresa_nome, data_coleta)
+    n = 0
+    with get_db() as conn:
+        if fotos is not None:
+            conn.execute(f"DELETE FROM visita_anexos WHERE tipo='foto' AND {where}", params)
+            seq = 0
+            for f in (fotos or []):
+                if isinstance(f, dict):
+                    src = f.get('data') or f.get('src') or ''
+                    leg = (f.get('legenda') or f.get('caption') or '').strip()
+                    crg = (f.get('cargo') or f.get('funcao') or '').strip()
+                else:
+                    src, leg, crg = (f or ''), '', ''
+                if not isinstance(src, str) or not src.strip():
+                    continue
+                seq += 1
+                conn.execute(
+                    'INSERT INTO visita_anexos '
+                    '(demanda_id, empresa_nome, data_coleta, tipo, seq, legenda, cargo, data_b64) '
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (did, empresa_nome or '', str(data_coleta or '')[:10],
+                     'foto', seq, leg, crg, src))
+                n += 1
+        for tipo, val in (('sig_avaliado', sig_avaliado), ('sig_empresa', sig_empresa)):
+            if not (isinstance(val, str) and val.strip()):
+                continue
+            conn.execute(f"DELETE FROM visita_anexos WHERE tipo=? AND {where}",
+                         [tipo] + params)
+            conn.execute(
+                'INSERT INTO visita_anexos '
+                '(demanda_id, empresa_nome, data_coleta, tipo, seq, legenda, cargo, data_b64) '
+                "VALUES (?,?,?,?,?,?,?,?)",
+                (did, empresa_nome or '', str(data_coleta or '')[:10], tipo, 1, '', '', val))
+            n += 1
+    return n
+
+
+def anexos_da_visita(chave):
+    """Fotos e assinaturas persistidas de uma visita (chave = visita_chave).
+    Devolve {'fotos': [{data, legenda, cargo}], 'sig_avaliado': str|None,
+    'sig_empresa': str|None}."""
+    res = {'fotos': [], 'sig_avaliado': None, 'sig_empresa': None}
+    if not chave:
+        return res
+    if chave.startswith('d') and chave[1:].isdigit():
+        where, params = 'demanda_id=?', [int(chave[1:])]
+    elif chave.startswith('e') and '|' in chave:
+        emp, dia = chave[1:].rsplit('|', 1)
+        where, params = ("(demanda_id IS NULL OR demanda_id=0) AND "
+                         "LOWER(COALESCE(empresa_nome,''))=? AND "
+                         "substr(COALESCE(data_coleta,''),1,10)=?", [emp, dia])
+    else:
+        return res
+    with get_db() as conn:
+        rows = conn.execute(
+            f'SELECT tipo, seq, legenda, cargo, data_b64 FROM visita_anexos '
+            f'WHERE {where} ORDER BY tipo, seq', params).fetchall()
+    for r in rows:
+        d = row_to_dict(r)
+        if d.get('tipo') == 'foto':
+            res['fotos'].append({'data': d.get('data_b64') or '',
+                                 'legenda': d.get('legenda') or '',
+                                 'cargo': d.get('cargo') or ''})
+        elif d.get('tipo') in ('sig_avaliado', 'sig_empresa'):
+            res[d['tipo']] = d.get('data_b64') or None
     return res
 
 

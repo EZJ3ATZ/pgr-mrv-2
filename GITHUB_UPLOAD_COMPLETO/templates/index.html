@@ -17474,7 +17474,6 @@ async function nvSalvarMedicao() {
       cidade:       document.getElementById('nv-cidade')?.value || '',
       resp_empresa: document.getElementById('nv-resp-empresa')?.value || '',
       itens:        window._ctrlNvItens || [],
-      fotos:        window._nvFotos || [],
     };
     // Blocos por tipo — montados SEMPRE, independente da prioridade.
     // (Antes só o tipo primário era salvo; químico/calor/vibração em visitas
@@ -17527,6 +17526,13 @@ async function nvSalvarMedicao() {
       else                       p.campo_generico = campoGenericoDe(tp);  // calor / vibração
       // Agentes não medidos: registrar só uma vez (no primeiro POST)
       if (_primeiro && naoMedidos.length > 0) p.agentes_nao_executados = naoMedidos;
+      // Fotos e assinaturas: 1x por visita (no primeiro POST) — persistidas
+      // para a planilha remontada em Planilhas Feitas sair igual à da hora
+      if (_primeiro) {
+        p.fotos        = window._nvFotos || [];
+        p.sig_avaliado = nvSigGetData('nv-sig-avaliado');
+        p.sig_empresa  = nvSigGetData('nv-sig-empresa');
+      }
       const r = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
       // Trava backend: medição já finalizada para esta demanda (planilha duplicada)
       if (r && r.duplicada) { _duplicadas.push(r.aviso || 'Medição já finalizada.'); }
@@ -17592,6 +17598,23 @@ async function nvSalvarMedicao() {
   } finally {
     window._nvSaving = false;
   }
+}
+
+// Fotos/assinaturas podem mudar DEPOIS do salvar (técnico assina na hora de
+// gerar o relatório) — reenvia o estado atual ao gerar. Nunca bloqueia o PDF.
+async function nvUpsertAnexosVisita() {
+  try {
+    await ctrlFetch('/controle/coletas/visita/anexos', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        demanda_id:   window._nvDemandaId || null,
+        empresa_nome: document.getElementById('ctrl-nv-empresa')?.value || '',
+        data_coleta:  document.getElementById('ctrl-nv-data')?.value || '',
+        fotos:        window._nvFotos || [],
+        sig_avaliado: nvSigGetData('nv-sig-avaliado'),
+        sig_empresa:  nvSigGetData('nv-sig-empresa'),
+      })});
+  } catch (e) { console.warn('anexos da visita:', e); }
 }
 
 async function nvGerarRelatorioCampo() {
@@ -17683,6 +17706,7 @@ async function nvGerarRelatorioCampo() {
       a.href = url; a.download = cfg.fname; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       if (st) st.innerHTML = `<span style="color:var(--green);">✅ Planilha de ${_lblTipo[tipo]} gerada!</span>`;
+      nvUpsertAnexosVisita();
     } catch(e) {
       if (st) st.innerHTML = `<span style="color:var(--red);">❌ Erro ${_lblTipo[tipo]}: ${e.message}</span>`;
       _showToast('Erro ao gerar: ' + e.message, 'err');
@@ -17741,6 +17765,7 @@ async function nvGerarRelatorioCampo() {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     if (st) st.innerHTML = `<span style="color:var(--green);">✅ Planilha completa (${_tiposRel.map(t=>_lblTipo[t]||t).join(' + ')}) gerada!</span>`;
     _showToast('✅ Planilha de campo gerada!', 'ok');
+    nvUpsertAnexosVisita();
   } catch(e) {
     if (st) st.innerHTML = `<span style="color:var(--red);">❌ Erro ao gerar planilha: ${e.message}</span>`;
     _showToast('Erro: ' + e.message, 'err');

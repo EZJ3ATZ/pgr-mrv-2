@@ -3142,10 +3142,41 @@ def _visita_payload_campo_completo(chave):
                                  'aparelho': extras.get('vib_aparelho') or '',
                                  'pontos': pontos}
 
+    # Fotos e assinaturas persistidas — mesmos campos que o wizard manda na
+    # hora (fotos na base; sig_* no topo), então o gerador não muda nada
+    from .db import anexos_da_visita
+    ax = anexos_da_visita(chave)
+    if ax.get('fotos'):
+        base['fotos'] = ax['fotos']
+    if ax.get('sig_avaliado'):
+        d['sig_avaliado'] = ax['sig_avaliado']
+    if ax.get('sig_empresa'):
+        d['sig_empresa'] = ax['sig_empresa']
+
     # Ordem das seções igual à do relatório gerado em campo
     ordem = ['ruido', 'quimico', 'vibracao', 'calor']
     d['tipos'] = [t for t in ordem if t in tipos]
     return d
+
+
+@controle_bp.route('/coletas/visita/anexos', methods=['POST'])
+def api_salvar_anexos_visita():
+    """Upsert de fotos/assinaturas da visita — chamado pelo wizard ao gerar o
+    Relatório de Campo (o técnico pode assinar DEPOIS de salvar a medição).
+    Recebe o estado completo: fotos substituem fotos; assinatura só grava se
+    veio com conteúdo."""
+    init_db()
+    d = request.json or {}
+    from .db import save_visita_anexos
+    try:
+        n = save_visita_anexos(
+            d.get('demanda_id'), d.get('empresa_nome', ''),
+            d.get('data_coleta') or d.get('data', ''),
+            fotos=(d.get('fotos') or []),
+            sig_avaliado=d.get('sig_avaliado'), sig_empresa=d.get('sig_empresa'))
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+    return jsonify({'ok': True, 'anexos': n})
 
 
 @controle_bp.route('/coletas/visita/planilha')
@@ -4358,6 +4389,19 @@ def api_salvar_medicao_wizard():
     tipo = d.get('tipo', '')
     # Técnico logado — cada medição é contabilizada para quem a finalizou
     tecnico_login = (current_user.nome if current_user.is_authenticated else '') or ''
+
+    # Fotos e assinaturas da visita: antes iam só pro PDF gerado na hora e o
+    # save descartava — a planilha remontada em Planilhas Feitas saía sem elas.
+    # Anexo nunca derruba o save da medição (erro só loga).
+    if d.get('fotos') or d.get('sig_avaliado') or d.get('sig_empresa'):
+        try:
+            from .db import save_visita_anexos
+            save_visita_anexos(
+                d.get('demanda_id'), d.get('empresa_nome', ''), d.get('data', ''),
+                fotos=(d.get('fotos') if d.get('fotos') else None),
+                sig_avaliado=d.get('sig_avaliado'), sig_empresa=d.get('sig_empresa'))
+        except Exception as e:
+            print(f'[medicoes] anexos da visita: {e}')
 
     if tipo == 'ruido':
         cr = d.get('campo_ruido') or {}
