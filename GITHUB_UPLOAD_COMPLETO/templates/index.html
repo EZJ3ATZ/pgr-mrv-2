@@ -13194,7 +13194,9 @@ let _ctrlVencHdrCache = null, _ctrlVencHdrAt = 0;
 async function ctrlAmostrHeader(force) {
   try {
     if (force || !_ctrlVencHdrCache || (Date.now() - _ctrlVencHdrAt) > 300000) {
-      _ctrlVencHdrCache = await ctrlFetch('/controle/amostradores_vencendo');
+      // no-store: o endpoint não manda cache-control, então o navegador reusava a
+      // resposta velha depois de um F5 e a fila reaparecia com linha já resolvida.
+      _ctrlVencHdrCache = await ctrlFetch('/controle/amostradores_vencendo', {cache: 'no-store'});
       _ctrlVencHdrAt = Date.now();
     }
     const d = _ctrlVencHdrCache;
