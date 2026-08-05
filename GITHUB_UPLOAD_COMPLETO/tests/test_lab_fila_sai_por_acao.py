@@ -64,6 +64,25 @@ def test_cadastrado_sem_resultado_deixa_de_pedir_cadastro():
     _classificar_acao_resultados(fila)
     assert fila[0]['nao_cadastrados'] == []
     assert fila[0]['acao'] == 'manual'
+    # e a tela ganha o alvo exato para vincular, sem seletor livre
+    assert [s['codigo'] for s in fila[0]['sugeridos']] == ['TCP4806AV3']
+
+
+def test_tubo_concluido_a_mao_sem_data_entra_como_sugerido():
+    """O caso real de 05/08/2026: 16 códigos concluídos à mão, sem data_resultado.
+
+    Nenhum aparecia no seletor de vinculação (que só lista 'No laboratório'), então
+    a fila não tinha saída. Vira `sugeridos` para a tela vincular direto.
+    """
+    _inserir(-7, 'TCP4908AV3', status='concluido')     # sem data_resultado
+    _inserir(-8, 'PVC14V69', status='concluido')
+    fila = [{'ra_num': '81963184', 'casou': [],
+             'nao_cadastrados': ['TCP4908AV3', 'PVC14V69', 'FANTASMA9']}]
+    _revalidar_nao_cadastrados(fila)
+    _classificar_acao_resultados(fila)
+    assert fila[0]['nao_cadastrados'] == ['FANTASMA9']   # esse segue fora mesmo
+    assert sorted(s['codigo'] for s in fila[0]['sugeridos']) == ['PVC14V69', 'TCP4908AV3']
+    assert fila[0]['acao'] == 'cadastrar'               # ainda falta 1 → cadastrar antes
 
 
 def test_cadastrado_com_resultado_sai_da_fila():
@@ -72,6 +91,7 @@ def test_cadastrado_com_resultado_sai_da_fila():
     _revalidar_nao_cadastrados(fila)
     _classificar_acao_resultados(fila)
     assert fila[0]['acao'] == 'resolvido'
+    assert 'sugeridos' not in fila[0]      # nada a fazer, nada a sugerir
 
 
 def test_codigo_que_segue_fora_do_inventario_continua_cobrando():

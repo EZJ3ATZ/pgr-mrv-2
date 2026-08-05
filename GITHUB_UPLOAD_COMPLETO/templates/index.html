@@ -13351,9 +13351,32 @@ function ctrlAmostrAbrirRA(idx) {
           'escolher outro aqui gravaria o resultado no tubo errado.');
     return;
   }
+  const cab = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:10px;background:var(--surface2);border-radius:7px;padding:10px;">${_esc(ra.assunto||'—')}<br><span style="color:var(--text3);">recebido em ${ra.data?String(ra.data).split('-').reverse().join('/'):'—'}</span></div>`;
+  // Caminho preciso: o próprio nome do laudo nomeia os tubos e eles ESTÃO no
+  // inventário, só sem a data do resultado. Vincula neles, sem seletor livre —
+  // o seletor lista apenas 'No laboratório', então tubo já concluído à mão não
+  // aparecia lá e o RA não tinha como sair da fila.
+  const sug = ra.sugeridos || [];
+  if (sug.length) {
+    const html = cab + `
+      <div style="font-size:.74rem;color:var(--text2);background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:7px;padding:8px 10px;margin-bottom:10px;line-height:1.5;">
+        ✓ O nome do laudo cita ${sug.length === 1 ? 'este amostrador' : `estes ${sug.length} amostradores`}, já no inventário. Falta lançar a data do resultado.
+      </div>
+      <div style="max-height:190px;overflow:auto;margin-bottom:10px;">
+        ${sug.map(s => `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+          <span style="flex:1;color:var(--text);">${_esc(s.codigo||'—')}</span>
+          <span class="ctrl-badge ${(s.status||'').toLowerCase()}">${_amostrStatusLabel(s.status)}</span>
+        </div>`).join('')}
+      </div>
+      <label style="font-size:.74rem;color:var(--text3);">Data do resultado</label>
+      <input type="date" id="ctrl-ra-data" value="${ra.data||new Date().toISOString().slice(0,10)}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:inherit;font-size:.84rem;margin:4px 0 14px;">
+      <button onclick="_ctrlAmostrVincularSugeridos(${idx}, document.getElementById('ctrl-ra-data').value)" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:7px;padding:11px;cursor:pointer;font-size:.84rem;font-weight:700;font-family:inherit;">✓ Vincular e concluir ${sug.length === 1 ? 'o amostrador' : `os ${sug.length} amostradores`}</button>`;
+    biDrawerOpen('🔗 Vincular resultado (RA)', html);
+    return;
+  }
   const labs = (ctrlAmostrCache||[]).filter(a => (a.status||'').toLowerCase()==='laboratorio');
   if (!labs.length) { alert('Nenhum amostrador com status "No laboratório" para vincular.'); return; }
-  const html = `<div style="font-size:.78rem;color:var(--text2);margin-bottom:10px;background:var(--surface2);border-radius:7px;padding:10px;">${_esc(ra.assunto||'—')}<br><span style="color:var(--text3);">recebido em ${ra.data?String(ra.data).split('-').reverse().join('/'):'—'}</span></div>
+  const html = cab + `
     <div style="font-size:.74rem;color:var(--yellow);background:rgba(250,204,21,.10);border:1px solid rgba(250,204,21,.35);border-radius:7px;padding:8px 10px;margin-bottom:10px;line-height:1.5;">
       ⚠ O casamento automático (pelo código no nome do anexo) não resolveu este laudo.
       Confirme no PDF de qual amostrador ele é — escolher o tubo errado aqui grava o
@@ -13367,6 +13390,31 @@ function ctrlAmostrAbrirRA(idx) {
     <input type="date" id="ctrl-ra-data" value="${ra.data||new Date().toISOString().slice(0,10)}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:inherit;font-size:.84rem;margin:4px 0 14px;">
     <button onclick="_ctrlAmostrGravarRA(parseInt(document.getElementById('ctrl-ra-amostr').value), document.getElementById('ctrl-ra-data').value, true, ${idx})" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:7px;padding:11px;cursor:pointer;font-size:.84rem;font-weight:700;font-family:inherit;">✓ Vincular e concluir</button>`;
   biDrawerOpen('🔗 Vincular resultado (RA)', html);
+}
+
+// Vincula o RA a TODOS os tubos que o nome do laudo cita (1 clique por laudo).
+// Um a um pelo PUT, que já sabe gravar o vínculo do RA quando recebe ra_num.
+async function _ctrlAmostrVincularSugeridos(raIdx, data) {
+  const ra = (window._ctrlRAs || [])[raIdx];
+  const sug = (ra && ra.sugeridos) || [];
+  if (!sug.length) return;
+  const corpo = {data_resultado: data, status: 'concluido'};
+  if (ra.ra_num) { corpo.ra_num = ra.ra_num; corpo.ra_assunto = ra.assunto || ''; corpo.ra_data = ra.data || ''; }
+  let ok = 0, falhas = [];
+  for (const s of sug) {
+    try {
+      await ctrlFetch(`/controle/amostradores/${s.id}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(corpo)
+      });
+      ok++;
+    } catch(e) { falhas.push(s.codigo || s.id); }
+  }
+  if (typeof biDrawerClose === 'function') biDrawerClose();
+  _showToast(falhas.length
+    ? `✓ ${ok} vinculado(s) — falhou em ${falhas.join(', ')}`
+    : `✓ Resultado lançado em ${ok} amostrador(es) — RA baixado`, falhas.length ? 'err' : 'success');
+  ctrlAmostrHeader(true);
+  ctrlLoadAmostr();
 }
 
 async function _ctrlAmostrGravarRA(id, data, fecharDrawer, raIdx) {

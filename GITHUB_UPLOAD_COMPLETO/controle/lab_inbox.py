@@ -470,6 +470,12 @@ def _revalidar_nao_cadastrados(resultados):
     ("não sei como fazer esse trem sumir"). Aqui o código que JÁ existe sai dos
     faltantes; se aquele amostrador já tem resultado lançado, entra em `casou` e
     o RA sai da fila na hora.
+
+    O que sobra (cadastrado, mas sem `data_resultado`) vai em `sugeridos` — são os
+    tubos que ESTE laudo nomeia. A tela vincula direto neles em vez de abrir um
+    seletor livre: em 05/08/2026 os 16 códigos "fora do inventário" estavam todos
+    cadastrados e concluídos à mão, e nenhum aparecia no seletor (que só lista
+    `status='laboratorio'`) — a fila não tinha saída possível.
     """
     pend = [r for r in resultados if r.get('nao_cadastrados')]
     if not pend:
@@ -477,7 +483,7 @@ def _revalidar_nao_cadastrados(resultados):
     try:
         look = _sistema_lookup()
         for r in pend:
-            faltam = []
+            faltam, sugeridos = [], []
             casou = list(r.get('casou') or [])
             for cod in r['nao_cadastrados']:
                 amos = _match_amostrador(look, cod)
@@ -489,8 +495,13 @@ def _revalidar_nao_cadastrados(resultados):
                 if str(amos.get('data_resultado') or '').strip() and amos.get('codigo'):
                     if amos['codigo'] not in casou:
                         casou.append(amos['codigo'])
+                elif not any(s['id'] == amos['id'] for s in sugeridos):
+                    sugeridos.append({'id': amos['id'], 'codigo': amos.get('codigo'),
+                                      'status': amos.get('status')})
             r['nao_cadastrados'] = faltam
             r['casou'] = sorted({c for c in casou if c})
+            if sugeridos:
+                r['sugeridos'] = sugeridos
     except Exception as e:
         log.warning('[lab_inbox] revalidar nao_cadastrados falhou: %s', e)
     return resultados
