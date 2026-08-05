@@ -3854,7 +3854,13 @@
         </div>
         <div style="position:relative;display:inline-block;">
           <button class="ctrl-import-btn" onclick="ctrlAmostrToggleMenu('ctrl-menu-manut')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);">⚙ Manutenção ▾</button>
-          <div id="ctrl-menu-manut" class="ctrl-amostr-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:60;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:230px;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;">
+          <!-- left:0 (e NÃO right:0): este botão fica na borda esquerda da área de
+               conteúdo, e `main.main-content` tem overflow-x:hidden. Ancorado à
+               direita, o menu vazava ~60px para fora do main e esse pedaço era
+               RECORTADO — o texto de todos os itens aparecia cortado, com a sidebar
+               visível por baixo. Não era z-index. O menu de "+ Adicionar" fica na
+               borda oposta e continua com right:0, senão sairia da tela. -->
+          <div id="ctrl-menu-manut" class="ctrl-amostr-menu" style="display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:60;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:230px;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;">
             <div onclick="ctrlAmostrToggleMenu();ctrlExportAmostr()" style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">⬇ Exportar Excel</div>
             <div id="ctrl-btn-arquivados" onclick="ctrlAmostrToggleMenu();ctrlToggleArquivados()" title="Concluídos há +30 dias são arquivados. Clique para vê-los." style="padding:9px 14px;font-size:.8rem;cursor:pointer;color:var(--text);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">🗄 <span id="ctrl-arq-lbl">Ver arquivados</span></div>
             {% if current_user.is_authenticated and current_user.role == 'admin' %}
