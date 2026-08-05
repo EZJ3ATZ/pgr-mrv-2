@@ -13107,6 +13107,11 @@ async function ctrlLoadAmostr() {
   }
 }
 
+// RAs da fila que ainda pedem ação — o resto o casamento automático já resolveu.
+function _ctrlRAsPendentes() {
+  return (window._ctrlRAs || []).filter(r => (r.acao || 'manual') !== 'resolvido');
+}
+
 // ── Redesign 08/07: KPIs, pipeline, cobrança do lab, RAs, menu ⋯ e drawer ──
 function ctrlAmostrRenderKpis(data) {
   const el = document.getElementById('ctrl-amostr-kpis');
@@ -13127,10 +13132,11 @@ function ctrlAmostrRenderKpis(data) {
       ${extra||''}
     </div>`;
   const lab200 = data.filter(a => (a.status||'').toLowerCase()==='laboratorio' && (a.tempo_parado||0)>=200).length;
-  // "Resultados a vincular" = e-mails de RA capturados do lab ainda sem amostrador
-  // (fonte: sync de e-mails) + amostradores com data_resultado que não concluíram.
-  // O clique NÃO filtra a tabela — leva ao box de vinculação logo abaixo.
-  const nRAs = (window._ctrlRAs || []).length + cnt.resultado;
+  // "Resultados a vincular" = e-mails de RA que AINDA pedem ação (o casamento
+  // automático já resolveu os outros) + amostradores com data_resultado que não
+  // concluíram. O clique NÃO filtra a tabela — leva ao box de vinculação abaixo.
+  // Contava a fila inteira, incluindo laudo já lido: dizia 8 com 2 pendentes.
+  const nRAs = _ctrlRAsPendentes().length + cnt.resultado;
   el.innerHTML =
     kpi('disponivel',  'Disponíveis',          cnt.disponivel,  'var(--green)') +
     kpi('laboratorio', 'No laboratório',       cnt.laboratorio, 'var(--orange)',
@@ -13222,6 +13228,9 @@ async function ctrlAmostrHeader(force) {
       // automático já resolveu (pelo código no nome do anexo) sai da lista —
       // antes aparecia com botão "Vincular" e parecia não ter sido lido.
       window._ctrlRAs = rs;
+      // Os KPIs/pipeline são desenhados ANTES deste fetch (ctrlLoadAmostr), então
+      // "Resultados a vincular" nascia 0 mesmo com fila pendente. Redesenha agora.
+      if (ctrlAmostrCache && ctrlAmostrCache.length) ctrlAmostrRenderKpis(ctrlAmostrCache);
       const pend = rs.map((r, i) => ({r, i})).filter(x => (x.r.acao || 'manual') !== 'resolvido');
       const lidos = rs.length - pend.length;
       if (pend.length || lidos) {
