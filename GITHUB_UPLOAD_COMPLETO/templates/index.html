@@ -13168,8 +13168,9 @@ function ctrlAmostrRenderPipeline(cnt) {
   if (!el) return;
   const fSt = document.getElementById('ctrl-f-status').value;
   const ativo = _ctrlAmostrPseudo || fSt;
-  // "Resultado recebido" = RAs do lab a vincular (mesma fonte do KPI); clicar leva ao box, não filtra tabela vazia.
-  const nRAs = (window._ctrlRAs || []).length + cnt.resultado;
+  // "Resultado recebido" = RAs do lab a vincular (mesma fonte e mesma conta do KPI:
+  // só o que ainda pede ação); clicar leva ao box, não filtra tabela vazia.
+  const nRAs = _ctrlRAsPendentes().length + cnt.resultado;
   const etapas = [
     ['disponivel',  '📦 Disponível',         cnt.disponivel],
     ['reservado',   '📌 Reservado',          cnt.reservado],
