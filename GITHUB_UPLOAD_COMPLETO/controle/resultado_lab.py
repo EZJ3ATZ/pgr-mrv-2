@@ -230,6 +230,40 @@ def listar(amostrador=None, ra_num=None, limite=200):
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
 
+def ras_do_amostrador(cod):
+    """RA(s) que já sabemos conter este tubo — sem tocar na caixa de e-mail.
+
+    Achar um laudo pelo código varrendo a caixa custa uma chamada de anexos por
+    e-mail de RA (passava de 45 s). Aqui a resposta vem do banco: `resultados_lab`
+    (gravado a cada laudo lido, inclusive de tubo que não está no inventário) e
+    `ra_laudos` (gravado pelo backfill noturno). Vazio = não sabemos ainda, aí sim
+    vale varrer.
+    """
+    cod = norm_cod(cod)
+    if not cod:
+        return []
+    ph = _ph()
+    achados = []
+    with get_db() as conn:
+        try:
+            for r in conn.execute(
+                    f"SELECT DISTINCT ra_num FROM resultados_lab "
+                    f"WHERE amostrador_cod={ph} AND COALESCE(ra_num,'')<>''",
+                    (cod,)).fetchall():
+                achados.append(row_to_dict(r)['ra_num'])
+        except Exception as e:
+            log.warning('[resultado_lab] ras_do_amostrador/resultados_lab: %s', e)
+        try:
+            for r in conn.execute(
+                    f"SELECT DISTINCT ra_num FROM ra_laudos "
+                    f"WHERE UPPER(amostrador_cod)={ph} AND COALESCE(ra_num,'')<>''",
+                    (cod,)).fetchall():
+                achados.append(base_ra(row_to_dict(r)['ra_num']))
+        except Exception:
+            pass          # tabela do backfill pode não existir ainda
+    return sorted({a for a in achados if a})
+
+
 def por_amostrador(cod):
     """O que existe para um tubo, separado por fonte + se as duas divergem."""
     linhas = listar(amostrador=cod, limite=50)

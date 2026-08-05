@@ -8102,7 +8102,10 @@ async function qPuxarLaudosDoLab() {
     const falhas = (d.laudos || []).filter(l => l.erro).length;
     if (!lidos.length) {
       if (st) st.textContent = `Nenhum laudo de "${chave}" na caixa do laboratório`
-        + (falhas ? ` (${falhas} PDF com erro de leitura)` : '') + '.';
+        + (falhas ? ` (${falhas} PDF com erro de leitura)` : '')
+        // varredura cega tem teto: sem o nº do RA a busca por código não lê a caixa toda
+        + (d.varredura_limitada ? ` — parei nos ${d.varridos} RAs mais recentes; informe o nº do RA` : '')
+        + '.';
       return;
     }
     const acc = {ok: 0, novas: 0, semConc: 0};

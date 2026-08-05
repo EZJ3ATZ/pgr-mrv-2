@@ -3271,12 +3271,37 @@ def api_laudo_do_lab():
         return jsonify({'erro': f'integração com a caixa do lab indisponível: {e}'}), 500
 
     MAX_PDFS = 8          # a resposta carrega as páginas em base64 — não devolver a caixa toda
+    MAX_EMAILS = 60       # teto da varredura cega (por código desconhecido)
+
+    # Buscar por CÓDIGO sem saber o RA custa uma chamada de anexos por e-mail de RA
+    # da caixa — passava de 45 s. O banco já sabe em qual RA o tubo veio (gravado a
+    # cada laudo lido, e pelo backfill noturno): com isso a busca por código cai no
+    # mesmo caminho rápido da busca por RA.
+    ras_conhecidos = set()
+    if cod_alvo and not ra_alvo:
+        try:
+            from controle.resultado_lab import ras_do_amostrador
+            ras_conhecidos = set(ras_do_amostrador(cod_alvo))
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning('[laudo_do_lab] RA por código: %s', e)
+
     laudos, vistos, truncado = [], set(), False
+    varridos, varredura_limitada = 0, False
     try:
         for box in _mailboxes():
             for e in _search_lab_emails(box):
-                if ra_alvo and (_ra_do_assunto(e['subject']) or '') != ra_alvo:
+                ra_email = _ra_do_assunto(e['subject']) or ''
+                if ra_alvo and ra_email != ra_alvo:
                     continue
+                if ras_conhecidos and ra_email not in ras_conhecidos:
+                    continue
+                if not ra_alvo and not ras_conhecidos:
+                    # varredura cega: sem teto, uma busca por código lia a caixa toda
+                    if varridos >= MAX_EMAILS:
+                        varredura_limitada = True
+                        continue
+                    varridos += 1
                 try:
                     metas = graph_get(f"/users/{box}/messages/{e['id']}/attachments"
                                       f"?$select=id,name,contentType").get('value', [])
@@ -3315,7 +3340,11 @@ def api_laudo_do_lab():
         [l['dadosExtraidos'] for l in laudos if l.get('dadosExtraidos')],
         origem=f'caixa do lab · RA {ra_alvo or cod_alvo}')
     return jsonify({'laudos': laudos, 'total': len(laudos), 'truncado': truncado,
-                    'limite': MAX_PDFS, 'guardados': guardados})
+                    'limite': MAX_PDFS, 'guardados': guardados,
+                    # como a busca foi resolvida — 'banco' é o caminho rápido
+                    'busca': ('ra' if ra_alvo else 'banco' if ras_conhecidos else 'varredura'),
+                    'ras_conhecidos': sorted(ras_conhecidos),
+                    'varredura_limitada': varredura_limitada, 'varridos': varridos})
 
 
 # ── API: Parse chain of custody Excel (Uniscientific format) ─────────

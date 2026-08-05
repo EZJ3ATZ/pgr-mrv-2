@@ -13,7 +13,7 @@ import pytest
 from controle.db import get_db, init_db
 from controle.resultado_lab import (TOLERANCIA, base_ra, divergem, gravar,
                                     gravar_muitos, listar, por_amostrador,
-                                    separar_valor)
+                                    ras_do_amostrador, separar_valor)
 
 
 def _limpar():
@@ -81,6 +81,35 @@ def test_acha_por_ra_mesmo_com_sufixo_do_tubo():
     assert len(listar(ra_num='81962595')) == 1
     assert len(listar(ra_num='RA 81962595-3')) == 1
     assert listar(ra_num='99999999') == []
+
+
+# ── achar o RA de um tubo sem tocar na caixa de e-mail ─────────────────
+
+def test_ras_do_amostrador_responde_do_banco():
+    """É o que tira a busca por código dos 45 s: o RA já está gravado."""
+    gravar(_laudo(cod='ZZTEST06', ra_num='81962595-2'), 'pdf')
+    assert ras_do_amostrador('ZZTEST06') == ['81962595']
+    assert ras_do_amostrador('  zztest06 ') == ['81962595']   # normaliza a digitação
+
+
+def test_ras_do_amostrador_vale_para_tubo_fora_do_inventario():
+    """O caso que importa: IEC488V não está no inventário e mesmo assim tem RA."""
+    r = gravar(_laudo(cod='ZZTEST07', ra_num='81962595'), 'pdf')
+    assert r['amostrador_id'] is None
+    assert ras_do_amostrador('ZZTEST07') == ['81962595']
+
+
+def test_ras_do_amostrador_vazio_quando_nao_sabemos():
+    """Vazio manda o endpoint varrer a caixa — não pode devolver lista falsa."""
+    assert ras_do_amostrador('ZZTEST99') == []
+    assert ras_do_amostrador('') == []
+
+
+def test_ras_do_amostrador_junta_varios_ras_sem_repetir():
+    gravar(_laudo(cod='ZZTEST08', agente='Tolueno', ra_num='81962595'), 'pdf')
+    gravar(_laudo(cod='ZZTEST08', agente='Etanol', ra_num='81962595'), 'pdf')
+    gravar(_laudo(cod='ZZTEST08', agente='Xileno', ra_num='81970001'), 'pdf')
+    assert ras_do_amostrador('ZZTEST08') == ['81962595', '81970001']
 
 
 # ── gravação ───────────────────────────────────────────────────────────
