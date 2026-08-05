@@ -34,6 +34,15 @@ def norm_cod(cod):
     return re.sub(r'\s+', '', str(cod or '')).upper()
 
 
+def base_ra(ra):
+    """Primeiro grupo de dígitos: 'RA 81962595' e '81962595-3' → '81962595'.
+
+    O sufixo é a sequência do tubo dentro do RA; o laudo é chamado pela base.
+    """
+    achados = re.findall(r'\d+', str(ra or ''))
+    return achados[0] if achados else ''
+
+
 def norm_agente(agente):
     """Chave do agente: sem acento não, só caixa e espaço — 'Tolueno ' == 'TOLUENO'."""
     return re.sub(r'\s+', ' ', str(agente or '')).strip().upper()
@@ -115,7 +124,7 @@ def gravar(dados, fonte, origem='', conn=None):
             f'agente_key, unidade, valor_txt, valor_num, nao_detectado, fracao, lt_nr15, '
             f'lt_twa, lt_stel, trabalhador, data_analise, fonte, origem) '
             f'VALUES ({",".join([ph]*17)})',
-            (cod, aid, dados.get('ra_num') or '', agente, agente_key,
+            (cod, aid, base_ra(dados.get('ra_num')), agente, agente_key,
              unidade or dados.get('unidade') or '', valor_txt, valor_num,
              1 if nao_det else 0, dados.get('fracao') or '', dados.get('ltNR15') or '',
              dados.get('ltTWA') or '', dados.get('ltSTEL') or '',
@@ -209,8 +218,10 @@ def listar(amostrador=None, ra_num=None, limite=200):
         where.append(f'amostrador_cod={ph}')
         params.append(norm_cod(amostrador))
     if ra_num:
+        # Filtra pela base do RA: o número digitado pode vir com o sufixo do tubo
+        # ('81962595-3') ou com pontuação, e o gravado é só a base.
         where.append(f'ra_num={ph}')
-        params.append(str(ra_num))
+        params.append(base_ra(ra_num))
     sql = 'SELECT * FROM resultados_lab'
     if where:
         sql += ' WHERE ' + ' AND '.join(where)

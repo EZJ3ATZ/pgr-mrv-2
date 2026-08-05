@@ -11,8 +11,9 @@ abre-se uma divergência na Camada de Consistência para uma pessoa decidir.
 import pytest
 
 from controle.db import get_db, init_db
-from controle.resultado_lab import (TOLERANCIA, divergem, gravar, gravar_muitos,
-                                    listar, por_amostrador, separar_valor)
+from controle.resultado_lab import (TOLERANCIA, base_ra, divergem, gravar,
+                                    gravar_muitos, listar, por_amostrador,
+                                    separar_valor)
 
 
 def _limpar():
@@ -63,6 +64,23 @@ def test_nao_detectado_e_marcado():
     """'<' é o não detectado do lab — some se guardar só o número."""
     _, _, num, nd = separar_valor('<0,017 mg/m³')
     assert num == 0.017 and nd is True
+
+
+@pytest.mark.parametrize('entrada,esperado', [
+    ('81962595', '81962595'), ('81962595-3', '81962595'), ('RA 81962595', '81962595'),
+    ('', ''), (None, ''),
+])
+def test_base_do_ra(entrada, esperado):
+    """O sufixo é a sequência do tubo; o laudo é chamado pela base."""
+    assert base_ra(entrada) == esperado
+
+
+def test_acha_por_ra_mesmo_com_sufixo_do_tubo():
+    """Era o furo pego validando em prod: o RA ficava vazio e ?ra= não achava nada."""
+    gravar(_laudo(cod='ZZTEST05', ra_num='81962595-3'), 'pdf')
+    assert len(listar(ra_num='81962595')) == 1
+    assert len(listar(ra_num='RA 81962595-3')) == 1
+    assert listar(ra_num='99999999') == []
 
 
 # ── gravação ───────────────────────────────────────────────────────────

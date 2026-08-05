@@ -3157,6 +3157,14 @@ def ler_laudo_ra_pdf(raw):
     na_nr15 = _na(lt_nr15)
     na_twa  = _na(lt_twa)
 
+    # Nº do RA — "Relatório de Análise - Nº 81962595-1". Guarda só a BASE (antes do
+    # '-'), que é o número pelo qual o laudo é chamado; o sufixo é a sequência do
+    # tubo dentro do RA. Sem isto o resultado gravado ficava sem RA e não havia como
+    # achar "o que veio no RA 81962595".
+    _mra = _re.search(r'Relat[óo]rio de An[áa]lise\s*-?\s*N[ºo°]?\s*([\d-]+)',
+                      full_text, _re.IGNORECASE)
+    ra_num = _mra.group(1).split('-')[0].strip() if _mra else ''
+
     # Data da análise (processamento) = data isolada logo após a emissão.
     data_analise = _g([r'S[ãa]o Bernardo do Campo,\s*\d{2}/\d{2}/\d{4}\.\s*\n\s*(\d{2}/\d{2}/\d{4})'])
 
@@ -3178,6 +3186,7 @@ def ler_laudo_ra_pdf(raw):
         amostrador_desc = ''
 
     dados = {k: v for k, v in {
+        'ra_num':       ra_num,
         'filtroNumero': filtro,
         'trabalhador':  trabalhador,
         'cargo':        cargo,
