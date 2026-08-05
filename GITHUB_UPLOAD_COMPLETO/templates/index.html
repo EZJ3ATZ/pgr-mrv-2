@@ -9551,7 +9551,10 @@ document.addEventListener('click', (e) => {
   if (rm && !e.target.closest('#ctrl-amostr-rowmenu') && !e.target.closest('[data-rowmenu-btn]')) rm.remove();
 });
 
+// Cadastro aberto a partir de um laudo do lab (fila de RAs) — muda o status inicial
+let _ctrlNaDoRA = false;
 function ctrlAbrirNovoAmostrador() {
+  _ctrlNaDoRA = false;
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('ctrl-na-codigo').value = '';
   document.getElementById('ctrl-na-tipo').value = '';
@@ -9679,14 +9682,21 @@ async function ctrlSalvarNovoAmostrador() {
     return;
   }
   try {
+    // Cadastro vindo de um laudo: o tubo comprovadamente FOI ao laboratório (o lab
+    // devolveu o resultado dele), então nasce em 'laboratorio' — senão ele nasce
+    // 'disponivel' e não aparece no seletor de vinculação, deixando o RA preso na fila.
     const res = await ctrlFetch('/controle/amostradores', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({codigo, tipo, data_entrada, observacao})
+      body: JSON.stringify(_ctrlNaDoRA ? {codigo, tipo, data_entrada, observacao, status: 'laboratorio'}
+                                       : {codigo, tipo, data_entrada, observacao})
     });
     if (res.erro) throw new Error(res.erro);
     ctrlFecharNovoAmostrador();
     ctrlLoadAmostr();
+    // Cadastro feito a partir de um laudo: o aviso "não está no inventário" tem
+    // de cair na hora (o header tem cache de 5 min, por isso o force).
+    if (typeof ctrlAmostrHeader === 'function') ctrlAmostrHeader(true);
   } catch(e) {
     erroEl.textContent = e.message || 'Erro ao salvar.';
     erroEl.style.display = 'block';
@@ -13314,6 +13324,7 @@ function ctrlAmostrCadastrarDoRA(idx) {
   const cods = ra.nao_cadastrados || [];
   if (!cods.length) { ctrlAmostrAbrirRA(idx); return; }
   ctrlAbrirNovoAmostrador();
+  _ctrlNaDoRA = true;
   const cod = cods[0];
   document.getElementById('ctrl-na-codigo').value = cod;
   // prefixo alfabético do código é o tipo (TCP4806AV3 → TCP)
@@ -13354,15 +13365,21 @@ function ctrlAmostrAbrirRA(idx) {
     </select>
     <label style="font-size:.74rem;color:var(--text3);">Data do resultado</label>
     <input type="date" id="ctrl-ra-data" value="${ra.data||new Date().toISOString().slice(0,10)}" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:9px 11px;font-family:inherit;font-size:.84rem;margin:4px 0 14px;">
-    <button onclick="_ctrlAmostrGravarRA(parseInt(document.getElementById('ctrl-ra-amostr').value), document.getElementById('ctrl-ra-data').value, true)" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:7px;padding:11px;cursor:pointer;font-size:.84rem;font-weight:700;font-family:inherit;">✓ Vincular e concluir</button>`;
+    <button onclick="_ctrlAmostrGravarRA(parseInt(document.getElementById('ctrl-ra-amostr').value), document.getElementById('ctrl-ra-data').value, true, ${idx})" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:7px;padding:11px;cursor:pointer;font-size:.84rem;font-weight:700;font-family:inherit;">✓ Vincular e concluir</button>`;
   biDrawerOpen('🔗 Vincular resultado (RA)', html);
 }
 
-async function _ctrlAmostrGravarRA(id, data, fecharDrawer) {
+async function _ctrlAmostrGravarRA(id, data, fecharDrawer, raIdx) {
   try {
+    // raIdx presente = veio da fila de RAs do e-mail. Manda o nº do RA junto para
+    // o vínculo ficar gravado — é o que faz a linha sair da fila, em vez de o
+    // técnico concluir o amostrador e o aviso continuar na tela.
+    const ra = (raIdx != null) ? (window._ctrlRAs || [])[raIdx] : null;
+    const corpo = {data_resultado: data, status: 'concluido'};
+    if (ra && ra.ra_num) { corpo.ra_num = ra.ra_num; corpo.ra_assunto = ra.assunto || ''; corpo.ra_data = ra.data || ''; }
     await ctrlFetch(`/controle/amostradores/${id}`, {
       method: 'PUT', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({data_resultado: data, status: 'concluido'})
+      body: JSON.stringify(corpo)
     });
     if (fecharDrawer && typeof biDrawerClose === 'function') biDrawerClose();
     _showToast('✓ Resultado registrado — amostrador concluído', 'success');

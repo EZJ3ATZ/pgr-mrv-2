@@ -66,7 +66,7 @@ def _sistema_lookup():
     look = {}
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT id, codigo, tipo, status, atualizado_em FROM amostradores "
+            "SELECT id, codigo, tipo, status, data_resultado, atualizado_em FROM amostradores "
             "WHERE COALESCE(arquivado,0)=0").fetchall()
     for r in rows:
         d = row_to_dict(r)
@@ -461,6 +461,69 @@ def _completar_casou_por_ra_laudos(resultados):
     return resultados
 
 
+def _revalidar_nao_cadastrados(resultados):
+    """Reconfere `nao_cadastrados` da fila contra o inventário DE AGORA.
+
+    A fila é um retrato gravado no sync. Quando o técnico cadastrava o amostrador
+    que o laudo cita, o retrato continuava dizendo "não está no inventário" e a
+    linha só sumia no sync seguinte (até 3h depois) — foi a queixa de 05/08/2026
+    ("não sei como fazer esse trem sumir"). Aqui o código que JÁ existe sai dos
+    faltantes; se aquele amostrador já tem resultado lançado, entra em `casou` e
+    o RA sai da fila na hora.
+    """
+    pend = [r for r in resultados if r.get('nao_cadastrados')]
+    if not pend:
+        return resultados
+    try:
+        look = _sistema_lookup()
+        for r in pend:
+            faltam = []
+            casou = list(r.get('casou') or [])
+            for cod in r['nao_cadastrados']:
+                amos = _match_amostrador(look, cod)
+                if not amos:
+                    faltam.append(cod)          # segue fora do inventário
+                    continue
+                # Cadastrado agora: só conta como resolvido se o resultado foi lançado;
+                # senão a linha continua na fila, mas pedindo VINCULAR (não cadastrar).
+                if str(amos.get('data_resultado') or '').strip() and amos.get('codigo'):
+                    if amos['codigo'] not in casou:
+                        casou.append(amos['codigo'])
+            r['nao_cadastrados'] = faltam
+            r['casou'] = sorted({c for c in casou if c})
+    except Exception as e:
+        log.warning('[lab_inbox] revalidar nao_cadastrados falhou: %s', e)
+    return resultados
+
+
+def registrar_ra_vinculado(aid, ra_num, assunto='', data_email=''):
+    """Deixa rastro em `ra_laudos` de que ESTE RA foi vinculado à mão a ESTE amostrador.
+
+    A vinculação manual não gravava nada além do amostrador, e a fila da tela só
+    sabia casar RA↔amostrador pelo nome do anexo — então o RA vinculado à mão
+    voltava como pendente em toda leitura. Não sobrescreve laudo já extraído do
+    PDF (esse tem funcionário, método e resultados; este aqui é só o vínculo).
+    """
+    ra = str(ra_num or '').strip()
+    if not aid or not ra:
+        return False
+    try:
+        with get_db() as conn:
+            _ensure_ra_laudos(conn)
+            ja = conn.execute("SELECT 1 FROM ra_laudos WHERE amostrador_id=? AND ra_num=?",
+                              (aid, ra)).fetchone()
+            if ja:
+                return True
+            row = conn.execute("SELECT codigo FROM amostradores WHERE id=?", (aid,)).fetchone()
+            cod = ((row_to_dict(row) or {}).get('codigo') or '') if row else ''
+            _upsert_ra_laudo(conn, aid, cod, {'subject': assunto, 'data': data_email},
+                             {'ra_num': ra})
+        return True
+    except Exception as e:
+        log.warning('[lab_inbox] registrar RA vinculado falhou: %s', e)
+        return False
+
+
 def _classificar_acao_resultados(resultados):
     """Diz o que cada RA da fila realmente precisa. Muta a lista no lugar.
 
@@ -835,8 +898,9 @@ def get_pendentes_salvos():
 def get_resultados_salvos():
     """Lê a última lista de resultados/laudos (RA) recebidos do lab (aba Vencimento).
 
-    Fila gravada por versão anterior não tem `ra_num` nem `acao`: completa na
-    leitura para a tela não tratar tudo como pendente de vinculação manual.
+    O que a fila PEDE (`acao`) é recalculado na leitura, não lido do retrato do
+    sync: cadastro e vinculação feitos depois da varredura precisam tirar a linha
+    da tela na hora. `ra_num` de versão antiga também é completado aqui.
     """
     try:
         with get_db() as conn:
@@ -860,7 +924,11 @@ def get_resultados_salvos():
                 vistos.add(k)
                 out.append(r)
             _completar_casou_por_ra_laudos(out)
-            _classificar_acao_resultados([r for r in out if not r.get('acao')])
+            _revalidar_nao_cadastrados(out)
+            # Reclassifica SEMPRE. Confiar no `acao` gravado no sync era o motivo de
+            # a linha não sair da tela por ação do técnico: o retrato envelhece, e o
+            # cadastro/vinculação feitos depois dele não eram levados em conta.
+            _classificar_acao_resultados(out)
             return out
     except Exception:
         pass

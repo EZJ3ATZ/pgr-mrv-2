@@ -711,6 +711,13 @@ def update_amostrador(aid):
     params.append(aid)
     with get_db() as conn:
         conn.execute(f'UPDATE amostradores SET {",".join(fields)} WHERE id=?', params)
+    # Vinculação manual de um RA do e-mail: grava o vínculo RA↔amostrador. Sem isso
+    # a fila de resultados da tela não tem como saber que o técnico já resolveu
+    # aquele laudo e cobra vinculação de novo em toda leitura.
+    if d.get('ra_num'):
+        from .lab_inbox import registrar_ra_vinculado
+        registrar_ra_vinculado(aid, d.get('ra_num'), d.get('ra_assunto') or '',
+                               d.get('ra_data') or '')
     desc = '; '.join(f'{k}={d[k]}' for k in d if k in ('status','codigo','tipo','avaliador','data_medicao','empresa','observacao'))
     registrar_evento('amostrador_atualizado', f'id={aid} {desc}',
                      aid, 'amostrador',
