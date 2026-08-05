@@ -52,6 +52,57 @@ def test_rota_do_lab_exige_chave():
     assert '400' in fonte                 # responde 400, não varre a caixa toda
 
 
+def _pdf_com_linhas(linhas):
+    """PDF sintético com uma linha por texto — reproduz o layout da tabela do RA
+    sem versionar laudo real (que traz dado de trabalhador)."""
+    import fitz
+    doc = fitz.open()
+    pg = doc.new_page()
+    y = 60
+    for l in linhas:
+        pg.insert_text((50, y), l, fontsize=9)
+        y += 14
+    raw = doc.tobytes()
+    doc.close()
+    return raw
+
+
+# Tabela do RA: agente / unidade / resultado / NR15 MP 8h / NR15 Teto / ACGIH TWA /
+# ACGIH STEL / (Ceiling, LD, LQ)
+def _tabela(agente, unidade, resultado, mp8h='-', teto='-', twa='-', stel='-'):
+    return ['4 - RESULTADO (s) CONCENTRAÇÃO**', agente, unidade, resultado,
+            mp8h, teto, twa, stel, '-', '0,04', '0,12']
+
+
+def test_fracao_colada_na_unidade_nao_derruba_a_leitura():
+    """Poeira/metal vem 'mg/m³ (I)'. Exigir unidade pura fazia o laudo sair VAZIO
+    — 3 dos 7 laudos do RA 81962595 (Cromo metálico, cassete IOM), 05/08/2026."""
+    raw = _pdf_com_linhas(_tabela('Cromo metálico, como Cr(0)', 'mg/m³ (I)', '0,00041',
+                                  twa='0,5'))
+    _, d = A.ler_laudo_ra_pdf(raw)
+    assert d.get('agente') == 'Cromo metálico, como Cr(0)'
+    assert d.get('concentracao') == '0,00041 mg/m³'   # unidade limpa, sem o (I)
+    assert d.get('fracao') == 'Inalável'
+    assert d.get('ltTWA') == '0,5'
+
+
+@pytest.mark.parametrize('marca,nome', [('(I)', 'Inalável'), ('(R)', 'Respirável'),
+                                        ('( T )', 'Torácica')])
+def test_as_tres_fracoes_viram_nome(marca, nome):
+    _, d = A.ler_laudo_ra_pdf(_pdf_com_linhas(_tabela('Poeira', f'mg/m³ {marca}', '1,25')))
+    assert d.get('fracao') == nome
+    assert d.get('concentracao') == '1,25 mg/m³'
+
+
+def test_unidade_pura_segue_sem_fracao():
+    """Não pode inventar fração onde o laudo não declara (caso ppm, o mais comum)."""
+    _, d = A.ler_laudo_ra_pdf(_pdf_com_linhas(_tabela('Tolueno', 'ppm', '47,28085',
+                                                      mp8h='78', twa='20', stel='-')))
+    assert d.get('concentracao') == '47,28085 ppm'
+    assert not d.get('fracao')
+    assert d.get('ltNR15') == '78' and d.get('ltTWA') == '20'
+
+
 @pytest.mark.skipif(_amostra_ra() is None,
                     reason='sem PDF de RA no Downloads (não versionado: dado pessoal)')
 def test_extrai_os_campos_do_laudo_real():

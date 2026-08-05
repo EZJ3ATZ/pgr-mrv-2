@@ -3102,15 +3102,25 @@ def ler_laudo_ra_pdf(raw):
     #   <agente> \n <unidade> \n <resultado> \n
     #   <NR15 MP 8h> \n <NR15 Teto> \n <ACGIH TWA> \n <ACGIH STEL> \n ...
     _UNI = r'ppm|mg/m³|mg/m3|mg|µg|μg|f/cc'
+    # Poeira/metal traz a FRAÇÃO colada na unidade: 'mg/m³ (I)'. A unidade era
+    # exigida pura, então o laudo inteiro saía sem agente e sem concentração — em
+    # 05/08/2026, 3 dos 7 laudos do RA 81962595 (Cromo metálico, cassete IOM).
+    _FRAC = r'(?:\s*\(\s*[IRT]\s*\))?'
+    _FRAC_NOME = {'I': 'Inalável', 'R': 'Respirável', 'T': 'Torácica'}
     agente = ''
     concentracao = ''
+    fracao = ''
     lt_nr15 = lt_twa = lt_stel = ''
     _mr = _re.search(
-        r'\n([^\n<>]+)\n(' + _UNI + r')\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)',
+        r'\n([^\n<>]+)\n((?:' + _UNI + r')' + _FRAC + r')\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)',
         full_text, _re.IGNORECASE)
     if _mr:
         agente    = _mr.group(1).strip().strip('—–-').strip()
         unidade   = _mr.group(2).strip()
+        _mf = _re.search(r'\(\s*([IRT])\s*\)', unidade)
+        if _mf:
+            fracao  = _FRAC_NOME.get(_mf.group(1).upper(), '')
+            unidade = _re.sub(r'\s*\(\s*[IRT]\s*\)', '', unidade).strip()
         resultado = _mr.group(3).strip().replace(' ', '')
         concentracao = f'{resultado} {unidade}' if resultado else ''
 
@@ -3121,7 +3131,7 @@ def ler_laudo_ra_pdf(raw):
         lt_twa  = _lim(_mr.group(6))   # ACGIH TWA
         lt_stel = _lim(_mr.group(7))   # ACGIH STEL
     else:
-        agente = _g([r'\n([^\n<>]+)\n(?:' + _UNI + r')\n'])
+        agente = _g([r'\n([^\n<>]+)\n(?:' + _UNI + r')' + _FRAC + r'\n'])
 
     # Nível de Ação = metade do LT (NR-09/PGR p/ agentes químicos)
     def _na(lt):
@@ -3166,6 +3176,7 @@ def ler_laudo_ra_pdf(raw):
         'tempoColeta':  tempo_min,
         'agente':       agente,
         'concentracao': concentracao,
+        'fracao':       fracao,
         'metodo':         metodo,
         'amostradorDesc': amostrador_desc,
         'ltNR15':       lt_nr15,
