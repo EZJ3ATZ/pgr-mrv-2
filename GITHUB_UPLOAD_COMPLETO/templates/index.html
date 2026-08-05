@@ -2982,6 +2982,7 @@
       <option value="visita_sem_coleta">Visita sem Coleta</option>
       <option value="divergencia_campo">Divergência Campo</option>
       <option value="vazao_invalida">Vazão Inválida</option>
+      <option value="resultado_lab_divergente">Resultado do lab × lançado</option>
     </select>
     <span id="consist-loading" style="display:none;color:var(--text3);font-size:.85rem;">Carregando…</span>
   </div>
@@ -13359,9 +13360,42 @@ function ctrlAmostrDrill(id) {
         <span style="font-size:.74rem;color:var(--text3);white-space:nowrap;">${window._dataBR(p[1])}</span>
       </div>`).join('')
     : '<div style="font-size:.78rem;color:var(--text3);">Sem movimentações registradas.</div>';
+  // Resultado analítico (o que o laudo do lab diz e o que foi lançado). Carrega
+  // depois: a linha do tempo não pode esperar rede para abrir.
+  html += '<div id="ctrl-amostr-res" style="margin-top:14px;"></div>';
   if (a.observacao) html += `<div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:7px;font-size:.75rem;color:var(--text2);line-height:1.5;">${_esc(a.observacao)}</div>`;
   if (st === 'laboratorio') html += `<button onclick="biDrawerClose();ctrlAmostrRegResultado(${a.id})" style="margin-top:14px;width:100%;background:var(--blue);color:#fff;border:none;border-radius:7px;padding:10px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;">📥 Registrar resultado (RA)</button>`;
   biDrawerOpen(`Amostrador ${a.codigo||'—'}`, html);
+  _ctrlAmostrCarregarResultado(a.codigo);
+}
+
+// Bloco "Resultado do laboratório" do drawer: lê resultados_lab e mostra o valor
+// do laudo, o que foi lançado e — quando não batem — que a decisão é humana.
+async function _ctrlAmostrCarregarResultado(codigo) {
+  const box = document.getElementById('ctrl-amostr-res');
+  if (!box || !codigo) return;
+  let d;
+  try {
+    d = await ctrlFetch('/controle/resultados_lab?amostrador=' + encodeURIComponent(codigo),
+                        {cache: 'no-store'});
+  } catch(e) { return; }
+  const pdf = d.pdf || [], dig = d.digitado || [], div = d.divergentes || [];
+  if (!pdf.length && !dig.length) return;
+  const linha = (r, rotulo, cor) => `<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem;">
+      <span style="color:${cor};font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;min-width:74px;">${rotulo}</span>
+      <span style="flex:1;color:var(--text);">${_esc(r.agente || 'agente não identificado')}${r.fracao?` <span style="color:var(--text3);">(${_esc(r.fracao)})</span>`:''}</span>
+      <b style="color:var(--text);">${_esc(r.valor_txt || '—')} ${_esc(r.unidade || '')}</b>
+      ${r.ra_num?`<span style="color:var(--text3);font-size:.7rem;">RA ${_esc(r.ra_num)}</span>`:''}
+    </div>`;
+  box.innerHTML = '<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px;">Resultado do laboratório</div>'
+    + pdf.map(r => linha(r, 'Laudo',    'var(--green)')).join('')
+    + dig.map(r => linha(r, 'Lançado',  'var(--blue)')).join('')
+    + (div.length
+        ? `<div style="margin-top:10px;padding:9px 11px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:.75rem;color:var(--text2);line-height:1.5;">
+             ⚠ <b>Divergência</b> — ${div.map(x => `${_esc(x.agente||'—')}: ${_esc(x.motivo)}`).join('<br>')}
+             <br><span style="color:var(--text3);">Nenhum dos dois foi sobrescrito; a decisão está aberta em Consistência.</span>
+           </div>`
+        : '');
 }
 
 // Registrar resultado direto na linha (data = hoje, edita depois se precisar)
@@ -18683,6 +18717,7 @@ function _consistRenderTabela(rows) {
     visita_sem_coleta:    { icon:'🚗', label:'Visita sem coleta',      cor:'#34d399' },
     divergencia_campo:    { icon:'⚠️', label:'Divergência de campo',   cor:'#f472b6' },
     vazao_invalida:       { icon:'💧', label:'Vazão inválida',         cor:'#38bdf8' },
+    resultado_lab_divergente: { icon:'🧫', label:'Resultado do lab × lançado', cor:'#f0abfc' },
   };
   const STATUS_CFG = {
     aberta:      { label:'Aberta',      bg:'rgba(239,68,68,.15)',  cor:'#f87171' },

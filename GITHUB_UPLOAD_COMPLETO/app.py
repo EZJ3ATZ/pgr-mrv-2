@@ -2881,6 +2881,20 @@ def gerar_quimico():
         nome_safe = re.sub(r'[/\\:*?"<>|]', '_', nome)
         filename = f"Análise Química - {nome_safe} - {mes_ano().replace(' / ','_')}.docx"
         usuario = current_user.nome if current_user.is_authenticated else 'anônimo'
+        # O que FOI PARA O PAPEL vira dado (fonte='digitado'). É o outro lado da
+        # comparação com o laudo do lab: divergindo, abre divergência e nenhum
+        # dos dois é sobrescrito.
+        try:
+            from controle.resultado_lab import gravar_muitos
+            _res = gravar_muitos(data.get('avaliacoes') or [], 'digitado',
+                                 f'laudo químico · {usuario}')
+            for _d in _res.get('divergencias', []):
+                registrar_evento('resultado_lab_divergente', _d,
+                                 usuario=usuario, ip=request.remote_addr)
+        except Exception as _e:
+            import logging
+            logging.getLogger(__name__).warning(
+                '[resultado_lab] gravar do laudo falhou: %s', _e)
         registrar_evento('laudo_quimico_gerado', f'Laudo Químico: {nome}',
                          usuario=usuario, ip=request.remote_addr)
         return send_file(io.BytesIO(docx_bytes), as_attachment=True,
@@ -3189,6 +3203,22 @@ def ler_laudo_ra_pdf(raw):
     return imgs, dados
 
 
+def _guardar_resultados_lidos(lista, origem=''):
+    """Todo laudo LIDO vira dado (`resultados_lab`, fonte='pdf').
+
+    O valor já era extraído e descartado; guardar aqui é o que permite comparar
+    depois com o que o técnico lançou. Nunca derruba a resposta da rota: se a
+    gravação falhar, a leitura do PDF continua servindo a tela.
+    """
+    try:
+        from controle.resultado_lab import gravar_muitos
+        return gravar_muitos(lista, 'pdf', origem)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('[resultado_lab] gravar do PDF falhou: %s', e)
+        return {'gravados': 0, 'ignorados': len(lista or []), 'divergencias': []}
+
+
 @app.route('/api/convert_laudo', methods=['POST'])
 @login_required
 def api_convert_laudo():
@@ -3202,6 +3232,7 @@ def api_convert_laudo():
         if not f:
             return jsonify({'erro': 'Nenhum arquivo'}), 400
         imgs, dados = ler_laudo_ra_pdf(f.read())
+        _guardar_resultados_lidos([dados], origem=(f.filename or 'upload'))
         return jsonify({'paginas': imgs, 'dadosExtraidos': dados})
     except Exception as e:
         import traceback
@@ -3271,8 +3302,11 @@ def api_laudo_do_lab():
         import traceback
         traceback.print_exc()
         return jsonify({'erro': str(e)}), 500
+    guardados = _guardar_resultados_lidos(
+        [l['dadosExtraidos'] for l in laudos if l.get('dadosExtraidos')],
+        origem=f'caixa do lab · RA {ra_alvo or cod_alvo}')
     return jsonify({'laudos': laudos, 'total': len(laudos), 'truncado': truncado,
-                    'limite': MAX_PDFS})
+                    'limite': MAX_PDFS, 'guardados': guardados})
 
 
 # ── API: Parse chain of custody Excel (Uniscientific format) ─────────

@@ -8915,6 +8915,29 @@ def _cc_ids(d):
     return out
 
 
+@controle_bp.route('/resultados_lab')
+@login_required
+def api_resultados_lab():
+    """Resultado analítico gravado: `?amostrador=<cod>` ou `?ra=<num>`.
+
+    Duas fontes por tubo — 'pdf' (laudo do laboratório) e 'digitado' (o que o
+    técnico lançou no laudo). Divergência não é resolvida aqui: as duas ficam e a
+    Camada de Consistência cobra a decisão.
+    """
+    init_db()
+    from .resultado_lab import listar, por_amostrador
+    cod = (request.args.get('amostrador') or '').strip()
+    ra = (request.args.get('ra') or '').strip()
+    try:
+        if cod:
+            return jsonify(por_amostrador(cod))
+        return jsonify({'itens': listar(ra_num=ra or None,
+                                        limite=_qint('limite', 200, 1000))})
+    except Exception as e:
+        log.exception('[resultados_lab] falhou')
+        return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/amostradores/sincronizar-datas-laudo', methods=['POST'])
 @login_required
 def api_sincronizar_datas_laudo():

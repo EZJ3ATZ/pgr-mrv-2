@@ -1244,6 +1244,42 @@ def _migrate(conn):
         CREATE INDEX IF NOT EXISTS idx_alerta_prio   ON alertas_operacionais(prioridade)
     ''')
 
+    # ── Resultado do laboratório por amostrador ──
+    # O valor analítico não tinha onde morar: `medicoes` só tem status e
+    # `coletas_quimico_amostr` só tem vazão/volume, então a concentração só passava
+    # a existir DENTRO do .docx do laudo. Aqui ela vira dado: uma linha por
+    # (amostrador, agente, fonte) — 'pdf' é o laudo do lab, 'digitado' é o que o
+    # técnico lançou. Guardar as duas é o que permite marcar divergência sem
+    # nenhuma das duas sobrescrever a outra (decisão do Matheus, 05/08/2026).
+    conn.executescript(f'''
+        CREATE TABLE IF NOT EXISTS resultados_lab (
+            id              {_pk},
+            amostrador_cod  TEXT NOT NULL,
+            amostrador_id   INTEGER,
+            ra_num          TEXT,
+            agente          TEXT,
+            agente_key      TEXT,
+            unidade         TEXT,
+            valor_txt       TEXT,
+            valor_num       REAL,
+            nao_detectado   INTEGER DEFAULT 0,
+            fracao          TEXT,
+            lt_nr15         TEXT,
+            lt_twa          TEXT,
+            lt_stel         TEXT,
+            trabalhador     TEXT,
+            data_analise    TEXT,
+            fonte           TEXT NOT NULL,
+            origem          TEXT,
+            criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
+            atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_reslab_chave
+            ON resultados_lab(amostrador_cod, agente_key, fonte);
+        CREATE INDEX IF NOT EXISTS idx_reslab_ra   ON resultados_lab(ra_num);
+        CREATE INDEX IF NOT EXISTS idx_reslab_amos ON resultados_lab(amostrador_id)
+    ''')
+
     # ── planner_raw_tasks: colunas extras ──
     raw_extra = {
         'planner_plan_id': 'TEXT', 'planner_plan_nome': 'TEXT',
