@@ -3019,170 +3019,249 @@ def api_pump_sns():
 
 
 # ── API: Convert lab result PDF to base64 JPG images + extract data ──
+def ler_laudo_ra_pdf(raw):
+    """Lê UM PDF de RA e devolve (paginas_jpeg_base64, dadosExtraidos).
+
+    Extraído da rota `/api/convert_laudo` sem mudar uma linha da extração: o
+    mesmo laudo precisa ser lido também quando o PDF vem da CAIXA do laboratório
+    (o servidor já recebe esses anexos), e não só do upload manual do técnico.
+    """
+    import fitz
+    import re as _re
+    doc = fitz.open(stream=raw, filetype='pdf')
+    imgs = []
+    full_text = ''
+    for page in doc:
+        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+        imgs.append('data:image/jpeg;base64,' + base64.b64encode(pix.tobytes('jpeg')).decode())
+        full_text += page.get_text() + '\n'
+    doc.close()
+
+    def _g(patterns):
+        for pat in patterns:
+            m = _re.search(pat, full_text, _re.IGNORECASE | _re.MULTILINE)
+            if m:
+                return m.group(1).strip().strip('—–-').strip()
+        return ''
+
+    # Trabalhador: linha ALL-CAPS imediatamente antes de "Função:"
+    _CAPS = r'[A-ZÀ-ÖØ-Ý]'
+    trabalhador = _g([r'(' + _CAPS + r'[A-ZÀ-ÖØ-Ý\s\.]+?)\s*\nFun'])
+
+    # Cargo: depois de "Função:"
+    cargo = _g([r'Fun[cç][aã]o:\s*([^\n]+)'])
+
+    # Setor: linha ALL-CAPS seguida de outra linha ALL-CAPS (nome do responsável)
+    setor = ''
+    _ms = _re.search(r'\n([A-Z][A-Z\s]{2,29})\n[A-Z]+ [A-Z]+\n', full_text)
+    if _ms:
+        setor = _ms.group(1).strip()
+
+    # Nº amostrador (ex: FL22335, EC81076A, TCP1671AV2) — token antes de "Nº do Branco de Campo"
+    filtro = _g([
+        r'\n([A-Z][A-Z0-9]{4,11})\s*\n+\s*N[^\n]*do Branco de Campo',
+        r'\b([A-Z]{2}\d{5}[A-Z]?\d?)\b',
+    ])
+
+    # Data coleta: data na linha imediatamente anterior a "Tempo de Amostragem"
+    data_col = _g([r'(\d{2}/\d{2}/\d{4})\s*\nTempo'])
+
+    # Vazão: "2,006  L/Min" → captura o número com vírgula
+    vazao_raw = _g([r'([\d]+,[\d]+)\s+L/[Mm]in'])
+    vazao_fmt = ''
+    if vazao_raw:
+        try:
+            vazao_fmt = '{:.4f}'.format(float(vazao_raw.replace(',', '.'))).replace('.', ',')
+        except:
+            vazao_fmt = vazao_raw
+
+    # Volume: "Volume de Ar Amostrado: 0,0802  m³" → converte m³ → L
+    volume_raw = _g([r'Volume de Ar Amostrado:\s*([\d,]+)\s*m'])
+    volume_fmt = ''
+    if volume_raw:
+        try:
+            v = float(volume_raw.replace(',', '.'))
+            if v < 1:
+                v *= 1000
+            volume_fmt = '{:.3f}'.format(v).replace('.', ',')
+        except:
+            volume_fmt = volume_raw
+
+    # Tempo de amostragem: "Tempo de Amostragem (H): 0:40:00"
+    tempo_raw = _g([r'Tempo de Amostragem[^:]*:\s*([\d:]+)'])
+    tempo_min = ''
+    if tempo_raw:
+        parts = tempo_raw.split(':')
+        try:
+            tempo_min = str(int(parts[0]) * 60 + int(parts[1]))
+        except:
+            tempo_min = tempo_raw
+
+    # ── Tabela de RESULTADO do lab (UniScientific RA) ───────────────
+    # Estrutura por linha na tabela de resultados:
+    #   <agente> \n <unidade> \n <resultado> \n
+    #   <NR15 MP 8h> \n <NR15 Teto> \n <ACGIH TWA> \n <ACGIH STEL> \n ...
+    _UNI = r'ppm|mg/m³|mg/m3|mg|µg|μg|f/cc'
+    agente = ''
+    concentracao = ''
+    lt_nr15 = lt_twa = lt_stel = ''
+    _mr = _re.search(
+        r'\n([^\n<>]+)\n(' + _UNI + r')\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)',
+        full_text, _re.IGNORECASE)
+    if _mr:
+        agente    = _mr.group(1).strip().strip('—–-').strip()
+        unidade   = _mr.group(2).strip()
+        resultado = _mr.group(3).strip().replace(' ', '')
+        concentracao = f'{resultado} {unidade}' if resultado else ''
+
+        def _lim(s):
+            s = (s or '').strip()
+            return s if _re.match(r'^[<>]?\s*[\d.,]+$', s) else ''
+        lt_nr15 = _lim(_mr.group(4))   # NR-15 MP 8h
+        lt_twa  = _lim(_mr.group(6))   # ACGIH TWA
+        lt_stel = _lim(_mr.group(7))   # ACGIH STEL
+    else:
+        agente = _g([r'\n([^\n<>]+)\n(?:' + _UNI + r')\n'])
+
+    # Nível de Ação = metade do LT (NR-09/PGR p/ agentes químicos)
+    def _na(lt):
+        try:
+            v = float(lt.replace(',', '.')) / 2
+            return '{:.4f}'.format(v).rstrip('0').rstrip('.').replace('.', ',')
+        except Exception:
+            return ''
+    na_nr15 = _na(lt_nr15)
+    na_twa  = _na(lt_twa)
+
+    # Data da análise (processamento) = data isolada logo após a emissão.
+    data_analise = _g([r'S[ãa]o Bernardo do Campo,\s*\d{2}/\d{2}/\d{4}\.\s*\n\s*(\d{2}/\d{2}/\d{4})'])
+
+    # Método analítico + descrição do amostrador — DIRETO DO RA (fonte da
+    # verdade). Antes vinham do guia_metodos genérico e saíam errados.
+    _mm = _re.search(r'M[ÉE]TODO\s*\(?s?\)?\s*\n(.*?)\n\s*4\s*[-–]', full_text, _re.S | _re.I)
+    metodo = _re.sub(r'\s+', ' ', _mm.group(1)).strip() if _mm else ''
+    # A descrição (CASSETE/TUBO/…) vem entre "Nº do Branco de Campo:" e
+    # "Informações da amostragem". No texto do fitz, o rótulo "Descrição do
+    # Amostrador:" é seguido pelos OUTROS rótulos (layout 2 colunas), então
+    # ancorar nele pegava lixo ("Data da Amostragem: Vazão…").
+    _am = _re.search(
+        r'Branco de Campo:[^\n]*\n(.*?)\n\s*Informa[çc][õo]es da amostragem',
+        full_text, _re.S | _re.I)
+    amostrador_desc = _re.sub(r'\s+', ' ', _am.group(1)).strip().rstrip('.') if _am else ''
+    # guarda: se o layout vier diferente e capturar rótulos, descarta
+    if _re.search(r'Data da Amostragem|Vaz[ãa]o M[ée]dia|Funcion|Respons[áa]vel|Descri[çc]',
+                  amostrador_desc, _re.I):
+        amostrador_desc = ''
+
+    dados = {k: v for k, v in {
+        'filtroNumero': filtro,
+        'trabalhador':  trabalhador,
+        'cargo':        cargo,
+        'setor':        setor,
+        'dataColeta':   data_col,
+        'dataAnalise':  data_analise,
+        'vazaoInicial': vazao_fmt,
+        'vazaoFinal':   vazao_fmt,
+        'volume':       volume_fmt,
+        'tempoColeta':  tempo_min,
+        'agente':       agente,
+        'concentracao': concentracao,
+        'metodo':         metodo,
+        'amostradorDesc': amostrador_desc,
+        'ltNR15':       lt_nr15,
+        'naNR15':       na_nr15,
+        'ltTWA':        lt_twa,
+        'naTWA':        na_twa,
+        'ltSTEL':       lt_stel,
+    }.items() if v}
+
+    return imgs, dados
+
+
 @app.route('/api/convert_laudo', methods=['POST'])
 @login_required
 def api_convert_laudo():
+    """RA que o TÉCNICO sobe à mão. Mesma leitura de `ler_laudo_ra_pdf`."""
     try:
-        import fitz
+        import fitz  # noqa: F401  — só para dar erro claro se faltar a lib
     except ImportError:
         return jsonify({'erro': 'pymupdf nao instalado'}), 500
     try:
-        import re as _re
         f = request.files.get('file')
         if not f:
             return jsonify({'erro': 'Nenhum arquivo'}), 400
-        raw = f.read()
-        doc = fitz.open(stream=raw, filetype='pdf')
-        imgs = []
-        full_text = ''
-        for page in doc:
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-            imgs.append('data:image/jpeg;base64,' + base64.b64encode(pix.tobytes('jpeg')).decode())
-            full_text += page.get_text() + '\n'
-        doc.close()
-
-        def _g(patterns):
-            for pat in patterns:
-                m = _re.search(pat, full_text, _re.IGNORECASE | _re.MULTILINE)
-                if m:
-                    return m.group(1).strip().strip('—–-').strip()
-            return ''
-
-        # Trabalhador: linha ALL-CAPS imediatamente antes de "Função:"
-        _CAPS = r'[A-ZÀ-ÖØ-Ý]'
-        trabalhador = _g([r'(' + _CAPS + r'[A-ZÀ-ÖØ-Ý\s\.]+?)\s*\nFun'])
-
-        # Cargo: depois de "Função:"
-        cargo = _g([r'Fun[cç][aã]o:\s*([^\n]+)'])
-
-        # Setor: linha ALL-CAPS seguida de outra linha ALL-CAPS (nome do responsável)
-        setor = ''
-        _ms = _re.search(r'\n([A-Z][A-Z\s]{2,29})\n[A-Z]+ [A-Z]+\n', full_text)
-        if _ms:
-            setor = _ms.group(1).strip()
-
-        # Nº amostrador (ex: FL22335, EC81076A, TCP1671AV2) — token antes de "Nº do Branco de Campo"
-        filtro = _g([
-            r'\n([A-Z][A-Z0-9]{4,11})\s*\n+\s*N[^\n]*do Branco de Campo',
-            r'\b([A-Z]{2}\d{5}[A-Z]?\d?)\b',
-        ])
-
-        # Data coleta: data na linha imediatamente anterior a "Tempo de Amostragem"
-        data_col = _g([r'(\d{2}/\d{2}/\d{4})\s*\nTempo'])
-
-        # Vazão: "2,006  L/Min" → captura o número com vírgula
-        vazao_raw = _g([r'([\d]+,[\d]+)\s+L/[Mm]in'])
-        vazao_fmt = ''
-        if vazao_raw:
-            try:
-                vazao_fmt = '{:.4f}'.format(float(vazao_raw.replace(',', '.'))).replace('.', ',')
-            except:
-                vazao_fmt = vazao_raw
-
-        # Volume: "Volume de Ar Amostrado: 0,0802  m³" → converte m³ → L
-        volume_raw = _g([r'Volume de Ar Amostrado:\s*([\d,]+)\s*m'])
-        volume_fmt = ''
-        if volume_raw:
-            try:
-                v = float(volume_raw.replace(',', '.'))
-                if v < 1:
-                    v *= 1000
-                volume_fmt = '{:.3f}'.format(v).replace('.', ',')
-            except:
-                volume_fmt = volume_raw
-
-        # Tempo de amostragem: "Tempo de Amostragem (H): 0:40:00"
-        tempo_raw = _g([r'Tempo de Amostragem[^:]*:\s*([\d:]+)'])
-        tempo_min = ''
-        if tempo_raw:
-            parts = tempo_raw.split(':')
-            try:
-                tempo_min = str(int(parts[0]) * 60 + int(parts[1]))
-            except:
-                tempo_min = tempo_raw
-
-        # ── Tabela de RESULTADO do lab (UniScientific RA) ───────────────
-        # Estrutura por linha na tabela de resultados:
-        #   <agente> \n <unidade> \n <resultado> \n
-        #   <NR15 MP 8h> \n <NR15 Teto> \n <ACGIH TWA> \n <ACGIH STEL> \n ...
-        _UNI = r'ppm|mg/m³|mg/m3|mg|µg|μg|f/cc'
-        agente = ''
-        concentracao = ''
-        lt_nr15 = lt_twa = lt_stel = ''
-        _mr = _re.search(
-            r'\n([^\n<>]+)\n(' + _UNI + r')\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)\n([^\n]+)',
-            full_text, _re.IGNORECASE)
-        if _mr:
-            agente    = _mr.group(1).strip().strip('—–-').strip()
-            unidade   = _mr.group(2).strip()
-            resultado = _mr.group(3).strip().replace(' ', '')
-            concentracao = f'{resultado} {unidade}' if resultado else ''
-
-            def _lim(s):
-                s = (s or '').strip()
-                return s if _re.match(r'^[<>]?\s*[\d.,]+$', s) else ''
-            lt_nr15 = _lim(_mr.group(4))   # NR-15 MP 8h
-            lt_twa  = _lim(_mr.group(6))   # ACGIH TWA
-            lt_stel = _lim(_mr.group(7))   # ACGIH STEL
-        else:
-            agente = _g([r'\n([^\n<>]+)\n(?:' + _UNI + r')\n'])
-
-        # Nível de Ação = metade do LT (NR-09/PGR p/ agentes químicos)
-        def _na(lt):
-            try:
-                v = float(lt.replace(',', '.')) / 2
-                return '{:.4f}'.format(v).rstrip('0').rstrip('.').replace('.', ',')
-            except Exception:
-                return ''
-        na_nr15 = _na(lt_nr15)
-        na_twa  = _na(lt_twa)
-
-        # Data da análise (processamento) = data isolada logo após a emissão.
-        data_analise = _g([r'S[ãa]o Bernardo do Campo,\s*\d{2}/\d{2}/\d{4}\.\s*\n\s*(\d{2}/\d{2}/\d{4})'])
-
-        # Método analítico + descrição do amostrador — DIRETO DO RA (fonte da
-        # verdade). Antes vinham do guia_metodos genérico e saíam errados.
-        _mm = _re.search(r'M[ÉE]TODO\s*\(?s?\)?\s*\n(.*?)\n\s*4\s*[-–]', full_text, _re.S | _re.I)
-        metodo = _re.sub(r'\s+', ' ', _mm.group(1)).strip() if _mm else ''
-        # A descrição (CASSETE/TUBO/…) vem entre "Nº do Branco de Campo:" e
-        # "Informações da amostragem". No texto do fitz, o rótulo "Descrição do
-        # Amostrador:" é seguido pelos OUTROS rótulos (layout 2 colunas), então
-        # ancorar nele pegava lixo ("Data da Amostragem: Vazão…").
-        _am = _re.search(
-            r'Branco de Campo:[^\n]*\n(.*?)\n\s*Informa[çc][õo]es da amostragem',
-            full_text, _re.S | _re.I)
-        amostrador_desc = _re.sub(r'\s+', ' ', _am.group(1)).strip().rstrip('.') if _am else ''
-        # guarda: se o layout vier diferente e capturar rótulos, descarta
-        if _re.search(r'Data da Amostragem|Vaz[ãa]o M[ée]dia|Funcion|Respons[áa]vel|Descri[çc]',
-                      amostrador_desc, _re.I):
-            amostrador_desc = ''
-
-        dados = {k: v for k, v in {
-            'filtroNumero': filtro,
-            'trabalhador':  trabalhador,
-            'cargo':        cargo,
-            'setor':        setor,
-            'dataColeta':   data_col,
-            'dataAnalise':  data_analise,
-            'vazaoInicial': vazao_fmt,
-            'vazaoFinal':   vazao_fmt,
-            'volume':       volume_fmt,
-            'tempoColeta':  tempo_min,
-            'agente':       agente,
-            'concentracao': concentracao,
-            'metodo':         metodo,
-            'amostradorDesc': amostrador_desc,
-            'ltNR15':       lt_nr15,
-            'naNR15':       na_nr15,
-            'ltTWA':        lt_twa,
-            'naTWA':        na_twa,
-            'ltSTEL':       lt_stel,
-        }.items() if v}
-
+        imgs, dados = ler_laudo_ra_pdf(f.read())
         return jsonify({'paginas': imgs, 'dadosExtraidos': dados})
     except Exception as e:
         import traceback
         traceback.print_exc(); return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/laudo_do_lab')
+@login_required
+def api_laudo_do_lab():
+    """Puxa o(s) laudo(s) de RA direto da CAIXA do laboratório, sem upload.
+
+    O servidor já recebe esses anexos (o backfill abre 384 PDFs por dia só para
+    casar o amostrador), então o técnico baixar o anexo do Outlook e subir aqui é
+    trabalho que a máquina já fez. Aceita `?ra=<numero>` ou `?amostrador=<codigo>`
+    e devolve a MESMA estrutura do upload, um item por PDF — o front reaproveita
+    o caminho de importação em massa sem mudar a lógica de cruzamento.
+    """
+    ra_alvo = re.sub(r'\D', '', request.args.get('ra', '') or '')
+    cod_alvo = re.sub(r'\s+', '', (request.args.get('amostrador', '') or '')).upper()
+    if not ra_alvo and not cod_alvo:
+        return jsonify({'erro': 'Informe o nº do RA ou o código do amostrador'}), 400
+    try:
+        from controle.lab_inbox import (_mailboxes, _search_lab_emails, _ra_do_assunto,
+                                        _codigo_do_anexo_ra, _norm)
+        from controle.graph import graph_get
+    except Exception as e:
+        return jsonify({'erro': f'integração com a caixa do lab indisponível: {e}'}), 500
+
+    MAX_PDFS = 8          # a resposta carrega as páginas em base64 — não devolver a caixa toda
+    laudos, vistos, truncado = [], set(), False
+    try:
+        for box in _mailboxes():
+            for e in _search_lab_emails(box):
+                if ra_alvo and (_ra_do_assunto(e['subject']) or '') != ra_alvo:
+                    continue
+                try:
+                    metas = graph_get(f"/users/{box}/messages/{e['id']}/attachments"
+                                      f"?$select=id,name,contentType").get('value', [])
+                except Exception:
+                    continue
+                for meta in metas:
+                    nome = meta.get('name', '') or ''
+                    if not nome.lower().endswith('.pdf'):
+                        continue
+                    cod_pdf = _norm(_codigo_do_anexo_ra(nome))
+                    # Busca por amostrador: o código vem no nome do anexo. Sem esse
+                    # filtro viria o laudo de todos os tubos daquele e-mail.
+                    if cod_alvo and cod_alvo not in (cod_pdf or '') and cod_pdf not in cod_alvo:
+                        continue
+                    if nome in vistos:
+                        continue
+                    vistos.add(nome)
+                    if len(laudos) >= MAX_PDFS:
+                        truncado = True
+                        continue
+                    try:
+                        full = graph_get(f"/users/{box}/messages/{e['id']}/attachments/{meta['id']}")
+                        raw = base64.b64decode(full.get('contentBytes') or '')
+                        imgs, dados = ler_laudo_ra_pdf(raw)
+                    except Exception as ex:
+                        laudos.append({'arquivo': nome, 'erro': str(ex)[:160]})
+                        continue
+                    laudos.append({'arquivo': nome, 'assunto': e['subject'],
+                                   'data': e.get('data', ''), 'amostrador': cod_pdf,
+                                   'paginas': imgs, 'dadosExtraidos': dados})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
+    return jsonify({'laudos': laudos, 'total': len(laudos), 'truncado': truncado,
+                    'limite': MAX_PDFS})
 
 
 # ── API: Parse chain of custody Excel (Uniscientific format) ─────────
