@@ -1837,6 +1837,80 @@ def arquivar_amostradores_concluidos(dias=30):
     return n
 
 
+# Condição do "estoque": o que está na prateleira, sem compromisso nenhum.
+# Reservado/laboratorio/concluido/devolvido/manutencao/descartado NÃO entram —
+# são ciclo em andamento ou histórico, arquivar sumiria com coleta viva.
+_COND_ESTOQUE = ("status='disponivel' AND COALESCE(arquivado,0)=0 "
+                 "AND reservado_por_plano IS NULL")
+
+
+def arquivar_amostradores_estoque():
+    """Arquiva em lote os amostradores EM ESTOQUE (status 'disponivel').
+
+    Serve ao recadastro manual do inventário físico: quando o estoque do
+    sistema deixa de refletir o que está na prateleira, ele sai da visão
+    principal e o técnico reinsere à mão o que tem em mãos.
+
+    NÃO deleta. Só marca `arquivado=1`, então as `baixas`, o RA e o histórico
+    de cada dispositivo continuam íntegros e a operação é reversível — quem
+    recadastrar o mesmo código cai em `reativar_amostrador()`.
+
+    Retorna (quantidade, lista de códigos arquivados).
+    """
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with get_db() as conn:
+        rows = conn.execute(
+            f'SELECT codigo FROM amostradores WHERE {_COND_ESTOQUE}').fetchall()
+        codigos = [(r['codigo'] or '') for r in rows]
+        if codigos:
+            conn.execute(
+                f"UPDATE amostradores SET arquivado=1, arquivado_em=? "
+                f"WHERE {_COND_ESTOQUE}", (now,))
+    return len(codigos), codigos
+
+
+def contar_amostradores_estoque():
+    """Quantos amostradores o arquivamento de estoque pegaria agora (preview)."""
+    with get_db() as conn:
+        return conn.execute(
+            f'SELECT COUNT(*) c FROM amostradores WHERE {_COND_ESTOQUE}'
+        ).fetchone()['c']
+
+
+def reativar_amostrador(conn, aid, tipo=None, status='disponivel',
+                        data_entrada=None, observacao=None):
+    """Traz de volta um amostrador ARQUIVADO como se fosse cadastro novo.
+
+    O código é a identidade física do dispositivo, então recadastrar um código
+    que existe arquivado não pode abrir uma segunda linha: o mesmo amostrador
+    passaria a ter dois ids e todo relatório agrupado por código contaria em
+    dobro.
+
+    Zera o que é do CICLO DE USO anterior (empresa, avaliador, datas de
+    medição/envio/resultado/conclusão, reserva) e PRESERVA o que é do
+    dispositivo em si — `lote` e os campos `cert_*` de calibração — além do
+    histórico em `baixas`, que aponta para este mesmo id.
+
+    Recebe `conn` para rodar dentro da transação de quem chamou.
+    """
+    sets = ['arquivado=0', 'arquivado_em=NULL', 'empresa_id=NULL',
+            'avaliador=NULL', 'data_medicao=NULL', 'data_envio_lab=NULL',
+            'data_resultado=NULL', 'data_conclusao=NULL',
+            'reservado_por_plano=NULL', 'atualizado_em=CURRENT_TIMESTAMP',
+            'status=?']
+    params = [normalizar_status_amostrador(status or 'disponivel')]
+    if tipo:
+        sets.append('tipo=?')
+        params.append(tipo)
+    sets.append('data_entrada=?')
+    params.append(data_entrada or datetime.now().strftime('%Y-%m-%d'))
+    sets.append('observacao=?')
+    params.append(observacao or '')
+    params.append(aid)
+    conn.execute(f"UPDATE amostradores SET {','.join(sets)} WHERE id=?", params)
+    return aid
+
+
 def list_amostradores(filtros=None):
     f = filtros or {}
     # Arquivamento automático ao listar (lazy) — independe de scheduler

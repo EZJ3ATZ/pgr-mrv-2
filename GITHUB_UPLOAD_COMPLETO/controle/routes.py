@@ -147,6 +147,7 @@ _ADMIN_ONLY_EXACT = frozenset({
     '/controle/graph/ra_backfill_result',
     '/controle/graph/test_mail', '/controle/graph/users',
     '/controle/amostradores/concluir-utilizados',
+    '/controle/amostradores/arquivar_estoque',
     '/controle/amostradores/diagnostico',
     '/controle/amostradores/fix_data_entrada',
     '/controle/amostradores/normalizar_status',
@@ -527,45 +528,95 @@ def amostradores_arquivar():
         return jsonify({'ok': False, 'erro': str(e)}), 500
 
 
+@controle_bp.route('/amostradores/arquivar_estoque', methods=['GET', 'POST'])
+def amostradores_arquivar_estoque():
+    """Tira o estoque (status 'disponivel') da visão principal para recadastro
+    manual do inventário físico. Ferramenta de manutenção — admin only (regra 9).
+
+    GET  = preview, só conta quantos seriam arquivados.
+    POST = executa; exige header `X-Confirm: arquivar-estoque`.
+
+    Arquiva, não deleta: `baixas`/RA e histórico ficam íntegros, e recadastrar
+    o mesmo código reativa a linha original em vez de duplicar.
+    Reservado, laboratório, concluído, devolvido, manutenção e descartado
+    NÃO entram — são ciclo em andamento ou histórico.
+    """
+    init_db()
+    from .db import arquivar_amostradores_estoque, contar_amostradores_estoque
+    try:
+        if request.method == 'GET':
+            return jsonify({'ok': True, 'seriam_arquivados': contar_amostradores_estoque()})
+        if request.headers.get('X-Confirm') != 'arquivar-estoque':
+            return jsonify({'erro': 'requer header X-Confirm: arquivar-estoque',
+                            'seriam_arquivados': contar_amostradores_estoque()}), 400
+        n, codigos = arquivar_amostradores_estoque()
+        registrar_evento('amostradores_estoque_arquivado',
+                         f'{n} em estoque arquivados para recadastro manual',
+                         None, 'amostrador',
+                         current_user.nome if current_user.is_authenticated else 'sistema',
+                         request.remote_addr)
+        log.warning('[estoque] %s amostradores arquivados por %s', n,
+                    getattr(current_user, 'email', '?'))
+        return jsonify({'ok': True, 'arquivados': n, 'codigos': codigos})
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)}), 500
+
+
 @controle_bp.route('/amostradores', methods=['POST'])
 def cria_amostrador():
     init_db()
+    from .db import reativar_amostrador
     d = request.json or {}
     codigo = (str(d.get('codigo') or '')).strip().upper()
     if not codigo or not d.get('tipo'):
         return jsonify({'erro': 'codigo e tipo obrigatorios'}), 400
+    reativado = False
     with get_db() as conn:
         # trava: não cadastrar amostrador que já existe (mesmo código, qualquer status)
-        ja = conn.execute('SELECT id, status FROM amostradores WHERE UPPER(codigo)=?',
-                          (codigo,)).fetchone()
+        ja = conn.execute(
+            'SELECT id, status, COALESCE(arquivado,0) AS arquivado '
+            'FROM amostradores WHERE UPPER(codigo)=?', (codigo,)).fetchone()
         if ja:
             jad = row_to_dict(ja)
-            return jsonify({'erro': f'Amostrador {codigo} já está cadastrado '
-                                    f'(status atual: {jad.get("status", "?")}).',
-                            'duplicado': True, 'id': jad.get('id')}), 409
-        cur = conn.execute("""
-            INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
-            VALUES (?, ?, ?, ?, ?)""",
-            (codigo, d['tipo'], normalizar_status_amostrador(d.get('status', 'disponivel')),
-             d.get('data_entrada', datetime.now().strftime('%Y-%m-%d')),
-             d.get('observacao', '')))
-        novo_id = cur.lastrowid
-    registrar_evento('amostrador_criado', f'{codigo} ({d["tipo"]})',
+            # Arquivado é o mesmo dispositivo voltando à prateleira: reativa a
+            # linha original (o código é a identidade física) em vez de abrir
+            # uma segunda, que duplicaria o amostrador em todo relatório.
+            if int(jad.get('arquivado') or 0) != 1:
+                return jsonify({'erro': f'Amostrador {codigo} já está cadastrado '
+                                        f'(status atual: {jad.get("status", "?")}).',
+                                'duplicado': True, 'id': jad.get('id')}), 409
+            novo_id = reativar_amostrador(
+                conn, jad['id'], tipo=d['tipo'],
+                status=d.get('status', 'disponivel'),
+                data_entrada=d.get('data_entrada'),
+                observacao=d.get('observacao', ''))
+            reativado = True
+        else:
+            cur = conn.execute("""
+                INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
+                VALUES (?, ?, ?, ?, ?)""",
+                (codigo, d['tipo'], normalizar_status_amostrador(d.get('status', 'disponivel')),
+                 d.get('data_entrada', datetime.now().strftime('%Y-%m-%d')),
+                 d.get('observacao', '')))
+            novo_id = cur.lastrowid
+    registrar_evento('amostrador_reativado' if reativado else 'amostrador_criado',
+                     f'{codigo} ({d["tipo"]})',
                      novo_id, 'amostrador',
                      current_user.nome if current_user.is_authenticated else 'sistema',
                      request.remote_addr)
-    return jsonify({'ok': True, 'id': novo_id})
+    return jsonify({'ok': True, 'id': novo_id, 'reativado': reativado})
 
 
 @controle_bp.route('/amostradores/lote', methods=['POST'])
 def cria_amostradores_lote():
     """Cria vários amostradores de uma vez (cadastro em série).
-    Ignora códigos que já existem. Body: {tipo, codigos:[...], status,
-    data_entrada, observacao, auto_tipo}.
+    Ignora códigos que já existem ATIVOS e REATIVA os que existem arquivados.
+    Body: {tipo, codigos:[...], status, data_entrada, observacao, auto_tipo}.
     Se auto_tipo=True (colar lista do e-mail do lab), o tipo de cada código é
     detectado pelo prefixo de letras (ex: TCP4924AV3→TCP, EC93893A→EC,
     PVC99V31→PVC, FVPH2181→FVPH); o campo `tipo` vira fallback."""
     init_db()
+    from .db import reativar_amostrador
     d = request.json or {}
     tipo = (d.get('tipo') or '').strip().upper()
     auto_tipo = bool(d.get('auto_tipo'))
@@ -589,31 +640,52 @@ def cria_amostradores_lote():
         m = re.match(r'^([A-Z]+)', cod)
         return (m.group(1) if m else '') or tipo or 'AMOSTRADOR'
 
-    criados, ignorados = 0, 0
+    criados, ignorados, reativados = 0, 0, 0
     tipos_usados = set()
     with get_db() as conn:
-        # códigos já existentes (qualquer status)
-        existentes = {r['codigo'] for r in conn.execute(
-            'SELECT codigo FROM amostradores').fetchall() if r['codigo']}
+        # Códigos já existentes (qualquer status), separados por arquivamento.
+        # Chave em UPPER porque `limpos` vem normalizado — comparar cru deixaria
+        # passar código gravado em minúsculo e tentaria inserir duplicata.
+        ativos, arquivados = set(), {}
+        for r in conn.execute(
+                'SELECT id, codigo, COALESCE(arquivado,0) AS arquivado '
+                'FROM amostradores').fetchall():
+            cod = (r['codigo'] or '').strip().upper()
+            if not cod:
+                continue
+            if int(r['arquivado'] or 0) == 1:
+                arquivados[cod] = r['id']
+            else:
+                ativos.add(cod)
         for c in limpos:
-            if c in existentes:
+            if c in ativos:
                 ignorados += 1
                 continue
             t = _tipo_do_codigo(c) if auto_tipo else tipo
-            conn.execute("""
-                INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
-                VALUES (?, ?, ?, ?, ?)""",
-                (c, t, status, data_entrada, obs))
-            existentes.add(c)
-            criados += 1
+            # Arquivado = mesmo dispositivo voltando; reativa a linha original
+            # em vez de abrir uma segunda com o mesmo código.
+            if c in arquivados:
+                reativar_amostrador(conn, arquivados.pop(c), tipo=t,
+                                    status=status, data_entrada=data_entrada,
+                                    observacao=obs)
+                reativados += 1
+            else:
+                conn.execute("""
+                    INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
+                    VALUES (?, ?, ?, ?, ?)""",
+                    (c, t, status, data_entrada, obs))
+                criados += 1
+            ativos.add(c)
             tipos_usados.add(t)
-    if criados:
+    if criados or reativados:
         desc_tipo = (', '.join(sorted(tipos_usados)) if auto_tipo else tipo)
         registrar_evento('amostrador_criado',
-                         f'{criados} em série ({desc_tipo})', None, 'amostrador',
+                         f'{criados} criados + {reativados} reativados '
+                         f'em série ({desc_tipo})', None, 'amostrador',
                          current_user.nome if current_user.is_authenticated else 'sistema',
                          request.remote_addr)
-    return jsonify({'ok': True, 'criados': criados, 'ignorados': ignorados})
+    return jsonify({'ok': True, 'criados': criados, 'reativados': reativados,
+                    'ignorados': ignorados})
 
 
 @controle_bp.route('/amostradores/<int:aid>', methods=['PUT'])
