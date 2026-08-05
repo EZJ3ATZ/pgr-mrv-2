@@ -8045,6 +8045,9 @@ async function qMassaImportCadeias(files) {
 function _qAplicarLaudoLido(ex, paginas, acc) {
   if (Array.isArray(paginas) && paginas.length) qLaudoImgs = qLaudoImgs.concat(paginas);
   let target = qFindAvalByKey(ex.filtroNumero, ex.trabalhador, ex.agente);
+  // Antes de abrir avaliação nova, aproveita a que está em branco (a tela nasce com
+  // uma). Sem isto sobrava uma "Avaliação 1" vazia no topo, que ia pro documento.
+  if (!target) target = qAvals.find(a => !a.trabalhador && !a.agente && !a.concentracao && !a.filtroNumero);
   if (!target) { target = qNewAval(); qAvals.push(target); acc.novas++; }
   Object.assign(target, _qSemVazios(ex));   // não traz bomba → bomba por avaliação preservada
   if (!ex.concentracao) acc.semConc++;
