@@ -34,6 +34,23 @@ def norm_cod(cod):
     return re.sub(r'\s+', '', str(cod or '')).upper()
 
 
+_FRAC_NOME = {'I': 'Inalável', 'R': 'Respirável', 'T': 'Torácica'}
+
+
+def separar_fracao(unidade):
+    """'mg/m³ (I)' → ('mg/m³', 'Inalável'). Unidade sem marca volta como está.
+
+    Poeira e metal trazem a fração colada na unidade da tabela do RA. Guardar as
+    duas juntas contamina a unidade; jogar a marca fora perde informação que o
+    laudo declara (inalável × respirável × torácica muda o limite comparado).
+    """
+    u = str(unidade or '').strip()
+    m = re.search(r'\(\s*([IRT])\s*\)', u)
+    if not m:
+        return u, ''
+    return re.sub(r'\s*\(\s*[IRT]\s*\)', '', u).strip(), _FRAC_NOME.get(m.group(1).upper(), '')
+
+
 def base_ra(ra):
     """Primeiro grupo de dígitos: 'RA 81962595' e '81962595-3' → '81962595'.
 
@@ -95,12 +112,16 @@ def _buscar(conn, cod, agente_key, fonte):
     return row_to_dict(r) if r else None
 
 
-def gravar(dados, fonte, origem='', conn=None):
+def gravar(dados, fonte, origem='', conn=None, apenas_se_novo=False):
     """Grava UM resultado. `dados` usa as chaves do laudo lido (dadosExtraidos).
 
     DELETE+INSERT em vez de UPSERT porque o app roda em SQLite (testes/local) e
     Postgres (produção) — mesmo motivo do `_upsert_ra_laudo`. Devolve dict com
     `gravado`, `fonte` e, quando houver, `divergencia`.
+
+    `apenas_se_novo` protege o que já está gravado: a migração do histórico traz
+    agente/unidade/valor mas NÃO traz os limites (o parser do backfill não extrai),
+    então sobrescrever uma linha lida do PDF completo seria perder dado.
     """
     cod = norm_cod(dados.get('filtroNumero') or dados.get('amostrador'))
     if not cod or fonte not in ('pdf', 'digitado'):
@@ -114,6 +135,8 @@ def gravar(dados, fonte, origem='', conn=None):
 
     def _run(c):
         ph = _ph()
+        if apenas_se_novo and _buscar(c, cod, agente_key, fonte):
+            return None, None, None
         amos = c.execute(f'SELECT id FROM amostradores WHERE UPPER(codigo)={ph}',
                          (cod,)).fetchone()
         aid = (row_to_dict(amos) or {}).get('id') if amos else None
@@ -140,6 +163,9 @@ def gravar(dados, fonte, origem='', conn=None):
     else:
         with get_db() as c:
             aid, atual, outra = _run(c)
+    if atual is None and apenas_se_novo:
+        return {'gravado': False, 'motivo': 'já existe (preservado)',
+                'amostrador_cod': cod, 'agente': agente}
 
     saida = {'gravado': True, 'fonte': fonte, 'amostrador_cod': cod,
              'amostrador_id': aid, 'agente': agente, 'valor': valor_txt}
@@ -147,12 +173,16 @@ def gravar(dados, fonte, origem='', conn=None):
         diverge, motivo = divergem(atual, outra)
         if diverge:
             saida['divergencia'] = motivo
-            _abrir_divergencia(cod, aid, agente, atual, outra, motivo)
+            _abrir_divergencia(cod, aid, agente, atual, outra, motivo, conn=conn)
     return saida
 
 
-def _abrir_divergencia(cod, aid, agente, atual, outra, motivo):
+def _abrir_divergencia(cod, aid, agente, atual, outra, motivo, conn=None):
     """Registra na Camada de Consistência — a tela de Consistência já lista por tipo.
+
+    Reusa a conexão de quem chamou quando existe: abrir uma segunda no meio de uma
+    transação de escrita trava o SQLite ("database is locked") e a divergência seria
+    perdida em silêncio dentro do backfill.
 
     A chave de deduplicação é o PREFIXO da descrição (tubo + agente), não
     `entidade_id`: `gravar` é DELETE+INSERT, então o id da linha muda a cada
@@ -170,24 +200,132 @@ def _abrir_divergencia(cod, aid, agente, atual, outra, motivo):
                  f'Nenhum dos dois foi sobrescrito.')
     descricao = re.sub(r'\s+', ' ', descricao).strip()
     ph = _ph()
+
+    def _run(c):
+        ja = c.execute(
+            f"SELECT id FROM divergencias WHERE tipo='resultado_lab_divergente' "
+            f"AND status='aberta' AND descricao LIKE {ph}", (prefixo + '%',)).fetchone()
+        if ja:
+            c.execute(
+                f'UPDATE divergencias SET descricao={ph}, detectado_em=CURRENT_TIMESTAMP '
+                f'WHERE id={ph}', (descricao, row_to_dict(ja)['id']))
+        else:
+            c.execute(
+                f'INSERT INTO divergencias (tipo, severidade, entidade_tipo, '
+                f'entidade_id, descricao) VALUES ({ph},{ph},{ph},{ph},{ph})',
+                ('resultado_lab_divergente', 'alto',
+                 'amostrador' if aid else 'resultado_lab',
+                 aid or atual.get('id'), descricao))
+
     try:
-        with get_db() as conn:
-            ja = conn.execute(
-                f"SELECT id FROM divergencias WHERE tipo='resultado_lab_divergente' "
-                f"AND status='aberta' AND descricao LIKE {ph}", (prefixo + '%',)).fetchone()
-            if ja:
-                conn.execute(
-                    f'UPDATE divergencias SET descricao={ph}, detectado_em=CURRENT_TIMESTAMP '
-                    f'WHERE id={ph}', (descricao, row_to_dict(ja)['id']))
-            else:
-                conn.execute(
-                    f'INSERT INTO divergencias (tipo, severidade, entidade_tipo, '
-                    f'entidade_id, descricao) VALUES ({ph},{ph},{ph},{ph},{ph})',
-                    ('resultado_lab_divergente', 'alto',
-                     'amostrador' if aid else 'resultado_lab',
-                     aid or atual.get('id'), descricao))
+        if conn is not None:
+            _run(conn)
+        else:
+            with get_db() as c:
+                _run(c)
     except Exception as e:
         log.warning('[resultado_lab] abrir divergência falhou (%s): %s', cod, e)
+
+
+def do_laudo_extraido(parsed, amostrador_cod=None):
+    """Converte o laudo do `parse_ra_pdf` (backfill) para o formato de `gravar`.
+
+    São dois parsers diferentes e cada um nomeia as coisas do seu jeito: o do
+    gerador devolve `dadosExtraidos` (filtroNumero/concentracao), o do backfill
+    devolve `resultados[]` com agente/unidade/resultado separados — e a fração vem
+    DENTRO da unidade ('mg/m³ (I)'), porque ele casa a unidade por prefixo.
+    Devolve uma lista: um laudo pode trazer mais de um agente.
+    """
+    cod = amostrador_cod or (parsed or {}).get('amostrador') or ''
+    ra = (parsed or {}).get('ra_num') or ''
+    trabalhador = (parsed or {}).get('funcionario') or ''
+    saida = []
+    for item in (parsed or {}).get('resultados') or []:
+        valor = str(item.get('resultado') or '').strip()
+        if not valor or valor == '-':
+            continue                      # linha sem resultado (limite, não medição)
+        unidade, fracao = separar_fracao(item.get('unidade'))
+        saida.append({
+            'filtroNumero': cod, 'ra_num': ra, 'agente': item.get('agente') or '',
+            'concentracao': f'{valor} {unidade}'.strip(), 'fracao': fracao,
+            'trabalhador': trabalhador,
+        })
+    return saida
+
+
+def _savepoint(conn, fn):
+    """Isola UM item da migração. No Postgres um statement que falha aborta a
+    transação inteira, então sem savepoint uma linha ruim levaria o lote todo
+    (mesmo motivo do `_savepoint` do lab_inbox)."""
+    conn.execute('SAVEPOINT sp_reslab')
+    try:
+        r = fn()
+        conn.execute('RELEASE SAVEPOINT sp_reslab')
+        return r
+    except Exception:
+        try:
+            conn.execute('ROLLBACK TO SAVEPOINT sp_reslab')
+            conn.execute('RELEASE SAVEPOINT sp_reslab')
+        except Exception:
+            pass
+        raise
+
+
+def migrar_de_ra_laudos(limite=5000):
+    """Popula `resultados_lab` com o histórico que o backfill já extraiu.
+
+    O backfill noturno lê os PDFs e grava o laudo em `ra_laudos` desde julho, mas a
+    coluna `resultados` (JSON) nunca era lida. Isto traz esse histórico para a
+    tabela nova SEM sobrescrever o que já foi lido do PDF completo (que tem os
+    limites de exposição, ausentes no JSON do backfill). Idempotente.
+    """
+    import json
+    ph = _ph()
+    out = {'laudos_lidos': 0, 'gravados': 0, 'preservados': 0, 'sem_resultado': 0,
+           'divergencias': []}
+    # Uma conexão para o lote inteiro (eram 1 por linha; em Postgres, 1 conexão nova
+    # por resultado). O savepoint por item mantém o isolamento de falha.
+    with get_db() as conn:
+        try:
+            rows = [row_to_dict(r) for r in conn.execute(
+                f"SELECT amostrador_cod, ra_num, funcionario, resultados FROM ra_laudos "
+                f"WHERE COALESCE(resultados,'') NOT IN ('', '[]') LIMIT {int(limite)}"
+            ).fetchall()]
+        except Exception as e:
+            log.warning('[resultado_lab] migração: ra_laudos indisponível: %s', e)
+            return out
+        for r in rows:
+            out['laudos_lidos'] += 1
+            try:
+                itens = json.loads(r.get('resultados') or '[]')
+            except Exception:
+                itens = []
+            parsed = {'amostrador': r.get('amostrador_cod'), 'ra_num': r.get('ra_num'),
+                      'funcionario': r.get('funcionario'), 'resultados': itens}
+            dados = do_laudo_extraido(parsed) if itens else []
+            if not dados:
+                out['sem_resultado'] += 1
+                continue
+            for d in dados:
+                try:
+                    res = _savepoint(conn, lambda dd=d: gravar(
+                        dd, 'pdf', f'migrado de ra_laudos · RA {r.get("ra_num") or "?"}',
+                        conn=conn, apenas_se_novo=True))
+                except Exception as e:
+                    log.warning('[resultado_lab] migração falhou (%s): %s',
+                                r.get('amostrador_cod'), e)
+                    continue
+                if res.get('gravado'):
+                    out['gravados'] += 1
+                    if res.get('divergencia'):
+                        out['divergencias'].append(
+                            f'{res["amostrador_cod"]} · {res.get("agente")}: '
+                            f'{res["divergencia"]}')
+                elif 'já existe' in (res.get('motivo') or ''):
+                    out['preservados'] += 1
+                else:
+                    out['sem_resultado'] += 1
+    return out
 
 
 def gravar_muitos(lista, fonte, origem=''):

@@ -161,6 +161,7 @@ _ADMIN_ONLY_EXACT = frozenset({
     '/controle/coletas/dedup',
     '/controle/equipamentos/rebuild-frota',
     '/controle/amostradores/sincronizar-datas-laudo',
+    '/controle/resultados_lab/migrar',
 })
 
 
@@ -8936,6 +8937,31 @@ def api_resultados_lab():
     except Exception as e:
         log.exception('[resultados_lab] falhou')
         return jsonify({'erro': str(e)}), 500
+
+
+@controle_bp.route('/resultados_lab/migrar', methods=['POST'])
+@login_required
+def api_resultados_lab_migrar():
+    """Traz para `resultados_lab` o histórico que o backfill já extraiu (admin).
+
+    Ferramenta de manutenção: o backfill noturno passou a gravar sozinho, este
+    endpoint é para não esperar a próxima rodada e para recuperar o que ficou em
+    `ra_laudos.resultados` desde julho. Idempotente e não sobrescreve o que já foi
+    lido do PDF completo (que traz os limites de exposição).
+    """
+    init_db()
+    from .resultado_lab import migrar_de_ra_laudos
+    try:
+        r = migrar_de_ra_laudos()
+    except Exception as e:
+        log.exception('[resultados_lab] migração falhou')
+        return jsonify({'erro': str(e)}), 500
+    registrar_evento('resultado_lab_migrado',
+                     f"Histórico de laudos → resultados_lab: {r.get('gravados', 0)} gravado(s), "
+                     f"{r.get('preservados', 0)} preservado(s), "
+                     f"{len(r.get('divergencias') or [])} divergência(s)",
+                     usuario=getattr(current_user, 'email', 'sistema'), ip=request.remote_addr)
+    return jsonify({'ok': True, **r})
 
 
 @controle_bp.route('/amostradores/sincronizar-datas-laudo', methods=['POST'])

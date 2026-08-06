@@ -1238,12 +1238,26 @@ def backfill_ras(apply=False, top=200):
                 except Exception as ex:
                     log.warning('[backfill_ras] concluir amostrador #%s falhou: %s', aid, ex)
                     erros.append(f'concluir amostrador #{aid}: {ex}')
+            resultados_gravados = 0
             for aid, cod, e, d in laudos:
                 try:
                     _savepoint(conn, lambda: _upsert_ra_laudo(conn, aid, cod, e, d))
                 except Exception as ex:
                     log.warning('[backfill_ras] upsert laudo falhou (%s): %s', cod, ex)
                     erros.append(f'laudo {cod}: {ex}')
+                # O VALOR do laudo também vira dado (resultados_lab). Antes ficava só
+                # no JSON de ra_laudos, coluna que ninguém lia: o backfill abria o PDF,
+                # extraía a concentração e ela morria ali.
+                try:
+                    from .resultado_lab import do_laudo_extraido, gravar
+                    for item in do_laudo_extraido(d, cod):
+                        r = _savepoint(conn, lambda it=item: gravar(
+                            it, 'pdf', f'backfill · RA {d.get("ra_num") or "?"}', conn=conn))
+                        if (r or {}).get('gravado'):
+                            resultados_gravados += 1
+                except Exception as ex:
+                    log.warning('[backfill_ras] gravar resultado_lab (%s): %s', cod, ex)
+            report['resultados_gravados'] = resultados_gravados
             try:
                 medicoes = _savepoint(conn, lambda: _baixar_medicoes_com_resultado(conn))
             except Exception as ex:
