@@ -2969,14 +2969,33 @@ def anexos_da_visita(chave):
     return res
 
 
+def resumo_dias(dias):
+    """Média, mediana, p90 e máximo de uma lista de durações (em dias).
+
+    Mediana e p90 em Python porque o SQLite não tem função de mediana — e média
+    sozinha não serve de régua aqui: a distribuição de entrega do laboratório tem
+    cauda longa (um laudo real levou 92 dias contra mediana de 16).
+    """
+    d = sorted(int(x) for x in dias if x is not None)
+    if not d:
+        return None
+    n = len(d)
+    return {'media_dias': round(sum(d) / n, 1), 'mediana_dias': d[n // 2],
+            'p90_dias': d[min(n - 1, int(n * 0.9))], 'max_dias': d[-1], 'amostra': n}
+
+
 def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
     """Analytics operacional de amostradores (TASK C) — derivado dos
     timestamps reais, por isso reflete automaticamente cada mudança de status.
 
     Retorna:
       - por_status:    contagem por status canônico (não arquivados)
-      - tempo_coleta_lab:   média de dias entre data_medicao e data_envio_lab
-      - tempo_lab_concluido: média de dias entre data_envio_lab e data_conclusao
+      - tempo_coleta_lab:   média de dias entre data_medicao e data_envio_lab (NOSSO
+                            tempo: campo até despachar a amostra)
+      - tempo_lab_resultado: ENTREGA DO LAB — envio → resultado (RA), com mediana e
+                            p90, porque a distribuição tem cauda longa
+      - tempo_lab_concluido: média de dias entre data_envio_lab e data_conclusao —
+                            inclui a nossa demora em fechar, NÃO é o tempo do lab
       - gargalos: presos_lab (no lab há > N dias), reservados_parados
                   (reservado há > N dias), concluidos_pendentes_arquivo
     """
@@ -2989,7 +3008,7 @@ def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
         def _diff(a, b): return f"CAST(julianday({b}) - julianday({a}) AS INTEGER)"
         def _since(c): return f"CAST(julianday('now') - julianday({c}) AS INTEGER)"
 
-    res = {'por_status': {}, 'tempo_coleta_lab': None,
+    res = {'por_status': {}, 'tempo_coleta_lab': None, 'tempo_lab_resultado': None,
            'tempo_lab_concluido': None, 'gargalos': {}}
     with get_db() as conn:
         # contagem por status (não arquivados)
@@ -3007,6 +3026,17 @@ def stats_amostradores_fluxo(presos_lab_dias=15, reserv_parado_dias=7):
             f"FROM amostradores WHERE {cond1}").fetchone()
         if r and r['n']:
             res['tempo_coleta_lab'] = {'media_dias': round(float(r['m']), 1), 'amostra': r['n']}
+
+        # ENTREGA DO LABORATÓRIO: envio → resultado (RA). É esta a régua para cobrar o
+        # lab. A de baixo (envio → conclusão) inclui a NOSSA demora em fechar o
+        # amostrador e superestimava o lab em ~14 dias — e a tela do BI mostrava ela
+        # com o rótulo "Lab → Resultado" (06/08/2026).
+        cond3 = (f"{_iso('data_envio_lab')} AND {_iso('data_resultado')} "
+                 f"AND {_diff('data_envio_lab', 'data_resultado')} >= 0")
+        res['tempo_lab_resultado'] = resumo_dias(
+            r['d'] for r in conn.execute(
+                f"SELECT {_diff('data_envio_lab','data_resultado')} d "
+                f"FROM amostradores WHERE {cond3}").fetchall())
 
         # tempo médio laboratório → concluído
         cond2 = (f"status='concluido' AND {_iso('data_envio_lab')} AND {_iso('data_conclusao')} "

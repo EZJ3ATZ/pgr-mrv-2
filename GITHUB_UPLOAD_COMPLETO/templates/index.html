@@ -15390,8 +15390,12 @@ async function indLoad() {
             <div style="font-size:.72rem;color:var(--text3);margin-top:3px;">${label}</div>
             ${sub?`<div style="font-size:.64rem;color:var(--text3);margin-top:2px;">${sub}</div>`:''}
           </div>`;
+        const tlr = fx.tempo_lab_resultado;
         const cards = [
           card(tcl?`${tcl.media_dias}d`:'—', 'Médio coleta → lab', 'var(--blue)', tcl?`${tcl.amostra} amostras`:'sem dados'),
+          // entrega do lab: mediana, porque a cauda (um laudo de 92d) puxa a média
+          card(tlr?`${tlr.mediana_dias}d`:'—', 'Entrega do lab (envio → RA)', 'var(--purple)',
+               tlr?`mediana · ${tlr.amostra} amostras · p90 ${tlr.p90_dias}d`:'sem dados'),
           card(tlc?`${tlc.media_dias}d`:'—', 'Médio lab → concluído', '#4ade80', tlc?`${tlc.amostra} amostras`:'sem dados'),
           card(g.presos_lab?.qtd ?? 0, `Presos no lab (>${g.presos_lab?.limite_dias??15}d)`, (g.presos_lab?.qtd>0?'var(--red)':'var(--text2)')),
           card(g.concluidos_para_arquivar?.qtd ?? 0, 'A arquivar (≥30d)', 'var(--text3)'),
@@ -15627,6 +15631,9 @@ function _biRenderLab(fluxo) {
   const el = document.getElementById('bi-lab-ciclo'); if (!el) return;
   fluxo = fluxo || {};
   const tcl = fluxo.tempo_coleta_lab || {}, tlc = fluxo.tempo_lab_concluido || {}, g = fluxo.gargalos || {};
+  // O card "Lab → Resultado" mostrava tempo_lab_concluido (envio → CONCLUSÃO), que
+  // carrega a nossa demora em fechar o amostrador: ~31d no lugar de ~16d do lab.
+  const tlr = fluxo.tempo_lab_resultado || {};
   const card = (titulo, valor, sub, cor) => `
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
       <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:6px;">${titulo}</div>
@@ -15637,8 +15644,14 @@ function _biRenderLab(fluxo) {
   const _n = (o) => (o && o.amostra != null) ? o.amostra + ' amostras' : 'sem dados';
   const presos = g.presos_lab || {}, arq = g.concluidos_para_arquivar || {};
   el.innerHTML =
-    card('Coleta &#8594; Lab', _d(tcl), _n(tcl), 'var(--blue)') +
-    card('Lab &#8594; Resultado', _d(tlc), _n(tlc), 'var(--purple)') +
+    card('Coleta &#8594; Lab', _d(tcl), _n(tcl) + ' &#183; nosso tempo', 'var(--blue)') +
+    card('Lab &#8594; Resultado',
+         (tlr.mediana_dias != null ? tlr.mediana_dias + 'd' : '—'),
+         (tlr.amostra != null
+            ? `mediana &#183; ${tlr.amostra} amostras &#183; p90 ${tlr.p90_dias}d`
+            : 'sem dados'),
+         'var(--purple)') +
+    card('Lab &#8594; Conclu&#237;do', _d(tlc), _n(tlc) + ' &#183; inclui fechar aqui', 'var(--text2)') +
     card('Presos no lab', (presos.qtd || 0), '&gt; ' + (presos.limite_dias || 15) + ' dias', presos.qtd ? 'var(--red)' : 'var(--green)') +
     card('Para arquivar', (arq.qtd || 0), 'conclu&#237;dos &#8805;30d', arq.qtd ? 'var(--text2)' : 'var(--green)');
 }
