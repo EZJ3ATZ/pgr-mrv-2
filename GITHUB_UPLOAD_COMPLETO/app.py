@@ -3120,7 +3120,9 @@ def ler_laudo_ra_pdf(raw):
     # exigida pura, então o laudo inteiro saía sem agente e sem concentração — em
     # 05/08/2026, 3 dos 7 laudos do RA 81962595 (Cromo metálico, cassete IOM).
     _FRAC = r'(?:\s*\(\s*[IRT]\s*\))?'
-    _FRAC_NOME = {'I': 'Inalável', 'R': 'Respirável', 'T': 'Torácica'}
+    # Separar a fração da unidade é a MESMA regra do lado do backfill (que também
+    # recebe 'mg/m³ (I)'): mora em controle.resultado_lab para não virar duas verdades.
+    from controle.resultado_lab import separar_fracao as _separar_fracao
     agente = ''
     concentracao = ''
     fracao = ''
@@ -3130,11 +3132,7 @@ def ler_laudo_ra_pdf(raw):
         full_text, _re.IGNORECASE)
     if _mr:
         agente    = _mr.group(1).strip().strip('—–-').strip()
-        unidade   = _mr.group(2).strip()
-        _mf = _re.search(r'\(\s*([IRT])\s*\)', unidade)
-        if _mf:
-            fracao  = _FRAC_NOME.get(_mf.group(1).upper(), '')
-            unidade = _re.sub(r'\s*\(\s*[IRT]\s*\)', '', unidade).strip()
+        unidade, fracao = _separar_fracao(_mr.group(2))
         resultado = _mr.group(3).strip().replace(' ', '')
         concentracao = f'{resultado} {unidade}' if resultado else ''
 
