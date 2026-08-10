@@ -1164,14 +1164,47 @@ def _migrate(conn):
 
     # ── baixas: amostrador passa a ser opcional (10/08/2026) ──
     # Medição feita por empresa terceira (ex.: Opus) não tem amostrador nosso.
-    # A tabela em produção nasceu com NOT NULL, então precisa do ALTER.
-    # SQLite não sabe remover NOT NULL por ALTER — bancos locais antigos seguem
-    # exigindo o campo; DB novo já nasce nullable pelo schema acima.
+    # A tabela nasceu com NOT NULL, então banco já existente precisa da migração.
     if USE_PG:
         try:
             conn.execute('ALTER TABLE baixas ALTER COLUMN amostrador_id DROP NOT NULL')
         except Exception as e:
             print(f'[migrate] baixas.amostrador_id nullable: {e}')
+    else:
+        # SQLite não remove NOT NULL por ALTER — recria a tabela (mesmo padrão do
+        # fix de execucao_campo.visita_id). Idempotente: só entra se ainda for
+        # NOT NULL. Sem isso o banco local recusa a baixa que a produção aceita.
+        try:
+            pragma = conn.execute('PRAGMA table_info(baixas)').fetchall()
+            col = next((r for r in pragma if r['name'] == 'amostrador_id'), None)
+            if col and col['notnull'] == 1:
+                conn.executescript('''
+                    CREATE TABLE IF NOT EXISTS baixas_new (
+                        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                        medicao_id          INTEGER NOT NULL,
+                        amostrador_id       INTEGER,
+                        avaliador           TEXT,
+                        bomba               TEXT,
+                        vazao_calibrada     REAL,
+                        volume_recomendado  REAL,
+                        tempo_calculado_min REAL,
+                        tempo_calculado_max REAL,
+                        data_medicao        TEXT,
+                        observacao          TEXT,
+                        criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (medicao_id)    REFERENCES medicoes(id),
+                        FOREIGN KEY (amostrador_id) REFERENCES amostradores(id)
+                    );
+                    INSERT INTO baixas_new
+                      SELECT id,medicao_id,amostrador_id,avaliador,bomba,
+                             vazao_calibrada,volume_recomendado,tempo_calculado_min,
+                             tempo_calculado_max,data_medicao,observacao,criado_em
+                      FROM baixas;
+                    DROP TABLE baixas;
+                    ALTER TABLE baixas_new RENAME TO baixas;
+                ''')
+        except Exception as e:
+            print(f'[migrate] baixas.amostrador_id nullable (sqlite): {e}')
 
     # ── coletas_ruido ──
     for col, tipo in [('calibrador', 'TEXT'), ('unidade', 'TEXT'),
