@@ -1772,7 +1772,7 @@ def api_list_baixas():
     limit = min(_int_arg('limit', 50), 200)
     with get_db() as conn:
         rows = conn.execute(f'''
-            SELECT b.id, b.medicao_id, b.amostrador_id,
+            SELECT b.id, b.medicao_id, b.amostrador_id, b.motivo_sem_amostrador,
                    b.avaliador, b.bomba, b.vazao_calibrada,
                    b.volume_recomendado, b.data_medicao, b.observacao,
                    b.tempo_calculado_min, b.tempo_calculado_max,
@@ -1828,7 +1828,9 @@ def dar_baixa():
 
     amostrador_id e OPCIONAL (10/08/2026): quando a avaliacao foi feita por
     empresa terceira (ex.: Opus) nao existe amostrador nosso para mandar ao
-    laboratorio — a baixa registra so a medicao, sem mexer em estoque.
+    laboratorio — a baixa registra so a medicao, sem mexer em estoque. Nesse
+    caso `motivo_sem_amostrador` e OBRIGATORIO: quem le a baixa depois precisa
+    saber por que nao houve dispositivo em campo.
     """
     init_db()
     d = request.json or {}
@@ -1836,6 +1838,12 @@ def dar_baixa():
     amostrador_id = d.get('amostrador_id') or None
     agente_avulso = (d.get('agente_avulso') or '').strip()
     demanda_id_avulso = d.get('demanda_id')
+    motivo_sem_am = (d.get('motivo_sem_amostrador') or '').strip()
+
+    # Validado antes de qualquer escrita: sem isso o modo avulso ja teria criado
+    # a medicao on-the-fly e sobraria medicao orfa no banco.
+    if not amostrador_id and not motivo_sem_am:
+        return jsonify({'erro': 'motivo_sem_amostrador obrigatorio na baixa sem amostrador'}), 400
 
     # Modo avulso: cria medicao on-the-fly quando não tem medicao pré-cadastrada
     if not medicao_id and agente_avulso:
@@ -1885,10 +1893,11 @@ def dar_baixa():
             INSERT INTO baixas
                 (medicao_id, amostrador_id, avaliador, bomba, vazao_calibrada,
                  volume_recomendado, tempo_calculado_min, tempo_calculado_max,
-                 data_medicao, observacao)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 data_medicao, observacao, motivo_sem_amostrador)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (medicao_id, amostrador_id, avaliador, bomba, vazao_calibrada,
-             vol_recomendado, tempo_min, tempo_max, data_medicao, obs))
+             vol_recomendado, tempo_min, tempo_max, data_medicao, obs,
+             motivo_sem_am or None))
 
         # Sem amostrador (avaliação de terceiro) não há estoque para mover:
         # a baixa fica só na medição/demanda.

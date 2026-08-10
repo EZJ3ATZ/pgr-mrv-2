@@ -5218,11 +5218,25 @@
     <div class="ctrl-info-box" id="ctrl-bx-metodo-info" style="display:none;"></div>
 
     <label>Amostrador (disponível) <span style="font-weight:400;text-transform:none;color:var(--text3);">— opcional</span></label>
-    <select id="ctrl-bx-amostr">
+    <select id="ctrl-bx-amostr" onchange="ctrlBxSyncMotivo()">
       <option value="">— Sem amostrador (avaliação de terceiro) —</option>
     </select>
     <div style="font-size:.72rem;color:var(--text3);margin-top:3px;">
       Deixe sem amostrador quando a avaliação foi feita por empresa terceira — a baixa registra só a medição, sem mexer no estoque.
+    </div>
+
+    <!-- Só aparece quando não há amostrador: baixa sem dispositivo nosso exige justificativa -->
+    <div id="ctrl-bx-motivo-wrap" style="display:none; margin-top:10px;">
+      <label style="color:var(--yellow);">Motivo da baixa sem amostrador <span style="font-weight:400;text-transform:none;">— obrigatório</span></label>
+      <select id="ctrl-bx-motivo" onchange="ctrlBxSyncMotivo()">
+        <option value="">— Selecione o motivo —</option>
+        <option value="Avaliação feita por empresa terceira">Avaliação feita por empresa terceira</option>
+        <option value="Agente sem amostrador (ruído, calor, vibração)">Agente sem amostrador (ruído, calor, vibração)</option>
+        <option value="Amostrador não cadastrado no sistema">Amostrador não cadastrado no sistema</option>
+        <option value="Lançamento retroativo de medição antiga">Lançamento retroativo de medição antiga</option>
+        <option value="Outro">Outro (descrever)</option>
+      </select>
+      <input type="text" id="ctrl-bx-motivo-outro" placeholder="Descreva o motivo" style="display:none; margin-top:6px;">
     </div>
 
     <div class="row2">
@@ -14135,6 +14149,19 @@ async function _ctrlPrepararBaixa() {
   document.getElementById('ctrl-bx-vazao').value = '';
   document.getElementById('ctrl-bx-obs').value = '';
   document.getElementById('ctrl-bx-avisos').innerHTML = '';
+  document.getElementById('ctrl-bx-motivo').value = '';
+  document.getElementById('ctrl-bx-motivo-outro').value = '';
+  ctrlBxSyncMotivo();
+}
+
+/* Motivo só existe quando a baixa não tem amostrador nosso: sem dispositivo em
+   campo, o registro precisa dizer por que. 'Outro' abre a descrição livre. */
+function ctrlBxSyncMotivo() {
+  const semAmostrador = !document.getElementById('ctrl-bx-amostr').value;
+  const motivo = document.getElementById('ctrl-bx-motivo').value;
+  document.getElementById('ctrl-bx-motivo-wrap').style.display = semAmostrador ? 'block' : 'none';
+  document.getElementById('ctrl-bx-motivo-outro').style.display =
+    (semAmostrador && motivo === 'Outro') ? 'block' : 'none';
 }
 
 function ctrlPreencherSNs(modeloId) {
@@ -14278,6 +14305,19 @@ async function ctrlConfirmarBaixa() {
   // Vazão só é exigida quando há amostrador nosso (tem bomba, tem tempo de coleta).
   if (amId && (!vazao || vazao <= 0)) { alert('Informe a vazão calibrada (use ⚡ se preferir a recomendada)'); return; }
 
+  // Baixa sem amostrador exige motivo — quem lê a baixa depois precisa saber
+  // por que não houve dispositivo nosso em campo.
+  let motivo = '';
+  if (!amId) {
+    motivo = document.getElementById('ctrl-bx-motivo').value;
+    if (!motivo) { alert('Selecione o motivo da baixa sem amostrador'); return; }
+    if (motivo === 'Outro') {
+      const detalhe = (document.getElementById('ctrl-bx-motivo-outro').value||'').trim();
+      if (!detalhe) { alert('Descreva o motivo da baixa sem amostrador'); return; }
+      motivo = `Outro — ${detalhe}`;
+    }
+  }
+
   // Montar string da bomba (modelo + SN)
   const modeloEl = document.getElementById('ctrl-bx-bomba-modelo');
   const snEl = document.getElementById('ctrl-bx-bomba-sn');
@@ -14297,6 +14337,7 @@ async function ctrlConfirmarBaixa() {
     volume_max: m.volume_max||0,
     data_medicao: document.getElementById('ctrl-bx-data').value,
     observacao: document.getElementById('ctrl-bx-obs').value,
+    motivo_sem_amostrador: motivo || null,
   };
   if (isAvulso) {
     payload.demanda_id   = +document.getElementById('ctrl-bx-demand').value || null;
@@ -14318,6 +14359,8 @@ async function ctrlConfirmarBaixa() {
 ` +
         `• Tempo de coleta: ${r.tempo_min}–${r.tempo_max} min`
       : `✓ Baixa registrada (sem amostrador)
+` +
+        `• Motivo: ${motivo}
 ` +
         `• Medição incrementada
 ` +

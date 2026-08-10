@@ -371,6 +371,9 @@ CREATE TABLE IF NOT EXISTS baixas (
     tempo_calculado_max REAL,
     data_medicao        TEXT,
     observacao          TEXT,
+    -- Obrigatorio quando amostrador_id e NULL: por que a baixa nao teve
+    -- dispositivo nosso em campo (terceiro, agente fisico, retroativo...).
+    motivo_sem_amostrador TEXT,
     criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (medicao_id)    REFERENCES medicoes(id),
     FOREIGN KEY (amostrador_id) REFERENCES amostradores(id)
@@ -1191,11 +1194,18 @@ def _migrate(conn):
                         tempo_calculado_max REAL,
                         data_medicao        TEXT,
                         observacao          TEXT,
+                        motivo_sem_amostrador TEXT,
                         criado_em           TEXT DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (medicao_id)    REFERENCES medicoes(id),
                         FOREIGN KEY (amostrador_id) REFERENCES amostradores(id)
                     );
+                    -- Lista de colunas SEM motivo_sem_amostrador de proposito: a
+                    -- tabela antiga nao tem essa coluna (ela entra logo abaixo
+                    -- por _add_col). Nomear os campos evita depender da ordem.
                     INSERT INTO baixas_new
+                      (id,medicao_id,amostrador_id,avaliador,bomba,vazao_calibrada,
+                       volume_recomendado,tempo_calculado_min,tempo_calculado_max,
+                       data_medicao,observacao,criado_em)
                       SELECT id,medicao_id,amostrador_id,avaliador,bomba,
                              vazao_calibrada,volume_recomendado,tempo_calculado_min,
                              tempo_calculado_max,data_medicao,observacao,criado_em
@@ -1205,6 +1215,9 @@ def _migrate(conn):
                 ''')
         except Exception as e:
             print(f'[migrate] baixas.amostrador_id nullable (sqlite): {e}')
+
+    # Motivo da baixa sem amostrador (obrigatorio quando amostrador_id e NULL)
+    _add_col(conn, 'baixas', 'motivo_sem_amostrador', 'TEXT')
 
     # ── coletas_ruido ──
     for col, tipo in [('calibrador', 'TEXT'), ('unidade', 'TEXT'),

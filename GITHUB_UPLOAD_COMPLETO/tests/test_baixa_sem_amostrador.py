@@ -58,6 +58,7 @@ def test_baixa_sem_amostrador_registra_medicao():
     _, did, mid, _ = _seed()
     status, body = _post({
         'medicao_id': mid, 'amostrador_id': None,
+        'motivo_sem_amostrador': 'Avaliação feita por empresa terceira',
         'avaliador': 'Helbert', 'data_medicao': '2026-08-10',
         'observacao': 'Avaliacao feita pela Opus',
     })
@@ -68,10 +69,12 @@ def test_baixa_sem_amostrador_registra_medicao():
 
     with get_db() as conn:
         bx = row_to_dict(conn.execute(
-            "SELECT amostrador_id, avaliador FROM baixas WHERE medicao_id=?", (mid,)).fetchone())
+            "SELECT amostrador_id, avaliador, motivo_sem_amostrador "
+            "FROM baixas WHERE medicao_id=?", (mid,)).fetchone())
         dem = row_to_dict(conn.execute(
             "SELECT status FROM demandas WHERE id=?", (did,)).fetchone())
     assert bx['amostrador_id'] is None and bx['avaliador'] == 'Helbert'
+    assert bx['motivo_sem_amostrador'] == 'Avaliação feita por empresa terceira'
     assert dem['status'] == 'concluida'
 
 
@@ -95,3 +98,44 @@ def test_amostrador_inexistente_ainda_da_404():
     _, _, mid, _ = _seed()
     status, body = _post({'medicao_id': mid, 'amostrador_id': 999999})
     assert status == 404 and 'amostrador' in body['erro']
+
+
+def test_sem_amostrador_e_sem_motivo_e_recusado():
+    _, _, mid, _ = _seed()
+    status, body = _post({'medicao_id': mid, 'amostrador_id': None, 'avaliador': 'Helbert'})
+    assert status == 400 and 'motivo' in body['erro']
+    # Nada gravado: nem baixa, nem medicao mexida
+    with get_db() as conn:
+        n = conn.execute("SELECT COUNT(*) c FROM baixas WHERE medicao_id=?", (mid,)).fetchone()
+    assert (n['c'] if hasattr(n, 'keys') else n[0]) == 0
+    assert _medicao(mid)['status'] == 'pendente'
+
+
+def test_avulso_sem_motivo_nao_cria_medicao_orfa():
+    """A medicao avulsa e criada on-the-fly; se o motivo travasse depois disso,
+    sobraria medicao fantasma na demanda. O gate roda antes de qualquer escrita."""
+    _, did, _, _ = _seed()
+    with get_db() as conn:
+        antes = conn.execute(
+            "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=?", (did,)).fetchone()
+        antes = antes['c'] if hasattr(antes, 'keys') else antes[0]
+
+    status, body = _post({'demanda_id': did, 'agente_avulso': 'Silica', 'amostrador_id': None})
+    assert status == 400 and 'motivo' in body['erro']
+
+    with get_db() as conn:
+        depois = conn.execute(
+            "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=?", (did,)).fetchone()
+        depois = depois['c'] if hasattr(depois, 'keys') else depois[0]
+    assert depois == antes
+
+
+def test_motivo_e_ignorado_quando_ha_amostrador():
+    """Campo existe para o caso sem amostrador. Com amostrador a baixa nao
+    precisa dele e nao pode travar por causa dele."""
+    _, _, mid, aid = _seed(codigo='BXSEM02')
+    status, body = _post({
+        'medicao_id': mid, 'amostrador_id': aid,
+        'avaliador': 'Wesley', 'vazao_calibrada': 0.15,
+    })
+    assert status == 200 and body['ok']
