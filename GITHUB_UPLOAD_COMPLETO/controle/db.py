@@ -1582,9 +1582,10 @@ TECNICOS_MTE_SEED = [
     ('Vitoria Batista Ribeiro',                   '0071934/MG'),
     ('Heloisa Magalhães Assis',                   '0071884/MG'),
     ('Maria Letícia Profeta de Souza',            '0082402/MG'),
-    # A lista do grupo trouxe "57462-MG", mas o registro confirmado por ele é
-    # 0074881/MG (mesmo valor que saiu no certificado, Assinador 056a8c8).
-    ('Guilherme Henrique Alkimim de Souza',       '0074881/MG'),
+    # "57462-MG" da lista do grupo está CERTO: ele mesmo mandou o número em
+    # 10/08/2026 ("Registro Técnico 57462/MG"). Em 03/08 trocamos para 0074881/MG
+    # por confirmação de segunda mão — desfeito.
+    ('Guilherme Henrique Alkimim de Souza',       '0057462/MG'),
     ('Evelyn Nathally Duarte',                    '0071640/MG'),
     ('Larissa Elen Ferreira Gomes',               '0082855/MG'),
     ('Tauane dos Santos Virginio',                '0070341/MG'),
@@ -1708,8 +1709,9 @@ TECNICOS_DESLIGADOS = [
 # Registro que já foi semeado errado e precisa ser corrigido no banco — o seed
 # só INSERE quem falta, então mudar a lista acima não conserta quem já entrou.
 CORRECOES_REGISTRO = [
-    # veio "57462-MG" da lista do grupo; o confirmado é 0074881/MG
-    ('Guilherme Henrique Alkimim de Souza', '0074881/MG'),
+    # entrou 0074881/MG em 03/08 por confirmação de segunda mão; o próprio
+    # Guilherme mandou 57462/MG em 10/08/2026 — este UPDATE desfaz aquele.
+    ('Guilherme Henrique Alkimim de Souza', '0057462/MG'),
 ]
 
 
