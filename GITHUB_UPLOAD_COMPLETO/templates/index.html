@@ -5217,10 +5217,13 @@
 
     <div class="ctrl-info-box" id="ctrl-bx-metodo-info" style="display:none;"></div>
 
-    <label>Amostrador (disponível)</label>
+    <label>Amostrador (disponível) <span style="font-weight:400;text-transform:none;color:var(--text3);">— opcional</span></label>
     <select id="ctrl-bx-amostr">
-      <option value="">— Selecione um amostrador —</option>
+      <option value="">— Sem amostrador (avaliação de terceiro) —</option>
     </select>
+    <div style="font-size:.72rem;color:var(--text3);margin-top:3px;">
+      Deixe sem amostrador quando a avaliação foi feita por empresa terceira — a baixa registra só a medição, sem mexer no estoque.
+    </div>
 
     <div class="row2">
       <div>
@@ -14108,7 +14111,7 @@ async function _ctrlPrepararBaixa() {
   // Carregar amostradores em estoque
   const amostr = await ctrlFetch('/controle/amostradores?status=disponivel');
   const selAm = document.getElementById('ctrl-bx-amostr');
-  selAm.innerHTML = '<option value="">— Selecione amostrador —</option>' +
+  selAm.innerHTML = '<option value="">— Sem amostrador (avaliação de terceiro) —</option>' +
     amostr.map(a => `<option value="${a.id}" data-tipo="${a.tipo}">${a.tipo} ${a.codigo}</option>`).join('');
 
   // Carregar bombas
@@ -14263,15 +14266,17 @@ async function ctrlConfirmarBaixa() {
   const medValue = document.getElementById('ctrl-bx-medicao').value;
   const isAvulso = medValue === 'avulso';
   const medId    = isAvulso ? 0 : +medValue;
-  const amId     = +document.getElementById('ctrl-bx-amostr').value;
-  if (!amId) { alert('Selecione o amostrador'); return; }
+  // Amostrador é opcional (10/08/2026): avaliação feita por empresa terceira
+  // não tem amostrador nosso — a baixa registra só a medição.
+  const amId     = +document.getElementById('ctrl-bx-amostr').value || 0;
   if (!isAvulso && !medId) { alert('Selecione OS e agente'); return; }
   if (isAvulso) {
     const agenteAvulso = (document.getElementById('ctrl-bx-avulso-agente').value||'').trim();
     if (!agenteAvulso) { alert('Informe o nome do agente para entrada avulsa'); return; }
   }
   const vazao = parseFloat(document.getElementById('ctrl-bx-vazao').value||0);
-  if (!vazao || vazao <= 0) { alert('Informe a vazão calibrada (use ⚡ se preferir a recomendada)'); return; }
+  // Vazão só é exigida quando há amostrador nosso (tem bomba, tem tempo de coleta).
+  if (amId && (!vazao || vazao <= 0)) { alert('Informe a vazão calibrada (use ⚡ se preferir a recomendada)'); return; }
 
   // Montar string da bomba (modelo + SN)
   const modeloEl = document.getElementById('ctrl-bx-bomba-modelo');
@@ -14282,7 +14287,7 @@ async function ctrlConfirmarBaixa() {
 
   const m = window._ctrlMetodoSel || {};
   const payload = {
-    amostrador_id: amId,
+    amostrador_id: amId || null,
     avaliador: document.getElementById('ctrl-bx-avaliador').value,
     bomba: bombaStr,
     vazao_calibrada: vazao,
@@ -14304,13 +14309,19 @@ async function ctrlConfirmarBaixa() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
-    const msg = `✓ Baixa registrada
+    const msg = amId
+      ? `✓ Baixa registrada
 ` +
-                `• Amostrador vinculado à empresa da OS
+        `• Amostrador vinculado à empresa da OS
 ` +
-                `• Medição incrementada
+        `• Medição incrementada
 ` +
-                `• Tempo de coleta: ${r.tempo_min}–${r.tempo_max} min`;
+        `• Tempo de coleta: ${r.tempo_min}–${r.tempo_max} min`
+      : `✓ Baixa registrada (sem amostrador)
+` +
+        `• Medição incrementada
+` +
+        `• Nenhum amostrador foi movido para o laboratório`;
     _showToast(msg, 'success');
     ctrlCloseBaixa();
     ctrlLoadStats();

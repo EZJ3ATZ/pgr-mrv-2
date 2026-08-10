@@ -359,7 +359,10 @@ CREATE TABLE IF NOT EXISTS medicoes (
 CREATE TABLE IF NOT EXISTS baixas (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     medicao_id          INTEGER NOT NULL,
-    amostrador_id       INTEGER NOT NULL,
+    -- amostrador_id aceita NULL (10/08/2026): avaliação feita por empresa
+    -- terceira (ex.: Opus) não consome amostrador nosso, mas a baixa da
+    -- medição precisa ser registrada igual.
+    amostrador_id       INTEGER,
     avaliador           TEXT,
     bomba               TEXT,
     vazao_calibrada     REAL,
@@ -1158,6 +1161,17 @@ def _migrate(conn):
                     (sid,))
     except Exception as e:
         print(f'[migrate] status amostradores: {e}')
+
+    # ── baixas: amostrador passa a ser opcional (10/08/2026) ──
+    # Medição feita por empresa terceira (ex.: Opus) não tem amostrador nosso.
+    # A tabela em produção nasceu com NOT NULL, então precisa do ALTER.
+    # SQLite não sabe remover NOT NULL por ALTER — bancos locais antigos seguem
+    # exigindo o campo; DB novo já nasce nullable pelo schema acima.
+    if USE_PG:
+        try:
+            conn.execute('ALTER TABLE baixas ALTER COLUMN amostrador_id DROP NOT NULL')
+        except Exception as e:
+            print(f'[migrate] baixas.amostrador_id nullable: {e}')
 
     # ── coletas_ruido ──
     for col, tipo in [('calibrador', 'TEXT'), ('unidade', 'TEXT'),

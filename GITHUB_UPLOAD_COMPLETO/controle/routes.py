@@ -1822,19 +1822,20 @@ def api_concluir_demanda(did):
 # ── Baixa de amostrador ───────────────────────────────────────────────
 @controle_bp.route('/baixa', methods=['POST'])
 def dar_baixa():
-    """Da baixa em uma medicao usando um amostrador.
+    """Da baixa em uma medicao, com ou sem amostrador.
     Atualiza: amostrador.status, medicao.status/qtd_feita, demanda.status,
     e registra historico em baixas.
+
+    amostrador_id e OPCIONAL (10/08/2026): quando a avaliacao foi feita por
+    empresa terceira (ex.: Opus) nao existe amostrador nosso para mandar ao
+    laboratorio — a baixa registra so a medicao, sem mexer em estoque.
     """
     init_db()
     d = request.json or {}
     medicao_id    = d.get('medicao_id')
-    amostrador_id = d.get('amostrador_id')
+    amostrador_id = d.get('amostrador_id') or None
     agente_avulso = (d.get('agente_avulso') or '').strip()
     demanda_id_avulso = d.get('demanda_id')
-
-    if not amostrador_id:
-        return jsonify({'erro': 'amostrador_id obrigatorio'}), 400
 
     # Modo avulso: cria medicao on-the-fly quando não tem medicao pré-cadastrada
     if not medicao_id and agente_avulso:
@@ -1873,9 +1874,10 @@ def dar_baixa():
             avisos.append(f'Vazao calibrada ({vazao_calibrada}) acima do maximo do metodo ({vazao_max})')
 
     with get_db() as conn:
-        am = conn.execute('SELECT * FROM amostradores WHERE id=?', (amostrador_id,)).fetchone()
+        if amostrador_id:
+            am = conn.execute('SELECT * FROM amostradores WHERE id=?', (amostrador_id,)).fetchone()
+            if not am: return jsonify({'erro': 'amostrador nao encontrado'}), 404
         me = conn.execute('SELECT * FROM medicoes WHERE id=?', (medicao_id,)).fetchone()
-        if not am: return jsonify({'erro': 'amostrador nao encontrado'}), 404
         if not me: return jsonify({'erro': 'medicao nao encontrada'}), 404
 
         # Registrar baixa
@@ -1888,21 +1890,24 @@ def dar_baixa():
             (medicao_id, amostrador_id, avaliador, bomba, vazao_calibrada,
              vol_recomendado, tempo_min, tempo_max, data_medicao, obs))
 
-        # Buscar empresa da demanda para vincular ao amostrador
-        empresa_id = conn.execute(
-            'SELECT empresa_id FROM demandas WHERE id=?',
-            (me['demanda_id'],)).fetchone()['empresa_id']
+        # Sem amostrador (avaliação de terceiro) não há estoque para mover:
+        # a baixa fica só na medição/demanda.
+        if amostrador_id:
+            # Buscar empresa da demanda para vincular ao amostrador
+            empresa_id = conn.execute(
+                'SELECT empresa_id FROM demandas WHERE id=?',
+                (me['demanda_id'],)).fetchone()['empresa_id']
 
-        # Atualizar amostrador: muda status, vincula empresa, avaliador e data.
-        # data_envio_lab NÃO é mais carimbada com a data da medição (fix 03/07/2026)
-        # — a data REAL de envio vem do lab sync (e-mail enviado) ou lançamento manual;
-        # carimbar aqui zerava a métrica coleta→lab.
-        conn.execute("""
-            UPDATE amostradores
-            SET status='laboratorio', empresa_id=?, avaliador=?, data_medicao=?,
-                atualizado_em=CURRENT_TIMESTAMP
-            WHERE id=?""",
-            (empresa_id, avaliador, data_medicao, amostrador_id))
+            # Atualizar amostrador: muda status, vincula empresa, avaliador e data.
+            # data_envio_lab NÃO é mais carimbada com a data da medição (fix 03/07/2026)
+            # — a data REAL de envio vem do lab sync (e-mail enviado) ou lançamento manual;
+            # carimbar aqui zerava a métrica coleta→lab.
+            conn.execute("""
+                UPDATE amostradores
+                SET status='laboratorio', empresa_id=?, avaliador=?, data_medicao=?,
+                    atualizado_em=CURRENT_TIMESTAMP
+                WHERE id=?""",
+                (empresa_id, avaliador, data_medicao, amostrador_id))
 
         # Incrementar pontos realizados da medicao
         nova_qtd = (me['qtd_pontos_feita'] or 0) + 1
@@ -1925,6 +1930,7 @@ def dar_baixa():
         'ok': True,
         'tempo_min': round(tempo_min, 2),
         'tempo_max': round(tempo_max, 2),
+        'sem_amostrador': not amostrador_id,
         'avisos': avisos
     })
 
