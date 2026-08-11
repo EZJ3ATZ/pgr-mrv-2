@@ -5435,11 +5435,20 @@ def _campo_completo_pdf(d):
         story.append(Spacer(1, 4))
         story.append(_row2('Subtipo:', sub_lbl.get((v.get('subtipo','') or '').lower(), v.get('subtipo','')),
                            'Aparelho:', apa_lbl.get((v.get('aparelho','') or '').lower(), v.get('aparelho',''))))
+        pontos = v.get('pontos', [])
+        # Horário da visita: quando o bloco de campo não foi preenchido, sai da
+        # PRIMEIRA e da ÚLTIMA medição da tabela — o técnico digita hora por
+        # trabalhador e o cabeçalho saía "___ – ___" (Wesley, 11/08: OS 6549851).
+        _hs = [(str(p.get('hora_inicio') or '').strip(), str(p.get('hora_final') or '').strip())
+               for p in (pontos or []) if isinstance(p, dict)]
+        _ini = [a for a, _ in _hs if a]
+        _fim = [b for _, b in _hs if b]
+        _vhi = str(v.get('hora_ini') or '').strip() or (min(_ini) if _ini else '')
+        _vhf = str(v.get('hora_fim') or '').strip() or (max(_fim) if _fim else '')
         story.append(_row2('Acompanhante:', v.get('acomp',''),
-                           'Horário:', f'{v.get("hora_ini","___")} – {v.get("hora_fim","___")}'))
+                           'Horário:', f'{_vhi or "___"} – {_vhf or "___"}'))
         story.append(Spacer(1, 4))
 
-        pontos = v.get('pontos', [])
         _glob_vmb = (v.get('subtipo','') or '').lower() in ('vbma','ambos','vmb')
         def _pt_vmb(p):
             t = (p.get('tipo') or '').lower()
@@ -5455,17 +5464,24 @@ def _campo_completo_pdf(d):
                 str(p.get('marca') or '').strip(),
                 str(p.get('ano') or '').strip()) if x)
             return full or p.get('obs', '')
+        def _horario_pt(p):
+            # Horário da medição de CADA trabalhador — a planilha individual de
+            # vibração já imprimia; o relatório consolidado (visita com químico
+            # ou ruído junto) perdia o dado no caminho.
+            hi = str(p.get('hora_inicio') or '').strip()
+            hf = str(p.get('hora_final') or '').strip()
+            return f'{hi}–{hf}' if (hi and hf) else (hi or hf or '')
         def _tab_vib(is_vmb_t, pts_t, titulo=None):
             if is_vmb_t:
-                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Equipamento / Marca / Ano']
-                cw_v  = [W*0.04,W*0.20,W*0.15,W*0.12,W*0.11,W*0.11,W*0.27]
+                cab_v = ['#','Trabalhador','Função','Setor','Horário','T. exp. (h)','T. não exp. (h)','Equipamento / Marca / Ano']
+                cw_v  = [W*0.04,W*0.19,W*0.14,W*0.11,W*0.10,W*0.08,W*0.08,W*0.26]
             else:
-                cab_v = ['#','Trabalhador','Função','Setor','T. exp. (h)','T. não exp. (h)','Trajeto','Tipo de terreno','Veículo / Modelo / Ano']
-                cw_v  = [W*0.04,W*0.16,W*0.12,W*0.10,W*0.08,W*0.08,W*0.11,W*0.11,W*0.20]
+                cab_v = ['#','Trabalhador','Função','Setor','Horário','T. exp. (h)','T. não exp. (h)','Trajeto','Tipo de terreno','Veículo / Modelo / Ano']
+                cw_v  = [W*0.04,W*0.14,W*0.11,W*0.09,W*0.10,W*0.07,W*0.07,W*0.10,W*0.10,W*0.18]
             linhas_v = []
             for i, p in enumerate(pts_t, 1):
                 row = [i, p.get('nome',''), p.get('funcao','') or p.get('cargo',''),
-                       p.get('setor',''), p.get('tempo',''), p.get('tempo_nexp','')]
+                       p.get('setor',''), _horario_pt(p), p.get('tempo',''), p.get('tempo_nexp','')]
                 if not is_vmb_t:
                     row.append(p.get('trajeto',''))
                     row.append(p.get('terreno',''))
