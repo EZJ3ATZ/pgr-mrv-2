@@ -7756,6 +7756,43 @@ def api_detalhe_extracao(did):
     return jsonify(d)
 
 
+@controle_bp.route('/demandas/<int:did>/comentarios')
+def api_demanda_comentarios(did):
+    """
+    Histórico de comentários da tarefa no Planner, do mais recente para o mais antigo.
+
+    É o registro da tratativa com o cliente ("cliente cancelou", "aguardando
+    retorno", "sem previsão"). Sem ele o painel mostra apenas "vencida há N dias"
+    e sugere agendar, quando na verdade a bola está com o cliente.
+    """
+    init_db()
+    with get_db() as conn:
+        rows = conn.execute(
+            '''SELECT id, autor, autor_email, criado_em, texto
+                 FROM demanda_comentarios
+                WHERE demanda_id=?
+                ORDER BY criado_em DESC''',
+            (did,)
+        ).fetchall()
+    coms = [row_to_dict(r) for r in rows]
+    ultimo = coms[0] if coms else None
+    dias_mudo = None
+    if ultimo and ultimo.get('criado_em'):
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+            quando = _dt.fromisoformat(str(ultimo['criado_em']).replace('Z', '+00:00'))
+            dias_mudo = (_dt.now(_tz.utc) - quando).days
+        except Exception:
+            pass
+    return jsonify({
+        'demanda_id': did,
+        'total': len(coms),
+        'dias_sem_movimento': dias_mudo,
+        'ultimo': ultimo,
+        'comentarios': coms,
+    })
+
+
 @controle_bp.route('/demandas/<int:did>/revisar', methods=['POST'])
 def api_revisar_demanda(did):
     """
@@ -8675,6 +8712,64 @@ def api_concluir_visita(vid):
 def _require_admin():
     if not current_user.is_authenticated or current_user.role != 'admin':
         return jsonify({'erro': 'Acesso negado. Somente administradores.'}), 403
+
+
+@controle_bp.route('/admin/comentarios/backfill', methods=['POST'])
+@login_required
+def admin_backfill_comentarios():
+    """
+    ADMIN — puxa os comentários das tarefas já existentes no Planner.
+
+    O sync corrente só busca comentário de tarefa que passa pelo pipeline; as
+    demandas antigas ficaram sem. Este backfill percorre as que têm
+    planner_task_id e traz a thread de cada uma. Idempotente: pode rodar
+    quantas vezes quiser, deduplica por post.
+
+    Body opcional: {"somente_abertas": true, "limite": 200}
+    """
+    guard = _require_admin()
+    if guard:
+        return guard
+    init_db()
+    body = request.get_json(silent=True) or {}
+    somente_abertas = bool(body.get('somente_abertas', True))
+    limite = int(body.get('limite') or 500)
+
+    from .planner_sync import sync_comentarios
+    import json as _j
+
+    filtro = "AND d.status IN ('pendente','em_andamento','aberta')" if somente_abertas else ''
+    resultado = {'tarefas': 0, 'com_thread': 0, 'comentarios': 0, 'erros': 0}
+    with get_db() as conn:
+        rows = conn.execute(
+            f'''SELECT d.id, d.planner_task_id, p.raw_json, p.planner_group_id
+                  FROM demandas d
+                  JOIN planner_raw_tasks p ON p.planner_task_id = d.planner_task_id
+                 WHERE d.planner_task_id IS NOT NULL AND d.planner_task_id <> ''
+                   {filtro}
+                 LIMIT {limite}'''
+        ).fetchall()
+        for r in rows:
+            row = row_to_dict(r)
+            resultado['tarefas'] += 1
+            thread_id, gid = None, row.get('planner_group_id')
+            try:
+                raw = row.get('raw_json')
+                if raw:
+                    rj = raw if isinstance(raw, dict) else _j.loads(raw)
+                    thread_id = rj.get('conversationThreadId')
+            except Exception:
+                pass
+            if not (thread_id and gid):
+                continue
+            resultado['com_thread'] += 1
+            try:
+                resultado['comentarios'] += sync_comentarios(
+                    conn, gid, thread_id, row['planner_task_id'], row['id'])
+            except Exception:
+                resultado['erros'] += 1
+        conn.commit()
+    return jsonify({'ok': True, **resultado})
 
 
 @controle_bp.route('/admin/usuarios')

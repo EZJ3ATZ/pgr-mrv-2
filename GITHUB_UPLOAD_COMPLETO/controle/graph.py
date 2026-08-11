@@ -426,13 +426,16 @@ def list_emails(user_id: str, top: int = 50, folder: str = 'inbox') -> list:
 def get_group_thread_posts(group_id: str, thread_id: str) -> list:
     """
     Busca posts (comentários) de uma thread de conversação de um grupo.
-    Usado para extrair número de OS dos comentários de tarefas do Planner.
+    Usado para extrair número de OS e para SINCRONIZAR os comentários da tarefa.
     Requer permissão: Group.Read.All ou GroupMember.Read.All
+
+    Traz `id` e `from` além do corpo: sem o autor não dá para saber quem
+    registrou a tratativa, e sem o id não há como deduplicar no re-sync.
     """
     try:
         data = graph_get(
             f'/groups/{group_id}/threads/{thread_id}/posts'
-            f'?$select=body,createdDateTime'
+            f'?$select=id,body,createdDateTime,from'
         )
         return data.get('value', [])
     except Exception as e:

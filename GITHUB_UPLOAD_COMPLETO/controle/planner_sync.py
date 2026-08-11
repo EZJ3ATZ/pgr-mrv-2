@@ -157,6 +157,86 @@ def _extrair_os_comentarios(group_id: str, thread_id: str) -> str | None:
     return None
 
 
+# Rodapé que a Microsoft anexa em TODO post vindo do Planner. Se não for
+# removido, ele domina o texto e some com o que a pessoa realmente escreveu.
+_RODAPE_MS_RE = re.compile(
+    r'(Estes coment[áa]rios s[ãa]o sobre a tarefa.*'
+    r'|Responder no Microsoft Planner.*'
+    r'|Tamb[ée]m [ée] poss[íi]vel responder a este e-?mail.*'
+    r'|ou responda a este e-?mail para adicionar um coment[áa]rio.*'
+    r'|Esta tarefa est[áa] no plano.*)',
+    re.IGNORECASE | re.DOTALL,
+)
+_TAG_RE = re.compile(r'<[^>]+>')
+_WS_RE = re.compile(r'\s+')
+
+
+def limpar_post(html_body: str) -> str:
+    """Texto útil de um post do Planner: sem HTML, sem entidade e sem rodapé da MS."""
+    import html as _html
+    txt = _TAG_RE.sub(' ', html_body or '')
+    txt = _html.unescape(txt)
+    txt = _RODAPE_MS_RE.sub(' ', txt)
+    return _WS_RE.sub(' ', txt).strip()
+
+
+def sync_comentarios(conn, group_id: str, thread_id: str,
+                     planner_task_id: str, demanda_id: int | None) -> int:
+    """
+    Sincroniza os comentários da tarefa do Planner para `demanda_comentarios`.
+
+    O comentário é a única fonte que diz POR QUE uma OS está parada — "cliente
+    cancelou", "aguardando retorno", "sem previsão". Sem ele o painel mostra
+    "vencida há N dias" e sugere agendar, quando na verdade a bola está com o
+    cliente. É pré-requisito para aposentar o Planner.
+
+    Idempotente: deduplica por (planner_task_id, post_id).
+    Retorna quantos comentários a tarefa tem após o sync.
+    """
+    if not (thread_id and planner_task_id):
+        return 0
+    try:
+        from .graph import get_group_thread_posts
+        posts = get_group_thread_posts(group_id, thread_id)
+    except Exception as e:
+        log.debug('[planner_sync] comentarios fetch %s: %s', planner_task_id[:8], e)
+        return 0
+
+    total = 0
+    for post in posts:
+        texto = limpar_post((post.get('body') or {}).get('content', ''))
+        if not texto:
+            continue  # post que era só rodapé
+        remetente = (post.get('from') or {}).get('emailAddress') or {}
+        autor = (remetente.get('name') or '').replace(' - ENG', '').strip()
+        try:
+            conn.execute(
+                '''INSERT INTO demanda_comentarios
+                     (demanda_id, planner_task_id, thread_id, post_id,
+                      autor, autor_email, criado_em, texto)
+                   VALUES (?,?,?,?,?,?,?,?)
+                   ON CONFLICT (planner_task_id, post_id) DO UPDATE SET
+                     texto      = EXCLUDED.texto,
+                     autor      = EXCLUDED.autor,
+                     demanda_id = COALESCE(EXCLUDED.demanda_id,
+                                           demanda_comentarios.demanda_id)''',
+                (demanda_id, planner_task_id, thread_id, post.get('id'),
+                 autor, remetente.get('address'),
+                 post.get('createdDateTime'), texto)
+            )
+            total += 1
+        except Exception as e:
+            log.debug('[planner_sync] comentario upsert %s: %s', planner_task_id[:8], e)
+
+    if demanda_id and total:
+        try:
+            conn.execute('UPDATE demandas SET tem_comentarios=? WHERE id=?',
+                         (total, demanda_id))
+        except Exception as e:
+            log.debug('[planner_sync] tem_comentarios %s: %s', demanda_id, e)
+    return total
+
+
 def _extrair_desc_comentarios(group_id: str, thread_id: str) -> str:
     """
     Extrai o texto dos comentários da conversa da tarefa do Planner.
@@ -510,6 +590,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
         'sem_os':           0,
         'empresa_fuzzy':    0,
         'empresa_pendente': 0,
+        'comentarios':      0,
         'parse_erros':      0,
         'orfas_concluidas': 0,
         'erros':            [],
@@ -780,6 +861,18 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                                empresa_match_metodo=? WHERE id=? AND empresa_id=0''',
                             (empresa_id, d['empresa_match_score'], emp_metodo, did)
                         )
+
+                        # ── FASE 5b: Comentários da tarefa ────────────────
+                        # É onde a equipe registra o motivo real de a OS estar
+                        # parada. Sem isso o painel trata OS travada no cliente
+                        # como OS agendável.
+                        try:
+                            n_com = sync_comentarios(
+                                conn, gid, tarefa.get('conversationThreadId'), tid, did)
+                            if n_com:
+                                stats['comentarios'] = stats.get('comentarios', 0) + n_com
+                        except Exception as e:
+                            log.debug('[planner_sync] comentarios task %s: %s', tid[:8], e)
 
                         mark_raw_task(conn, raw_id, 'processed')
 

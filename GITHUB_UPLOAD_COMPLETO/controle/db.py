@@ -713,6 +713,26 @@ CREATE TABLE IF NOT EXISTS tecnicos_mte (
     criado_em     TEXT DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TEXT
 );
+
+-- Comentários da tarefa do Planner. Não são campo da task: vivem como posts de
+-- uma thread de conversa do grupo M365 (task.conversationThreadId). É onde a
+-- equipe registra o motivo real de uma OS estar parada ("cliente cancelou",
+-- "aguardando retorno"), então precisam existir aqui para o Planner ser aposentado.
+-- Fica NESTE schema (e não em SCHEMA_INDEXES) porque só este é convertido para
+-- Postgres — AUTOINCREMENT vira SERIAL em SCHEMA_PG.
+CREATE TABLE IF NOT EXISTS demanda_comentarios (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    demanda_id      INTEGER,
+    planner_task_id TEXT,
+    thread_id       TEXT,
+    post_id         TEXT,
+    autor           TEXT,
+    autor_email     TEXT,
+    criado_em       TEXT,
+    texto           TEXT,
+    sincronizado_em TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (planner_task_id, post_id)
+);
 """
 
 SCHEMA_INDEXES = """
@@ -789,6 +809,8 @@ CREATE TABLE IF NOT EXISTS alertas_operacionais (
     reconhecido_em  TEXT,
     reconhecido_por TEXT
 );
+CREATE INDEX IF NOT EXISTS idx_demcom_demanda ON demanda_comentarios(demanda_id);
+CREATE INDEX IF NOT EXISTS idx_demcom_criado  ON demanda_comentarios(criado_em);
 """
 
 # Schema PostgreSQL — apenas diferenças de sintaxe
@@ -2507,6 +2529,13 @@ def get_demanda_completa(demanda_id):
                 FROM baixas b WHERE b.medicao_id = ?
                 ORDER BY b.id DESC""", (m['id'],)).fetchall()]
         d['medicoes'] = meds
+        # Comentários do Planner: é onde está o motivo de a OS estar parada
+        # ("cliente cancelou", "aguardando retorno"). Vai junto no detalhe para
+        # a tela nunca mostrar só "vencida há N dias" sem o porquê.
+        d['comentarios'] = [row_to_dict(r) for r in conn.execute(
+            '''SELECT autor, criado_em, texto FROM demanda_comentarios
+                WHERE demanda_id = ? ORDER BY criado_em DESC''',
+            (demanda_id,)).fetchall()]
         return d
 
 
