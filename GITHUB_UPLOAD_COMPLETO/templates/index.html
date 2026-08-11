@@ -17806,14 +17806,22 @@ async function nvSalvarMedicao() {
       // Químico multi-agente: salvar cada agente adicional como coleta própria.
       // Antes o erro era engolido (.catch(()=>{})) e o técnico via "sucesso" tendo
       // perdido agentes 2..N no banco. Agora coleta as falhas e avisa.
+      // `duplicada` TAMBÉM é falha aqui: o agente não entrou no banco. Ficava
+      // escondido — na LPC (10/08) 5 dos 6 tubos de poeira foram recusados como
+      // "duplicados" e o técnico viu "✅ Medição salva!" (Wesley, 11/08).
       if (tp === 'quimico' && _nvCqAgentes.length > 1) {
         for (let ai = 1; ai < _nvCqAgentes.length; ai++) {
           const extra = { ...base, tipo: 'quimico', campo_quimico: _nvCqAgentes[ai] };
           try {
             const re = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(extra)});
-            if (re && re.ok === false && !re.duplicada) throw new Error(re.erro || re.aviso || 'falha');
+            if (re && re.ok === false) throw new Error(re.erro || re.aviso || 'falha');
           } catch (e) {
-            (window._nvAgentesFalhos = window._nvAgentesFalhos || []).push(_nvCqAgentes[ai].substancias || `agente ${ai+1}`);
+            const _qual = _nvCqAgentes[ai].substancias || `agente ${ai+1}`;
+            const _quem = (_nvCqAgentes[ai].func_nome || '').trim();
+            const _tubo = ((_nvCqAgentes[ai].amostradores || [])[0] || {}).id_amostrador || '';
+            (window._nvAgentesFalhos = window._nvAgentesFalhos || []).push(
+              _qual + (_quem ? ` (${_quem}` + (_tubo ? ` · ${_tubo})` : ')') : (_tubo ? ` (${_tubo})` : ''))
+              + (e && e.message ? ` — ${e.message}` : ''));
           }
         }
       }

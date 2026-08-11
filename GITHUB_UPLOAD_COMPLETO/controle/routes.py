@@ -4445,10 +4445,25 @@ def ficha_coleta_outros(cid):
 
 
 # ── Wizard: salvar medicao completa ──────────────────────────────────
-def _coleta_duplicada(tipo, demanda_id, data, substancia=None):
+def _cods_amostr(lista):
+    """Conjunto normalizado dos códigos de amostrador de uma lista de dicts."""
+    out = set()
+    for a in (lista or []):
+        c = re.sub(r'\s+', '', str((a or {}).get('id_amostrador') or '')).upper()
+        if c:
+            out.add(c)
+    return out
+
+
+def _norm_nome(v):
+    return re.sub(r'\s+', ' ', str(v or '')).strip().upper()
+
+
+def _coleta_duplicada(tipo, demanda_id, data, substancia=None,
+                      funcionario=None, amostradores=None):
     """True se já existe coleta para a MESMA OS (demanda) + tipo + data — químico
-    também considera a substância. Evita finalizar a mesma planilha 2×.
-    Sem demanda_id → não bloqueia (medição avulsa sem OS)."""
+    também considera substância, funcionário e amostrador. Evita finalizar a
+    mesma planilha 2×. Sem demanda_id → não bloqueia (medição avulsa sem OS)."""
     try:
         did = int(demanda_id)
     except (TypeError, ValueError):
@@ -4463,11 +4478,38 @@ def _coleta_duplicada(tipo, demanda_id, data, substancia=None):
                 "WHERE demanda_id=? AND substr(COALESCE(data_coleta,''),1,10)=?",
                 (did, d10)).fetchone()
         elif tipo == 'quimico':
-            r = conn.execute(
-                "SELECT COUNT(*) AS c FROM coletas_quimico "
+            # Duplicada é a MESMA planilha finalizada 2×, NÃO dois trabalhadores
+            # no mesmo agente. Barrar só por substância matava coleta legítima:
+            # na LPC (OS 6549851, 10/08) a visita tinha 6 tubos de "Poeira
+            # Respirável + Sílica" em 6 funcionários — 5 foram recusadas aqui, o
+            # estoque nunca saiu do lugar e a cadeia não tinha o que puxar
+            # (Wesley, 11/08). O discriminador é o AMOSTRADOR, que identifica
+            # fisicamente a amostra; sem ele cai no funcionário; sem os dois,
+            # mantém a trava antiga (mesma OS + data + substância).
+            rows = [row_to_dict(x) for x in conn.execute(
+                "SELECT id, COALESCE(nome_funcionario,'') AS func FROM coletas_quimico "
                 "WHERE demanda_id=? AND substr(COALESCE(data_coleta,''),1,10)=? "
                 "AND COALESCE(substancias,'')=?",
-                (did, d10, substancia or '')).fetchone()
+                (did, d10, substancia or '')).fetchall()]
+            if not rows:
+                return False
+            novos_cods = _cods_amostr(amostradores)
+            novo_func  = _norm_nome(funcionario)
+            for rw in rows:
+                cods = _cods_amostr([row_to_dict(x) for x in conn.execute(
+                    "SELECT id_amostrador FROM coletas_quimico_amostr WHERE coleta_id=?",
+                    (rw['id'],)).fetchall()])
+                if novos_cods and cods:
+                    if novos_cods & cods:
+                        return True          # mesmo tubo → mesma planilha
+                    continue
+                func_ex = _norm_nome(rw.get('func'))
+                if novo_func or func_ex:
+                    if novo_func == func_ex:
+                        return True          # mesmo funcionário, sem tubo p/ separar
+                    continue
+                return True                  # sem tubo e sem nome: trava antiga
+            return False
         else:
             r = conn.execute(
                 "SELECT COUNT(*) AS c FROM coletas_outros "
@@ -4584,9 +4626,11 @@ def api_salvar_medicao_wizard():
                 if cq.get(k)),
             'amostradores':       cq.get('amostradores', []),
         }
-        if _coleta_duplicada('quimico', d.get('demanda_id'), d.get('data'), cq.get('substancias', '')):
+        if _coleta_duplicada('quimico', d.get('demanda_id'), d.get('data'),
+                             cq.get('substancias', ''), cq.get('func_nome', ''),
+                             cq.get('amostradores') or []):
             return jsonify({'ok': False, 'duplicada': True,
-                            'aviso': 'Esta planilha química (mesma OS, data e substância) já foi finalizada. Não registrada de novo.'})
+                            'aviso': 'Esta planilha química (mesma OS, data, substância e amostrador) já foi finalizada. Não registrada de novo.'})
         # Química NÃO finaliza na planilha de campo: fica 'aguardando_lab' e a
         # baixa real acontece quando o resultado (RA) chega por e-mail (lab_inbox).
         bx = _baixar_medicao_pendente(d.get('demanda_id'), 'quimico',
