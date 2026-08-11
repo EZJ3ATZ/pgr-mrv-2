@@ -14677,7 +14677,19 @@ async function ccMedGerar() {
       throw new Error(j.erro || 'não foi possível gravar o agente');
     }
     // 2) gera a cadeia (o endpoint carimba data_envio_lab)
+    // Medição cujo amostrador não está no estoque não tem como entrar na cadeia
+    // (a linha é montada a partir do inventário). ANTES ela era descartada em
+    // silêncio e o arquivo saía sem ela — foi a queixa do Wesley (11/08): "a
+    // cadeia não puxa todas as medições realizadas". Agora avisa QUAL falta.
+    const semCadastro = marcados.filter(m => m.amostrador_id == null).map(m => m.codigo);
     const ids = marcados.map(m => m.amostrador_id).filter(x => x != null);
+    if (semCadastro.length) {
+      alert('⚠️ Estes amostradores não estão cadastrados no estoque e ficariam FORA da cadeia:\n\n' +
+            semCadastro.join('\n') +
+            '\n\nCadastre-os em Amostradores (ou corrija o código digitado na planilha) e gere de novo — ' +
+            'sem isso o laboratório não recebe essas amostras e o resultado não tem onde entrar.');
+      return;   // o finally devolve o botão
+    }
     if (!ids.length) throw new Error('amostradores sem cadastro no inventário');
     const agentesPorCod = {};
     marcados.forEach(m => { agentesPorCod[m.codigo] = [ags[m.codigo]]; });
@@ -14751,7 +14763,8 @@ function ccRender() {
   const cnpj = document.getElementById('cc-cnpj');
   cnpj.value = emp.cnpj || '';
   document.getElementById('cc-cnpj-hint').textContent =
-    emp.cnpj ? '' : '— digite uma vez, fica salvo';
+    emp.cnpj ? (emp.cnpj_da_os ? '— achado no texto da OS, confira' : '')
+             : '— obrigatório (*) no formulário do lab; digite uma vez, fica salvo';
 
   const sug = d.agentes_sugeridos || [];
   const opcoes = sug.map(a => `<option value="${qEsc(a)}">`).join('');

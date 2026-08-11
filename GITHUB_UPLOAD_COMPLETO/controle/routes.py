@@ -9372,6 +9372,11 @@ def cadeia_custodia_gerar():
         dados = coletar_dados(ids, d.get('demanda_id'), d.get('agentes'))
         if not dados.get('linhas'):
             return jsonify({'erro': 'nenhum amostrador válido'}), 400
+        # CNPJ pescado do texto da OS entra no cadastro na primeira cadeia —
+        # 517 das 520 empresas estão sem ele e o lab marca como obrigatório.
+        _emp = dados.get('empresa') or {}
+        if _emp.get('cnpj_da_os') and _emp.get('id'):
+            completar_empresa(_emp['id'], {'cnpj': _emp.get('cnpj')})
         # AGENTE é obrigatório no formulário: sem ele o laboratório não sabe o
         # que analisar e a importação eletrônica é rejeitada. `forcar=true`
         # libera (o técnico pode preencher à mão depois).

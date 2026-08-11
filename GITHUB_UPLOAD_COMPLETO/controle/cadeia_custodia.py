@@ -120,6 +120,31 @@ def _volume(vazao, tempo_min, gravado, hora_ini=None, hora_fim=None):
         return None
 
 
+def _norm_cod(v):
+    """Código de amostrador comparável: sem espaço, maiúsculo."""
+    return re.sub(r'\s+', '', str(v or '')).upper()
+
+
+CNPJ_RX = re.compile(r'\b(\d{2})[.\s]?(\d{3})[.\s]?(\d{3})[/\s]?(\d{4})[-\s]?(\d{2})\b')
+
+
+def cnpj_do_texto(*textos):
+    """Primeiro CNPJ que aparecer nos textos, formatado 00.000.000/0000-00.
+
+    A empresa vem do Planner e o CNPJ costuma estar no título ou na descrição da
+    task (196 das tasks cruas em 11/08/2026) — o cadastro tem em 3 de 520. O lab
+    marca o campo com (*), então vale pescar do texto em vez de pedir ao técnico
+    o que o sistema já recebeu.
+    """
+    for t in textos:
+        if not t:
+            continue
+        m = CNPJ_RX.search(str(t))
+        if m:
+            return '{}.{}.{}/{}-{}'.format(*m.groups())
+    return ''
+
+
 def _agentes_da_linha(sub_gravada):
     """Agentes DESTA amostra — só o que foi efetivamente gravado na coleta.
 
@@ -168,10 +193,22 @@ def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
                 empresa = row_to_dict(row)
 
         # Coleta química por CÓDIGO do amostrador (o vínculo é textual).
-        codigos = [a['codigo'] for a in amostradores if a.get('codigo')]
-        coletas = {}
-        if codigos:
-            ph2 = ','.join(['?'] * len(codigos))
+        # Casamento NORMALIZADO e por duas formas: o estoque às vezes guarda o
+        # código partido em tipo+codigo ('MTS' + '3091') e o técnico digita junto
+        # na planilha ('MTS3091'). Comparação exata perdia a coleta e a linha da
+        # cadeia saía vazia (Wesley 11/08: "não puxa todas as medições").
+        chave_de = {}                      # chave normalizada -> código do estoque
+        for a in amostradores:
+            cod = str(a.get('codigo') or '').strip()
+            if not cod:
+                continue
+            for k in {_norm_cod(cod), _norm_cod(str(a.get('tipo') or '') + cod)}:
+                if k:
+                    chave_de.setdefault(k, cod)
+        coletas = {}                       # código do estoque -> [coletas]
+        if chave_de:
+            chaves = list(chave_de.keys())
+            ph2 = ','.join(['?'] * len(chaves))
             for r in conn.execute(f"""
                 SELECT cqa.id_amostrador, cqa.substancia, cqa.vazao_media, cqa.volume_l,
                        cqa.hora_inicio, cqa.hora_final, cqa.tempo_min, cqa.intervalos,
@@ -179,36 +216,60 @@ def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
                        cq.data_coleta, cq.observacao
                 FROM coletas_quimico_amostr cqa
                 JOIN coletas_quimico cq ON cq.id = cqa.coleta_id
-                WHERE cqa.id_amostrador IN ({ph2})""", codigos).fetchall():
+                WHERE REPLACE(UPPER(TRIM(cqa.id_amostrador)), ' ', '') IN ({ph2})
+                ORDER BY cqa.id""", chaves).fetchall():
                 d = row_to_dict(r)
-                coletas.setdefault(str(d['id_amostrador']).strip().upper(), d)
+                dono = chave_de.get(_norm_cod(d.get('id_amostrador')))
+                if dono:
+                    coletas.setdefault(dono, []).append(d)
 
         sugeridos = _agentes_sugeridos(conn, demanda_id)
+        cnpj_texto = _cnpj_da_demanda(conn, demanda_id) if not empresa.get('cnpj') else ''
 
-    escolhidos = {str(k).strip().upper(): v for k, v in (agentes_por_codigo or {}).items()}
+    escolhidos = {_norm_cod(k): v for k, v in (agentes_por_codigo or {}).items()}
     linhas, avisos = [], []
     for a in amostradores:
         cod = str(a.get('codigo') or '').strip()
-        c = coletas.get(cod.upper(), {})
-        agentes = ([x for x in escolhidos.get(cod.upper(), []) if str(x).strip()][:MAX_AGENTES]
-                   or _agentes_da_linha(c.get('substancia')))
+        cs = coletas.get(cod) or []
+        c = cs[0] if cs else {}
+
+        def _prim(campo):
+            """Primeiro valor não vazio entre as coletas do MESMO tubo."""
+            for x in cs:
+                v = x.get(campo)
+                if v not in (None, '', 0):
+                    return v
+            return c.get(campo)
+
+        # Um tubo pode carregar MAIS DE UM agente: o mesmo filtro EC vai ao lab
+        # para Manganês E Ferro (Destak, 29/07 — 2 coletas no EC98029A). O
+        # formulário tem AGENTE 1..10 justamente para isso; antes só a primeira
+        # coleta era lida e o lab não analisava o resto.
+        subs = []
+        for x in cs:
+            for s in _agentes_da_linha(x.get('substancia')):
+                if s not in subs:
+                    subs.append(s)
+        agentes = ([x for x in escolhidos.get(_norm_cod(cod), []) if str(x).strip()][:MAX_AGENTES]
+                   or subs[:MAX_AGENTES])
         linha = {
             'codigo':      cod,
-            'data':        _fmt_data(c.get('data_coleta') or a.get('data_medicao')),
-            'funcionario': (c.get('nome_funcionario') or '').strip(),
-            'funcao':      (c.get('funcao') or '').strip(),
-            'setor':       (c.get('setor') or '').strip(),
-            'tecnico':     (c.get('responsavel_coleta') or a.get('avaliador') or '').strip(),
-            'vazao':       c.get('vazao_media'),
-            'volume':      _volume(c.get('vazao_media'), c.get('tempo_min'), c.get('volume_l'),
-                                   c.get('hora_inicio'), c.get('hora_final')),
-            'hora_ini':    _fmt_hora(c.get('hora_inicio')),
-            'hora_fim':    _fmt_hora(c.get('hora_final')),
-            'intervalos':  (c.get('intervalos') or '').strip(),
-            'obs':         (c.get('observacao') or '').strip(),
+            'data':        _fmt_data(_prim('data_coleta') or a.get('data_medicao')),
+            'funcionario': (_prim('nome_funcionario') or '').strip(),
+            'funcao':      (_prim('funcao') or '').strip(),
+            'setor':       (_prim('setor') or '').strip(),
+            'tecnico':     (_prim('responsavel_coleta') or a.get('avaliador') or '').strip(),
+            'vazao':       _prim('vazao_media'),
+            'volume':      _volume(_prim('vazao_media'), _prim('tempo_min'), _prim('volume_l'),
+                                   _prim('hora_inicio'), _prim('hora_final')),
+            'hora_ini':    _fmt_hora(_prim('hora_inicio')),
+            'hora_fim':    _fmt_hora(_prim('hora_final')),
+            'intervalos':  (_prim('intervalos') or '').strip(),
+            'obs':         (_prim('observacao') or '').strip(),
             'agentes':     agentes,
+            'coletas':     len(cs),
         }
-        if not c:
+        if not cs:
             avisos.append(f'{cod}: sem coleta química registrada — linha quase vazia')
         if not agentes:
             avisos.append(f'{cod}: AGENTE não informado — escolha antes de enviar '
@@ -219,8 +280,33 @@ def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
 
     if not empresa.get('nome'):
         avisos.append('Empresa avaliada sem razão social')
+    # CNPJ é (*) no formulário do laboratório. Se o cadastro não tem, tenta o
+    # texto da OS (o Planner costuma trazer) — e se nem lá, cobra do técnico.
+    if not str(empresa.get('cnpj') or '').strip() and cnpj_texto:
+        empresa = {**empresa, 'cnpj': cnpj_texto, 'cnpj_da_os': True}
+    if not str(empresa.get('cnpj') or '').strip():
+        avisos.append('CNPJ da empresa vazio — obrigatório (*) no formulário do '
+                      'laboratório. Preencha aqui: fica salvo no cadastro.')
     return {'empresa': empresa, 'linhas': linhas, 'avisos': avisos,
             'agentes_sugeridos': sugeridos}
+
+
+def _cnpj_da_demanda(conn, demanda_id):
+    """CNPJ pescado do texto da OS (título/descrição/checklist da task)."""
+    if not demanda_id:
+        return ''
+    try:
+        row = conn.execute(
+            'SELECT titulo, descricao, checklist, cnpj FROM demandas WHERE id=?',
+            (demanda_id,)).fetchone()
+        if not row:
+            return ''
+        d = row_to_dict(row)
+        return (str(d.get('cnpj') or '').strip()
+                or cnpj_do_texto(d.get('titulo'), d.get('descricao'), d.get('checklist')))
+    except Exception as e:
+        log.warning('[cadeia] cnpj da demanda falhou: %s', e)
+        return ''
 
 
 def _agentes_sugeridos(conn, demanda_id):
