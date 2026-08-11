@@ -109,15 +109,14 @@ def test_duas_medicoes_no_mesmo_tubo_viram_dois_agentes_na_mesma_linha(limpar):
         limpar.append(-202)
         _demanda(conn, 9003)
         _coleta(conn, 9003, 'José Francisco', 'Manganês', 'EC98029A')
-        # nome sem vírgula de propósito: _agentes_da_linha trata ',' como
-        # separador de agentes ("Tolueno, Xileno"), então "Ferro, Óxido (Fe2O3)"
-        # entraria partido em dois. É comportamento antigo e assunto separado.
-        _coleta(conn, 9003, 'José Francisco', 'Ferro', 'EC98029A')
+        # nome canônico COM vírgula: tem de chegar inteiro ao lab
+        # (ver tests/test_agente_nome_com_virgula.py)
+        _coleta(conn, 9003, 'José Francisco', 'Ferro, óxido (Fe2O3)', 'EC98029A')
     d = coletar_dados([-202])
     assert len(d['linhas']) == 1, 'é UM tubo físico → uma linha na cadeia'
     ln = d['linhas'][0]
     assert ln['coletas'] == 2
-    assert ln['agentes'] == ['Manganês', 'Ferro'], \
+    assert ln['agentes'] == ['Manganês', 'Ferro, óxido (Fe2O3)'], \
         'o 2º agente do mesmo filtro não chegou à cadeia — o lab não analisaria'
 
 
@@ -128,12 +127,12 @@ def test_os_dois_agentes_saem_nas_colunas_do_formulario(limpar):
         limpar.append(-203)
         _demanda(conn, 9004)
         _coleta(conn, 9004, 'José Francisco', 'Manganês', 'EC97917A')
-        _coleta(conn, 9004, 'José Francisco', 'Ferro', 'EC97917A')
+        _coleta(conn, 9004, 'José Francisco', 'Ferro, óxido (Fe2O3)', 'EC97917A')
     d = coletar_dados([-203])
     wa = openpyxl.load_workbook(io.BytesIO(gerar_xlsx(d)))['Dados Agentes']
     assert wa.cell(LINHA_1, 4).value == 'EC97917A'
     assert wa.cell(LINHA_1, 17).value == 'Manganês'                  # Q AGENTE 1
-    assert wa.cell(LINHA_1, 18).value == 'Ferro'                     # R AGENTE 2
+    assert wa.cell(LINHA_1, 18).value == 'Ferro, óxido (Fe2O3)'      # R AGENTE 2
 
 
 def test_escolha_do_tecnico_continua_vencendo_o_que_esta_no_banco(limpar):

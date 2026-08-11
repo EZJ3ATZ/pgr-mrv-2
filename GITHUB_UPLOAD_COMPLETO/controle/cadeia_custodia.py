@@ -145,6 +145,44 @@ def cnpj_do_texto(*textos):
     return ''
 
 
+def _norm_agente(v):
+    """Nome de agente comparável com o guia: sem quebra de linha, maiúsculo."""
+    return re.sub(r'\s+', ' ', str(v or '').replace('\n', ' ')).strip().upper().rstrip('.')
+
+
+_GUIA_NOMES = None
+
+
+def _nomes_do_guia():
+    """Nomes de agente do guia de métodos (408), normalizados. Cache em memória.
+
+    Serve para saber se uma vírgula SEPARA dois agentes ou faz parte do nome de
+    um só. Guia ausente → conjunto vazio, e aí nada é separado por vírgula: é o
+    lado seguro (agente a mais na cadeia é análise a mais cobrada).
+    """
+    global _GUIA_NOMES
+    if _GUIA_NOMES is None:
+        try:
+            import json as _j
+            caminho = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'guia_metodos.json')
+            with open(caminho, encoding='utf-8') as f:
+                guia = _j.load(f)
+            _GUIA_NOMES = {_norm_agente(k) for k in (guia.get('by_name') or {})}
+        except Exception as e:
+            log.warning('[cadeia] guia de métodos indisponível: %s', e)
+            _GUIA_NOMES = set()
+    return _GUIA_NOMES
+
+
+# ';' e '/' o técnico usa para LISTAR agentes; vírgula e ' e ' aparecem dentro
+# do nome canônico (98 dos 408 agentes do guia têm vírgula) e só separam quando
+# os dois lados são, eles próprios, agentes do guia.
+_SEP_LISTA = re.compile(r'[;/]')
+_SEP_DUVIDOSO = re.compile(r',|\s+e\s+', re.IGNORECASE)
+
+
 def _agentes_da_linha(sub_gravada):
     """Agentes DESTA amostra — só o que foi efetivamente gravado na coleta.
 
@@ -154,11 +192,34 @@ def _agentes_da_linha(sub_gravada):
     multiplicaria o custo da análise. Quando falta, o campo sai vazio, entra em
     `avisos` e quem decide é o técnico — que é o único que sabe o que pôs em
     cada tubo.
+
+    A vírgula era separador fixo, então "Ferro, óxido (Fe2O3)" ia ao laboratório
+    como DOIS agentes e "Manganês elementar e compostos inorgânicos, como Mn"
+    como TRÊS — cada um vira uma análise cobrada. Agora quem decide é o guia de
+    métodos: só separa quando cada pedaço é um agente de verdade.
     """
     if not sub_gravada:
         return []
-    itens = [s.strip() for s in re.split(r'[;,/]| e ', str(sub_gravada)) if s.strip()]
-    return itens[:MAX_AGENTES]
+    catalogo = _nomes_do_guia()
+    achados = []
+    for bruto in _SEP_LISTA.split(str(sub_gravada)):
+        parte = re.sub(r'\s+', ' ', bruto).strip()
+        if not parte:
+            continue
+        pedacos = [p.strip() for p in _SEP_DUVIDOSO.split(parte) if p.strip()]
+        if (len(pedacos) > 1
+                and _norm_agente(parte) not in catalogo
+                and all(_norm_agente(p) in catalogo for p in pedacos)):
+            achados.extend(pedacos)          # "Tolueno, Xileno" → dois agentes
+        else:
+            achados.append(parte)            # nome com vírgula continua inteiro
+    vistos, final = set(), []
+    for a in achados:
+        k = _norm_agente(a)
+        if k and k not in vistos:
+            vistos.add(k)
+            final.append(a)
+    return final[:MAX_AGENTES]
 
 
 def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
