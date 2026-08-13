@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS perf_log (
     consultas   INTEGER,
     bytes_resp  INTEGER,
     usuario     TEXT,
-    usuario_id  INTEGER
+    usuario_id  INTEGER,
+    automatico  INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_perf_criado ON perf_log(criado_em);
 CREATE INDEX IF NOT EXISTS idx_perf_rota   ON perf_log(rota, criado_em);
@@ -71,6 +72,7 @@ def garantir_tabela():
             conn.executescript(SCHEMA_PERF_PG if USE_PG else SCHEMA_PERF_SQLITE)
             # colunas que nasceram depois da tabela (CREATE IF NOT EXISTS não add)
             _add_col(conn, 'perf_log', 'usuario_id', 'INTEGER')
+            _add_col(conn, 'perf_log', 'automatico', 'INTEGER DEFAULT 0')
             # linha gravada antes da coluna existir: casa pelo e-mail, uma vez
             try:
                 conn.execute(
@@ -94,11 +96,11 @@ def _gravar(linhas):
         for l in linhas:
             conn.execute(
                 'INSERT INTO perf_log (rota,metodo,path,status,duracao_ms,'
-                'ms_banco,consultas,bytes_resp,usuario,usuario_id,criado_em) '
-                'VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)',
+                'ms_banco,consultas,bytes_resp,usuario,usuario_id,automatico,criado_em) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)',
                 (l['rota'], l['metodo'], l['path'], l['status'], l['duracao_ms'],
                  l['ms_banco'], l['consultas'], l['bytes_resp'], l['usuario'],
-                 l.get('usuario_id')))
+                 l.get('usuario_id'), 1 if l.get('automatico') else 0))
 
 
 def _podar_se_na_hora():
@@ -141,7 +143,7 @@ def _descarregar(forcar=False):
 
 
 def registrar(rota, metodo, path, status, duracao_ms, ms_banco, consultas,
-              bytes_resp, usuario, usuario_id=None):
+              bytes_resp, usuario, usuario_id=None, automatico=False):
     global _primeiro_em
     with _lock:
         if len(_buffer) >= TETO_BUFFER:
@@ -149,6 +151,7 @@ def registrar(rota, metodo, path, status, duracao_ms, ms_banco, consultas,
         if _primeiro_em is None:
             _primeiro_em = _agora()
         _buffer.append({
+            'automatico': automatico,
             'rota': (rota or '?')[:120], 'metodo': (metodo or '')[:10],
             'path': (path or '')[:200], 'status': status,
             'duracao_ms': duracao_ms, 'ms_banco': ms_banco,
@@ -213,9 +216,23 @@ def init_app(app):
             except Exception:
                 pass
 
+            # 🔴 Requisição NÃO é uso. A aba parada chama /controle/eventos
+            # sozinha a cada minuto, e isso fazia o painel dizer que a pessoa
+            # estava usando o sistema. O navegador manda quantos ms passaram
+            # desde o último toque humano; acima de 5 s é robô.
+            # Sem o cabeçalho (carga inicial, curl, app de campo antigo) NÃO
+            # marca como automático — na dúvida, não acusar de robô.
+            automatico = False
+            try:
+                idle = request.headers.get('X-Interacao-Ms')
+                if idle is not None and int(idle) > 5000:
+                    automatico = True
+            except Exception:
+                pass
+
             registrar(request.endpoint or path, request.method, path,
                       resp.status_code, dur, int(ms_banco), n_consultas,
-                      tamanho, usuario, usuario_id)
+                      tamanho, usuario, usuario_id, automatico)
         except Exception:
             pass   # telemetria nunca quebra a resposta
         return resp
@@ -388,18 +405,33 @@ def uso_por_pessoa(dias=30):
                 WHERE e.usuario_id = u.id
                   AND e.tipo NOT IN ('login', 'logout'))                 AS ultima_acao,
               (SELECT COUNT(*)          FROM perf_log p WHERE {liga} AND {w}) AS requisicoes,
+              (SELECT COUNT(*) FROM perf_log p
+                WHERE {liga} AND {w} AND COALESCE(p.automatico,0) = 1)         AS req_automaticas,
               (SELECT COUNT(DISTINCT p.rota) FROM perf_log p WHERE {liga} AND {w}) AS telas,
-              (SELECT MAX(p.criado_em)  FROM perf_log p WHERE {liga} AND {w}) AS ultima_requisicao,
+              -- só requisição com gente do outro lado conta como atividade
+              (SELECT MAX(p.criado_em) FROM perf_log p
+                WHERE {liga} AND {w} AND COALESCE(p.automatico,0) = 0)         AS ultima_requisicao,
               (SELECT ROUND(AVG(p.duracao_ms)) FROM perf_log p WHERE {liga} AND {w}) AS media_ms,
               (SELECT MAX(p.duracao_ms) FROM perf_log p WHERE {liga} AND {w}) AS pior_ms,
               (SELECT COUNT(*) FROM perf_log p
                 WHERE {liga} AND {w} AND p.status >= 500)                 AS erros
             FROM usuarios u
             ORDER BY u.nome""", (corte, corte)).fetchall()
+    # cliques (atividade_log) — o sinal mais confiável de uso humano
+    try:
+        from .atividade import por_pessoa as ativ_por_pessoa
+        cliques = ativ_por_pessoa(dias)
+    except Exception:
+        cliques = {}
+
     lista = []
     for r in rows:
         d = dict(r)
-        for c in ('ultimo_login', 'ultima_acao', 'ultima_requisicao'):
+        a = cliques.get(int(d['id'])) if d.get('id') is not None else None
+        d['cliques'] = (a or {}).get('cliques') or 0
+        d['telas_abertas'] = (a or {}).get('telas') or 0
+        d['ultimo_clique'] = _iso((a or {}).get('ultimo'))
+        for c in ('ultimo_login', 'ultima_acao', 'ultima_requisicao', 'ultimo_clique'):
             d[c] = _iso(d.get(c))
         # 🔴 "última atividade" é o MAIOR entre requisição medida e ação
         # registrada. A 1ª versão usava só a requisição e a tela caía para o
@@ -408,17 +440,18 @@ def uso_por_pessoa(dias=30):
         # 13 na Kelly. Datas são ISO e ambas UTC, então comparar os 19
         # primeiros caracteres é suficiente e evita cast (eventos.criado_em
         # é TEXT e tem lixo histórico).
-        marcas = [x for x in (d.get('ultima_requisicao'), d.get('ultima_acao'),
-                              d.get('ultimo_login')) if x]
-        d['ultima_atividade'] = max(marcas, key=lambda x: str(x)[:19]) if marcas else None
-        # de onde veio, para a tela não precisar adivinhar
-        if d['ultima_atividade'] == d.get('ultima_requisicao'):
-            d['atividade_fonte'] = 'requisicao'
-        elif d['ultima_atividade'] == d.get('ultima_acao'):
-            d['atividade_fonte'] = 'acao'
-        elif d['ultima_atividade']:
-            d['atividade_fonte'] = 'login'
+        # ordem de confiança: clique > ação gravada > requisição humana > login
+        fontes = (('clique', d.get('ultimo_clique')),
+                  ('acao', d.get('ultima_acao')),
+                  ('requisicao', d.get('ultima_requisicao')),
+                  ('login', d.get('ultimo_login')))
+        validas = [(f, v) for f, v in fontes if v]
+        if validas:
+            fonte, marca_ = max(validas, key=lambda fv: str(fv[1])[:19])
+            d['ultima_atividade'] = marca_
+            d['atividade_fonte'] = fonte
         else:
+            d['ultima_atividade'] = None
             d['atividade_fonte'] = None
         lista.append(d)
 
@@ -432,6 +465,16 @@ def uso_por_pessoa(dias=30):
     nunca = sorted([r for r in lista if not marca(r)],
                    key=lambda r: (r.get('nome') or ''))
     return ativos + nunca
+
+
+def _cliques_recentes():
+    """Rastro de atividade humana para a tela. Se o módulo falhar, o painel de
+    desempenho continua funcionando (cada pedaço é isolado)."""
+    from .atividade import recentes, mais_clicados
+    return {
+        'ultimos': recentes(dias=7, limite=60),
+        'mais_clicados': mais_clicados(dias=7, limite=12),
+    }
 
 
 def resumo_completo(dias=7):
@@ -448,6 +491,7 @@ def resumo_completo(dias=7):
         ('lentas',  lambda: lentas(dias),      []),
         ('banco',   consultas_do_banco,        []),
         ('pessoas', lambda: uso_por_pessoa(30), []),   # 30d fixos, igual ao CRM
+        ('cliques', _cliques_recentes, {}),
     )
     problemas = []
     for chave, fn, vazio in partes:

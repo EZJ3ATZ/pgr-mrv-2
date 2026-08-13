@@ -154,10 +154,45 @@ checa('diz de onde veio a marca', k.get('atividade_fonte') == 'acao',
 checa('nao inventa requisicao para quem nao tem', (k.get('requisicoes') or 0) == 0,
       f"{k.get('requisicoes')}")
 
-# quem TEM requisicao medida mais nova que a acao: a fonte passa a ser a tela
+print('\n== 4b) CLIQUE vence tudo, e requisicao AUTOMATICA nao conta ==')
+from controle import atividade                                    # noqa: E402
+atividade.garantir_tabela()
+# 1) requisicao automatica (aba parada fazendo polling) NAO pode virar atividade
+ana2 = ids['Ana Paula Silva']
+with db.get_db() as conn:
+    conn.execute('INSERT INTO perf_log (rota,metodo,path,status,duracao_ms,ms_banco,'
+                 'consultas,bytes_resp,usuario,usuario_id,automatico,criado_em) '
+                 "VALUES ('poll','GET','/x',200,5,1,1,10,'ana2@x.com',?,1,"
+                 "datetime('now'))", (ana2,))
+a2 = {p['nome']: p for p in perf.uso_por_pessoa(3650)}.get('Ana Paula Silva') or {}
+checa('polling da aba parada NAO conta como atividade',
+      a2.get('ultima_atividade') is None, f"{a2.get('ultima_atividade')} "
+      f"(fonte={a2.get('atividade_fonte')})")
+checa('mas aparece na contagem de automaticas',
+      (a2.get('req_automaticas') or 0) == 1, f"{a2.get('req_automaticas')}")
+
+# 2) clique registrado ganha de acao e de requisicao
+n = atividade.registrar_lote(
+    [{'tipo': 'clique', 'rotulo': 'Salvar', 'alvo': 'button#salvar', 'tela': '/medicoes'},
+     {'tipo': 'clique', 'rotulo': 'Concluir', 'alvo': 'button', 'tela': '/medicoes'},
+     {'tipo': 'inventado', 'rotulo': 'x'}],                        # tipo invalido: descartado
+    usuario_id=wes, usuario='eng7@x.com')
+checa('grava 2 cliques e descarta o tipo invalido', n == 2, f'{n}')
 w2 = {p['nome']: p for p in perf.uso_por_pessoa(3650)}.get('Wesley Vieira Rodrigues') or {}
-checa('quem abriu tela agora tem fonte=requisicao',
-      w2.get('atividade_fonte') == 'requisicao', f"{w2.get('atividade_fonte')}")
+checa('fonte da atividade passa a ser o CLIQUE',
+      w2.get('atividade_fonte') == 'clique', f"{w2.get('atividade_fonte')}")
+checa('conta os cliques da pessoa', (w2.get('cliques') or 0) == 2, f"{w2.get('cliques')}")
+
+print('\n== 4c) o rastro cronologico responde "o que cada um clicou" ==')
+ev = atividade.recentes(dias=1, usuario_id=wes)
+checa('rastro traz os cliques do Wesley', len(ev) == 2, f'{len(ev)}')
+checa('rastro tem rotulo, tela e pessoa',
+      bool(ev and ev[0].get('rotulo') and ev[0].get('tela') and ev[0].get('pessoa')),
+      f'{ev[:1]}')
+top = atividade.mais_clicados(dias=1)
+checa('agrega o mais clicado', any(t['rotulo'] == 'Salvar' for t in top), f'{top}')
+checa('filtro por pessoa isola', atividade.recentes(dias=1, usuario_id=ana2) == [],
+      'vazou clique de outra pessoa')
 
 print('\n== 5) quem nunca usou aparece, no fim ==')
 nomes = [p['nome'] for p in lista]

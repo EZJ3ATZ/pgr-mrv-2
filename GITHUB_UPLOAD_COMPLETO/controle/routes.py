@@ -8020,6 +8020,52 @@ def admin_saude():
     return jsonify(d)
 
 
+@controle_bp.route('/atividade', methods=['POST'])
+def registrar_atividade():
+    """Recebe o lote de cliques do navegador.
+
+    Qualquer pessoa logada grava a PRÓPRIA atividade — o ator vem da sessão,
+    nunca do corpo. Leitura é admin (rota /admin/atividade).
+    """
+    try:
+        from .atividade import registrar_lote
+        d = request.json or {}
+        uid = None
+        try:
+            uid = int(current_user.id)
+        except Exception:
+            uid = None
+        nome = getattr(current_user, 'email', None) or getattr(current_user, 'nome', None)
+        n = registrar_lote(d.get('eventos') or [], usuario_id=uid, usuario=nome)
+        return jsonify({'ok': True, 'gravados': n})
+    except Exception as e:
+        # telemetria nunca devolve erro para a tela
+        return jsonify({'ok': False, 'erro': str(e)[:200]}), 200
+
+
+@controle_bp.route('/admin/atividade')
+def admin_atividade():
+    """Rastro de cliques/mexidas. Filtros: pessoa, tela, tipo, dias, limite."""
+    init_db()
+    try:
+        from .atividade import recentes, mais_clicados, por_pessoa
+        dias = max(1, min(int(request.args.get('dias', 7)), 60))
+        return jsonify({
+            'dias': dias,
+            'eventos': recentes(
+                dias=dias,
+                usuario_id=request.args.get('pessoa') or None,
+                tela=request.args.get('tela') or None,
+                tipo=request.args.get('tipo') or None,
+                limite=int(request.args.get('limite', 200))),
+            'mais_clicados': mais_clicados(dias=dias),
+            'por_pessoa': por_pessoa(dias=dias),
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/admin/log_evento', methods=['POST'])
 def admin_log_evento():
     """Registra evento de analytics (PostHog server-side)."""

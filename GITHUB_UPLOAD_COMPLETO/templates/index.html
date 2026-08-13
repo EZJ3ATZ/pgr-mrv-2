@@ -18450,6 +18450,143 @@ function _perfPesoCor(b) {
   return 'var(--text3)';
 }
 
+// ══════════════════════════════════════════════════════════════════════
+//  LOG DE ATIVIDADE HUMANA — cada clique, cada mexida
+//  Requisição NÃO é uso: a aba parada chama /controle/eventos sozinha a cada
+//  minuto e isso fazia o painel dizer que a pessoa estava usando o sistema.
+//  Clique é humano. Guarda o RÓTULO do elemento, nunca o que foi digitado.
+// ══════════════════════════════════════════════════════════════════════
+(function(){
+  const LOTE = 12, INTERVALO_MS = 20000, TETO_SESSAO = 1500;
+  let fila = [], enviados = 0, timer = null, ultimoToque = Date.now();
+
+  function telaAtual() {
+    try {
+      const p = document.querySelector('.tab-panel.active');
+      if (p && p.id) return p.id.replace(/^tab-/, '');
+      return location.pathname;
+    } catch (_) { return null; }
+  }
+
+  // ── marca o último toque humano; vai no cabeçalho de toda requisição ──
+  ['pointerdown','keydown','wheel','touchstart'].forEach(function(ev){
+    try {
+      window.addEventListener(ev, function(){ ultimoToque = Date.now(); },
+                              {capture:true, passive:true});
+    } catch (_) {}
+  });
+
+  const _fetchOriginal = window.fetch;
+  window.fetch = function(entrada, opcoes){
+    try {
+      const u = String((entrada && entrada.url) || entrada || '');
+      // só em chamada nossa: cabeçalho custom em domínio de terceiro dispara
+      // preflight de CORS e quebraria a requisição
+      const propria = u.startsWith('/') || u.startsWith(location.origin);
+      if (propria) {
+        const o = Object.assign({}, opcoes || {});
+        const h = new Headers((opcoes && opcoes.headers) || {});
+        h.set('X-Interacao-Ms', String(Date.now() - ultimoToque));
+        o.headers = h;
+        return _fetchOriginal.call(this, entrada, o);
+      }
+    } catch (_) { /* qualquer problema: manda sem o cabeçalho */ }
+    return _fetchOriginal.call(this, entrada, opcoes);
+  };
+
+  // ── captura de clique ────────────────────────────────────────────────
+  const IGNORAR = new Set(['HTML','BODY','MAIN','SECTION','FOOTER']);
+
+  function rotuloDe(el){
+    for (let n = el, i = 0; n && i < 5; n = n.parentElement, i++) {
+      if (n.getAttribute) {
+        const aria = n.getAttribute('aria-label') || n.getAttribute('title');
+        if (aria && aria.trim()) return aria.trim().slice(0, 120);
+      }
+      const tag = (n.tagName || '').toUpperCase();
+      if (['BUTTON','A','SUMMARY','LABEL','TH','OPTION'].includes(tag) ||
+          (n.getAttribute && (n.getAttribute('onclick') || n.getAttribute('role') === 'button')) ||
+          (n.classList && (n.classList.contains('sidebar-item') || n.classList.contains('tab')))) {
+        const t = (n.innerText || n.textContent || '').replace(/\s+/g,' ').trim();
+        if (t) return t.slice(0, 120);
+        const nm = n.getAttribute && (n.getAttribute('name') || n.id);
+        if (nm) return String(nm).slice(0, 120);
+      }
+    }
+    return null;
+  }
+
+  function alvoDe(el){
+    try {
+      const tag = (el.tagName || '?').toLowerCase();
+      const id = el.id ? '#' + el.id : '';
+      const cls = (el.className && typeof el.className === 'string')
+        ? '.' + el.className.split(/\s+/).filter(Boolean).slice(0,2).join('.') : '';
+      return (tag + id + cls).slice(0, 150);
+    } catch (_) { return null; }
+  }
+
+  function empilhar(tipo, rotulo, alvo){
+    if (enviados >= TETO_SESSAO) return;
+    enviados++;
+    fila.push({tipo: tipo, rotulo: rotulo, alvo: alvo, tela: telaAtual()});
+    if (fila.length >= LOTE) descarregar();
+    else if (!timer) timer = setTimeout(descarregar, INTERVALO_MS);
+  }
+
+  function descarregar(usarBeacon){
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (!fila.length) return;
+    const corpo = JSON.stringify({eventos: fila});
+    fila = [];
+    try {
+      if (usarBeacon && navigator.sendBeacon) {
+        // fechando a aba: beacon é o único que ainda chega
+        navigator.sendBeacon('/controle/atividade',
+          new Blob([corpo], {type:'application/json'}));
+        return;
+      }
+      _fetchOriginal.call(window, '/controle/atividade', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: corpo,
+      }).catch(function(){});
+    } catch (_) {}
+  }
+
+  document.addEventListener('click', function(e){
+    try {
+      const el = e.target;
+      if (!el || !el.tagName || IGNORAR.has(el.tagName.toUpperCase())) return;
+      const rot = rotuloDe(el);
+      if (!rot) return;                    // clique em área morta: não registra
+      empilhar('clique', rot, alvoDe(el));
+    } catch (_) {}
+  }, true);
+
+  document.addEventListener('submit', function(e){
+    try {
+      const f = e.target;
+      empilhar('envio', (f && (f.getAttribute('name') || f.id)) || 'formulário',
+               alvoDe(f));
+    } catch (_) {}
+  }, true);
+
+  // troca de tela
+  if (typeof window.goToTab === 'function') {
+    const _goToTab = window.goToTab;
+    window.goToTab = function(nome){
+      try { empilhar('tela', String(nome), 'goToTab'); } catch (_) {}
+      return _goToTab.apply(this, arguments);
+    };
+  }
+
+  window.addEventListener('pagehide', function(){ descarregar(true); });
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'hidden') descarregar(true);
+  });
+})();
+
 // ── Quem está usando o portal (por pessoa, 30 dias) ───────────────────
 // Com adoção baixa, isso vira MEDIDA em vez de relato: quem entrou, quando,
 // quantas telas abriu e quantas acoes registrou.
@@ -18457,7 +18594,8 @@ function saudeQuemUsa(pessoas) {
   if (!pessoas || !pessoas.length) return '';
   // De onde veio a "última atividade" — o rótulo tem de dizer a verdade, senão
   // data de login aparece como se fosse uso (errava 27 dias no Helbert).
-  const FONTE = { requisicao: 'tela aberta', acao: 'ação no sistema', login: 'só login' };
+  const FONTE = { clique: 'clique', acao: 'ação no sistema',
+                  requisicao: 'tela aberta', login: 'só login' };
   const linhas = pessoas.map(p => {
     const marca = p.ultima_atividade;
     const nunca = !marca;
@@ -18474,7 +18612,8 @@ function saudeQuemUsa(pessoas) {
       </td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${p.ultimo_login ? _fmtBR(p.ultimo_login) : '—'}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.logins || 0)}</td>
-      <td style="padding:5px 8px;font-size:.7rem;text-align:right;${req ? '' : 'color:var(--text3);'}">${req ? req.toLocaleString('pt-BR') : '—'}</td>
+      <td style="padding:5px 8px;font-size:.72rem;text-align:right;font-weight:${Number(p.cliques||0) ? '700' : '400'};color:${Number(p.cliques||0) ? 'var(--text)' : 'var(--text3)'};">${Number(p.cliques||0) ? Number(p.cliques).toLocaleString('pt-BR') : '—'}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;${req ? '' : 'color:var(--text3);'}">${req ? req.toLocaleString('pt-BR') : '—'}${Number(p.req_automaticas||0) ? `<span style="color:var(--text3);font-size:.6rem;"> (${Number(p.req_automaticas)} robô)</span>` : ''}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;${req ? '' : 'color:var(--text3);'}">${req ? Number(p.telas || 0) : '—'}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.acoes || 0).toLocaleString('pt-BR')}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${req ? _perfCor(p.media_ms) : 'var(--text3)'};">${req ? _perfMs(p.media_ms) : '—'}</td>
@@ -18494,6 +18633,7 @@ function saudeQuemUsa(pessoas) {
           <th style="${th}text-align:left;">Última atividade</th>
           <th style="${th}text-align:right;">Último login</th>
           <th style="${th}text-align:right;">Logins 30d</th>
+          <th style="${th}text-align:right;">Cliques*</th>
           <th style="${th}text-align:right;">Requisições*</th>
           <th style="${th}text-align:right;">Telas*</th>
           <th style="${th}text-align:right;">Ações 30d</th>
@@ -18504,9 +18644,65 @@ function saudeQuemUsa(pessoas) {
       </table>
     </div>
     <div style="font-size:.65rem;color:var(--text3);margin-top:10px;line-height:1.5;">
-      "Última atividade" é o mais recente entre tela aberta, ação registrada e login — a etiqueta ao lado diz de onde veio.<br>
+      "Última atividade" é o mais recente entre <strong>clique</strong>, ação registrada, tela aberta e login — a etiqueta ao lado diz de onde veio.
+      Requisição de aba parada (polling automático) <strong>não</strong> conta como atividade; aparece marcada como "robô".<br>
       <strong>*</strong> colunas medidas só a partir de <strong>13/08/2026</strong>, quando a medição começou. Traço (—) quer dizer
       "não medido nesse período", não "não usou": login e ações têm histórico antigo, requisições não.
+    </div>
+  `);
+}
+
+// ── O que cada pessoa clicou (rastro cronológico) ─────────────────────
+function saudeCliques(c) {
+  if (!c) return '';
+  const ult = c.ultimos || [];
+  const top = c.mais_clicados || [];
+  if (!ult.length && !top.length) {
+    return saudeSecao('O que cada um está clicando', `<div style="font-size:.75rem;color:var(--text3);">
+      Nenhum clique registrado ainda. A captura começou em 13/08/2026 e enche conforme o sistema é usado.</div>`);
+  }
+  const ICONE = { clique: '👆', tela: '🗂️', envio: '📨', busca: '🔎', atalho: '⌨️' };
+  const th = 'padding:5px 8px;font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;';
+
+  const linhas = ult.map(e => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+      <td style="padding:4px 8px;font-size:.68rem;color:var(--text3);white-space:nowrap;">${_fmtBR(e.criado_em)}</td>
+      <td style="padding:4px 8px;font-size:.72rem;font-weight:600;">${_esc(e.pessoa || '—')}</td>
+      <td style="padding:4px 8px;font-size:.68rem;">${ICONE[e.tipo] || '•'} ${_esc(e.tipo || '')}</td>
+      <td style="padding:4px 8px;font-size:.72rem;">${_esc(e.rotulo || '—')}</td>
+      <td style="padding:4px 8px;font-size:.66rem;color:var(--text3);">${_esc(e.tela || '—')}</td>
+      <td style="padding:4px 8px;font-size:.62rem;color:var(--text3);font-family:monospace;">${_esc(e.alvo || '')}</td>
+    </tr>`).join('');
+
+  const topHtml = top.map(t => `
+    <div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:.72rem;">
+      <span style="flex:1;">${_esc(t.rotulo || '—')}
+        <span style="color:var(--text3);font-size:.65rem;">· ${_esc(t.tela || '')}</span></span>
+      <span style="color:var(--text3);font-size:.65rem;">${t.pessoas} pessoa(s)</span>
+      <span style="font-weight:700;min-width:34px;text-align:right;">${Number(t.n).toLocaleString('pt-BR')}</span>
+    </div>`).join('');
+
+  return saudeSecao('O que cada um está clicando · últimos 7 dias', `
+    ${topHtml ? `<div style="font-size:.65rem;font-weight:700;color:var(--text3);margin-bottom:6px;">MAIS CLICADO (diz onde o sistema é realmente usado)</div>
+    <div style="max-width:620px;margin-bottom:16px;">${topHtml}</div>` : ''}
+
+    <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin-bottom:6px;">RASTRO — ÚLTIMOS ${ult.length} EVENTOS</div>
+    <div style="overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="position:sticky;top:0;background:var(--surface);"><tr style="border-bottom:1px solid var(--border);">
+          <th style="${th}text-align:left;">Quando</th>
+          <th style="${th}text-align:left;">Pessoa</th>
+          <th style="${th}text-align:left;">Tipo</th>
+          <th style="${th}text-align:left;">O que</th>
+          <th style="${th}text-align:left;">Tela</th>
+          <th style="${th}text-align:left;">Elemento</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>
+    <div style="font-size:.65rem;color:var(--text3);margin-top:8px;">
+      Guarda o <strong>rótulo</strong> do que foi clicado e a tela — nunca o que a pessoa digitou. Retenção de 60 dias.
+      Filtro por pessoa/tela/tipo: <code style="font-size:.62rem;">/controle/admin/atividade?pessoa=&lt;id&gt;&amp;tela=&amp;tipo=&amp;dias=7</code>
     </div>
   `);
 }
@@ -18566,7 +18762,7 @@ function saudeDesempenho(dp) {
 
   const th = 'padding:5px 8px;font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;';
 
-  return saudeQuemUsa(dp.pessoas) + saudeSecao('Tempo de Resposta — o que a pessoa sente', `
+  return saudeQuemUsa(dp.pessoas) + saudeCliques(dp.cliques) + saudeSecao('Tempo de Resposta — o que a pessoa sente', `
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">${cards}</div>
 
     <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin:14px 0 6px;">POR ROTA · ordenado pelo tempo TOTAL gasto (é o total que diz onde o sistema gasta a vida)</div>
