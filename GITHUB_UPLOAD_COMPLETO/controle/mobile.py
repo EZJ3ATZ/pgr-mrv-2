@@ -71,6 +71,14 @@ def login_page():
                     u = User(d['id'], d['nome'], d['email'],
                              d.get('registro_mte', ''), d.get('role', 'tecnico'))
                     login_user(u, remember=True)
+                    # o auth.py registra o evento de login, este não registrava:
+                    # quem entrava pelo App Móvel — o técnico — não aparecia nem
+                    # como login em nenhum painel (achado em 13/08/2026).
+                    try:
+                        registrar_evento('login', f"{d['nome']} ({email}) · app móvel",
+                                         usuario=d['nome'], ip=request.remote_addr)
+                    except Exception:
+                        pass
                     return redirect(url_for('mobile.home'))
             erro = 'E-mail ou senha incorretos.'
         except Exception as e:
