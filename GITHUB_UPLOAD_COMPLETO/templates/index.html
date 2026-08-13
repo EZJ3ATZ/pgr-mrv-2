@@ -18417,6 +18417,119 @@ function saudeSecao(titulo, conteudo) {
   </div>`;
 }
 
+// ── Tempo de resposta de cada interação (perf_log) ────────────────────
+// Regua: abaixo de 300ms é o esperado; acima de 1s a pessoa percebe;
+// acima de 3s ela acha que travou.
+function _perfCor(ms) {
+  const v = Number(ms || 0);
+  if (v >= 3000) return '#ef4444';
+  if (v >= 1000) return '#f59e0b';
+  return '#22c55e';
+}
+function _perfMs(v) {
+  if (v === null || v === undefined) return '—';
+  return Number(v).toLocaleString('pt-BR') + ' ms';
+}
+
+function saudeDesempenho(dp) {
+  if (!dp) return '';
+  if (dp.erro) {
+    return saudeSecao('Tempo de Resposta', `<div style="font-size:.75rem;color:#fca5a5;">Não foi possível ler as medições: ${_esc(dp.erro)}</div>`);
+  }
+  const k = dp.kpis || {};
+  const req = Number(k.requisicoes || 0);
+  if (!req) {
+    return saudeSecao('Tempo de Resposta', `<div style="font-size:.75rem;color:var(--text3);">Nenhuma requisição medida ainda nos últimos ${dp.dias||7} dias. A medição começou em 13/08/2026 — ela se enche conforme o portal é usado.</div>`);
+  }
+  const pct1s = req ? (Number(k.acima_1s||0) / req * 100).toFixed(1).replace('.', ',') : '0';
+
+  const cards = [
+    saudeCard('Requisições', req.toLocaleString('pt-BR'), `últimos ${dp.dias||7} dias`, '#6366f1'),
+    saudeCard('Mediana', _perfMs(k.p50_ms), 'metade responde abaixo disso', _perfCor(k.p50_ms)),
+    saudeCard('95% abaixo de', _perfMs(k.p95_ms), 'p95', _perfCor(k.p95_ms)),
+    saudeCard('Acima de 1s', Number(k.acima_1s||0).toLocaleString('pt-BR'), `${pct1s}% do total`, Number(k.acima_1s||0) ? '#f59e0b' : '#22c55e'),
+    saudeCard('Tempo no banco', (k.pct_banco === null || k.pct_banco === undefined) ? '—' : k.pct_banco + '%', 'do tempo total', '#8b5cf6'),
+    saudeCard('Consultas/req', k.consultas_media ?? '—', 'média de queries', Number(k.consultas_media||0) >= 30 ? '#f59e0b' : '#22c55e'),
+  ].join('');
+
+  const rotas = (dp.rotas || []).map(r => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+      <td style="padding:5px 8px;font-size:.7rem;font-family:monospace;">${_esc(r.rota||'?')}</td>
+      <td style="padding:5px 8px;font-size:.65rem;color:var(--text3);">${_esc(r.metodo||'')}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${Number(r.chamadas||0).toLocaleString('pt-BR')}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${_perfMs(r.p50_ms ?? r.media_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;font-weight:700;color:${_perfCor(r.p95_ms ?? r.media_ms)};">${_perfMs(r.p95_ms ?? r.media_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${_perfMs(r.pior_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${_perfMs(r.media_banco_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${Number(r.consultas_pior||0) >= 50 ? '#f59e0b' : 'var(--text3)'};">${r.consultas_media ?? '—'} / ${r.consultas_pior ?? '—'}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${Math.round(Number(r.total_ms||0)/1000).toLocaleString('pt-BR')} s</td>
+    </tr>`).join('');
+
+  const lentas = (dp.lentas || []).map(l => `
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.7rem;">
+      <span style="color:var(--text3);">${_fmtBR(l.criado_em)}</span>
+      <span style="font-weight:700;color:${_perfCor(l.duracao_ms)};">${_perfMs(l.duracao_ms)}</span>
+      <span style="font-family:monospace;">${_esc(l.rota||'')}</span>
+      <span style="color:var(--text3);">${l.consultas ?? 0} consultas · ${_perfMs(l.ms_banco)} de banco</span>
+      <span style="color:var(--text3);margin-left:auto;">${_esc(l.usuario||'—')}</span>
+    </div>`).join('');
+
+  const banco = (dp.banco || []).map(b => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;font-weight:700;color:${_perfCor(b.media_ms)};">${_perfMs(b.media_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${_perfMs(b.pior_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${Number(b.chamadas||0).toLocaleString('pt-BR')}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${Math.round(Number(b.total_ms||0)/1000).toLocaleString('pt-BR')} s</td>
+      <td style="padding:5px 8px;font-size:.62rem;font-family:monospace;color:var(--text2);max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(b.consulta||'')}</td>
+    </tr>`).join('');
+
+  const th = 'padding:5px 8px;font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;';
+
+  return saudeSecao('Tempo de Resposta — o que a pessoa sente', `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">${cards}</div>
+
+    <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin:14px 0 6px;">POR ROTA · ordenado pelo tempo TOTAL gasto (é o total que diz onde o sistema gasta a vida)</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:1px solid var(--border);">
+          <th style="${th}text-align:left;">Rota</th>
+          <th style="${th}text-align:left;">Método</th>
+          <th style="${th}text-align:right;">Chamadas</th>
+          <th style="${th}text-align:right;">Mediana</th>
+          <th style="${th}text-align:right;">p95</th>
+          <th style="${th}text-align:right;">Pior</th>
+          <th style="${th}text-align:right;">Banco</th>
+          <th style="${th}text-align:right;">Consultas méd/pior</th>
+          <th style="${th}text-align:right;">Total</th>
+        </tr></thead>
+        <tbody>${rotas || '<tr><td colspan="9" style="padding:8px;font-size:.72rem;color:var(--text3);">Sem dados</td></tr>'}</tbody>
+      </table>
+    </div>
+
+    <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin:18px 0 6px;">PIORES OCORRÊNCIAS (acima de 1 segundo)</div>
+    ${lentas || '<div style="font-size:.72rem;color:#22c55e;">✓ Nenhuma requisição acima de 1 segundo no período</div>'}
+
+    ${banco ? `
+    <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin:18px 0 6px;">VISTO PELO BANCO · pg_stat_statements — retroativo, independe de alguém usar o app</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:1px solid var(--border);">
+          <th style="${th}text-align:right;">Média</th>
+          <th style="${th}text-align:right;">Pior</th>
+          <th style="${th}text-align:right;">Chamadas</th>
+          <th style="${th}text-align:right;">Total</th>
+          <th style="${th}text-align:left;">Consulta</th>
+        </tr></thead>
+        <tbody>${banco}</tbody>
+      </table>
+    </div>` : ''}
+
+    <div style="font-size:.65rem;color:var(--text3);margin-top:12px;">
+      A medição no app começou em 13/08/2026 — antes dessa data não existe registro. A tabela do banco é retroativa. Guarda 30 dias.
+    </div>
+  `);
+}
+
 function saudeRenderizar(d) {
   if (d.erro_diagnostico) {
     return `<div style="color:#ef4444;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:16px;">${d.erro_diagnostico}<br><pre style="font-size:.65rem;margin-top:8px;opacity:.7;">${d.traceback||''}</pre></div>`;
@@ -18503,6 +18616,9 @@ function saudeRenderizar(d) {
         </div>
       </div>
     `)}
+
+    <!-- Tempo de resposta (perf_log) -->
+    ${saudeDesempenho(d.desempenho)}
 
     <!-- Sync status -->
     ${saudeSecao('Último Sync Planner', `

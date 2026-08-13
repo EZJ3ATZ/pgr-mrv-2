@@ -5,8 +5,37 @@ DATABASE_URL no ambiente ativa modo PostgreSQL automaticamente.
 """
 import os
 import sqlite3
+import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime
+
+# ── Contador de consultas por requisição (alimenta controle/perf.py) ───
+# Fica AQUI e não em perf.py de propósito: db.py não pode importar perf.py
+# (perf.py importa get_db daqui — seria ciclo). thread-local porque o gunicorn
+# atende requisições concorrentes na mesma instância do módulo.
+_perf_local = threading.local()
+
+
+def perf_zerar():
+    """Zera o contador no início de cada requisição."""
+    _perf_local.n = 0
+    _perf_local.ms = 0.0
+
+
+def perf_ler():
+    """(quantas consultas, quantos ms de banco) desde o último perf_zerar()."""
+    return int(getattr(_perf_local, 'n', 0)), float(getattr(_perf_local, 'ms', 0.0))
+
+
+def _perf_conta(t0):
+    """Soma uma consulta. Nunca levanta — telemetria não quebra query."""
+    try:
+        _perf_local.n = getattr(_perf_local, 'n', 0) + 1
+        _perf_local.ms = getattr(_perf_local, 'ms', 0.0) + (time.perf_counter() - t0) * 1000
+    except Exception:
+        pass
+
 
 # ── Detecção de banco ──────────────────────────────────────────────────
 _DATABASE_URL = os.environ.get('DATABASE_URL', '')
@@ -150,6 +179,13 @@ class _PGCursor:
     _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE', 'RA_LAUDOS')
 
     def execute(self, sql, params=None):
+        _t0 = time.perf_counter()
+        try:
+            return self._execute(sql, params)
+        finally:
+            _perf_conta(_t0)
+
+    def _execute(self, sql, params=None):
         self._cur = self._pg_conn.cursor(
             cursor_factory=psycopg2.extras.RealDictCursor)
         if params:

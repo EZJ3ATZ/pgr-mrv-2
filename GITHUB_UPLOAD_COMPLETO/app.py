@@ -124,6 +124,16 @@ except Exception as _ce:
     print(f'[campo] erro ao carregar blueprint: {_ce}')
     traceback.print_exc()
 
+# ── Log de tempo de resposta de cada interação ─────────────────────────
+# Mede TODA requisição (app + blueprints) sem tocar em nenhuma view: duração,
+# quanto foi banco e quantas consultas o pedido disparou. Leitura só admin, em
+# Saúde do Sistema. Desligar com PERF_LOG=0 se algum dia atrapalhar.
+try:
+    from controle.perf import init_app as _perf_init
+    _perf_init(app)
+except Exception as _pe:
+    print(f'[perf] não iniciado: {_pe}')
+
 
 # ── Service Worker servido na RAIZ ────────────────────────────────────
 # Em /static/sw.js o escopo seria só /static/ — não controlaria /campo nem

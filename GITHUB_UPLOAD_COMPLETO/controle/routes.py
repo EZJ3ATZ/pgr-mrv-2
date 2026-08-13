@@ -8005,10 +8005,19 @@ def admin_saude():
     init_db()
     try:
         from .monitoring import diagnostico_banco
-        return jsonify(diagnostico_banco())
+        d = diagnostico_banco()
     except Exception as e:
         import traceback
         traceback.print_exc(); return jsonify({'erro': str(e)}), 500
+    # Tempo de resposta de cada interação (perf_log). Fica DENTRO da Saúde do
+    # Sistema para não criar tela nova; falha aqui não derruba o diagnóstico.
+    try:
+        from .perf import resumo_completo
+        dias = max(1, min(int(request.args.get('dias', 7)), 30))
+        d['desempenho'] = resumo_completo(dias)
+    except Exception as e:
+        d['desempenho'] = {'erro': str(e)}
+    return jsonify(d)
 
 
 @controle_bp.route('/admin/log_evento', methods=['POST'])
