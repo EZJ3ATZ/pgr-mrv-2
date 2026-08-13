@@ -71,6 +71,15 @@ def garantir_tabela():
             conn.executescript(SCHEMA_PERF_PG if USE_PG else SCHEMA_PERF_SQLITE)
             # colunas que nasceram depois da tabela (CREATE IF NOT EXISTS não add)
             _add_col(conn, 'perf_log', 'usuario_id', 'INTEGER')
+            # linha gravada antes da coluna existir: casa pelo e-mail, uma vez
+            try:
+                conn.execute(
+                    'UPDATE perf_log SET usuario_id = ('
+                    '  SELECT u.id FROM usuarios u '
+                    '   WHERE LOWER(u.email) = LOWER(perf_log.usuario)) '
+                    'WHERE usuario_id IS NULL AND usuario IS NOT NULL')
+            except Exception:
+                pass
         _tabela_ok = True
     except Exception as e:
         print(f'[perf] tabela não criada: {e}')
@@ -375,9 +384,12 @@ def uso_por_pessoa(dias=30):
               (SELECT COUNT(*) FROM eventos e
                 WHERE e.usuario_id = u.id AND e.criado_em >= ?
                   AND e.tipo NOT IN ('login', 'logout'))                 AS acoes,
+              (SELECT MAX(e.criado_em) FROM eventos e
+                WHERE e.usuario_id = u.id
+                  AND e.tipo NOT IN ('login', 'logout'))                 AS ultima_acao,
               (SELECT COUNT(*)          FROM perf_log p WHERE {liga} AND {w}) AS requisicoes,
               (SELECT COUNT(DISTINCT p.rota) FROM perf_log p WHERE {liga} AND {w}) AS telas,
-              (SELECT MAX(p.criado_em)  FROM perf_log p WHERE {liga} AND {w}) AS ultima_atividade,
+              (SELECT MAX(p.criado_em)  FROM perf_log p WHERE {liga} AND {w}) AS ultima_requisicao,
               (SELECT ROUND(AVG(p.duracao_ms)) FROM perf_log p WHERE {liga} AND {w}) AS media_ms,
               (SELECT MAX(p.duracao_ms) FROM perf_log p WHERE {liga} AND {w}) AS pior_ms,
               (SELECT COUNT(*) FROM perf_log p
@@ -387,14 +399,33 @@ def uso_por_pessoa(dias=30):
     lista = []
     for r in rows:
         d = dict(r)
-        d['ultima_atividade'] = _iso(d.get('ultima_atividade'))
-        d['ultimo_login'] = _iso(d.get('ultimo_login'))
+        for c in ('ultimo_login', 'ultima_acao', 'ultima_requisicao'):
+            d[c] = _iso(d.get(c))
+        # 🔴 "última atividade" é o MAIOR entre requisição medida e ação
+        # registrada. A 1ª versão usava só a requisição e a tela caía para o
+        # último LOGIN quando não havia — mostrando data de login sob o rótulo
+        # de atividade: errava 27 dias no Helbert (login 14/07, ação 10/08) e
+        # 13 na Kelly. Datas são ISO e ambas UTC, então comparar os 19
+        # primeiros caracteres é suficiente e evita cast (eventos.criado_em
+        # é TEXT e tem lixo histórico).
+        marcas = [x for x in (d.get('ultima_requisicao'), d.get('ultima_acao'),
+                              d.get('ultimo_login')) if x]
+        d['ultima_atividade'] = max(marcas, key=lambda x: str(x)[:19]) if marcas else None
+        # de onde veio, para a tela não precisar adivinhar
+        if d['ultima_atividade'] == d.get('ultima_requisicao'):
+            d['atividade_fonte'] = 'requisicao'
+        elif d['ultima_atividade'] == d.get('ultima_acao'):
+            d['atividade_fonte'] = 'acao'
+        elif d['ultima_atividade']:
+            d['atividade_fonte'] = 'login'
+        else:
+            d['atividade_fonte'] = None
         lista.append(d)
 
     # ordem do painel do CRM: quem usou mais recentemente primeiro; quem nunca
     # entrou vai para o fim, em ordem alfabética
     def marca(r):
-        return r.get('ultima_atividade') or r.get('ultimo_login')
+        return r.get('ultima_atividade')
 
     ativos = sorted([r for r in lista if marca(r)],
                     key=lambda r: str(marca(r)), reverse=True)

@@ -133,14 +133,40 @@ checa('traz o ultimo login', bool(w.get('ultimo_login')), f"{w.get('ultimo_login
 checa('media de tempo calculada no banco', (w.get('media_ms') or 0) > 0, f"{w.get('media_ms')}")
 checa('pior tempo e 900ms', w.get('pior_ms') == 900, f"{w.get('pior_ms')}")
 
-print('\n== 4) quem nunca usou aparece, no fim ==')
+print('\n== 4) "ultima atividade" e a VERDADE, nao a data de login ==')
+# O caso do Helbert em prod: login antigo (14/07), acao recente (10/08), zero
+# requisicao medida. A 1a versao mostrava 14/07 sob o rotulo de atividade —
+# errava 27 dias. Tem de mostrar a ACAO.
+alvo = ids['Ana Paula Souza']      # sem historico nenhum ate aqui
+with db.get_db() as conn:
+    conn.execute("INSERT INTO eventos (tipo,descricao,usuario,usuario_id,criado_em) "
+                 "VALUES ('login','t','Ana Paula Souza',?,'2026-07-14 17:40:18+00')",
+                 (alvo,))
+    conn.execute("INSERT INTO eventos (tipo,descricao,usuario,usuario_id,criado_em) "
+                 "VALUES ('pgr_gerado','t','Ana Paula Souza',?,'2026-08-10 19:10:10+00')",
+                 (alvo,))
+k = {p['nome']: p for p in perf.uso_por_pessoa(3650)}.get('Ana Paula Souza') or {}
+checa('usa a ACAO recente, nao o login antigo',
+      str(k.get('ultima_atividade') or '').startswith('2026-08-10'),
+      f"{k.get('ultima_atividade')} (login={k.get('ultimo_login')})")
+checa('diz de onde veio a marca', k.get('atividade_fonte') == 'acao',
+      f"{k.get('atividade_fonte')}")
+checa('nao inventa requisicao para quem nao tem', (k.get('requisicoes') or 0) == 0,
+      f"{k.get('requisicoes')}")
+
+# quem TEM requisicao medida mais nova que a acao: a fonte passa a ser a tela
+w2 = {p['nome']: p for p in perf.uso_por_pessoa(3650)}.get('Wesley Vieira Rodrigues') or {}
+checa('quem abriu tela agora tem fonte=requisicao',
+      w2.get('atividade_fonte') == 'requisicao', f"{w2.get('atividade_fonte')}")
+
+print('\n== 5) quem nunca usou aparece, no fim ==')
 nomes = [p['nome'] for p in lista]
-ana = por_nome.get('Ana Paula Souza') or {}
+ana = por_nome.get('Ana Paula Silva') or {}
 checa('todo o cadastro aparece', len(lista) >= len(PESSOAS), f'{len(lista)}')
 checa('quem nunca usou tem 0 requisicoes', (ana.get('requisicoes') or 0) == 0,
       f"{ana.get('requisicoes')}")
 checa('quem usou vem antes de quem nunca usou',
-      nomes.index('Wesley Vieira Rodrigues') < nomes.index('Ana Paula Souza'),
+      nomes.index('Wesley Vieira Rodrigues') < nomes.index('Ana Paula Silva'),
       f'{nomes}')
 
 print(f'\n==== {ok} OK, {len(falhas)} falha(s) ====')

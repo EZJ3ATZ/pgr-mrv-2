@@ -18432,15 +18432,20 @@ function _perfMs(v) {
 }
 function _perfKb(b) {
   if (b === null || b === undefined) return '—';
-  const kb = Number(b) / 1024;
-  if (kb >= 1024) return (kb/1024).toFixed(1).replace('.', ',') + ' MB';
+  const bytes = Number(b);
+  // resposta pequena arredondava para "0 KB" e a home (1.046.663 B) saia como
+  // "1.000 KB" — numero certo com cara de errado. Escala de verdade:
+  if (bytes < 1024) return Math.round(bytes) + ' B';
+  const kb = bytes / 1024;
+  if (kb >= 1000) return (kb / 1024).toFixed(2).replace('.', ',') + ' MB';
+  if (kb < 10) return kb.toFixed(1).replace('.', ',') + ' KB';
   return Math.round(kb).toLocaleString('pt-BR') + ' KB';
 }
 // Resposta acima de 300 KB pesa na rede do cliente — em 4G de campo isso é
 // segundo, não milissegundo. É o que o tempo de servidor NÃO mostra.
 function _perfPesoCor(b) {
   const kb = Number(b || 0) / 1024;
-  if (kb >= 1024) return '#ef4444';
+  if (kb >= 1000) return '#ef4444';   // ~1 MB: vermelho (a home cai aqui)
   if (kb >= 300)  return '#f59e0b';
   return 'var(--text3)';
 }
@@ -18450,23 +18455,29 @@ function _perfPesoCor(b) {
 // quantas telas abriu e quantas acoes registrou.
 function saudeQuemUsa(pessoas) {
   if (!pessoas || !pessoas.length) return '';
+  // De onde veio a "última atividade" — o rótulo tem de dizer a verdade, senão
+  // data de login aparece como se fosse uso (errava 27 dias no Helbert).
+  const FONTE = { requisicao: 'tela aberta', acao: 'ação no sistema', login: 'só login' };
   const linhas = pessoas.map(p => {
-    const marca = p.ultima_atividade || p.ultimo_login;
+    const marca = p.ultima_atividade;
     const nunca = !marca;
     const req = Number(p.requisicoes || 0);
-    const inativo = !nunca && req === 0;
+    const fonte = FONTE[p.atividade_fonte] || '';
     return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);${nunca ? 'opacity:.55;' : ''}">
       <td style="padding:5px 8px;font-size:.74rem;font-weight:600;">${_esc(p.nome || '—')}
         ${p.ativo === 0 || p.ativo === false ? '<span style="margin-left:6px;font-size:.6rem;color:var(--text3);border:1px solid var(--border);border-radius:4px;padding:1px 5px;">inativo</span>' : ''}
       </td>
       <td style="padding:5px 8px;font-size:.68rem;color:var(--text3);text-transform:capitalize;">${_esc(p.role || '—')}</td>
-      <td style="padding:5px 8px;font-size:.7rem;color:${nunca ? 'var(--text3)' : 'var(--text2)'};">${nunca ? 'nunca entrou' : _fmtBR(marca)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;color:${nunca ? 'var(--text3)' : 'var(--text2)'};">
+        ${nunca ? 'nunca entrou' : _fmtBR(marca)}
+        ${fonte ? `<span style="margin-left:6px;font-size:.6rem;color:var(--text3);">${fonte}</span>` : ''}
+      </td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${p.ultimo_login ? _fmtBR(p.ultimo_login) : '—'}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.logins || 0)}</td>
-      <td style="padding:5px 8px;font-size:.7rem;text-align:right;${inativo ? 'color:var(--text3);' : ''}">${req.toLocaleString('pt-BR')}</td>
-      <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.telas || 0)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;${req ? '' : 'color:var(--text3);'}">${req ? req.toLocaleString('pt-BR') : '—'}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;${req ? '' : 'color:var(--text3);'}">${req ? Number(p.telas || 0) : '—'}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.acoes || 0).toLocaleString('pt-BR')}</td>
-      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${_perfCor(p.media_ms)};">${_perfMs(p.media_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${req ? _perfCor(p.media_ms) : 'var(--text3)'};">${req ? _perfMs(p.media_ms) : '—'}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${Number(p.erros || 0) ? '#ef4444' : 'var(--text3)'};">${Number(p.erros || 0)}</td>
     </tr>`;
   }).join('');
@@ -18482,19 +18493,20 @@ function saudeQuemUsa(pessoas) {
           <th style="${th}text-align:left;">Papel</th>
           <th style="${th}text-align:left;">Última atividade</th>
           <th style="${th}text-align:right;">Último login</th>
-          <th style="${th}text-align:right;">Logins</th>
-          <th style="${th}text-align:right;">Requisições</th>
-          <th style="${th}text-align:right;">Telas</th>
-          <th style="${th}text-align:right;">Ações</th>
-          <th style="${th}text-align:right;">Tempo médio</th>
-          <th style="${th}text-align:right;">Erros</th>
+          <th style="${th}text-align:right;">Logins 30d</th>
+          <th style="${th}text-align:right;">Requisições*</th>
+          <th style="${th}text-align:right;">Telas*</th>
+          <th style="${th}text-align:right;">Ações 30d</th>
+          <th style="${th}text-align:right;">Tempo médio*</th>
+          <th style="${th}text-align:right;">Erros*</th>
         </tr></thead>
         <tbody>${linhas}</tbody>
       </table>
     </div>
-    <div style="font-size:.65rem;color:var(--text3);margin-top:10px;">
-      "Última atividade" vem da medição de requisições (começou em 13/08/2026); "último login" vem do log de eventos, que é antigo.
-      Quem aparece com login e 0 requisições não voltou depois de 13/08.
+    <div style="font-size:.65rem;color:var(--text3);margin-top:10px;line-height:1.5;">
+      "Última atividade" é o mais recente entre tela aberta, ação registrada e login — a etiqueta ao lado diz de onde veio.<br>
+      <strong>*</strong> colunas medidas só a partir de <strong>13/08/2026</strong>, quando a medição começou. Traço (—) quer dizer
+      "não medido nesse período", não "não usou": login e ações têm histórico antigo, requisições não.
     </div>
   `);
 }
