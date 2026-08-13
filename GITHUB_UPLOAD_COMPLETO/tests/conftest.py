@@ -21,11 +21,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # compartilhado da sessao. Rodam em processo proprio, via
 # tests/test_scripts_isolados.py, que le esta lista.
 SCRIPTS_ISOLADOS = [
+    'test_alerta.py',
     'test_perf_log.py',
     'test_pg_returning.py',
     'test_schema_versao.py',
     'test_uso_por_pessoa.py',
-    'test_alerta.py',
 ]
 
 collect_ignore = list(SCRIPTS_ISOLADOS)

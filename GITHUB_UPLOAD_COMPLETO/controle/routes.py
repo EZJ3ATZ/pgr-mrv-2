@@ -8662,6 +8662,34 @@ def api_get_visita(vid):
     return jsonify(v)
 
 
+def _e(v):
+    """Escapa para HTML. Esta tela monta a pagina com f-string, entao NAO existe o
+    autoescape do Jinja: cada valor tem que sair daqui.
+
+    Sem isto era XSS armazenado. Os campos livres da visita (justificativa, ciencia,
+    observacao geral, nome de quem assinou, legenda de foto) sao digitados em campo --
+    parte deles pelo RESPONSAVEL DA EMPRESA no tablet -- e a tela e aberta depois pela
+    coordenacao e pelo admin. Script guardado num desses campos rodava na sessao de
+    quem abrisse o relatorio.
+    """
+    from markupsafe import escape
+    return str(escape('' if v is None else v))
+
+
+_DATA_URI_IMG = re.compile(r'^data:image/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=\s]*$')
+
+
+def _src_img(uri):
+    """Devolve a data-URI so se ela for MESMO uma imagem embutida; senao, vazio.
+
+    Escapar nao basta dentro de src=": `data:image/png;base64,x" onerror=alert(1)` sai
+    do atributo. O `startswith('data:image/')` que existia checava so o comeco da
+    string e deixava o resto passar inteiro.
+    """
+    u = (uri or '').strip()
+    return u if _DATA_URI_IMG.match(u) else ''
+
+
 @controle_bp.route('/relatorio_visita/<int:vid>')
 def relatorio_visita_html(vid):
     """Gera relatório HTML de visita técnica — otimizado para mobile."""
@@ -8671,7 +8699,7 @@ def relatorio_visita_html(vid):
             SELECT vt.*,
                    e.nome AS empresa_nome, e.cnpj AS empresa_cnpj,
                    e.cidade AS empresa_cidade, e.endereco AS empresa_endereco,
-                   d.numero_os, d.agentes AS demanda_agentes
+                   d.numero_os
             FROM visitas_tecnicas vt
             LEFT JOIN empresas e ON e.id = vt.empresa_id
             LEFT JOIN demandas d ON d.id = vt.demanda_id
@@ -8684,12 +8712,19 @@ def relatorio_visita_html(vid):
             'SELECT * FROM execucao_campo WHERE visita_id=? ORDER BY criado_em DESC LIMIT 1', (vid,)
         ).fetchone()
         exec_data = row_to_dict(exec_row) if exec_row else {}
+        # As 3 tabelas de coleta NAO tem o mesmo desenho, e esta rota supunha que
+        # tinham: `coletas_ruido` nao tem `tipo` nem `avaliador` (o tipo E a tabela;
+        # quem coletou fica em `tecnico`), e `coletas_quimico` nao tem
+        # `tipo_avaliacao` (quem coletou fica em `responsavel_coleta`). Cada uma
+        # normaliza para o mesmo formato aqui.
         coletas_r = conn.execute(
-            'SELECT tipo, data_coleta, avaliador, status FROM coletas_ruido WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
+            "SELECT 'Ruído' AS tipo, data_coleta, tecnico AS avaliador, status "
+            'FROM coletas_ruido WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
             (v.get('demanda_id') or 0,)
         ).fetchall()
         coletas_q = conn.execute(
-            'SELECT tipo_avaliacao, data_coleta, avaliador, status FROM coletas_quimico WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
+            "SELECT 'Químico' AS tipo, data_coleta, responsavel_coleta AS avaliador, status "
+            'FROM coletas_quimico WHERE demanda_id=? ORDER BY criado_em DESC LIMIT 5',
             (v.get('demanda_id') or 0,)
         ).fetchall()
         coletas_o = conn.execute(
@@ -8723,7 +8758,7 @@ def relatorio_visita_html(vid):
     for c in list(coletas_r) + list(coletas_q) + list(coletas_o):
         cols = dict(c) if hasattr(c, 'keys') else {}
         tipo = cols.get('tipo') or cols.get('tipo_avaliacao') or '—'
-        coletas_rows += f'<tr><td>{tipo}</td><td>{_fmt_date(cols.get("data_coleta"))}</td><td>{cols.get("avaliador","—")}</td><td><span style="color:{resultado_cores.get(cols.get("status",""),"#6b7280")}">{cols.get("status","—")}</span></td></tr>'
+        coletas_rows += f'<tr><td>{_e(tipo)}</td><td>{_e(_fmt_date(cols.get("data_coleta")))}</td><td>{_e(cols.get("avaliador","—"))}</td><td><span style="color:{resultado_cores.get(cols.get("status",""),"#6b7280")}">{_e(cols.get("status","—"))}</span></td></tr>'
 
     # ── Fotos (ambiente / atividade / equipamentos) ───────────────────
     _CAT_LABEL = {'ambiente': '🏭 Ambiente', 'atividade': '👷 Atividade', 'equipamentos': '🔧 Equipamentos'}
@@ -8736,13 +8771,13 @@ def relatorio_visita_html(vid):
         blocos = ''
         for cat, items in por_cat.items():
             imgs = ''.join(
-                f'<figure style="margin:0"><img src="{f.get("data","")}" '
+                f'<figure style="margin:0"><img src="{_src_img(f.get("data"))}" '
                 f'style="width:100%;border-radius:8px;border:1px solid #2a2d3e">'
-                + (f'<figcaption style="font-size:.72rem;color:#94a3b8;margin-top:3px">{(f.get("legenda") or "")}</figcaption>' if f.get('legenda') else '')
+                + (f'<figcaption style="font-size:.72rem;color:#94a3b8;margin-top:3px">{_e(f.get("legenda"))}</figcaption>' if f.get('legenda') else '')
                 + '</figure>'
                 for f in items)
             blocos += (f'<div style="margin-bottom:12px"><div style="font-size:.78rem;color:#94a3b8;'
-                       f'margin-bottom:6px;font-weight:600">{_CAT_LABEL.get(cat, cat)}</div>'
+                       f'margin-bottom:6px;font-weight:600">{_e(_CAT_LABEL.get(cat, cat))}</div>'
                        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">{imgs}</div></div>')
         fotos_html = f'<div class="card"><h2>Registro Fotográfico</h2>{blocos}</div>'
 
@@ -8753,8 +8788,8 @@ def relatorio_visita_html(vid):
     imprev_html = ''
     if v.get('imprevisto_tipo') or v.get('justificativa'):
         imprev_html = ('<div class="card"><h2>Impedimentos / Justificativa</h2>'
-                       + (f'<div class="row"><span class="lbl">Imprevisto</span><span class="val" style="color:#f59e0b">{_IMPREV_LABEL.get(v.get("imprevisto_tipo",""), v.get("imprevisto_tipo") or "—")}</span></div>' if v.get('imprevisto_tipo') else '')
-                       + (f'<p style="color:#cbd5e1;line-height:1.6;margin:6px 0 0">{v.get("justificativa")}</p>' if v.get('justificativa') else '')
+                       + (f'<div class="row"><span class="lbl">Imprevisto</span><span class="val" style="color:#f59e0b">{_e(_IMPREV_LABEL.get(v.get("imprevisto_tipo",""), v.get("imprevisto_tipo") or "—"))}</span></div>' if v.get('imprevisto_tipo') else '')
+                       + (f'<p style="color:#cbd5e1;line-height:1.6;margin:6px 0 0">{_e(v.get("justificativa"))}</p>' if v.get('justificativa') else '')
                        + '</div>')
 
     # ── Assinaturas + termo de ciência ────────────────────────────────
@@ -8763,22 +8798,22 @@ def relatorio_visita_html(vid):
     sig_emp = v.get('assinatura_empresa') or ''
     if sig_tec or sig_emp or v.get('sem_assinatura_motivo'):
         partes = ''
-        if sig_tec.startswith('data:image/'):
+        if _src_img(sig_tec):
             partes += (f'<div style="margin-bottom:14px"><div class="lbl" style="margin-bottom:4px">Técnico (Ocupacional)</div>'
-                       f'<img src="{sig_tec}" style="width:100%;max-width:340px;background:#fff;border-radius:8px">'
-                       f'<div class="val" style="margin-top:4px">{v.get("tecnico","")}</div></div>')
-        if sig_emp.startswith('data:image/'):
+                       f'<img src="{_src_img(sig_tec)}" style="width:100%;max-width:340px;background:#fff;border-radius:8px">'
+                       f'<div class="val" style="margin-top:4px">{_e(v.get("tecnico",""))}</div></div>')
+        if _src_img(sig_emp):
             ass_quando = _fmt_date(v.get('assinado_em')) if v.get('assinado_em') else _fmt_date(v.get('data_visita'))
             partes += (f'<div><div class="lbl" style="margin-bottom:4px">Responsável da empresa</div>'
-                       f'<img src="{sig_emp}" style="width:100%;max-width:340px;background:#fff;border-radius:8px">'
-                       f'<div class="val" style="margin-top:4px">{v.get("assinante_nome") or v.get("acompanhante") or "—"}'
-                       + (f' · {v.get("assinante_cargo")}' if v.get('assinante_cargo') else '')
-                       + f' · {ass_quando}</div>'
-                       + (f'<p style="font-size:.72rem;color:#94a3b8;line-height:1.5;margin:8px 0 0;font-style:italic">“{v.get("ciencia_texto")}”</p>' if v.get('ciencia_texto') else '')
+                       f'<img src="{_src_img(sig_emp)}" style="width:100%;max-width:340px;background:#fff;border-radius:8px">'
+                       f'<div class="val" style="margin-top:4px">{_e(v.get("assinante_nome") or v.get("acompanhante") or "—")}'
+                       + (f' · {_e(v.get("assinante_cargo"))}' if v.get('assinante_cargo') else '')
+                       + f' · {_e(ass_quando)}</div>'
+                       + (f'<p style="font-size:.72rem;color:#94a3b8;line-height:1.5;margin:8px 0 0;font-style:italic">“{_e(v.get("ciencia_texto"))}”</p>' if v.get('ciencia_texto') else '')
                        + '</div>')
         elif v.get('sem_assinatura_motivo'):
             partes += (f'<div><div class="lbl" style="margin-bottom:4px">Responsável da empresa</div>'
-                       f'<div class="val" style="color:#f59e0b">Sem assinatura — {v.get("sem_assinatura_motivo")}</div></div>')
+                       f'<div class="val" style="color:#f59e0b">Sem assinatura — {_e(v.get("sem_assinatura_motivo"))}</div></div>')
         sig_html = f'<div class="card"><h2>Assinaturas</h2>{partes}</div>'
 
     html = f'''<!DOCTYPE html>
@@ -8808,22 +8843,22 @@ def relatorio_visita_html(vid):
   <div style="display:flex;justify-content:space-between;align-items:flex-start">
     <div>
       <h1>Visita #{vid}</h1>
-      <h2>{v.get("empresa_nome","—")}</h2>
+      <h2>{_e(v.get("empresa_nome","—"))}</h2>
     </div>
-    <span class="badge">{(v.get("resultado") or "pendente").upper()}</span>
+    <span class="badge">{_e((v.get("resultado") or "pendente").upper())}</span>
   </div>
-  <div class="row"><span class="lbl">Data</span><span class="val">{_fmt_date(v.get("data_visita"))}</span></div>
-  <div class="row"><span class="lbl">Técnico</span><span class="val">{v.get("tecnico","—")}</span></div>
-  <div class="row"><span class="lbl">OS</span><span class="val">{v.get("numero_os","—")}</span></div>
-  <div class="row"><span class="lbl">Tipo</span><span class="val">{v.get("tipo_visita","—")}</span></div>
-  {"<div class='row'><span class='lbl'>Horário</span><span class='val'>" + v.get("hora_inicio","") + " – " + v.get("hora_termino","") + "</span></div>" if v.get("hora_inicio") else ""}
+  <div class="row"><span class="lbl">Data</span><span class="val">{_e(_fmt_date(v.get("data_visita")))}</span></div>
+  <div class="row"><span class="lbl">Técnico</span><span class="val">{_e(v.get("tecnico","—"))}</span></div>
+  <div class="row"><span class="lbl">OS</span><span class="val">{_e(v.get("numero_os","—"))}</span></div>
+  <div class="row"><span class="lbl">Tipo</span><span class="val">{_e(v.get("tipo_visita","—"))}</span></div>
+  {"<div class='row'><span class='lbl'>Horário</span><span class='val'>" + _e(v.get("hora_inicio","")) + " – " + _e(v.get("hora_termino","")) + "</span></div>" if v.get("hora_inicio") else ""}
 </div>
 
-{"<div class='card'><h2>Execução de Campo</h2><div class='row'><span class='lbl'>Executados</span><span class='val'>" + str(agentes_exec or "—") + "</span></div>" + ("<div class='row'><span class='lbl'>Não feitos</span><span class='val' style='color:#f59e0b'>" + ("; ".join(a.get("agente","?") for a in agentes_nao) if isinstance(agentes_nao, list) else str(agentes_nao)) + "</span></div>" if agentes_nao else "") + ("</div>" ) if exec_data else ""}
+{"<div class='card'><h2>Execução de Campo</h2><div class='row'><span class='lbl'>Executados</span><span class='val'>" + _e(agentes_exec or "—") + "</span></div>" + ("<div class='row'><span class='lbl'>Não feitos</span><span class='val' style='color:#f59e0b'>" + ("; ".join(_e(a.get("agente","?")) for a in agentes_nao) if isinstance(agentes_nao, list) else _e(agentes_nao)) + "</span></div>" if agentes_nao else "") + ("</div>" ) if exec_data else ""}
 
 {("<div class='card'><h2>Coletas Registradas</h2><table><tr><th>Tipo</th><th>Data</th><th>Avaliador</th><th>Status</th></tr>" + coletas_rows + "</table></div>") if coletas_rows else ""}
 
-{"<div class='card'><h2>Observações</h2><p style='color:#cbd5e1;line-height:1.6'>" + v.get("observacao_geral","—") + "</p></div>" if v.get("observacao_geral") else ""}
+{"<div class='card'><h2>Observações</h2><p style='color:#cbd5e1;line-height:1.6'>" + _e(v.get("observacao_geral","—")) + "</p></div>" if v.get("observacao_geral") else ""}
 
 {imprev_html}
 
