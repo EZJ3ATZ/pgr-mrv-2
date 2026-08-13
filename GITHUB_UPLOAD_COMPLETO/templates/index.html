@@ -18430,6 +18430,20 @@ function _perfMs(v) {
   if (v === null || v === undefined) return '—';
   return Number(v).toLocaleString('pt-BR') + ' ms';
 }
+function _perfKb(b) {
+  if (b === null || b === undefined) return '—';
+  const kb = Number(b) / 1024;
+  if (kb >= 1024) return (kb/1024).toFixed(1).replace('.', ',') + ' MB';
+  return Math.round(kb).toLocaleString('pt-BR') + ' KB';
+}
+// Resposta acima de 300 KB pesa na rede do cliente — em 4G de campo isso é
+// segundo, não milissegundo. É o que o tempo de servidor NÃO mostra.
+function _perfPesoCor(b) {
+  const kb = Number(b || 0) / 1024;
+  if (kb >= 1024) return '#ef4444';
+  if (kb >= 300)  return '#f59e0b';
+  return 'var(--text3)';
+}
 
 function saudeDesempenho(dp) {
   if (!dp) return '';
@@ -18462,6 +18476,7 @@ function saudeDesempenho(dp) {
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${_perfMs(r.pior_ms)}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${_perfMs(r.media_banco_ms)}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${Number(r.consultas_pior||0) >= 50 ? '#f59e0b' : 'var(--text3)'};">${r.consultas_media ?? '—'} / ${r.consultas_pior ?? '—'}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${_perfPesoCor(r.bytes_media)};">${_perfKb(r.bytes_media)}</td>
       <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${Math.round(Number(r.total_ms||0)/1000).toLocaleString('pt-BR')} s</td>
     </tr>`).join('');
 
@@ -18500,9 +18515,10 @@ function saudeDesempenho(dp) {
           <th style="${th}text-align:right;">Pior</th>
           <th style="${th}text-align:right;">Banco</th>
           <th style="${th}text-align:right;">Consultas méd/pior</th>
+          <th style="${th}text-align:right;">Tamanho</th>
           <th style="${th}text-align:right;">Total</th>
         </tr></thead>
-        <tbody>${rotas || '<tr><td colspan="9" style="padding:8px;font-size:.72rem;color:var(--text3);">Sem dados</td></tr>'}</tbody>
+        <tbody>${rotas || '<tr><td colspan="10" style="padding:8px;font-size:.72rem;color:var(--text3);">Sem dados</td></tr>'}</tbody>
       </table>
     </div>
 

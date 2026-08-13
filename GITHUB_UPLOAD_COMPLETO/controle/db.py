@@ -980,17 +980,78 @@ def _add_col(conn, table, col, col_type):
 # ── init_db ────────────────────────────────────────────────────────────
 
 _db_ready = False
+_esquema_tag_cache = None
+
+
+def _esquema_tag():
+    """Impressão digital do DDL (schema + índices + código do _migrate).
+
+    Muda sozinha quando qualquer um dos três muda, então a migration volta a
+    rodar sem ninguém precisar lembrar de mexer numa versão à mão.
+    Se não der para calcular, devolve '' — e aí a migration roda SEMPRE
+    (fail-open: na dúvida, é melhor migrar de novo do que deixar de migrar).
+    """
+    global _esquema_tag_cache
+    if _esquema_tag_cache is not None:
+        return _esquema_tag_cache
+    try:
+        import hashlib
+        import inspect
+        fonte = ''.join([
+            SCHEMA_PG if USE_PG else SCHEMA_SQLITE,
+            SCHEMA_INDEXES,
+            inspect.getsource(_migrate),
+        ])
+        _esquema_tag_cache = hashlib.sha256(fonte.encode('utf-8')).hexdigest()[:16]
+    except Exception as e:
+        print(f'[migrate] sem impressão digital do schema ({e}) — vai migrar sempre')
+        _esquema_tag_cache = ''
+    return _esquema_tag_cache
+
 
 def init_db():
-    """Cria tabelas se não existirem. Idempotente. Roda só 1x por processo."""
+    """Cria tabelas se não existirem. Idempotente. Roda só 1x por processo.
+
+    🔴 Por que existe o guarda de `schema_versao` (13/08/2026): o DDL rodava a
+    CADA boot do gunicorn. `CREATE INDEX IF NOT EXISTS` **pega ShareLock na
+    tabela ANTES** de descobrir que o índice já existe — e ShareLock conflita
+    com INSERT/UPDATE. Quando um boot caía junto com o sync do Planner (que faz
+    milhões de UPDATE em planner_raw_tasks), o CREATE INDEX entrava na fila e
+    **toda escrita na tabela ficava atrás dele**. O `pg_stat_statements` de
+    produção mostrou o tamanho do estrago: 527 execuções de
+    `idx_raw_planner_task` somando 4.247 s, com **uma única espera de 54
+    minutos**; `idx_emp_nome` outros 3.868 s. ~2h24 de banco parado à toa.
+
+    Agora o DDL só roda quando a impressão digital muda (deploy que altera
+    schema/índice/_migrate). Se algum dia for preciso forçar:
+    `DELETE FROM schema_versao WHERE chave='ddl'`.
+    """
     global _db_ready
     if _db_ready:
         return
     schema = SCHEMA_PG if USE_PG else SCHEMA_SQLITE
     with get_db() as conn:
-        conn.executescript(schema)
-        conn.executescript(SCHEMA_INDEXES)
-        _migrate(conn)
+        conn.execute('CREATE TABLE IF NOT EXISTS schema_versao ('
+                     'chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)')
+        tag = _esquema_tag()
+        gravado = None
+        try:
+            r = conn.execute("SELECT valor FROM schema_versao WHERE chave = 'ddl'").fetchone()
+            if r:
+                gravado = r['valor']
+        except Exception:
+            gravado = None
+
+        if (not tag) or gravado != tag:
+            conn.executescript(schema)
+            conn.executescript(SCHEMA_INDEXES)
+            _migrate(conn)
+            if tag:
+                conn.execute("DELETE FROM schema_versao WHERE chave = 'ddl'")
+                conn.execute('INSERT INTO schema_versao (chave, valor, atualizado_em) '
+                             "VALUES ('ddl', ?, CURRENT_TIMESTAMP)", (tag,))
+            print(f'[migrate] schema aplicado (tag {tag or "sem-tag"})')
+
         count = conn.execute('SELECT COUNT(*) AS c FROM amostradores').fetchone()['c']
     _db_ready = True
     if count == 0:

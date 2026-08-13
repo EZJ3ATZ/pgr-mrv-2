@@ -273,6 +273,7 @@ def por_rota(dias=7, limite=25):
                    ROUND(AVG(ms_banco)) AS media_banco_ms,
                    ROUND(AVG(consultas), 1) AS consultas_media,
                    MAX(consultas) AS consultas_pior,
+                   ROUND(AVG(bytes_resp)) AS bytes_media,
                    {acima} AS acima_1s
               FROM perf_log WHERE {w}
              GROUP BY rota, metodo
