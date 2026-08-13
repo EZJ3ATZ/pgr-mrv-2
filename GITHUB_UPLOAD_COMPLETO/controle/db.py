@@ -176,7 +176,10 @@ class _PGCursor:
     # RA_LAUDOS entrou aqui: o INSERT do backfill de RAs (lab_inbox._upsert_ra_laudo)
     # derrubava a transação toda — conclusões de amostrador e baixas de medição
     # eram desfeitas junto (bug do "backfill nunca conclui em prod").
-    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE', 'RA_LAUDOS')
+    # SCHEMA_VERSAO entrou em 13/08/2026: a PK é `chave` (texto). Sem isto o
+    # RETURNING id abortava a transação do init_db() — e como _db_ready só é
+    # marcado no fim, o DDL voltava a rodar em CADA chamada de init_db().
+    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE', 'RA_LAUDOS', 'SCHEMA_VERSAO')
 
     def execute(self, sql, params=None):
         _t0 = time.perf_counter()
@@ -1042,18 +1045,28 @@ def init_db():
         except Exception:
             gravado = None
 
-        if (not tag) or gravado != tag:
+        migrou = (not tag) or gravado != tag
+        if migrou:
             conn.executescript(schema)
             conn.executescript(SCHEMA_INDEXES)
             _migrate(conn)
-            if tag:
-                conn.execute("DELETE FROM schema_versao WHERE chave = 'ddl'")
-                conn.execute('INSERT INTO schema_versao (chave, valor, atualizado_em) '
-                             "VALUES ('ddl', ?, CURRENT_TIMESTAMP)", (tag,))
             print(f'[migrate] schema aplicado (tag {tag or "sem-tag"})')
 
         count = conn.execute('SELECT COUNT(*) AS c FROM amostradores').fetchone()['c']
     _db_ready = True
+
+    # A MARCA vai em transação SEPARADA de propósito: se ela falhar, a migration
+    # já commitou e o boot não quebra — no pior caso o próximo boot migra de novo.
+    # (Foi assim que o RETURNING id derrubou o init_db inteiro em 13/08/2026.)
+    if migrou and tag:
+        try:
+            with get_db() as conn2:
+                conn2.execute("DELETE FROM schema_versao WHERE chave = 'ddl'")
+                conn2.execute('INSERT INTO schema_versao (chave, valor, atualizado_em) '
+                              "VALUES ('ddl', ?, CURRENT_TIMESTAMP)", (tag,))
+        except Exception as e:
+            print(f'[migrate] não conseguiu marcar a versão do schema: {e}')
+
     if count == 0:
         _auto_seed()
 
