@@ -7999,6 +7999,25 @@ def api_mesclar_empresas():
         return jsonify({'erro': str(e)}), 500
 
 
+@controle_bp.route('/admin/alerta/previa')
+def admin_alerta_previa():
+    """O que o alerta MANDARIA agora, sem mandar. `?enviar=1` envia de verdade
+    (para testar o caminho do Graph uma vez)."""
+    init_db()
+    try:
+        from .alerta import verificar, PARA, TETO_DIA
+        enviar = request.args.get('enviar') == '1'
+        digest = request.args.get('digest', '1') == '1'
+        r = verificar(forcar_digest=digest, dry_run=not enviar)
+        r['para'] = PARA
+        r['teto_dia'] = TETO_DIA
+        r['enviou'] = enviar
+        return jsonify(r)
+    except Exception as e:
+        import traceback
+        traceback.print_exc(); return jsonify({'erro': str(e)}), 500
+
+
 @controle_bp.route('/admin/saude')
 def admin_saude():
     """Diagnóstico completo do banco e integrações."""

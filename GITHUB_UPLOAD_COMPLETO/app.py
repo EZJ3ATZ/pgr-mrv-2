@@ -258,6 +258,36 @@ def _start_planner_scheduler():
             replace_existing=True,
         )
 
+        # ── Alerta do log (só para o Matheus — ALERTA_PARA) ───────────────
+        # "quebrou" a cada 15 min; digest 1x/dia. As travas anti-ruído (mudança
+        # de estado, dedup, teto diário, ALERTA_EMAIL=0) estão em controle/alerta.py.
+        def _alerta_job(digest=False):
+            try:
+                from controle.alerta import verificar
+                r = verificar(forcar_digest=digest)
+                if r.get('quebrou') or r.get('digest'):
+                    print(f'[alerta] {r.get("quebrou")} digest={r.get("digest")} '
+                          f'suprimidos={r.get("suprimidos")}')
+            except Exception as e:
+                print(f'[alerta] erro: {e}')
+
+        scheduler.add_job(
+            _alerta_job,
+            trigger=IntervalTrigger(minutes=15,
+                                    start_date=_dt.now() + _td(minutes=5)),
+            id='alerta_quebrou', name='Alerta — quebrou', replace_existing=True,
+            max_instances=1,
+        )
+        # 10h UTC = 07h de Brasília. O container roda em UTC — a mesma pegadinha
+        # do pg_cron do CRM, que dispara em GMT.
+        from apscheduler.triggers.cron import CronTrigger as _Cron
+        scheduler.add_job(
+            lambda: _alerta_job(digest=True),
+            trigger=_Cron(hour=10, minute=0),
+            id='alerta_digest', name='Alerta — digest diário', replace_existing=True,
+            max_instances=1,
+        )
+
         scheduler.add_job(
             _sync_job,
             trigger=IntervalTrigger(

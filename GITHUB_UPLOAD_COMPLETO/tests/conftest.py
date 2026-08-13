@@ -25,6 +25,7 @@ SCRIPTS_ISOLADOS = [
     'test_pg_returning.py',
     'test_schema_versao.py',
     'test_uso_por_pessoa.py',
+    'test_alerta.py',
 ]
 
 collect_ignore = list(SCRIPTS_ISOLADOS)
