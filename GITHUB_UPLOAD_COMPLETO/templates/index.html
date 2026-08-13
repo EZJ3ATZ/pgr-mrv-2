@@ -5291,6 +5291,57 @@
 
 </div>
 
+<!-- Modal Baixa Rapida — fecha a OS sem amostrador e sem equipamento (Helbert 13/08) -->
+<div class="ctrl-overlay" id="ctrl-bxr-overlay" style="z-index:1150;" onclick="if(event.target===this) ctrlFecharBaixaRapida()">
+  <div class="ctrl-modal">
+    <h3>⚡ Baixa Rápida — sem amostrador</h3>
+    <div style="font-size:.75rem;color:var(--text3);margin:-6px 0 12px;line-height:1.45;">
+      Dá baixa em <b>todas as medições pendentes da OS de uma vez</b>. Não pede bomba, S/N nem vazão,
+      e não mexe no estoque de amostradores. Medição <b>aguardando laboratório</b> não é tocada —
+      essa espera o RA.
+    </div>
+
+    <div id="ctrl-bxr-empresa" style="font-size:.82rem;color:var(--text2);margin-bottom:8px;"></div>
+
+    <label>OS que serão fechadas</label>
+    <div id="ctrl-bxr-lista" style="max-height:230px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:rgba(0,0,0,.15);"></div>
+
+    <label style="margin-top:12px;color:var(--yellow);">Motivo da baixa sem amostrador <span style="font-weight:400;text-transform:none;">— obrigatório</span></label>
+    <select id="ctrl-bxr-motivo" onchange="ctrlBxrSyncMotivo()">
+      <option value="">— Selecione o motivo —</option>
+      <option value="Lançamento retroativo de medição antiga">Lançamento retroativo de medição antiga</option>
+      <option value="Avaliação feita por empresa terceira">Avaliação feita por empresa terceira</option>
+      <option value="Agente sem amostrador (ruído, calor, vibração)">Agente sem amostrador (ruído, calor, vibração)</option>
+      <option value="Amostrador não cadastrado no sistema">Amostrador não cadastrado no sistema</option>
+      <option value="Outro">Outro (descrever)</option>
+    </select>
+    <input type="text" id="ctrl-bxr-motivo-outro" placeholder="Descreva o motivo" style="display:none;margin-top:6px;">
+
+    <div class="row2">
+      <div>
+        <label>Avaliador</label>
+        <select id="ctrl-bxr-avaliador">
+          <option>Wesley</option><option>Helbert</option><option>Matheus</option><option>Kelly</option>
+        </select>
+      </div>
+      <div>
+        <label>Data da Medição</label>
+        <input type="date" id="ctrl-bxr-data">
+      </div>
+    </div>
+
+    <label>Observação</label>
+    <input type="text" id="ctrl-bxr-obs" placeholder="Opcional">
+
+    <div id="ctrl-bxr-result" style="margin-top:8px;"></div>
+
+    <div class="ctrl-actions">
+      <button class="ctrl-btn-cancel" onclick="ctrlFecharBaixaRapida()">Cancelar</button>
+      <button class="ctrl-btn-ok" id="ctrl-bxr-confirm" onclick="ctrlConfirmarBaixaRapida()">✓ Dar baixa</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Painel EMPRESAS ══ -->
 <div id="tab-empresas" class="tab-panel">
 <div class="page" style="max-width:1100px;">
@@ -10142,7 +10193,7 @@ async function ctrlLoadPorEmpresa() {
         <td onclick="event.stopPropagation()">
           <div style="display:flex;gap:4px;align-items:center;justify-content:flex-end;">
             <button onclick="empAbrirPainel(${e.empresa_id})" title="Ver detalhes, coletas e histórico desta empresa" style="background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:4px;padding:4px 8px;font-size:.8rem;cursor:pointer;flex-shrink:0;">📊</button>
-            ${pend > 0 ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaEmpresa(${e.empresa_id})">Dar Baixa</button>` : ''}
+            ${pend > 0 ? `<button class="ctrl-btn-baixa" onclick="ctrlAbrirBaixaEmpresa(${e.empresa_id})">Dar Baixa</button><button onclick="ctrlBaixaRapidaEmpresa(${e.empresa_id},'${nomeEsc}')" title="Fecha as medições pendentes das OS desta empresa sem amostrador e sem equipamento" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:#fbbf24;border-radius:4px;padding:4px 8px;font-size:.72rem;cursor:pointer;white-space:nowrap;flex-shrink:0;">⚡ Baixa rápida</button>` : ''}
           </div>
         </td>
       </tr>
@@ -10370,7 +10421,7 @@ const _NOTIF_ICON = {
   login:'🔑', logout:'🚪', amostrador_criado:'➕', amostrador_atualizado:'✏️',
   sync_planner:'🔄', importacao:'📥', coleta_ruido_criada:'🔊', coleta_quimico_criada:'🧪',
   planejamento_criado:'📋', os_concluida:'✅', laudo_gerado:'📄', medicao_salva:'📊',
-  demanda_baixa_manual:'✅', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
+  demanda_baixa_manual:'✅', demanda_baixa_rapida:'⚡', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
   empresa_nova_planner:'🏢', empresa_fantasma_excluida:'🗑️', aviso_atualizacao:'📢',
 };
 const _NOTIF_LABEL = {
@@ -10379,7 +10430,7 @@ const _NOTIF_LABEL = {
   importacao:'Importação', coleta_ruido_criada:'Coleta de Ruído',
   coleta_quimico_criada:'Coleta Químico', planejamento_criado:'Planejamento',
   os_concluida:'OS Concluída', laudo_gerado:'Laudo gerado', medicao_salva:'Medição salva',
-  demanda_baixa_manual:'Baixa de OS', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
+  demanda_baixa_manual:'Baixa de OS', demanda_baixa_rapida:'Baixa rápida (sem amostrador)', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
   demanda_criada_planner:'Nova OS', empresa_nova_planner:'Nova empresa',
   empresa_fantasma_excluida:'Empresa removida', aviso_atualizacao:'Atualização',
 };
@@ -10634,7 +10685,7 @@ async function ctrlToggleExpandEmpresa(empresaId) {
                 <td style="padding:6px 8px;"><span class="ctrl-badge ${isDone?'concluida':'pendente'}">${isDone?'concluída':'pendente'}</span></td>
                 <td style="padding:6px 8px; white-space:nowrap;">
                   <button onclick="event.stopPropagation(); ctrlVerEscopo(${d.id})" style="background:transparent;border:1px solid var(--border2);color:var(--text3);border-radius:4px;padding:2px 7px;font-size:.68rem;cursor:pointer;margin-right:4px;" title="Ver escopo / descrição da OS">📋 Escopo</button>
-                  ${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}
+                  ${isDone?'':`<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button><button onclick="event.stopPropagation(); ctrlBaixaRapidaDemanda(${d.id})" title="Baixa rápida: fecha todas as medições pendentes desta OS sem amostrador e sem equipamento" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:#fbbf24;border-radius:4px;padding:2px 7px;font-size:.68rem;cursor:pointer;margin-left:4px;">⚡</button>`}
                 </td>
               </tr>${medHtml}`;
             }).join('')}
@@ -13726,7 +13777,7 @@ async function ctrlToggleExpandDemandEmp(empresaId) {
                   </div>
                 </td>
                 <td style="padding:5px 8px;"><span class="ctrl-badge ${isDone ? 'concluida' : 'pendente'}">${isDone ? 'concluída' : 'pendente'}</span></td>
-                <td style="padding:5px 8px;">${isDone ? '' : `<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button>`}</td>
+                <td style="padding:5px 8px;white-space:nowrap;">${isDone ? '' : `<button class="ctrl-btn-baixa" onclick="event.stopPropagation(); ctrlAbrirBaixaDemand(${d.id})">Dar Baixa</button><button onclick="event.stopPropagation(); ctrlBaixaRapidaDemanda(${d.id})" title="Baixa rápida: fecha todas as medições pendentes desta OS sem amostrador e sem equipamento" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:#fbbf24;border-radius:4px;padding:2px 7px;font-size:.68rem;cursor:pointer;margin-left:4px;">⚡</button>`}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -14373,6 +14424,136 @@ async function ctrlConfirmarBaixa() {
   } catch(e) {
     alert('Erro: ' + e.message);
   }
+}
+
+/* ── Baixa Rápida — fecha a OS sem amostrador e sem equipamento ─────────
+   Pedido do Helbert (13/08/2026): a fila de empresa antiga só precisa ser
+   fechada — a medição já aconteceu (ou foi de terceiro, ou o amostrador nunca
+   foi cadastrado). O amostrador já era opcional desde 10/08; o gargalo era ter
+   de repetir OS → agente → bomba → vazão para cada agente. Aqui: 1 motivo +
+   1 clique fecha todas as medições pendentes da OS.
+   'aguardando lab' não é tocada — essa espera o RA do laboratório. */
+window._ctrlBxrOS = [];
+
+async function ctrlBaixaRapidaEmpresa(empresaId, nome) {
+  try {
+    const e = await ctrlFetch('/controle/empresa/' + empresaId + '/demandas');
+    const pend = (e.demandas || []).filter(d => d.status !== 'concluida');
+    if (!pend.length) { _showToast('⚠ Nenhuma OS pendente nesta empresa', 'warn'); return; }
+    _ctrlAbrirBaixaRapida(nome || '', pend.map(d => ({
+      id: d.id,
+      numero_os: d.numero_os,
+      titulo: d.tarefa_display || d.nome_tarefa || d.titulo || '',
+      agentes: (d.medicoes_pendentes || []).map(m => m.agente),
+      lab: (d.medicoes_aguardando_lab || []).length
+    })));
+  } catch(err) { alert('Erro: ' + err.message); }
+}
+
+async function ctrlBaixaRapidaDemanda(demId) {
+  try {
+    const d = await ctrlFetch('/controle/demandas/' + demId);
+    const meds = d.medicoes || [];
+    _ctrlAbrirBaixaRapida(d.empresa_nome || '', [{
+      id: d.id,
+      numero_os: d.numero_os,
+      titulo: d.nome_tarefa || d.titulo || '',
+      agentes: meds.filter(m => m.status !== 'realizado' && m.status !== 'aguardando_lab')
+                   .map(m => m.agente),
+      lab: meds.filter(m => m.status === 'aguardando_lab').length
+    }]);
+  } catch(err) { alert('Erro: ' + err.message); }
+}
+
+function _ctrlAbrirBaixaRapida(empresaNome, listaOS) {
+  window._ctrlBxrOS = listaOS;
+  document.getElementById('ctrl-bxr-empresa').innerHTML =
+    empresaNome ? `Empresa: <b>${_esc(empresaNome)}</b>` : '';
+  document.getElementById('ctrl-bxr-lista').innerHTML = listaOS.map((o, i) => {
+    const ags = o.agentes.length
+      ? o.agentes.map(a => `<span style="background:var(--surface3);border:1px solid var(--border2);padding:1px 6px;border-radius:10px;font-size:.68rem;color:var(--text2);">${_esc(a)}</span>`).join(' ')
+      : `<span style="font-size:.68rem;color:var(--text3);">${o.lab ? 'nada a dar baixa aqui — a OS só espera o laboratório' : 'sem medição pendente — só fecha a OS'}</span>`;
+    const lab = o.lab
+      ? `<div style="font-size:.66rem;color:#60a5fa;margin-top:3px;">🧪 ${o.lab} aguardando laboratório — não será tocada (a OS segue pendente)</div>`
+      : '';
+    // O CSS do modal manda todo input ocupar 100% da largura e todo label vir
+    // em CAIXA ALTA — dentro desta lista os dois quebram o render (checkbox
+    // gigante empurrando o texto pra fora da caixa), então são anulados aqui.
+    return `<label style="display:flex;gap:8px;align-items:flex-start;margin:0;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;text-transform:none;letter-spacing:normal;font-size:.75rem;color:var(--text2);">
+      <input type="checkbox" class="ctrl-bxr-chk" value="${i}" checked style="width:15px;height:15px;min-width:15px;flex:0 0 15px;margin:2px 0 0 0;padding:0;accent-color:#0a7;">
+      <span style="flex:1;min-width:0;">
+        <span style="font-size:.8rem;color:var(--text);font-weight:600;">${_esc(o.numero_os || '(s/OS)')}</span>
+        <span style="font-size:.7rem;color:var(--text3);"> ${_esc((o.titulo || '').slice(0, 48))}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;">${ags}</div>
+        ${lab}
+      </span>
+    </label>`;
+  }).join('');
+  document.getElementById('ctrl-bxr-motivo').value = '';
+  document.getElementById('ctrl-bxr-motivo-outro').value = '';
+  document.getElementById('ctrl-bxr-motivo-outro').style.display = 'none';
+  document.getElementById('ctrl-bxr-obs').value = '';
+  document.getElementById('ctrl-bxr-result').innerHTML = '';
+  document.getElementById('ctrl-bxr-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ctrl-bxr-overlay').classList.add('show');
+}
+
+function ctrlBxrSyncMotivo() {
+  const m = document.getElementById('ctrl-bxr-motivo').value;
+  document.getElementById('ctrl-bxr-motivo-outro').style.display =
+    (m === 'Outro') ? 'block' : 'none';
+}
+
+function ctrlFecharBaixaRapida() {
+  document.getElementById('ctrl-bxr-overlay').classList.remove('show');
+}
+
+async function ctrlConfirmarBaixaRapida() {
+  const idxs = [...document.querySelectorAll('.ctrl-bxr-chk:checked')].map(c => +c.value);
+  if (!idxs.length) { alert('Marque ao menos uma OS'); return; }
+  let motivo = document.getElementById('ctrl-bxr-motivo').value;
+  if (!motivo) { alert('Selecione o motivo da baixa sem amostrador'); return; }
+  if (motivo === 'Outro') {
+    const det = (document.getElementById('ctrl-bxr-motivo-outro').value || '').trim();
+    if (!det) { alert('Descreva o motivo da baixa sem amostrador'); return; }
+    motivo = `Outro — ${det}`;
+  }
+  const payload = {
+    motivo,
+    avaliador: document.getElementById('ctrl-bxr-avaliador').value,
+    data_medicao: document.getElementById('ctrl-bxr-data').value,
+    observacao: document.getElementById('ctrl-bxr-obs').value
+  };
+  const btn = document.getElementById('ctrl-bxr-confirm');
+  btn.disabled = true; btn.textContent = 'Dando baixa...';
+  let okCount = 0, baixas = 0;
+  const abertas = [], erros = [];
+  for (const i of idxs) {
+    const o = window._ctrlBxrOS[i];
+    try {
+      const r = await ctrlFetch('/controle/demandas/' + o.id + '/baixa_rapida', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      okCount++; baixas += (r.baixas || 0);
+      if (!r.os_concluida) abertas.push(`${o.numero_os || o.id} (${r.aguardando_lab} no lab)`);
+    } catch(e) {
+      erros.push(`${o.numero_os || o.id}: ${e.message}`);
+    }
+  }
+  btn.disabled = false; btn.textContent = '✓ Dar baixa';
+  let msg = `✓ ${okCount} OS processada(s) — ${baixas} medição(ões) com baixa
+• Motivo: ${motivo}
+• Nenhum amostrador movido para o laboratório`;
+  if (abertas.length) msg += `
+• Segue(m) pendente(s) por lab: ${abertas.join(', ')}`;
+  _showToast(msg, erros.length ? 'warn' : 'success');
+  document.getElementById('ctrl-bxr-result').innerHTML = erros.length
+    ? `<div class="ctrl-warn-box">⚠ ${erros.map(x => _esc(x)).join('<br>')}</div>` : '';
+  if (!erros.length) ctrlFecharBaixaRapida();
+  try { ctrlLoadStats(); } catch(_) {}
+  try { ctrlLoadDemand(); } catch(_) {}
+  try { ctrlLoadPorEmpresa(); } catch(_) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -1945,6 +1945,97 @@ def dar_baixa():
     })
 
 
+
+# ── Baixa rapida da OS (sem amostrador / sem equipamento) ─────────────
+@controle_bp.route('/demandas/<int:did>/baixa_rapida', methods=['POST'])
+def baixa_rapida_demanda(did):
+    """Da baixa em TODAS as medicoes pendentes da OS de uma vez, sem amostrador
+    e sem equipamento (bomba/SN/vazao).
+
+    Pedido do Helbert (13/08/2026): a fila de empresa antiga so precisa ser
+    fechada — a medicao ja aconteceu (ou foi de terceiro, ou o amostrador nunca
+    foi cadastrado) e nao ha dispositivo nosso para mandar ao laboratorio.
+    Fazer isso agente por agente no modal individual era o gargalo real; o
+    amostrador ja era opcional desde 10/08.
+
+    `motivo` e OBRIGATORIO — e o mesmo `motivo_sem_amostrador` da baixa
+    individual: quem le a baixa depois precisa saber por que nao houve
+    dispositivo em campo.
+
+    NAO toca em medicao 'aguardando_lab': essa espera o RA do laboratorio e
+    fechar aqui quebraria a cadeia de custodia. Se sobrar alguma, a OS segue
+    pendente — a mesma regra da baixa individual.
+    """
+    init_db()
+    d = request.json or {}
+    motivo = (d.get('motivo') or '').strip()
+    if not motivo:
+        return jsonify({'erro': 'motivo obrigatorio na baixa sem amostrador'}), 400
+
+    avaliador    = d.get('avaliador', '')
+    data_medicao = d.get('data_medicao') or datetime.now().strftime('%Y-%m-%d')
+    obs          = d.get('observacao', '')
+
+    with get_db() as conn:
+        dem = conn.execute(
+            'SELECT id, numero_os FROM demandas WHERE id=?', (did,)).fetchone()
+        if not dem:
+            return jsonify({'erro': 'Demanda nao encontrada'}), 404
+        os_num = row_to_dict(dem).get('numero_os') or ''
+
+        pend = [row_to_dict(r) for r in conn.execute(
+            "SELECT id, agente, qtd_pontos_prevista FROM medicoes "
+            "WHERE demanda_id=? AND status NOT IN ('realizado','aguardando_lab') "
+            "ORDER BY agente", (did,)).fetchall()]
+
+        for m in pend:
+            conn.execute("""
+                INSERT INTO baixas
+                    (medicao_id, amostrador_id, avaliador, bomba, vazao_calibrada,
+                     volume_recomendado, tempo_calculado_min, tempo_calculado_max,
+                     data_medicao, observacao, motivo_sem_amostrador)
+                VALUES (?, NULL, ?, '', 0, 0, 0, 0, ?, ?, ?)""",
+                (m['id'], avaliador, data_medicao, obs, motivo))
+            conn.execute(
+                "UPDATE medicoes SET qtd_pontos_feita=?, status='realizado' WHERE id=?",
+                (m['qtd_pontos_prevista'] or 1, m['id']))
+
+        # Mesma regra da baixa individual: a OS fecha so quando nao sobra medicao
+        # fora de 'realizado' — o 'aguardando_lab' segura a OS aberta de proposito.
+        restantes = conn.execute(
+            "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
+            (did,)).fetchone()['c']
+        if restantes == 0:
+            conn.execute(
+                "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP "
+                "WHERE id=?", (did,))
+            for p in conn.execute(
+                    "SELECT id FROM planejamentos WHERE demanda_id=? "
+                    "AND status NOT IN ('concluido','cancelado')", (did,)).fetchall():
+                pid = row_to_dict(p)['id']
+                conn.execute(
+                    "UPDATE planejamentos SET status='concluido' WHERE id=?", (pid,))
+                _liberar_reservas_plano(pid, conn)
+
+    registrar_evento(
+        'demanda_baixa_rapida',
+        'Baixa rapida da OS %s — %d medicao(oes) sem amostrador · %s'
+        % (os_num or '—', len(pend), motivo),
+        ref_id=did, ref_tipo='demanda',
+        usuario=current_user.nome if current_user.is_authenticated else 'sistema',
+        ip=request.remote_addr)
+
+    return jsonify({
+        'ok': True,
+        'demanda_id': did,
+        'numero_os': os_num,
+        'baixas': len(pend),
+        'agentes': [m['agente'] for m in pend],
+        'os_concluida': restantes == 0,
+        'aguardando_lab': restantes,
+    })
+
+
 # ── Empresas ──────────────────────────────────────────────────────────
 @controle_bp.route('/empresas')
 def get_empresas():
