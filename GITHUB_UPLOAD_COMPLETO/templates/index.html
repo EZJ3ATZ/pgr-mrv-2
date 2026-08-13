@@ -18450,142 +18450,9 @@ function _perfPesoCor(b) {
   return 'var(--text3)';
 }
 
-// ══════════════════════════════════════════════════════════════════════
-//  LOG DE ATIVIDADE HUMANA — cada clique, cada mexida
-//  Requisição NÃO é uso: a aba parada chama /controle/eventos sozinha a cada
-//  minuto e isso fazia o painel dizer que a pessoa estava usando o sistema.
-//  Clique é humano. Guarda o RÓTULO do elemento, nunca o que foi digitado.
-// ══════════════════════════════════════════════════════════════════════
-(function(){
-  const LOTE = 12, INTERVALO_MS = 20000, TETO_SESSAO = 1500;
-  let fila = [], enviados = 0, timer = null, ultimoToque = Date.now();
-
-  function telaAtual() {
-    try {
-      const p = document.querySelector('.tab-panel.active');
-      if (p && p.id) return p.id.replace(/^tab-/, '');
-      return location.pathname;
-    } catch (_) { return null; }
-  }
-
-  // ── marca o último toque humano; vai no cabeçalho de toda requisição ──
-  ['pointerdown','keydown','wheel','touchstart'].forEach(function(ev){
-    try {
-      window.addEventListener(ev, function(){ ultimoToque = Date.now(); },
-                              {capture:true, passive:true});
-    } catch (_) {}
-  });
-
-  const _fetchOriginal = window.fetch;
-  window.fetch = function(entrada, opcoes){
-    try {
-      const u = String((entrada && entrada.url) || entrada || '');
-      // só em chamada nossa: cabeçalho custom em domínio de terceiro dispara
-      // preflight de CORS e quebraria a requisição
-      const propria = u.startsWith('/') || u.startsWith(location.origin);
-      if (propria) {
-        const o = Object.assign({}, opcoes || {});
-        const h = new Headers((opcoes && opcoes.headers) || {});
-        h.set('X-Interacao-Ms', String(Date.now() - ultimoToque));
-        o.headers = h;
-        return _fetchOriginal.call(this, entrada, o);
-      }
-    } catch (_) { /* qualquer problema: manda sem o cabeçalho */ }
-    return _fetchOriginal.call(this, entrada, opcoes);
-  };
-
-  // ── captura de clique ────────────────────────────────────────────────
-  const IGNORAR = new Set(['HTML','BODY','MAIN','SECTION','FOOTER']);
-
-  function rotuloDe(el){
-    for (let n = el, i = 0; n && i < 5; n = n.parentElement, i++) {
-      if (n.getAttribute) {
-        const aria = n.getAttribute('aria-label') || n.getAttribute('title');
-        if (aria && aria.trim()) return aria.trim().slice(0, 120);
-      }
-      const tag = (n.tagName || '').toUpperCase();
-      if (['BUTTON','A','SUMMARY','LABEL','TH','OPTION'].includes(tag) ||
-          (n.getAttribute && (n.getAttribute('onclick') || n.getAttribute('role') === 'button')) ||
-          (n.classList && (n.classList.contains('sidebar-item') || n.classList.contains('tab')))) {
-        const t = (n.innerText || n.textContent || '').replace(/\s+/g,' ').trim();
-        if (t) return t.slice(0, 120);
-        const nm = n.getAttribute && (n.getAttribute('name') || n.id);
-        if (nm) return String(nm).slice(0, 120);
-      }
-    }
-    return null;
-  }
-
-  function alvoDe(el){
-    try {
-      const tag = (el.tagName || '?').toLowerCase();
-      const id = el.id ? '#' + el.id : '';
-      const cls = (el.className && typeof el.className === 'string')
-        ? '.' + el.className.split(/\s+/).filter(Boolean).slice(0,2).join('.') : '';
-      return (tag + id + cls).slice(0, 150);
-    } catch (_) { return null; }
-  }
-
-  function empilhar(tipo, rotulo, alvo){
-    if (enviados >= TETO_SESSAO) return;
-    enviados++;
-    fila.push({tipo: tipo, rotulo: rotulo, alvo: alvo, tela: telaAtual()});
-    if (fila.length >= LOTE) descarregar();
-    else if (!timer) timer = setTimeout(descarregar, INTERVALO_MS);
-  }
-
-  function descarregar(usarBeacon){
-    if (timer) { clearTimeout(timer); timer = null; }
-    if (!fila.length) return;
-    const corpo = JSON.stringify({eventos: fila});
-    fila = [];
-    try {
-      if (usarBeacon && navigator.sendBeacon) {
-        // fechando a aba: beacon é o único que ainda chega
-        navigator.sendBeacon('/controle/atividade',
-          new Blob([corpo], {type:'application/json'}));
-        return;
-      }
-      _fetchOriginal.call(window, '/controle/atividade', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: corpo,
-      }).catch(function(){});
-    } catch (_) {}
-  }
-
-  document.addEventListener('click', function(e){
-    try {
-      const el = e.target;
-      if (!el || !el.tagName || IGNORAR.has(el.tagName.toUpperCase())) return;
-      const rot = rotuloDe(el);
-      if (!rot) return;                    // clique em área morta: não registra
-      empilhar('clique', rot, alvoDe(el));
-    } catch (_) {}
-  }, true);
-
-  document.addEventListener('submit', function(e){
-    try {
-      const f = e.target;
-      empilhar('envio', (f && (f.getAttribute('name') || f.id)) || 'formulário',
-               alvoDe(f));
-    } catch (_) {}
-  }, true);
-
-  // troca de tela
-  if (typeof window.goToTab === 'function') {
-    const _goToTab = window.goToTab;
-    window.goToTab = function(nome){
-      try { empilhar('tela', String(nome), 'goToTab'); } catch (_) {}
-      return _goToTab.apply(this, arguments);
-    };
-  }
-
-  window.addEventListener('pagehide', function(){ descarregar(true); });
-  document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState === 'hidden') descarregar(true);
-  });
-})();
+// A captura de clique mora em /static/atividade.js — a MESMA em todas as
+// telas (escritório, Planilha de Campo e App Móvel). Antes era um bloco
+// inline daqui, e o trabalho do técnico ficava fora do log.
 
 // ── Quem está usando o portal (por pessoa, 30 dias) ───────────────────
 // Com adoção baixa, isso vira MEDIDA em vez de relato: quem entrou, quando,
@@ -19821,5 +19688,6 @@ document.querySelectorAll('[data-split]').forEach(initSplitText);
   setTimeout(tryHide, 800);
 })();
 </script>
+  <script src="/static/atividade.js?v=1" defer></script>
 </body>
 </html>
