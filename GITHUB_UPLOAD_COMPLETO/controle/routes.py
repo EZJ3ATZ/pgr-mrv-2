@@ -4,6 +4,7 @@ import io
 import os
 import re
 import json
+import math
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -2742,12 +2743,27 @@ def previsao_estoque():
     })
 
 
+def _float_finito(valor, padrao=0.0):
+    """float() de entrada de usuario que RECUSA nan/inf.
+
+    float('nan') e aceito por float() e passa por qualquer comparacao: 'nan <= 0'
+    e False, entao a trava de "tem que ser > 0" deixa o NaN entrar inteiro. O que
+    sai do outro lado e {"tempo_min": NaN}, que nao e JSON valido -- o JSON.parse
+    do navegador quebra e a tela some sem dizer por que. E o achado nan-injection
+    do semgrep, e ele estava certo.
+    """
+    f = float(valor)
+    if not math.isfinite(f):
+        raise ValueError('valor nao finito')
+    return f
+
+
 # ── Calculo de tempo (preview, sem persistir) ─────────────────────────
 @controle_bp.route('/calc_tempo')
 def calc_tempo():
     try:
-        vol     = float(request.args.get('volume', 0))
-        vazao   = float(request.args.get('vazao', 0))
+        vol     = _float_finito(request.args.get('volume', 0))
+        vazao   = _float_finito(request.args.get('vazao', 0))
         if vazao <= 0 or vol <= 0:
             return jsonify({'erro': 'volume e vazao > 0'}), 400
         tempo = vol / vazao
@@ -7707,7 +7723,11 @@ def api_match_empresas():
     init_db()
     try:
         from .empresa_match import match_todas_demandas
-        threshold = float(request.json.get('threshold', 0.65)) if request.json else 0.65
+        # NaN aqui e pior que numero errado: toda comparacao com NaN e False, entao
+        # o matching roda inteiro e nao casa NADA -- sem erro, sem aviso, so zero.
+        threshold = _float_finito(request.json.get('threshold', 0.65)) if request.json else 0.65
+        if not 0 < threshold <= 1:
+            return jsonify({'ok': False, 'erro': 'threshold tem que estar entre 0 e 1'}), 400
         with get_db() as conn:
             if not USE_PG:
                 conn.execute('PRAGMA foreign_keys = OFF')
