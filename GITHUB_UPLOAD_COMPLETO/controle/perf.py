@@ -216,6 +216,17 @@ def init_app(app):
 
 # ── Leitura (admin) ────────────────────────────────────────────────────
 
+def _iso(v):
+    """datetime -> ISO 8601. O jsonify do Flask serializa datetime em RFC-822
+    ('Thu, 13 Aug 2026 13:12:00 GMT'), e o `_fmtBR` da tela troca o 1º espaço
+    por 'T' — o que transforma isso em data inválida e imprime o texto cru.
+    Texto (o caso do eventos.criado_em, que é TEXT) passa direto."""
+    try:
+        return v.isoformat(sep=' ')
+    except AttributeError:
+        return v
+
+
 def _janela_sql(dias):
     from .db import USE_PG
     if USE_PG:
@@ -306,7 +317,12 @@ def lentas(dias=7, min_ms=1000, limite=25):
              WHERE {w} AND duracao_ms >= ?
              ORDER BY duracao_ms DESC LIMIT {int(limite)}""",
             (int(min_ms),)).fetchall()
-    return [dict(r) for r in rows]
+    saida = []
+    for r in rows:
+        d = dict(r)
+        d['criado_em'] = _iso(d.get('criado_em'))
+        saida.append(d)
+    return saida
 
 
 def consultas_do_banco(limite=20):
@@ -368,7 +384,12 @@ def uso_por_pessoa(dias=30):
                 WHERE {liga} AND {w} AND p.status >= 500)                 AS erros
             FROM usuarios u
             ORDER BY u.nome""", (corte, corte)).fetchall()
-    lista = [dict(r) for r in rows]
+    lista = []
+    for r in rows:
+        d = dict(r)
+        d['ultima_atividade'] = _iso(d.get('ultima_atividade'))
+        d['ultimo_login'] = _iso(d.get('ultimo_login'))
+        lista.append(d)
 
     # ordem do painel do CRM: quem usou mais recentemente primeiro; quem nunca
     # entrou vai para o fim, em ordem alfabética
