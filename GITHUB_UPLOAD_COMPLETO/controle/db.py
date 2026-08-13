@@ -1615,6 +1615,10 @@ def _migrate(conn):
     _add_col(conn, 'planejamentos', 'dias_estimados', 'INTEGER DEFAULT NULL')
     _add_col(conn, 'planejamentos', 'cnpj', 'TEXT')
 
+    # ── eventos: identidade por ID, não por texto livre ──
+    _add_col(conn, 'eventos', 'usuario_id', 'INTEGER')
+    _casar_eventos_com_usuarios(conn)
+
     # ── Garante que admin seed existe e é role=admin ──
     try:
         conn.execute(
@@ -1666,14 +1670,88 @@ def _auto_seed():
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
+def _casar_eventos_com_usuarios(conn):
+    """Backfill de `eventos.usuario_id` a partir do nome em texto livre.
+
+    O histórico foi gravado sem id, e os nomes divergem do cadastro
+    ('matheus costa' × 'Matheus Vinícius Costa', 'Kelly Firmino' × 'Kelly
+    Elissama Firmino'). Casa em 3 regras, da mais forte para a mais fraca, e
+    **só aceita quando o resultado é único** — na dúvida deixa NULL, que é
+    honesto. Idempotente: só toca em linha com usuario_id nulo.
+    """
+    try:
+        pessoas = [dict(r) for r in conn.execute(
+            'SELECT id, nome, email FROM usuarios').fetchall()]
+        nomes = [dict(r) for r in conn.execute(
+            'SELECT DISTINCT usuario FROM eventos '
+            'WHERE usuario_id IS NULL AND usuario IS NOT NULL '
+            "AND usuario <> ''").fetchall()]
+    except Exception as e:
+        print(f'[migrate] backfill de eventos.usuario_id pulado: {e}')
+        return
+
+    def tokens(s):
+        return [t for t in (s or '').lower().replace('.', ' ').split() if t]
+
+    casados = 0
+    for linha in nomes:
+        bruto = linha['usuario']
+        tb = tokens(bruto)
+        if not tb:
+            continue
+        alvos = []
+        for p in pessoas:
+            tp = tokens(p['nome'])
+            if not tp:
+                continue
+            if tb == tp:                                   # 1) igual
+                alvos.append((0, p['id']))
+            elif tp[:len(tb)] == tb:                        # 2) prefixo
+                alvos.append((1, p['id']))
+            elif len(tb) >= 2 and len(tp) >= 2 and \
+                    tb[0] == tp[0] and tb[-1] == tp[-1]:    # 3) 1o + ultimo
+                alvos.append((2, p['id']))
+        if not alvos:
+            continue
+        melhor = min(a[0] for a in alvos)
+        ids = {a[1] for a in alvos if a[0] == melhor}
+        if len(ids) != 1:            # ambíguo: não adivinha
+            continue
+        try:
+            conn.execute('UPDATE eventos SET usuario_id=? '
+                         'WHERE usuario_id IS NULL AND usuario=?',
+                         (ids.pop(), bruto))
+            casados += 1
+        except Exception:
+            pass
+    if casados:
+        print(f'[migrate] eventos.usuario_id: {casados} nome(s) casado(s) com o cadastro')
+
+
 def registrar_evento(tipo, descricao=None, ref_id=None, ref_tipo=None, usuario=None, ip=None):
-    """Registra evento no log de auditoria. Silencioso em caso de erro."""
+    """Registra evento no log de auditoria. Silencioso em caso de erro.
+
+    `usuario` é texto livre (cada chamador manda o que tem), então nunca serviu
+    de chave: o mesmo Matheus aparece como 'matheus costa' e 'Matheus Vinícius
+    Costa'. Desde 13/08/2026 o evento carrega também `usuario_id`, resolvido da
+    SESSÃO — a identidade vem de quem está logado, não do texto que o chamador
+    passou. Nenhum chamador precisou mudar.
+    """
+    uid = None
+    try:
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            uid = int(current_user.id)
+            if not usuario:
+                usuario = getattr(current_user, 'nome', None)
+    except Exception:
+        pass
     try:
         with get_db() as conn:
             conn.execute(
-                'INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, usuario, ip) '
-                'VALUES (?,?,?,?,?,?)',
-                (tipo, descricao, ref_id, ref_tipo, usuario, ip)
+                'INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, usuario, '
+                'usuario_id, ip) VALUES (?,?,?,?,?,?,?)',
+                (tipo, descricao, ref_id, ref_tipo, usuario, uid, ip)
             )
     except Exception as e:
         print(f'[eventos] {e}')

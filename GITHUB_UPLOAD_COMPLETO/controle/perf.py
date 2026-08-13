@@ -11,6 +11,7 @@ Leitura: apenas admin, dentro de "Saúde do Sistema" (/controle/admin/saude).
 import os
 import threading
 import time
+from datetime import datetime, timedelta
 
 # ── Tabela ─────────────────────────────────────────────────────────────
 # TEXT em criado_em para casar com o resto do schema (SQLite e PG convivem).
@@ -26,7 +27,8 @@ CREATE TABLE IF NOT EXISTS perf_log (
     ms_banco    INTEGER,
     consultas   INTEGER,
     bytes_resp  INTEGER,
-    usuario     TEXT
+    usuario     TEXT,
+    usuario_id  INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_perf_criado ON perf_log(criado_em);
 CREATE INDEX IF NOT EXISTS idx_perf_rota   ON perf_log(rota, criado_em);
@@ -64,9 +66,11 @@ def garantir_tabela():
     if _tabela_ok:
         return True
     try:
-        from .db import get_db, USE_PG
+        from .db import get_db, USE_PG, _add_col
         with get_db() as conn:
             conn.executescript(SCHEMA_PERF_PG if USE_PG else SCHEMA_PERF_SQLITE)
+            # colunas que nasceram depois da tabela (CREATE IF NOT EXISTS não add)
+            _add_col(conn, 'perf_log', 'usuario_id', 'INTEGER')
         _tabela_ok = True
     except Exception as e:
         print(f'[perf] tabela não criada: {e}')
@@ -81,10 +85,11 @@ def _gravar(linhas):
         for l in linhas:
             conn.execute(
                 'INSERT INTO perf_log (rota,metodo,path,status,duracao_ms,'
-                'ms_banco,consultas,bytes_resp,usuario,criado_em) '
-                'VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)',
+                'ms_banco,consultas,bytes_resp,usuario,usuario_id,criado_em) '
+                'VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)',
                 (l['rota'], l['metodo'], l['path'], l['status'], l['duracao_ms'],
-                 l['ms_banco'], l['consultas'], l['bytes_resp'], l['usuario']))
+                 l['ms_banco'], l['consultas'], l['bytes_resp'], l['usuario'],
+                 l.get('usuario_id')))
 
 
 def _podar_se_na_hora():
@@ -127,7 +132,7 @@ def _descarregar(forcar=False):
 
 
 def registrar(rota, metodo, path, status, duracao_ms, ms_banco, consultas,
-              bytes_resp, usuario):
+              bytes_resp, usuario, usuario_id=None):
     global _primeiro_em
     with _lock:
         if len(_buffer) >= TETO_BUFFER:
@@ -140,6 +145,7 @@ def registrar(rota, metodo, path, status, duracao_ms, ms_banco, consultas,
             'duracao_ms': duracao_ms, 'ms_banco': ms_banco,
             'consultas': consultas, 'bytes_resp': bytes_resp,
             'usuario': (usuario or '')[:120] or None,
+            'usuario_id': usuario_id,
         })
     _descarregar()
 
@@ -178,12 +184,17 @@ def init_app(app):
             from .db import perf_ler
             n_consultas, ms_banco = perf_ler()
 
-            usuario = None
+            usuario, usuario_id = None, None
             try:
                 from flask_login import current_user
                 if current_user.is_authenticated:
                     usuario = getattr(current_user, 'email', None) or \
                               getattr(current_user, 'nome', None)
+                    # o ID é a chave que presta; o texto é só para ler
+                    try:
+                        usuario_id = int(current_user.id)
+                    except Exception:
+                        usuario_id = None
             except Exception:
                 pass
 
@@ -195,7 +206,7 @@ def init_app(app):
 
             registrar(request.endpoint or path, request.method, path,
                       resp.status_code, dur, int(ms_banco), n_consultas,
-                      tamanho, usuario)
+                      tamanho, usuario, usuario_id)
         except Exception:
             pass   # telemetria nunca quebra a resposta
         return resp
@@ -321,15 +332,78 @@ def consultas_do_banco(limite=20):
         return []
 
 
+def uso_por_pessoa(dias=30):
+    """Quem está usando o portal, por pessoa — equivalente ao painel do CRM.
+
+    A chave é `usuarios.id`. `perf_log` antigo (antes de 13/08/2026) não tem
+    usuario_id, então casa pelo e-mail como reserva. `eventos` só tinha nome em
+    texto livre; o backfill de `_casar_eventos_com_usuarios` resolveu o
+    histórico, e desde agora o evento já nasce com o id.
+    """
+    from .db import get_db
+    if not garantir_tabela():
+        return []
+    corte = (datetime.utcnow() - timedelta(days=int(dias))).strftime('%Y-%m-%d %H:%M:%S')
+    w = _janela_sql(dias)                     # perf_log.criado_em é TIMESTAMP
+    # eventos.criado_em é TEXT ISO -> comparação lexicográfica funciona
+    liga = '(p.usuario_id = u.id OR (p.usuario_id IS NULL AND '\
+           'LOWER(p.usuario) = LOWER(u.email)))'
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT u.id, u.nome, u.email, u.role, u.ativo,
+              (SELECT MAX(e.criado_em) FROM eventos e
+                WHERE e.usuario_id = u.id AND e.tipo = 'login')          AS ultimo_login,
+              (SELECT COUNT(*) FROM eventos e
+                WHERE e.usuario_id = u.id AND e.tipo = 'login'
+                  AND e.criado_em >= ?)                                  AS logins,
+              (SELECT COUNT(*) FROM eventos e
+                WHERE e.usuario_id = u.id AND e.criado_em >= ?
+                  AND e.tipo NOT IN ('login', 'logout'))                 AS acoes,
+              (SELECT COUNT(*)          FROM perf_log p WHERE {liga} AND {w}) AS requisicoes,
+              (SELECT COUNT(DISTINCT p.rota) FROM perf_log p WHERE {liga} AND {w}) AS telas,
+              (SELECT MAX(p.criado_em)  FROM perf_log p WHERE {liga} AND {w}) AS ultima_atividade,
+              (SELECT ROUND(AVG(p.duracao_ms)) FROM perf_log p WHERE {liga} AND {w}) AS media_ms,
+              (SELECT MAX(p.duracao_ms) FROM perf_log p WHERE {liga} AND {w}) AS pior_ms,
+              (SELECT COUNT(*) FROM perf_log p
+                WHERE {liga} AND {w} AND p.status >= 500)                 AS erros
+            FROM usuarios u
+            ORDER BY u.nome""", (corte, corte)).fetchall()
+    lista = [dict(r) for r in rows]
+
+    # ordem do painel do CRM: quem usou mais recentemente primeiro; quem nunca
+    # entrou vai para o fim, em ordem alfabética
+    def marca(r):
+        return r.get('ultima_atividade') or r.get('ultimo_login')
+
+    ativos = sorted([r for r in lista if marca(r)],
+                    key=lambda r: str(marca(r)), reverse=True)
+    nunca = sorted([r for r in lista if not marca(r)],
+                   key=lambda r: (r.get('nome') or ''))
+    return ativos + nunca
+
+
 def resumo_completo(dias=7):
-    """Payload único consumido pela tela Saúde do Sistema."""
-    try:
-        return {
-            'dias': dias,
-            'kpis': kpis(dias),
-            'rotas': por_rota(dias),
-            'lentas': lentas(dias),
-            'banco': consultas_do_banco(),
-        }
-    except Exception as e:
-        return {'erro': str(e)}
+    """Payload único consumido pela tela Saúde do Sistema.
+
+    Cada pedaço é isolado: se um falhar (tabela que ainda não existe, extensão
+    ausente), os outros continuam aparecendo. Um erro num canto não pode apagar
+    o painel inteiro.
+    """
+    out = {'dias': dias}
+    partes = (
+        ('kpis',    lambda: kpis(dias),        {}),
+        ('rotas',   lambda: por_rota(dias),    []),
+        ('lentas',  lambda: lentas(dias),      []),
+        ('banco',   consultas_do_banco,        []),
+        ('pessoas', lambda: uso_por_pessoa(30), []),   # 30d fixos, igual ao CRM
+    )
+    problemas = []
+    for chave, fn, vazio in partes:
+        try:
+            out[chave] = fn()
+        except Exception as e:
+            out[chave] = vazio
+            problemas.append(f'{chave}: {e}')
+    if problemas:
+        out['avisos'] = problemas
+    return out

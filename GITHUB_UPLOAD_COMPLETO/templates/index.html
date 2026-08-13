@@ -18445,6 +18445,60 @@ function _perfPesoCor(b) {
   return 'var(--text3)';
 }
 
+// ── Quem está usando o portal (por pessoa, 30 dias) ───────────────────
+// Com adoção baixa, isso vira MEDIDA em vez de relato: quem entrou, quando,
+// quantas telas abriu e quantas acoes registrou.
+function saudeQuemUsa(pessoas) {
+  if (!pessoas || !pessoas.length) return '';
+  const linhas = pessoas.map(p => {
+    const marca = p.ultima_atividade || p.ultimo_login;
+    const nunca = !marca;
+    const req = Number(p.requisicoes || 0);
+    const inativo = !nunca && req === 0;
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,.04);${nunca ? 'opacity:.55;' : ''}">
+      <td style="padding:5px 8px;font-size:.74rem;font-weight:600;">${_esc(p.nome || '—')}
+        ${p.ativo === 0 || p.ativo === false ? '<span style="margin-left:6px;font-size:.6rem;color:var(--text3);border:1px solid var(--border);border-radius:4px;padding:1px 5px;">inativo</span>' : ''}
+      </td>
+      <td style="padding:5px 8px;font-size:.68rem;color:var(--text3);text-transform:capitalize;">${_esc(p.role || '—')}</td>
+      <td style="padding:5px 8px;font-size:.7rem;color:${nunca ? 'var(--text3)' : 'var(--text2)'};">${nunca ? 'nunca entrou' : _fmtBR(marca)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:var(--text3);">${p.ultimo_login ? _fmtBR(p.ultimo_login) : '—'}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.logins || 0)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;${inativo ? 'color:var(--text3);' : ''}">${req.toLocaleString('pt-BR')}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.telas || 0)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;">${Number(p.acoes || 0).toLocaleString('pt-BR')}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${_perfCor(p.media_ms)};">${_perfMs(p.media_ms)}</td>
+      <td style="padding:5px 8px;font-size:.7rem;text-align:right;color:${Number(p.erros || 0) ? '#ef4444' : 'var(--text3)'};">${Number(p.erros || 0)}</td>
+    </tr>`;
+  }).join('');
+
+  const th = 'padding:5px 8px;font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;';
+  const usaram = pessoas.filter(p => (p.ultima_atividade || p.ultimo_login)).length;
+
+  return saudeSecao(`Quem está usando · últimos 30 dias (${usaram} de ${pessoas.length} pessoas)`, `
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="border-bottom:1px solid var(--border);">
+          <th style="${th}text-align:left;">Pessoa</th>
+          <th style="${th}text-align:left;">Papel</th>
+          <th style="${th}text-align:left;">Última atividade</th>
+          <th style="${th}text-align:right;">Último login</th>
+          <th style="${th}text-align:right;">Logins</th>
+          <th style="${th}text-align:right;">Requisições</th>
+          <th style="${th}text-align:right;">Telas</th>
+          <th style="${th}text-align:right;">Ações</th>
+          <th style="${th}text-align:right;">Tempo médio</th>
+          <th style="${th}text-align:right;">Erros</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>
+    <div style="font-size:.65rem;color:var(--text3);margin-top:10px;">
+      "Última atividade" vem da medição de requisições (começou em 13/08/2026); "último login" vem do log de eventos, que é antigo.
+      Quem aparece com login e 0 requisições não voltou depois de 13/08.
+    </div>
+  `);
+}
+
 function saudeDesempenho(dp) {
   if (!dp) return '';
   if (dp.erro) {
@@ -18500,7 +18554,7 @@ function saudeDesempenho(dp) {
 
   const th = 'padding:5px 8px;font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;';
 
-  return saudeSecao('Tempo de Resposta — o que a pessoa sente', `
+  return saudeQuemUsa(dp.pessoas) + saudeSecao('Tempo de Resposta — o que a pessoa sente', `
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">${cards}</div>
 
     <div style="font-size:.65rem;font-weight:700;color:var(--text3);margin:14px 0 6px;">POR ROTA · ordenado pelo tempo TOTAL gasto (é o total que diz onde o sistema gasta a vida)</div>
