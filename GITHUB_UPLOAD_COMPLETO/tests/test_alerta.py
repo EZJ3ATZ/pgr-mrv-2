@@ -116,6 +116,26 @@ print('\n== 8) sem linha de base, nao inventa "piorou" ==')
 r8 = alerta.verificar()
 checa('nenhum alerta de piorou com 1 dia de dado', not r8['piorou'], f"{r8['piorou']}")
 
+print('\n== 9) falha de envio NAO pode virar silencio ==')
+# foi exatamente isso que aconteceu em prod: o remetente default nao existia,
+# o Graph recusou e a rota de previa ainda dizia "enviou=True"
+alerta._enviar = lambda assunto, corpo: (False, 'caixa inexistente (404)')
+with db.get_db() as conn:
+    conn.execute('DELETE FROM alerta_estado')
+    conn.execute('DELETE FROM alerta_envio')
+linhas_5xx(6)
+r9 = alerta.verificar(forcar_digest=True)
+checa('o resultado carrega o erro do envio',
+      (r9.get('envio_ok') is False and r9.get('envio_erro'))
+      or any(e.get('ok') is False and e.get('erro') for e in (r9.get('envios') or [])),
+      f"envio_ok={r9.get('envio_ok')} envios={r9.get('envios')}")
+com_envio = None
+with db.get_db() as conn:
+    com_envio = conn.execute('SELECT COUNT(*) AS c FROM alerta_envio').fetchone()['c']
+checa('envio que falhou NAO conta no teto', (com_envio or 0) == 0, f'{com_envio}')
+checa('e o alerta segue aberto para tentar de novo',
+      any(a['chave'] == 'erro_5xx' for a in r9['abertos']), f"{r9['abertos']}")
+
 print(f'\n==== {ok} OK, {len(falhas)} falha(s) ====')
 for f in falhas:
     print('  !!', f)

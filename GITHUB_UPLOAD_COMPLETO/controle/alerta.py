@@ -288,14 +288,36 @@ def _enviados_hoje(conn):
 
 
 # ── envio ──────────────────────────────────────────────────────────────
+# 🔴 Remetente: NÃO usar o do orquestrador. O default dele é
+# `medicoes@ocupacional.com.br`, que **não existe** no tenant (404 no Graph em
+# 13/08/2026) — o envio falhava calado e a rota de prévia ainda dizia
+# "enviou=True". Aqui usa a MESMA caixa que já manda e-mail neste app hoje
+# (a de reset de senha, controle/auth.py::MAIL_SENDER).
+DE = os.environ.get('ALERTA_DE') or os.environ.get('MAIL_SENDER') \
+     or 'engenharia19@ocupacional.com.br'
+
+
 def _enviar(assunto, corpo):
+    """Devolve (ok, erro). Quem chama TEM de olhar o retorno — foi ignorá-lo que
+    deixou o envio falhar em silêncio."""
     if not _envio_ligado():
         print(f'[alerta] envio desligado (ALERTA_EMAIL=0) — seria: {assunto}')
         return False, 'desligado'
     try:
-        from .orquestrador import enviar_email_graph
-        return enviar_email_graph({'para': PARA, 'assunto': assunto, 'corpo': corpo})
+        from .graph import graph_post, graph_ok
+        if not graph_ok():
+            return False, 'graph sem credencial'
+        graph_post(f'/users/{DE}/sendMail', {
+            'message': {
+                'subject': assunto,
+                'body': {'contentType': 'Text', 'content': corpo},
+                'toRecipients': [{'emailAddress': {'address': PARA}}],
+            },
+            'saveToSentItems': True,
+        })
+        return True, None
     except Exception as e:
+        print(f'[alerta] FALHA ao enviar "{assunto}": {e}')
         return False, str(e)
 
 
@@ -329,6 +351,8 @@ def verificar(forcar_digest=False, dry_run=False):
                      f'Para desligar: ALERTA_EMAIL=0 no Railway.)')
             if not dry_run:
                 ok, err = _enviar(assunto, corpo)
+                saida.setdefault('envios', []).append(
+                    {'chave': chave, 'ok': ok, 'erro': err})
                 if ok:
                     _marcar_avisado(conn, [chave], nivel, assunto)
                     ja += 1
@@ -362,9 +386,12 @@ def verificar(forcar_digest=False, dry_run=False):
                     f"{uso.get('robo') or 0} de aba parada")
             corpo = '\n'.join(linhas) + f'\n\n{_LINK}\n\n(Digest diário. ALERTA_EMAIL=0 desliga.)'
             if not dry_run:
-                _enviar('[Medições] resumo do dia', corpo)
-                _marcar_avisado(conn, [n[0] for n in novos if n[1] == 'piorou'],
-                                'piorou', '[Medições] resumo do dia')
+                ok, err = _enviar('[Medições] resumo do dia', corpo)
+                saida['envio_ok'] = ok
+                saida['envio_erro'] = err          # sem isto, falha vira silêncio
+                if ok:
+                    _marcar_avisado(conn, [n[0] for n in novos if n[1] == 'piorou'],
+                                    'piorou', '[Medições] resumo do dia')
             saida['digest'] = True
             saida['corpo_digest'] = corpo
 
