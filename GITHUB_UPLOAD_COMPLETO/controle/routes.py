@@ -130,11 +130,20 @@ def _sanitize_rl(obj):
 
 
 def _qint(name, default, maximo=None):
-    """Inteiro da query string com fallback seguro — evita HTTP 500 com ?x=abc."""
+    """Inteiro da query string com fallback seguro — evita HTTP 500 com ?x=abc.
+
+    O piso de 1 nao e detalhe: todos os 10 usos desta funcao sao LIMIT, e
+    `?limit=-1` passava direto. Em SQLite `LIMIT -1` significa SEM LIMITE, entao
+    o teto que existia de proposito (200 empresas, 500 eventos) era contornado por
+    um sinal de menos -- /empresas devolveria a carteira inteira. No Postgres o
+    mesmo valor e erro de sintaxe, ou seja 500. `?limit=0` tambem nao serve para
+    nada alem de devolver lista vazia.
+    """
     try:
         v = int(request.args.get(name, default))
     except (TypeError, ValueError):
         v = default
+    v = max(1, v)
     return min(v, maximo) if maximo is not None else v
 
 
