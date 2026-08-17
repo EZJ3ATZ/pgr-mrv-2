@@ -216,19 +216,8 @@ def _require_login():
 def stats():
     init_db()
     d = stats_dashboard()
-    # Badge do icone de Consistencia: divergencias ABERTAS.
-    # Antes lia `alertas_operacionais`, tabela que NINGUEM escrevia — o badge
-    # nunca acendia (auditoria 17/08). Quem recebe o que o motor de regras acha
-    # e `divergencias` (consistencia.py:368, resultado_lab.py:214), que e o que
-    # a tela ja lista e onde vivem o justificar/resolver.
-    try:
-        with get_db() as conn:
-            row = conn.execute(
-                "SELECT COUNT(*) AS c FROM divergencias WHERE status='aberta'"
-            ).fetchone()
-            d['alertas_ativos'] = row['c'] if row else 0
-    except Exception:
-        d['alertas_ativos'] = 0
+    # (o badge do icone de Consistencia NAO sai daqui — ver consistLoadStats()
+    #  no index.html, que conta critico+alto via /controle/consistencia/stats)
     # Medições realizadas por tipo de agente (NR-15) — contagem absoluta das coletas
     # feitas pelo sistema. Alimenta a tabela "Agentes · NR-15" da home.
     try:
