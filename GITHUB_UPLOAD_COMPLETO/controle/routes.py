@@ -216,11 +216,15 @@ def _require_login():
 def stats():
     init_db()
     d = stats_dashboard()
-    # Adiciona contagem de alertas ativos para badge na sidebar
+    # Badge do icone de Consistencia: divergencias ABERTAS.
+    # Antes lia `alertas_operacionais`, tabela que NINGUEM escrevia — o badge
+    # nunca acendia (auditoria 17/08). Quem recebe o que o motor de regras acha
+    # e `divergencias` (consistencia.py:368, resultado_lab.py:214), que e o que
+    # a tela ja lista e onde vivem o justificar/resolver.
     try:
         with get_db() as conn:
             row = conn.execute(
-                "SELECT COUNT(*) AS c FROM alertas_operacionais WHERE status='ativo'"
+                "SELECT COUNT(*) AS c FROM divergencias WHERE status='aberta'"
             ).fetchone()
             d['alertas_ativos'] = row['c'] if row else 0
     except Exception:
@@ -8953,21 +8957,6 @@ def consistencia_validar_vazao():
         return jsonify(validar_vazao(agente, vazao))
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
-
-
-@controle_bp.route('/consistencia/alertas')
-@login_required
-def consistencia_alertas():
-    """Lista alertas operacionais ativos."""
-    init_db()
-    status = request.args.get('status', 'ativo')
-    limit  = _qint('limit', 50, 200)
-    with get_db() as conn:
-        rows = conn.execute(
-            'SELECT * FROM alertas_operacionais WHERE status=? ORDER BY criado_em DESC LIMIT ?',
-            (status, limit)
-        ).fetchall()
-    return jsonify([row_to_dict(r) for r in rows])
 
 
 @controle_bp.route('/consistencia/motivos')

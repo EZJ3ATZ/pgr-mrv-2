@@ -836,19 +836,6 @@ CREATE TABLE IF NOT EXISTS justificativas_operacionais (
     tecnico         TEXT,
     criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE IF NOT EXISTS alertas_operacionais (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    tipo            TEXT,
-    prioridade      TEXT DEFAULT 'media',
-    titulo          TEXT,
-    descricao       TEXT,
-    entidade_tipo   TEXT,
-    entidade_id     INTEGER,
-    status          TEXT DEFAULT 'ativo',
-    criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
-    reconhecido_em  TEXT,
-    reconhecido_por TEXT
-);
 CREATE INDEX IF NOT EXISTS idx_demcom_demanda ON demanda_comentarios(demanda_id);
 CREATE INDEX IF NOT EXISTS idx_demcom_criado  ON demanda_comentarios(criado_em);
 """
@@ -1386,26 +1373,11 @@ def _migrate(conn):
             tecnico         TEXT,
             criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE TABLE IF NOT EXISTS alertas_operacionais (
-            id              {_pk},
-            tipo            TEXT,
-            prioridade      TEXT DEFAULT 'media',
-            titulo          TEXT,
-            descricao       TEXT,
-            entidade_tipo   TEXT,
-            entidade_id     INTEGER,
-            status          TEXT DEFAULT 'ativo',
-            criado_em       TEXT DEFAULT CURRENT_TIMESTAMP,
-            reconhecido_em  TEXT,
-            resolvido_em    TEXT
-        );
         CREATE INDEX IF NOT EXISTS idx_div_status    ON divergencias(status);
         CREATE INDEX IF NOT EXISTS idx_div_tipo      ON divergencias(tipo);
         CREATE INDEX IF NOT EXISTS idx_div_sev       ON divergencias(severidade);
         CREATE INDEX IF NOT EXISTS idx_div_entidade  ON divergencias(entidade_tipo, entidade_id);
-        CREATE INDEX IF NOT EXISTS idx_just_div      ON justificativas_operacionais(divergencia_id);
-        CREATE INDEX IF NOT EXISTS idx_alerta_status ON alertas_operacionais(status);
-        CREATE INDEX IF NOT EXISTS idx_alerta_prio   ON alertas_operacionais(prioridade)
+        CREATE INDEX IF NOT EXISTS idx_just_div      ON justificativas_operacionais(divergencia_id)
     ''')
 
     # ── Resultado do laboratório por amostrador ──
