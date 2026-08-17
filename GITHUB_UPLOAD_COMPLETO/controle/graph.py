@@ -134,20 +134,6 @@ def graph_post(path: str, payload: dict) -> dict:
         raise RuntimeError(f'Graph POST {path} → {e.code}: {body_txt[:300]}')
 
 
-def graph_patch(path: str, payload: dict) -> dict:
-    """PATCH na Graph API."""
-    url = path if path.startswith('https://') else GRAPH_BASE + path
-    body = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=body, headers=_headers(), method='PATCH')
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            content = r.read()
-            return json.loads(content) if content else {}
-    except urllib.error.HTTPError as e:
-        body_txt = e.read().decode('utf-8', 'replace')
-        raise RuntimeError(f'Graph PATCH {path} → {e.code}: {body_txt[:300]}')
-
-
 def graph_paginate(path: str, max_pages: int = 20) -> list:
     """Percorre todas as páginas de uma listagem Graph (paginação @odata.nextLink)."""
     results = []
@@ -169,14 +155,6 @@ def get_teams_groups() -> list:
     return graph_paginate(
         '/groups?$select=id,displayName,description,mail'
         '&$top=100'
-    )
-
-
-def get_teams_groups_with_teams() -> list:
-    """Lista apenas grupos com Teams habilitado."""
-    return graph_paginate(
-        "/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')"
-        "&$select=id,displayName,description,mail"
     )
 
 

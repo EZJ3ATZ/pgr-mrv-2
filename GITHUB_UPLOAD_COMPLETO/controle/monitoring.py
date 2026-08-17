@@ -20,7 +20,6 @@ import json
 import logging
 import traceback
 from datetime import datetime, timezone
-from contextlib import contextmanager
 
 # ── Configuração de ambiente ──────────────────────────────────────────
 ENV         = os.environ.get('RAILWAY_ENVIRONMENT', 'development')
@@ -191,36 +190,6 @@ def _sentry_before_send(event, hint):
     return event
 
 
-@contextmanager
-def sentry_operacao(operacao: str, **contexto):
-    """
-    Context manager que envolve uma operação com contexto Sentry.
-
-    Uso:
-        with sentry_operacao('planner_sync', task_id=tid, empresa_id=eid):
-            ...código que pode falhar...
-    """
-    if not _sentry_ok:
-        yield
-        return
-    try:
-        import sentry_sdk
-        with sentry_sdk.push_scope() as scope:
-            scope.set_tag('operacao', operacao)
-            scope.set_tag('ambiente', ENV)
-            for k, v in contexto.items():
-                scope.set_tag(k, str(v))
-            scope.set_context('operacao', {'nome': operacao, **contexto})
-            yield
-    except Exception as e:
-        try:
-            import sentry_sdk
-            sentry_sdk.capture_exception(e)
-        except Exception:
-            pass
-        raise
-
-
 def capturar_erro(exc: Exception, **contexto):
     """Envia exceção ao Sentry com contexto adicional."""
     if not _sentry_ok:
@@ -235,24 +204,6 @@ def capturar_erro(exc: Exception, **contexto):
     except Exception:
         pass
 
-
-def log_evento_sentry(msg: str, nivel='info', **contexto):
-    """Envia mensagem ao Sentry como evento."""
-    if not _sentry_ok:
-        return
-    try:
-        import sentry_sdk
-        with sentry_sdk.push_scope() as scope:
-            for k, v in contexto.items():
-                scope.set_tag(k, str(v))
-            sentry_sdk.capture_message(msg, level=nivel)
-    except Exception:
-        pass
-
-
-# ══════════════════════════════════════════════════════════════════════
-# 3. POSTHOG — eventos server-side
-# ══════════════════════════════════════════════════════════════════════
 
 def track_evento(evento: str, usuario: str = 'sistema', **props):
     """

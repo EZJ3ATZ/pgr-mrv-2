@@ -1379,34 +1379,3 @@ def analisar_tarefa_planner(
     result.calcular_score()
 
     return result
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 11. COMPATIBILIDADE COM PARSER ANTIGO (api_compat)
-# Mantém a assinatura antiga para que planner_sync.py seja migrado
-# gradualmente sem quebrar nada.
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-def extrair_agentes_compat(descricao: str) -> List[dict]:
-    """
-    API de compatibilidade com parser_agentes.extrair_agentes().
-    Retorna lista de dicts no formato antigo: {tipo, agente, qtd, pontos}.
-    """
-    agentes = extrair_agentes_multifonte(descricao=descricao)
-    result = []
-    for ag in agentes:
-        # Separar tipo canônico em tipo/agente compatível
-        result.append({
-            'tipo':   ag.tipo,
-            'agente': ag.canonical,
-            'qtd':    ag.quantidade,
-            'pontos': ag.quantidade,
-            'confianca': round(ag.confianca, 3),
-        })
-    return result
-
-
-def extrair_os_compat(titulo: str, descricao: str = '', checklist_texto: str = '') -> Optional[str]:
-    """API de compatibilidade com classificador.extrair_os()."""
-    os_num, _, _ = extrair_os_multifonte(titulo=titulo, descricao=descricao, checklist_texto=checklist_texto)
-    return os_num
