@@ -17,12 +17,27 @@ Uso:
 """
 
 import json
+import os
 import re
+import sys
 import asyncio
 from pathlib import Path
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
-from playwright.async_api import async_playwright, Page, BrowserContext, Response
+
+# playwright e importado DENTRO de main(): so a captura precisa dele, e assim as
+# funcoes puras (filtro, parsing v1/v4, status) podem ser testadas sem o browser
+# instalado — os testes rodam no CI, que nao tem playwright.
+
+# Dumps de diagnostico SO com --debug (ou EXTRATOR_DEBUG=1). Eles contem dado
+# de cliente (nome da empresa, numero de OS, GUID de responsavel) e cauda de URL
+# do Graph — e este repositorio e PUBLICO. Ficam fora do git pelo .gitignore.
+DEBUG = ('--debug' in sys.argv) or os.environ.get('EXTRATOR_DEBUG') == '1'
+
+# Exportar o PLANO INTEIRO quando o payload nao traz dado de categoria (a v4 nao
+# manda appliedCategories no bulk). Sem esta flag, tarefa sem categoria e
+# DESCARTADA — ver filter_tasks().
+ACEITAR_SEM_CATEGORIA = '--sem-filtro-categoria' in sys.argv
 
 # CONFIGURACOES =========================================================
 PLAN_ID       = "JOHzljvSKkmfSsQ7SekCnWUAA8cz"
@@ -57,6 +72,31 @@ TASK_URL_PATTERNS = [
     'GetTasksForPlan',
     'GetBucketsForPlan',
 ]
+
+# Dominios onde a tarefa pode estar
+DOMINIOS_MICROSOFT = [
+    'microsoft.com', 'office.com', 'microsoftonline.com',
+    'planner', 'taskapi', 'graph.microsoft',
+]
+
+# ... e o que NUNCA carrega tarefa: login (payload de autenticacao), telemetria,
+# presenca e foto. Sem esta lista o interceptador baixava e parseava tudo isso.
+URL_NUNCA_CAPTURAR = [
+    'login.microsoftonline.com', 'login.microsoft.com', 'login.live.com',
+    'events.data.microsoft.com', 'browser.pipe.aria', 'mobile.pipe.aria',
+    '/telemetry', '/beacon', '/ocsp', '/presence', '/avatar', '/photo',
+    '/userphoto', 'clientconfig', 'favicon',
+]
+
+# Corpo maior que isto nao e lista de tarefa — e bundle/telemetria. Evita
+# json.loads em megabytes a toa.
+MAX_BODY_BYTES = 5 * 1024 * 1024
+
+# Campos que indicam um objeto de TAREFA REAL (com dados de medição)
+TASK_FIELD_INDICATORS = {
+    'dueDateTime', 'percentComplete', 'assignments', 'userAssignments',
+    'appliedCategories', 'checklist', 'completedDateTime',
+}
 
 JS_EXTRACT_COMMENTS = """
 () => {
@@ -152,8 +192,20 @@ def extract_cnpj(texto: str) -> str:
 
 
 def get_status(task: dict) -> str:
+    # v4 tem campo "status" direto: notStarted, inProgress, completed, deferred, waitingOnOthers
+    status_v4 = task.get("status", "")
+    if status_v4 == "completed" or task.get("completedDateTime"):
+        return "Concluida"
+    if status_v4 == "inProgress":
+        return "Em andamento"
+    # Traduzido: esta coluna e lida por gente (Gabriel/Luiz Fernando) e o
+    # importador so reconhece 'conclu*' — enum cru em ingles nao dizia nada.
+    if status_v4 == "deferred":
+        return "Adiada"
+    if status_v4 == "waitingOnOthers":
+        return "Aguardando terceiro"
     pct = task.get("percentComplete", 0)
-    if pct == 100 or task.get("completedDateTime"):
+    if pct == 100:
         return "Concluida"
     if pct == 50:
         return "Em andamento"
@@ -177,23 +229,62 @@ def build_checklist(task: dict):
     return "\n".join(linhas), f"{done}/{len(items)}"
 
 
+def get_assignee_ids(task: dict) -> set:
+    """Extrai IDs de responsáveis do task, suportando v1 e v4."""
+    uids = set()
+    # v1: assignments = {userId: {...}}
+    a1 = task.get("assignments", {})
+    if isinstance(a1, dict):
+        uids.update(a1.keys())
+    # v4: userAssignments = [{user: {id: "uuid-com-dashes"}, id: "uuid-sem-dashes", ...}]
+    a2 = task.get("userAssignments", [])
+    if isinstance(a2, list):
+        for item in a2:
+            if not isinstance(item, dict):
+                continue
+            # Prioridade: user.id (com dashes, formato padrão UUID)
+            uid = (item.get("user") or {}).get("id", "")
+            if not uid:
+                # fallback: item.id pode ser sem dashes — normaliza inserindo dashes
+                raw = item.get("id", "")
+                if len(raw) == 32:
+                    uid = f"{raw[0:8]}-{raw[8:12]}-{raw[12:16]}-{raw[16:20]}-{raw[20:]}"
+                else:
+                    uid = raw
+            if uid:
+                uids.add(uid)
+    return uids
+
+
 def build_assignees(task: dict) -> str:
-    assignments = task.get("assignments", {})
-    if not assignments:
+    uids = get_assignee_ids(task)
+    if not uids:
         return ""
-    return ", ".join(ASSIGNEE_NAMES.get(uid, uid[:8] + "...") for uid in assignments.keys())
+    # sorted() porque get_assignee_ids devolve set: sem isso a ordem dos nomes
+    # muda entre execucoes e dois exports do mesmo dia acusam diferenca falsa
+    # (o importador ainda grava esse texto como `contato` da empresa).
+    return ", ".join(sorted(ASSIGNEE_NAMES.get(uid, uid[:8] + "...") for uid in uids))
 
 
 def build_labels(task: dict) -> str:
+    # v1 format
     cats = task.get("appliedCategories", {})
-    if not cats:
-        pv = task.get("planView", {})
-        cats = pv.get("appliedCategoryIds", []) if pv else []
-        if isinstance(cats, list):
-            return ", ".join(cats) if cats else ""
-    if isinstance(cats, dict):
+    if isinstance(cats, dict) and cats:
         return ", ".join(k for k, v in cats.items() if v)
-    return str(cats)
+    # v4 format: categories as list
+    cats_v4 = task.get("categories", [])
+    if isinstance(cats_v4, list) and cats_v4:
+        return ", ".join(str(c) for c in cats_v4)
+    pv = task.get("planView", {})
+    cat_ids = pv.get("appliedCategoryIds", []) if pv else []
+    if cat_ids:
+        return ", ".join(cat_ids)
+    return ""
+
+
+def get_task_title(task: dict) -> str:
+    """Retorna o título do task (v1: title, v4: displayName)."""
+    return task.get("title") or task.get("displayName") or task.get("taskName") or ""
 
 
 def merge_tasks(raw_list: list) -> dict:
@@ -213,105 +304,177 @@ def merge_tasks(raw_list: list) -> dict:
     return merged
 
 
-def filter_tasks(task_map: dict, bucket_map: dict):
+def filter_tasks(task_map: dict, bucket_map: dict, aceitar_sem_categoria=None):
     print(f"   Total de tarefas capturadas: {len(task_map)}")
     plan_ids = set(t.get("planId", "") for t in task_map.values())
     print(f"   Plan IDs encontrados: {plan_ids}")
 
+    if aceitar_sem_categoria is None:
+        aceitar_sem_categoria = ACEITAR_SEM_CATEGORIA
+
     filtered = []
-    sem_plano = sem_resp = sem_cat = 0
+    sem_plano = sem_resp = sem_cat = sem_dado_cat = 0
+
+    # Salva amostra para debug de estrutura (so com --debug: contem dado de cliente)
+    if DEBUG:
+        sample_tasks = list(task_map.values())[:3]
+        try:
+            with open("debug_task_sample.json", "w", encoding="utf-8") as _f:
+                json.dump(sample_tasks, _f, ensure_ascii=False, indent=2)
+            print(f"   [DEBUG] Amostra de {len(sample_tasks)} tasks salva em debug_task_sample.json")
+        except Exception as _e:
+            print(f"   [DEBUG] Nao foi possivel salvar amostra: {_e}")
 
     for t in task_map.values():
         if t.get("planId") != PLAN_ID:
             sem_plano += 1
             continue
-        assignments = t.get("assignments", {})
-        if not any(uid in ASSIGNEES for uid in assignments.keys()):
+        uids = get_assignee_ids(t)
+        if not any(uid in ASSIGNEES for uid in uids):
             sem_resp += 1
             continue
-        # Verifica categoria MEDICOES
+        # Verifica categoria MEDICOES — suporta v1 e v4
         pv = t.get("planView", {})
         cat_ids = pv.get("appliedCategoryIds", []) if pv else []
         applied = t.get("appliedCategories", {})
-        has_cat = (
-            MEDICOES_CAT in cat_ids
-            or (isinstance(applied, dict) and applied.get(MEDICOES_CAT, False))
-        )
-        if not has_cat:
-            sem_cat += 1
+        cats_v4 = t.get("categories", [])
+        if isinstance(cats_v4, list):
+            cat_ids = cat_ids + [str(c) for c in cats_v4]
+        has_any_cat_data = bool(cat_ids or applied or cats_v4)
+        if has_any_cat_data:
+            has_cat = (
+                MEDICOES_CAT in cat_ids
+                or (isinstance(applied, dict) and applied.get(MEDICOES_CAT, False))
+            )
+            if not has_cat:
+                sem_cat += 1
+                continue
+        elif not aceitar_sem_categoria:
+            # Tarefa do plano SEM nenhum dado de categoria no payload (a v4 nao
+            # manda appliedCategories no bulk). Aceitar aqui DESLIGAVA o filtro que
+            # define o escopo do extrator: o plano tem ~8000 tarefas e so ~143 tem
+            # a label MEDICOES — o export virava o plano inteiro (treinamento,
+            # PPR/PCA, ergonomia) e o importador criava demanda de medicao pra tudo.
+            sem_dado_cat += 1
             continue
         filtered.append(t)
 
     print(f"   Excluidas: {sem_plano} sem plano | {sem_resp} sem responsavel | {sem_cat} sem cat MEDICOES")
+    if sem_dado_cat:
+        print(f"   [ATENCAO] {sem_dado_cat} tarefas do plano vieram SEM dado de categoria no")
+        print(f"             payload e foram DESCARTADAS — nao da para saber se sao Medicoes.")
+        print(f"             A label vive em appliedCategories ({MEDICOES_CAT}), que a API v4")
+        print(f"             nao manda no bulk. Para exportar o plano INTEIRO mesmo assim:")
+        print(f"             py extrator.py --sem-filtro-categoria")
+    if aceitar_sem_categoria:
+        print(f"   [ATENCAO] --sem-filtro-categoria ligado: entrou tarefa do plano SEM a label")
+        print(f"             MEDICOES. O xlsx NAO e mais so de medicoes — nao importar direto.")
     print(f"   Filtradas: {len(filtered)} tarefas")
 
     if not filtered and task_map:
-        # Mostrar amostra das tarefas do plano certo para debug
         plano = [t for t in task_map.values() if t.get("planId") == PLAN_ID]
         if plano:
             t0 = plano[0]
-            print(f"\n   AMOSTRA (plano correto, mas sem filtro):")
-            print(f"     titulo: {t0.get('title','')[:60]}")
-            print(f"     assignments: {list(t0.get('assignments',{}).keys())}")
-            pv = t0.get("planView", {})
-            print(f"     appliedCategoryIds: {pv.get('appliedCategoryIds',[]) if pv else []}")
-            print(f"     appliedCategories: {t0.get('appliedCategories',{})}")
-        else:
-            print(f"\n   NENHUMA tarefa com planId={PLAN_ID}")
+            print(f"\n   AMOSTRA completa (primeiras chaves):")
+            print(f"     chaves: {list(t0.keys())[:20]}")
+            print(f"     titulo: {get_task_title(t0)[:60]}")
+            print(f"     userAssignments: {t0.get('userAssignments', 'N/A')}")
+            print(f"     assignments: {t0.get('assignments', 'N/A')}")
+            print(f"     categories: {t0.get('categories', t0.get('appliedCategories','N/A'))}")
+            print(f"     => Rode com --debug para gravar debug_task_sample.json")
 
     return filtered, bucket_map
 
 
 # INTERCEPTACAO DE REDE ==================================================
 def should_capture(url: str) -> bool:
+    """Captura JSON de dominio Microsoft, MENOS o que nunca carrega tarefa.
+
+    O filtro largo existe de proposito: os endpoints da v4 nao sao conhecidos, e
+    exigir a lista TASK_URL_PATTERNS deixaria a captura cega. Mas 'qualquer coisa
+    da Microsoft' incluia o endpoint de LOGIN e a telemetria — corpo de resposta
+    baixado e parseado a toa, incluindo payload de autenticacao.
+    """
     url_lower = url.lower()
-    if 'planner' not in url_lower and 'tasks.office' not in url_lower and 'graph.microsoft' not in url_lower:
+    if any(b in url_lower for b in URL_NUNCA_CAPTURAR):
         return False
-    return any(p.lower() in url_lower for p in TASK_URL_PATTERNS)
+    return any(d in url_lower for d in DOMINIOS_MICROSOFT)
 
 
-def extract_items_from_json(data) -> tuple:
+def is_real_task(item: dict) -> bool:
+    """Verifica se um objeto é uma tarefa real (não bucket/plano interno)."""
+    keys = set(item.keys())
+    # Tarefa real tem pelo menos um desses campos
+    if keys & TASK_FIELD_INDICATORS:
+        return True
+    # Na v4, tarefa tem 'displayName' MAS version deve conter 'Task' (não só Bucket)
+    version = str(item.get("version", ""))
+    if "Bucket" in version and "Task" not in version:
+        return False  # é um bucket interno da v4
+    # Tarefa v4 sem prazo, sem responsável e sem etiqueta não tem NENHUM campo de
+    # TASK_FIELD_INDICATORS — só o `version`. Sem esta linha ela não era tarefa nem
+    # bucket e sumia sem entrar em contador nenhum (o extrator relatava 0 tarefas).
+    if "Task" in version:
+        return True
+    return False
+
+
+def is_bucket(item: dict) -> bool:
+    """Identifica buckets (colunas do quadro)."""
+    version = item.get("version", "")
+    if "Bucket" in version and "Task" not in version:
+        return True
+    # Formato v1: tem name + orderHint mas não percentComplete
+    return ("orderHint" in item and "name" in item
+            and "percentComplete" not in item and "bucketId" not in item)
+
+
+def extract_items_from_json(data, url: str = "") -> tuple:
     """Extrai tasks e buckets de um payload JSON. Retorna (tasks, buckets)."""
     tasks, buckets = [], []
+
+    def process_item(item):
+        if not isinstance(item, dict):
+            return
+        if is_real_task(item):
+            tasks.append(item)
+        elif is_bucket(item):
+            buckets.append(item)
+        # v4 bucket com displayName = bucket (coluna)
+        elif "displayName" in item and "planId" in item:
+            version = item.get("version", "")
+            if "Bucket" in version:
+                # Tratar como bucket da v4
+                buckets.append({
+                    "id": item.get("id", ""),
+                    "name": item.get("displayName", ""),
+                    "planId": item.get("planId", ""),
+                })
+
     if isinstance(data, dict):
-        # OData collection: {"value": [...]}
-        value = data.get("value", [])
-        if isinstance(value, list):
-            for item in value:
-                if not isinstance(item, dict):
-                    continue
-                if "bucketId" in item or "percentComplete" in item or "planId" in item:
-                    tasks.append(item)
-                elif "planId" in item and "name" in item and "orderHint" in item:
-                    buckets.append(item)
-                elif "orderHint" in item and "name" in item:
-                    buckets.append(item)
-        # Direct task object
-        if "bucketId" in data or "percentComplete" in data:
-            tasks.append(data)
-        # Direct bucket
-        if "orderHint" in data and "name" in data and "bucketId" not in data and "percentComplete" not in data:
-            buckets.append(data)
-        # Nested structures: {"tasks": [...], "buckets": [...]}
-        for key in ("tasks", "task"):
-            if key in data and isinstance(data[key], list):
-                tasks.extend(t for t in data[key] if isinstance(t, dict))
+        # OData collection
+        for key in ("value", "tasks", "task", "items"):
+            val = data.get(key, [])
+            if isinstance(val, list):
+                for item in val:
+                    process_item(item)
         for key in ("buckets", "bucket"):
-            if key in data and isinstance(data[key], list):
-                buckets.extend(b for b in data[key] if isinstance(b, dict))
+            val = data.get(key, [])
+            if isinstance(val, list):
+                for item in val:
+                    if isinstance(item, dict):
+                        buckets.append(item)
+        # Objeto direto
+        process_item(data)
     elif isinstance(data, list):
         for item in data:
-            if not isinstance(item, dict):
-                continue
-            if "bucketId" in item or "percentComplete" in item:
-                tasks.append(item)
-            elif "orderHint" in item and "name" in item:
-                buckets.append(item)
+            process_item(item)
+
     return tasks, buckets
 
 
 # COMENTARIOS ============================================================
-async def collect_comments(page: Page, tasks_with_chat: list) -> dict:
+async def collect_comments(page: "Page", tasks_with_chat: list) -> dict:
     comments = {}
     total = len(tasks_with_chat)
     for i, task in enumerate(tasks_with_chat, 1):
@@ -370,16 +533,21 @@ def generate_excel(tasks: list, bucket_map: dict, comments: dict, output: str):
 
     for row_idx, task in enumerate(tasks, 2):
         task_id = task.get("id") or task.get("taskId", "")
-        nome = task.get("title", "")
-        descricao = task.get("description", "") or task.get("notes", {}).get("value", "") or ""
+        nome = get_task_title(task)
+        # notes: v1 = {value: "..."} | v4 = "texto plano" ou None
+        notes_raw = task.get("notes") or task.get("description") or task.get("notePreviewText") or ""
+        if isinstance(notes_raw, dict):
+            descricao = notes_raw.get("value") or notes_raw.get("text") or ""
+        else:
+            descricao = str(notes_raw) if notes_raw else ""
         checklist_txt, checklist_prog = build_checklist(task)
         comentarios = comments.get(task_id, "")
 
         row_data = [
             nome,
-            extract_os(nome),
-            parse_date(task.get("createdDateTime")),
-            parse_date(task.get("dueDateTime")),
+            extract_os(nome) or task.get("numeroOS", ""),
+            parse_date(task.get("createdDateTime") or (task.get("creationInfo") or {}).get("createdDateTime")),
+            parse_date(task.get("dueDateTime") or task.get("scheduledDateTime") or task.get("deadline")),
             parse_date(task.get("completedDateTime")),
             build_assignees(task),
             get_status(task),
@@ -421,8 +589,11 @@ async def main():
     profile_path = Path(PROFILE_DIR).resolve()
     profile_path.mkdir(parents=True, exist_ok=True)
 
+    # Import tardio: so a captura precisa do playwright (ver topo do arquivo).
+    from playwright.async_api import async_playwright
+
     async with async_playwright() as pw:
-        context: BrowserContext = await pw.chromium.launch_persistent_context(
+        context = await pw.chromium.launch_persistent_context(
             user_data_dir=str(profile_path),
             headless=False,
             args=["--start-maximized"],
@@ -432,7 +603,9 @@ async def main():
         page = context.pages[0] if context.pages else await context.new_page()
 
         # Registra interceptador ANTES de navegar
-        async def on_response(resp: Response):
+        all_json_urls: list = []  # todos os URLs com JSON capturado
+
+        async def on_response(resp):
             url = resp.url
             if not should_capture(url):
                 return
@@ -441,10 +614,13 @@ async def main():
                 if "json" not in ct:
                     return
                 body = await resp.body()
-                if not body:
+                if not body or len(body) < 50 or len(body) > MAX_BODY_BYTES:
                     return
                 data = json.loads(body)
-                t_new, b_new = extract_items_from_json(data)
+                t_new, b_new = extract_items_from_json(data, url)
+                # Guarda URL com JSON para debug (mesmo sem tarefas)
+                if DEBUG and isinstance(data, dict) and ("value" in data or "id" in data):
+                    all_json_urls.append(url[-100:])
                 if t_new or b_new:
                     tasks_raw.extend(t_new)
                     buckets_raw.extend(b_new)
@@ -484,6 +660,14 @@ async def main():
         print(f"   URLs interceptadas: {len(captured_urls)}")
         print(f"   Tarefas brutas: {len(tasks_raw)}")
         print(f"   Buckets brutos: {len(buckets_raw)}")
+        # Salva todos os URLs JSON para diagnóstico (so com --debug)
+        if DEBUG:
+            try:
+                with open("debug_all_urls.json", "w", encoding="utf-8") as _f:
+                    json.dump(all_json_urls, _f, ensure_ascii=False, indent=2)
+                print(f"   [DEBUG] {len(all_json_urls)} URLs JSON salvos em debug_all_urls.json")
+            except Exception:
+                pass
 
         # Fallback para IDB se nenhuma tarefa capturada
         if not tasks_raw:
