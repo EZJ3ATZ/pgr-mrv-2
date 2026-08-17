@@ -36,6 +36,7 @@ HDR_AMO = ['CODIGO', 'TIPO DE AMOSTRADOR', 'STATUS', 'DATA DE ENTRADA',
 
 UNIDADE = 'REIMPORT TESTE LTDA'
 OS_NUM = 'RI-9001'
+OS_ALHEIA = 'RI-9002'      # demanda que o import NAO deve tocar
 CODIGO = 'RIMP-0001'
 
 
@@ -54,10 +55,11 @@ def _limpa():
     """Remove só o que este teste cria — o banco de teste nasce com seed."""
     init_db()
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM medicoes WHERE demanda_id IN "
-            "(SELECT id FROM demandas WHERE numero_os=?)", (OS_NUM,))
-        conn.execute('DELETE FROM demandas WHERE numero_os=?', (OS_NUM,))
+        for os_num in (OS_NUM, OS_ALHEIA):
+            conn.execute(
+                "DELETE FROM medicoes WHERE demanda_id IN "
+                "(SELECT id FROM demandas WHERE numero_os=?)", (os_num,))
+            conn.execute('DELETE FROM demandas WHERE numero_os=?', (os_num,))
         conn.execute('DELETE FROM amostradores WHERE codigo=?', (CODIGO,))
     yield
 
@@ -176,3 +178,44 @@ def test_arquivo_errado_segue_devolvendo_zero_abas():
     lixo = _xlsx([['a', 'b'], [1, 2]])
     assert importar_medicoes(lixo)['sheets_reconhecidas'] == 0
     assert importar_amostradores(lixo)['sheets_reconhecidas'] == 0
+
+
+def _demanda_pronta_mas_pendente(os_num):
+    """Demanda com TODAS as medicoes realizadas mas status ainda 'pendente'."""
+    empresa_id = upsert_empresa('', UNIDADE)
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO demandas (numero_os, empresa_id, status) VALUES (?, ?, 'pendente')",
+            (os_num, empresa_id))
+        conn.execute(
+            "INSERT INTO medicoes (demanda_id, agente, qtd_pontos_prevista, "
+            "qtd_pontos_feita, status) VALUES (?, 'Ruido', 1, 1, 'realizado')",
+            (cur.lastrowid,))
+
+
+def _status_demanda(os_num):
+    with get_db() as conn:
+        return conn.execute('SELECT status FROM demandas WHERE numero_os=?',
+                            (os_num,)).fetchone()['status']
+
+
+def test_arquivo_errado_nao_recalcula_status_de_demanda():
+    """O UPDATE de conclusao rodava GLOBAL em toda chamada, fora do loop de abas:
+    subir a planilha errada (rota devolvendo 400) mexia na base inteira."""
+    _demanda_pronta_mas_pendente(OS_ALHEIA)
+
+    lixo = _xlsx([['a', 'b'], [1, 2]])
+    assert importar_medicoes(lixo)['sheets_reconhecidas'] == 0
+
+    assert _status_demanda(OS_ALHEIA) == 'pendente'
+
+
+def test_import_conclui_so_a_demanda_da_planilha():
+    _demanda_pronta_mas_pendente(OS_ALHEIA)
+
+    completa = _xlsx([HDR_MED,
+                      [UNIDADE, OS_NUM, 'Fulano', 'Ruido', 'Dosimetro DOS', 2, 2, 'S', '']])
+    importar_medicoes(completa)
+
+    assert _status_demanda(OS_NUM) == 'concluida'      # a da planilha fecha
+    assert _status_demanda(OS_ALHEIA) == 'pendente'    # a de fora nao e tocada

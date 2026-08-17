@@ -350,6 +350,7 @@ def importar_medicoes(file_bytes):
     updated_medicoes = 0
     sheets_ok = 0   # abas com cabeçalho reconhecido (0 = arquivo errado)
     finalizadas_por_cor = 0
+    demandas_tocadas = set()   # so estas entram no recalculo de status no fim
     errors = []
 
     for sheet_name in wb.sheetnames:
@@ -446,6 +447,7 @@ def importar_medicoes(file_bytes):
                             (os_num, empresa_id, 'pendente', obs))
                         demanda_cache[key] = cur.lastrowid
                         inserted_demandas += 1
+            demandas_tocadas.add(demanda_cache[key])
 
             # Insere medicao
             # Status: verde (planilha) > aval==pontos > parcial > pendente
@@ -510,19 +512,28 @@ def importar_medicoes(file_bytes):
                          laudar[:1] if laudar else '', status_med, obs))
                     inserted_medicoes += 1
 
-    # Atualizar status das demandas: se TODAS medicoes realizadas -> concluida
-    with get_db() as conn:
-        conn.execute("""
-            UPDATE demandas SET status='concluida'
-            WHERE id IN (
-                SELECT d.id FROM demandas d
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM medicoes m
-                    WHERE m.demanda_id = d.id AND m.status != 'realizado'
+    # Atualizar status das demandas TOCADAS por este import: se TODAS medicoes
+    # realizadas -> concluida.
+    # Antes este UPDATE era GLOBAL e rodava fora do loop de abas, ou seja em TODA
+    # chamada: subir o arquivo errado (0 abas reconhecidas, rota devolvendo 400)
+    # recalculava o status de toda a base. Agora so mexe nas demandas que
+    # apareceram na planilha, e so quando alguma aba foi reconhecida.
+    if sheets_ok and demandas_tocadas:
+        ids = sorted(demandas_tocadas)
+        marcadores = ','.join('?' * len(ids))
+        with get_db() as conn:
+            conn.execute(f"""
+                UPDATE demandas SET status='concluida'
+                WHERE id IN (
+                    SELECT d.id FROM demandas d
+                    WHERE d.id IN ({marcadores})
+                    AND NOT EXISTS (
+                        SELECT 1 FROM medicoes m
+                        WHERE m.demanda_id = d.id AND m.status != 'realizado'
+                    )
+                    AND EXISTS (SELECT 1 FROM medicoes m WHERE m.demanda_id = d.id)
                 )
-                AND EXISTS (SELECT 1 FROM medicoes m WHERE m.demanda_id = d.id)
-            )
-        """)
+            """, tuple(ids))
 
     return {
         'demandas_inseridas': inserted_demandas,

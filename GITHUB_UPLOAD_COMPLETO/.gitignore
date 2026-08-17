@@ -24,3 +24,6 @@ data/*.db
 # Temporários
 temp_*
 *.tmp
+
+# Dumps de diagnóstico do extrator — contêm dado de cliente e URL do Graph
+debug_*.json
