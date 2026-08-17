@@ -26,7 +26,7 @@ from .db import (
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
     registrar_sync, list_sync_log,
-    list_demandas_por_empresa, get_empresa_demandas, get_empresa_painel,
+    get_empresa_demandas, get_empresa_painel,
     list_amostradores_vencendo, contar_vencendo,
     mesclar_empresas_duplicatas,
     list_raw_tasks, stats_raw_pipeline,
@@ -1374,13 +1374,6 @@ def get_agentes():
         return jsonify({'erro': str(e), 'agentes': []}), 500
 
 
-@controle_bp.route('/demandas_por_empresa')
-def get_demandas_por_empresa():
-    """Demandas agrupadas por empresa, com progresso total da empresa."""
-    init_db()
-    return jsonify(list_demandas_por_empresa(request.args.to_dict()))
-
-
 @controle_bp.route('/empresa/<int:eid>/demandas')
 def get_empresa(eid):
     init_db()
@@ -1751,22 +1744,6 @@ def cria_demanda():
         return jsonify({'ok': True, 'id': did})
 
 
-@controle_bp.route('/demandas/sem-empresa')
-def api_demandas_sem_empresa():
-    """Demandas com empresa_id=0 ou NULL (orphans do matching)."""
-    init_db()
-    with get_db() as conn:
-        rows = conn.execute("""
-            SELECT id, numero_os, COALESCE(titulo, nome_tarefa) AS titulo,
-                   status, prazo, bucket, planner_bucket, criado_em
-            FROM demandas
-            WHERE (empresa_id IS NULL OR empresa_id = 0)
-              AND origem = 'planner'
-            ORDER BY criado_em DESC LIMIT 200
-        """).fetchall()
-    return jsonify([row_to_dict(r) for r in rows])
-
-
 # ── Baixas — listagem ─────────────────────────────────────────────────
 @controle_bp.route('/baixas', methods=['GET'])
 def api_list_baixas():
@@ -1952,7 +1929,6 @@ def dar_baixa():
         'sem_amostrador': not amostrador_id,
         'avisos': avisos
     })
-
 
 
 # ── Baixa rapida da OS (sem amostrador / sem equipamento) ─────────────
@@ -2858,20 +2834,6 @@ def _float_finito(valor, padrao=0.0):
     return f
 
 
-# ── Calculo de tempo (preview, sem persistir) ─────────────────────────
-@controle_bp.route('/calc_tempo')
-def calc_tempo():
-    try:
-        vol     = _float_finito(request.args.get('volume', 0))
-        vazao   = _float_finito(request.args.get('vazao', 0))
-        if vazao <= 0 or vol <= 0:
-            return jsonify({'erro': 'volume e vazao > 0'}), 400
-        tempo = vol / vazao
-        return jsonify({'tempo_min': round(tempo, 2)})
-    except (ValueError, TypeError):
-        return jsonify({'erro': 'valores numericos invalidos'}), 400
-
-
 # ── Devolucao de amostrador ao laboratorio ────────────────────────────
 @controle_bp.route('/amostradores/<int:aid>/devolver', methods=['POST'])
 def devolver_amostrador(aid):
@@ -3493,11 +3455,6 @@ def api_coletas_dedup():
     return jsonify({'ok': True, 'removidos': len(removidos), 'detalhe': removidos})
 
 
-@controle_bp.route('/coletas/ruido')
-def api_list_coletas_ruido():
-    init_db()
-    return jsonify(list_coletas_ruido(request.args.to_dict()))
-
 def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_id=None):
     """Atualiza status da demanda quando uma coleta é salva.
     aberta → em_andamento ao criar coleta.
@@ -3846,70 +3803,6 @@ def _liberar_reservas_plano(pid, conn=None):
     except Exception as e:
         log.warning('[plano] liberar reservas do plano %s falhou: %s', pid, e)
         return []
-
-
-@controle_bp.route('/coletas/ruido', methods=['POST'])
-def api_save_coleta_ruido():
-    init_db()
-    d = request.json or {}
-    cid = save_coleta_ruido(d)
-    is_new = not bool(d.get('id'))
-    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'), d.get('planejamento_id'))
-    if is_new:
-        registrar_evento('coleta_ruido_criada',
-                         f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
-                         cid, 'coleta_ruido',
-                         current_user.nome if current_user.is_authenticated else 'sistema',
-                         request.remote_addr)
-    return jsonify({'ok': True, 'id': cid})
-
-@controle_bp.route('/coletas/ruido/<int:cid>')
-def api_get_coleta_ruido(cid):
-    init_db()
-    c = get_coleta_ruido(cid)
-    return (jsonify(c), 200) if c else (jsonify({'erro': 'nao encontrada'}), 404)
-
-@controle_bp.route('/coletas/ruido/<int:cid>', methods=['DELETE'])
-def api_del_coleta_ruido(cid):
-    init_db()
-    with get_db() as conn:
-        conn.execute('DELETE FROM coletas_ruido_func WHERE coleta_id=?', (cid,))
-        conn.execute('DELETE FROM coletas_ruido WHERE id=?', (cid,))
-    return jsonify({'ok': True})
-
-@controle_bp.route('/coletas/quimico')
-def api_list_coletas_quimico():
-    init_db()
-    return jsonify(list_coletas_quimico(request.args.to_dict()))
-
-@controle_bp.route('/coletas/quimico', methods=['POST'])
-def api_save_coleta_quimico():
-    init_db()
-    d = request.json or {}
-    cid = save_coleta_quimico(d)
-    is_new = not bool(d.get('id'))
-    _atualizar_demanda_por_coleta(d.get('demanda_id'), d.get('status'), d.get('planejamento_id'))
-    if is_new:
-        registrar_evento('coleta_quimico_criada',
-                         f'OS: {d.get("os","—")} | Empresa: {d.get("empresa_nome","—")}',
-                         cid, 'coleta_quimico',
-                         current_user.nome if current_user.is_authenticated else 'sistema',
-                         request.remote_addr)
-    return jsonify({'ok': True, 'id': cid})
-
-@controle_bp.route('/coletas/quimico/<int:cid>')
-def api_get_coleta_quimico(cid):
-    init_db()
-    c = get_coleta_quimico(cid)
-    return (jsonify(c), 200) if c else (jsonify({'erro': 'nao encontrada'}), 404)
-
-@controle_bp.route('/coletas/quimico/<int:cid>', methods=['DELETE'])
-def api_del_coleta_quimico(cid):
-    init_db()
-    with get_db() as conn:
-        conn.execute('DELETE FROM coletas_quimico_amostr WHERE coleta_id=?', (cid,))
-        conn.execute('DELETE FROM coletas_quimico WHERE id=?', (cid,))
-    return jsonify({'ok': True})
 
 
 # ── Coletas Outros (calor, vibração, iluminamento) ────────────────────
@@ -4411,108 +4304,6 @@ _FICHA_QUIMICO_HTML = """<!DOCTYPE html>
   </div>
 </div>
 </body></html>"""
-
-
-@controle_bp.route('/coletas/ruido/<int:cid>/ficha')
-def ficha_coleta_ruido(cid):
-    init_db()
-    c = get_coleta_ruido(cid)
-    if not c:
-        return 'Coleta não encontrada', 404
-    c.setdefault('funcionarios', [])
-    c['data_coleta'] = _iso_br(c.get('data_coleta'))
-    html = _FICHA_RUIDO_HTML.replace('{{ css }}', _FICHA_CSS)
-    return render_template_string(html, c=c)
-
-
-@controle_bp.route('/coletas/quimico/<int:cid>/ficha')
-def ficha_coleta_quimico(cid):
-    init_db()
-    c = get_coleta_quimico(cid)
-    if not c:
-        return 'Coleta não encontrada', 404
-    c.setdefault('amostradores', [])
-    c['data_coleta'] = _iso_br(c.get('data_coleta'))
-    html = _FICHA_QUIMICO_HTML.replace('{{ css }}', _FICHA_CSS)
-    return render_template_string(html, c=c)
-
-
-_FICHA_OUTROS_HTML = """<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><title>Ficha de Campo — {{ 'Calor' if c.eh_calor else 'Vibração' }}</title>
-{{ css }}
-</head>
-<body>
-<div class="no-print" style="background:#1a1a2e;color:#fff;padding:10px 20px;display:flex;gap:16px;align-items:center;">
-  <span style="font-weight:bold;">Ficha de Campo — {{ 'Calor / IBUTG' if c.eh_calor else 'Vibração' }}</span>
-  <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">🖨 Imprimir / Salvar PDF</button>
-  <button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;">✕ Fechar</button>
-</div>
-<div class="page">
-  <div class="logo-bar">
-    <div style="font-size:9pt;font-weight:bold;min-width:90px;">OCUPACIONAL SST</div>
-    <div class="title">{{ 'AVALIAÇÃO DE CALOR (IBUTG)' if c.eh_calor else 'AVALIAÇÃO DE VIBRAÇÃO' }}</div>
-    <div class="sub">{{ 'NR-15 An.3 / NHO-06' if c.eh_calor else 'NR-09 / NHO-09 e NHO-10' }}<br>Ficha ID: {{ c.id }}</div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">IDENTIFICAÇÃO DA EMPRESA</div>
-    <div class="row">
-      <div class="cell w6"><label>Empresa</label><div class="val">{{ c.empresa_nome or '' }}</div></div>
-      <div class="cell w2"><label>Data da Coleta</label><div class="val">{{ c.data_coleta or '' }}</div></div>
-      <div class="cell w2"><label>OS / Demanda</label><div class="val">{{ c.os or '' }}</div></div>
-    </div>
-    <div class="row">
-      <div class="cell w3"><label>Unidade</label><div class="val">{{ c.unidade or '' }}</div></div>
-      <div class="cell w3"><label>Cidade</label><div class="val">{{ c.cidade or '' }}</div></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">DADOS DA AVALIAÇÃO</div>
-    <div class="row">
-      <div class="cell w3"><label>Técnico / Avaliador</label><div class="val">{{ c.avaliador or c.tecnico_login or '' }}</div></div>
-      <div class="cell w3"><label>Acompanhante</label><div class="val">{{ c.acompanhante or '' }}</div></div>
-      <div class="cell w1"><label>Início</label><div class="val">{{ c.hora_inicio or '' }}</div></div>
-      <div class="cell w1"><label>Término</label><div class="val">{{ c.hora_termino or '' }}</div></div>
-    </div>
-    <div class="row">
-      {% if c.eh_calor %}
-      <div class="cell w3"><label>Regime de trabalho</label><div class="val">{{ c.regime or '' }}</div></div>
-      <div class="cell w3"><label>Pontos avaliados</label><div class="val">{{ c.pontos or '' }}</div></div>
-      {% else %}
-      <div class="cell w2"><label>Tipo de vibração</label><div class="val">{{ c.tipo_vibr or (('Mãos-braços (VMB)' if 'vbma' in c.tipo else 'Corpo inteiro (VCI)') if c.tipo != 'vibracao' else '') }}</div></div>
-      <div class="cell w2"><label>Fonte</label><div class="val">{{ c.fonte_vibr or '' }}</div></div>
-      <div class="cell w2"><label>Pontos</label><div class="val">{{ c.pontos or '' }}</div></div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">{{ c.registro_titulo }}</div>
-    {% if c.registro_linhas %}
-      {% for ln in c.registro_linhas %}
-      <div class="row"><div class="cell w6"><div class="val">{{ ln }}</div></div></div>
-      {% endfor %}
-    {% else %}
-      <div class="row"><div class="cell w6 blank">&nbsp;</div></div>
-      <div class="row"><div class="cell w6 blank">&nbsp;</div></div>
-      <div class="row"><div class="cell w6 blank">&nbsp;</div></div>
-    {% endif %}
-  </div>
-
-  <div class="section">
-    <div class="section-title">OBSERVAÇÕES</div>
-    <div class="obs-box">{{ c.observacao or '' }}</div>
-  </div>
-
-  <div class="sig-row">
-    <div class="sig-box">Técnico responsável</div>
-    <div class="sig-box">Responsável da empresa</div>
-  </div>
-</div>
-</body>
-</html>"""
 
 
 @controle_bp.route('/coletas/outros/<int:cid>/ficha')
@@ -6669,115 +6460,6 @@ def get_pipeline_stats():
     return jsonify(stats_raw_pipeline())
 
 
-@controle_bp.route('/relatorio/mensal')
-def api_relatorio_mensal():
-    """Resumo executivo do mês: visitas, agentes medidos, empresas atendidas."""
-    init_db()
-    import calendar
-    mes = request.args.get('mes', '')  # formato YYYY-MM
-    if not mes:
-        from datetime import date
-        hoje = date.today()
-        mes = f'{hoje.year}-{hoje.month:02d}'
-    try:
-        ano, num_mes = mes.split('-')
-        ano, num_mes = int(ano), int(num_mes)
-    except Exception:
-        return jsonify({'erro': 'mes deve ser YYYY-MM'}), 400
-
-    with get_db() as conn:
-        # Visitas no mês
-        visitas = [row_to_dict(r) for r in conn.execute("""
-            SELECT vt.id, vt.tecnico, vt.data_visita, vt.resultado, vt.retrabalho,
-                   e.nome AS empresa_nome, d.numero_os
-            FROM visitas_tecnicas vt
-            LEFT JOIN empresas e ON e.id = vt.empresa_id
-            LEFT JOIN demandas d ON d.id = vt.demanda_id
-            WHERE vt.data_visita LIKE ?
-            ORDER BY vt.data_visita
-        """, (f'{ano}-{num_mes:02d}%',)).fetchall()]
-
-        # Coletas ruído no mês
-        coletas_ruido = conn.execute(
-            "SELECT COUNT(*) AS c FROM coletas_ruido WHERE data_coleta LIKE ?",
-            (f'{ano}-{num_mes:02d}%',)
-        ).fetchone()['c']
-
-        # Coletas químico no mês
-        coletas_quimico = conn.execute(
-            "SELECT COUNT(*) AS c FROM coletas_quimico WHERE data_coleta LIKE ?",
-            (f'{ano}-{num_mes:02d}%',)
-        ).fetchone()['c']
-
-        # Amostradores enviados ao lab no mês
-        enviados_lab = conn.execute(
-            "SELECT COUNT(*) AS c FROM amostradores WHERE data_envio_lab LIKE ?",
-            (f'{ano}-{num_mes:02d}%',)
-        ).fetchone()['c']
-
-        # Demandas concluídas no mês
-        concluidas = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE status='concluida' AND data_conclusao LIKE ?",
-            (f'{ano}-{num_mes:02d}%',)
-        ).fetchone()['c']
-
-        # Empresas únicas atendidas
-        empresas_set = set(v['empresa_nome'] for v in visitas if v.get('empresa_nome'))
-
-    return jsonify({
-        'mes': mes,
-        'visitas': visitas,
-        'resumo': {
-            'total_visitas': len(visitas),
-            'visitas_concluidas': sum(1 for v in visitas if v.get('resultado') == 'concluido'),
-            'retrabalhos': sum(1 for v in visitas if v.get('retrabalho')),
-            'empresas_atendidas': len(empresas_set),
-            'coletas_ruido': coletas_ruido,
-            'coletas_quimico': coletas_quimico,
-            'amostradores_enviados_lab': enviados_lab,
-            'demandas_concluidas': concluidas,
-        },
-    })
-
-
-@controle_bp.route('/metricas/calcular', methods=['POST'])
-def api_calcular_metricas():
-    """Recalcula metricas_operacionais para todas as demandas."""
-    init_db()
-    from .db import calcular_metricas_lote
-    resultado = calcular_metricas_lote()
-    return jsonify({'ok': True, **resultado})
-
-
-@controle_bp.route('/metricas')
-def api_metricas():
-    """KPIs calculados: lead time médio, delay médio, top retrabalho."""
-    init_db()
-    with get_db() as conn:
-        rows = conn.execute("""
-            SELECT m.demanda_id, m.lead_time_dias, m.delay_dias, m.retrabalho,
-                   m.visitas_total, m.calculado_em,
-                   COALESCE(d.titulo, d.nome_tarefa) AS titulo,
-                   e.nome AS empresa_nome
-            FROM metricas_operacionais m
-            LEFT JOIN demandas d ON d.id = m.demanda_id
-            LEFT JOIN empresas e ON e.id = d.empresa_id
-            ORDER BY m.retrabalho DESC, m.delay_dias DESC LIMIT 100
-        """).fetchall()
-        stats = conn.execute("""
-            SELECT ROUND(AVG(lead_time_dias),1) AS lead_medio,
-                   ROUND(AVG(CASE WHEN delay_dias > 0 THEN delay_dias END),1) AS delay_medio,
-                   SUM(retrabalho) AS total_retrabalho,
-                   COUNT(*) AS total
-            FROM metricas_operacionais
-        """).fetchone()
-    return jsonify({
-        'stats': row_to_dict(stats) if stats else {},
-        'demandas': [row_to_dict(r) for r in rows],
-    })
-
-
-
 @controle_bp.route('/db/status')
 def db_status():
     """Informa qual backend de banco está ativo e testa conectividade."""
@@ -7849,7 +7531,6 @@ def api_reclassificar():
         return jsonify({'ok': True, **stats})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
-
 
 
 # ── Fila de Revisão Humana (baixa confiança de extração) ──────────────
