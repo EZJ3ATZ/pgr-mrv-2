@@ -720,18 +720,6 @@ CREATE TABLE IF NOT EXISTS equipamentos_inventario (
     atualizado_em   TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS metricas_operacionais (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    demanda_id      INTEGER,
-    tecnico         TEXT,
-    lead_time_dias  INTEGER,
-    delay_dias      INTEGER,
-    retrabalho      INTEGER DEFAULT 0,
-    visitas_total   INTEGER DEFAULT 0,
-    calculado_em    TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (demanda_id) REFERENCES demandas(id)
-);
-
 CREATE TABLE IF NOT EXISTS usuarios (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     nome         TEXT NOT NULL,
@@ -827,7 +815,6 @@ CREATE INDEX IF NOT EXISTS idx_visita_data       ON visitas_tecnicas(data_visita
 CREATE INDEX IF NOT EXISTS idx_visita_planejamento ON visitas_tecnicas(planejamento_id);
 CREATE INDEX IF NOT EXISTS idx_exec_visita       ON execucao_campo(visita_id);
 CREATE INDEX IF NOT EXISTS idx_exec_planejamento ON execucao_campo(planejamento_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_metricas_demanda ON metricas_operacionais(demanda_id);
 
 CREATE TABLE IF NOT EXISTS divergencias (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1244,35 +1231,6 @@ def _migrate(conn):
     # Data da última calibração (validade = +2 anos). cert_validade fica como override manual.
     _add_col(conn, 'equipamentos_inventario', 'data_calibracao', 'TEXT')
 
-    # Tabela de log de extração (rastreabilidade)
-    # ATENÇÃO: AUTOINCREMENT é SQLite — PostgreSQL usa SERIAL
-    _pk_exlog = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
-    conn.execute(f'''
-        CREATE TABLE IF NOT EXISTS extraction_log (
-            id              {_pk_exlog},
-            demanda_id      INTEGER,
-            planner_task_id TEXT,
-            score_geral     REAL,
-            needs_review    INTEGER DEFAULT 0,
-            numero_os       TEXT,
-            os_confianca    REAL,
-            empresa_nome    TEXT,
-            empresa_conf    REAL,
-            agentes_json    TEXT,
-            inconsistencias TEXT,
-            conflitos       TEXT,
-            warnings_json   TEXT,
-            fontes_lidas    TEXT,
-            extraido_em     TEXT,
-            criado_em       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    try:
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_exlog_demanda ON extraction_log(demanda_id)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_exlog_task ON extraction_log(planner_task_id)')
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_exlog_review ON extraction_log(needs_review)')
-    except Exception:
-        pass
 
     # ── amostradores ──
     amostr_extra = {
@@ -1915,7 +1873,6 @@ _COLS_NOME_PESSOA = (
     ('coletas_quimico', 'responsavel_coleta'),
     ('amostradores', 'avaliador'), ('baixas', 'avaliador'),
     ('planejamentos', 'tecnico'), ('visitas_tecnicas', 'tecnico'),
-    ('metricas_operacionais', 'tecnico'),
     ('demandas', 'contato_feito_por'), ('contatos_empresa', 'feito_por'),
 )
 
