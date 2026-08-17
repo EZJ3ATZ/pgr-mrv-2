@@ -7,7 +7,8 @@ from datetime import datetime, date
 
 import openpyxl
 
-from .db import get_db, upsert_empresa
+from .db import (get_db, upsert_empresa, normalizar_status_amostrador,
+                 status_amostrador_conhecido)
 
 
 def _norm(s):
@@ -42,6 +43,7 @@ def importar_amostradores(file_bytes):
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     inserted = 0
     updated = 0
+    sheets_ok = 0   # abas com cabeçalho reconhecido (0 = arquivo errado)
     errors = []
 
     for sheet_name in wb.sheetnames:
@@ -60,6 +62,7 @@ def importar_amostradores(file_bytes):
                 break
         if header_idx is None:
             continue
+        sheets_ok += 1
 
         header_norm = [_norm(c) for c in rows[header_idx]]
 
@@ -83,7 +86,16 @@ def importar_amostradores(file_bytes):
             tipo   = _str(row[c_tipo])   if c_tipo   is not None else ''
             if not codigo or not tipo:
                 continue
-            status   = _str(row[c_status])   if c_status   is not None else 'Estoque'
+            # Normaliza o status para o valor canonico ANTES de gravar — senao o
+            # valor cru da planilha ("Estoque", "UTILIZADO?", nome de empresa...)
+            # nao casa nenhum filtro e o amostrador some das telas ate o proximo boot.
+            status_raw = _str(row[c_status]) if c_status is not None else ''
+            status   = normalizar_status_amostrador(status_raw or 'Estoque')
+            # ... mas so sobrescrevemos o status de um amostrador JA EXISTENTE
+            # quando a planilha traz um valor reconhecido. Texto solto na coluna
+            # Status virava 'laboratorio' no normalizador e ressuscitava
+            # amostrador 'concluido' na fila do laboratorio.
+            status_confiavel = status_amostrador_conhecido(status_raw)
             entrada  = _str(row[c_entrada])  if c_entrada  is not None else ''
             empresa  = _str(row[c_empresa])  if c_empresa  is not None else ''
             avaliad  = _str(row[c_avaliad])  if c_avaliad  is not None else ''
@@ -96,11 +108,24 @@ def importar_amostradores(file_bytes):
                     (codigo, tipo)
                 ).fetchone()
                 if existing:
-                    conn.execute("""
-                        UPDATE amostradores SET status=?, data_entrada=?, empresa_id=?,
-                            avaliador=?, data_medicao=?, atualizado_em=CURRENT_TIMESTAMP
-                        WHERE id=?""",
-                        (status, entrada, empresa_id, avaliad, medicao, existing['id']))
+                    # Celula vazia NAO apaga dado do banco: a planilha e sugestao de
+                    # campo, o estado real vem do app (reserva, envio ao lab, RA).
+                    sets = ['atualizado_em=CURRENT_TIMESTAMP']
+                    vals = []
+                    if status_confiavel:
+                        sets.append('status=?');       vals.append(status)
+                    if entrada:
+                        sets.append('data_entrada=?'); vals.append(entrada)
+                    if empresa_id is not None:
+                        sets.append('empresa_id=?');   vals.append(empresa_id)
+                    if avaliad:
+                        sets.append('avaliador=?');    vals.append(avaliad)
+                    if medicao:
+                        sets.append('data_medicao=?'); vals.append(medicao)
+                    vals.append(existing['id'])
+                    conn.execute(
+                        'UPDATE amostradores SET ' + ', '.join(sets) + ' WHERE id=?',
+                        tuple(vals))
                     updated += 1
                 else:
                     try:
@@ -113,7 +138,8 @@ def importar_amostradores(file_bytes):
                     except Exception as e:
                         errors.append(f'Linha codigo={codigo}: {e}')
 
-    return {'inserted': inserted, 'updated': updated, 'errors': errors}
+    return {'inserted': inserted, 'updated': updated,
+            'sheets_reconhecidas': sheets_ok, 'errors': errors}
 
 
 def _extrair_nome_empresa(nome_tarefa):
@@ -139,6 +165,7 @@ def importar_demandas_planner(file_bytes):
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     inseridas = 0
     atualizadas = 0
+    sheets_ok = 0   # abas com cabeçalho reconhecido (0 = arquivo errado)
     erros = []
 
     for sheet_name in wb.sheetnames:
@@ -153,6 +180,7 @@ def importar_demandas_planner(file_bytes):
             if ('NOME' in txt or 'EMPRESA' in txt) and ('CRIACAO' in txt or 'PRAZO' in txt or 'STATUS' in txt):
                 header_idx = i; break
         if header_idx is None: continue
+        sheets_ok += 1
 
         header_norm = [_norm(c) for c in rows[header_idx]]
         def col_idx(*kws):
@@ -221,7 +249,7 @@ def importar_demandas_planner(file_bytes):
             with get_db() as conn:
                 # Atualiza CNPJ na empresa se vier do Planner
                 if cnpj_val:
-                    conn.execute('UPDATE empresas SET cnpj=? WHERE id=? AND (cnpj IS NULL OR cnpj=\"\")',
+                    conn.execute("UPDATE empresas SET cnpj=? WHERE id=? AND (cnpj IS NULL OR cnpj='')",
                                  (cnpj_val, empresa_id))
 
                 # Match por OS
@@ -258,7 +286,8 @@ def importar_demandas_planner(file_bytes):
                         params)
                     inseridas += 1
 
-    return {'demandas_inseridas': inseridas, 'demandas_atualizadas': atualizadas, 'errors': erros}
+    return {'demandas_inseridas': inseridas, 'demandas_atualizadas': atualizadas,
+            'sheets_reconhecidas': sheets_ok, 'errors': erros}
 
 
 def _parse_data(s):
@@ -302,6 +331,11 @@ def _is_finalizada(cell):
     return False
 
 
+# Ordem de avanco do status de medicao — usado no re-import para nunca REGREDIR
+# uma medicao que o app ja finalizou (check-out do tecnico, RA do laboratorio).
+_RANK_STATUS_MED = {'pendente': 0, 'parcial': 1, 'realizado': 2}
+
+
 def importar_medicoes(file_bytes):
     """Importa planilha Controle de Medicoes - Helbert e Wesley.
     Cada linha eh um agente de uma OS. Agrupa por (OS, empresa) em demandas
@@ -313,6 +347,8 @@ def importar_medicoes(file_bytes):
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
     inserted_demandas = 0
     inserted_medicoes = 0
+    updated_medicoes = 0
+    sheets_ok = 0   # abas com cabeçalho reconhecido (0 = arquivo errado)
     finalizadas_por_cor = 0
     errors = []
 
@@ -333,6 +369,7 @@ def importar_medicoes(file_bytes):
                 break
         if header_idx is None:
             continue
+        sheets_ok += 1
 
         header_norm = [_norm(c.value) for c in all_cells[header_idx]]
         def col_idx(*kws):
@@ -366,7 +403,8 @@ def importar_medicoes(file_bytes):
                 continue
             resp    = cv(c_resp)
             amostr  = cv(c_amostr)
-            pontos  = _to_int(cells[c_pontos].value if c_pontos is not None and c_pontos < len(cells) else None, 1)
+            pontos_raw = cells[c_pontos].value if c_pontos is not None and c_pontos < len(cells) else None
+            pontos  = _to_int(pontos_raw, 1)
             aval    = _to_int(cells[c_aval].value if c_aval is not None and c_aval < len(cells) else None, 0)
             laudar  = cv(c_laudar)
             obs     = cv(c_obs)
@@ -430,14 +468,47 @@ def importar_medicoes(file_bytes):
             if am: tipo_amostr = am.group(1)
 
             with get_db() as conn:
-                conn.execute("""
-                    INSERT INTO medicoes
-                        (demanda_id, agente, tipo_amostrador, qtd_pontos_prevista,
-                         qtd_pontos_feita, necessita_laudo, status, observacao)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (demanda_cache[key], agente, tipo_amostr, pontos, qtd_feita,
-                     laudar[:1] if laudar else '', status_med, obs))
-                inserted_medicoes += 1
+                # Dedup por (demanda_id, agente, tipo_amostrador): re-import da mesma
+                # planilha ATUALIZA em vez de duplicar (antes dobrava as medições e
+                # inflava os contadores de todas as telas).
+                ja = conn.execute(
+                    "SELECT id, status, qtd_pontos_feita FROM medicoes "
+                    "WHERE demanda_id=? AND agente=? "
+                    "AND COALESCE(tipo_amostrador,'')=COALESCE(?,'')",
+                    (demanda_cache[key], agente, tipo_amostr)).fetchone()
+                if ja:
+                    # A planilha e SUGESTAO de campo; o estado real da medicao vem do
+                    # app (check-out do tecnico, RA do laboratorio, planner_sync).
+                    # Por isso o re-import so AVANCA: nunca reverte medicao ja
+                    # finalizada, nao zera pontos feitos e nao apaga observacao
+                    # escrita no sistema com celula vazia da planilha.
+                    sets, vals = [], []
+                    if pontos_raw not in (None, ''):
+                        sets.append('qtd_pontos_prevista=?'); vals.append(pontos)
+                    if _RANK_STATUS_MED.get(status_med, 0) > \
+                       _RANK_STATUS_MED.get(ja['status'] or 'pendente', 0):
+                        sets.append('status=?'); vals.append(status_med)
+                    if qtd_feita > (ja['qtd_pontos_feita'] or 0):
+                        sets.append('qtd_pontos_feita=?'); vals.append(qtd_feita)
+                    if laudar:
+                        sets.append('necessita_laudo=?'); vals.append(laudar[:1])
+                    if obs:
+                        sets.append('observacao=?'); vals.append(obs)
+                    if sets:
+                        vals.append(ja['id'])
+                        conn.execute(
+                            'UPDATE medicoes SET ' + ', '.join(sets) + ' WHERE id=?',
+                            tuple(vals))
+                    updated_medicoes += 1
+                else:
+                    conn.execute("""
+                        INSERT INTO medicoes
+                            (demanda_id, agente, tipo_amostrador, qtd_pontos_prevista,
+                             qtd_pontos_feita, necessita_laudo, status, observacao)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (demanda_cache[key], agente, tipo_amostr, pontos, qtd_feita,
+                         laudar[:1] if laudar else '', status_med, obs))
+                    inserted_medicoes += 1
 
     # Atualizar status das demandas: se TODAS medicoes realizadas -> concluida
     with get_db() as conn:
@@ -456,6 +527,8 @@ def importar_medicoes(file_bytes):
     return {
         'demandas_inseridas': inserted_demandas,
         'medicoes_inseridas': inserted_medicoes,
+        'medicoes_atualizadas': updated_medicoes,
+        'sheets_reconhecidas': sheets_ok,
         'finalizadas_por_cor_verde': finalizadas_por_cor,
         'errors': errors
     }

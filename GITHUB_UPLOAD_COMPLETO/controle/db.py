@@ -160,6 +160,20 @@ def normalizar_status_amostrador(raw):
     return _STATUS_LEGADO.get(k, 'laboratorio')
 
 
+def status_amostrador_conhecido(raw):
+    """True só quando o valor cru casa um status conhecido do mapa acima.
+
+    Existe para o IMPORT não sobrescrever o status real do banco com o fallback
+    'laboratorio' de normalizar_status_amostrador(): a coluna Status da planilha
+    às vezes traz texto solto (nome de empresa, anotação), e gravar isso como
+    'laboratorio' ressuscitava amostrador já 'concluido' na fila do laboratório.
+    Célula vazia também é 'não conhecido' — vazio não diz nada sobre o estado
+    de um amostrador que já existe (no INSERT o default continua 'disponivel')."""
+    if not raw:
+        return False
+    return str(raw).strip().lower() in _STATUS_LEGADO
+
+
 # ── Wrapper PostgreSQL (faz psycopg2 se comportar como sqlite3) ────────
 
 class _PGCursor:
