@@ -7831,7 +7831,7 @@ function qRenderAvals() {
       </div>
       <div class="grid3 field">
         <div><label>Setor</label><input type="text" value="${qEsc(av.setor)}" onchange="qAvals[${i}].setor=this.value"></div>
-        <div><label>Jornada</label><input type="text" value="${qEsc(av.jornada)}" placeholder="09:00H" onchange="qAvals[${i}].jornada=this.value"></div>
+        <div><label>Jornada</label><input type="text" value="${qEsc(av.jornada)}" placeholder="09:00H · 12x36 · 44h semanais" title="Entra no cálculo do Brief &amp; Scala. Aceita jornada diária (09:00H, 12x36) ou semanal (44h semanais). Em branco, o laudo assume 44 h semanais." onchange="qSetCampoAval(${i},'jornada',this.value)"></div>
         <div><label>Filtro Nº</label><input type="text" value="${qEsc(av.filtroNumero)}" placeholder="TCP1234AV5" onchange="qAvals[${i}].filtroNumero=this.value"></div>
       </div>
       <div class="grid2 field">
@@ -7907,7 +7907,7 @@ function qRenderAvals() {
 // ── Resultados em massa (grade) ────────────────────────────────────
 // O veredicto NÃO é calculado aqui: vem de /quimico/classificar, que usa a
 // mesma _classificar_quimico do laudo. A conta local comparava com UM limite
-// (ltNR15 || ltTWA) e sem a correção Brief & Scala (×0,88), então pintava de
+// (ltNR15 || ltTWA) e sem a correção Brief & Scala, então pintava de
 // verde avaliação que o documento assinado reprovava — 18,5 ppm com LT-TWA 20
 // (17,6 corrigido) aparecia REGULAR na tela e IRREGULAR no laudo.
 const QCOR = {
@@ -7962,6 +7962,9 @@ async function qSitBuscar() {
           concentracao: a.concentracao || '', ltNR15: a.ltNR15 || '',
           ltTWA: a.ltTWA || '', ltSTEL: a.ltSTEL || '',
           tempoColeta: a.tempoColeta || '',
+          // Entra no Brief & Scala: sem a jornada o backend cai no padrão de
+          // 44 h e o badge da tela discorda do laudo em escala 12x36.
+          jornada: a.jornada || '',
         })),
       }),
     });
@@ -9227,7 +9230,10 @@ function _atualizarPreviewCalor() {
 function _atualizarPreviewRuido() {
   if (typeof rAvals === 'undefined') return;
   rAvals.forEach((av, i) => {
-    const lavg = parseFloat(String(av.lavgQ3||'').replace(',','.'));
+    // Mesmo valor que alimenta a conclusão Trabalhista do documento (TWA Q5,
+    // com fallback p/ LAVG Q5). Antes era o LAVG Q=3 — a tela dizia uma coisa
+    // e o laudo outra, e o Q=3 nem sai mais no documento.
+    const lavg = parseFloat(String(av.twaQ5||av.lavgQ5||'').replace(',','.'));
     let cor, txt;
     if (isNaN(lavg)) { cor='#888'; txt='— sem dado'; }
     else if (lavg >= 85) { cor='#e22'; txt=`${lavg.toFixed(1)} dB → ULTRAPASSOU LT (85)`; }

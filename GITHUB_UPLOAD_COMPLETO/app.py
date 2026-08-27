@@ -1628,6 +1628,127 @@ def _fmt_num(x):
     return (f'{x:.4f}'.rstrip('0').rstrip('.')).replace('.', ',')
 
 
+def _jornada_horas(txt):
+    """Lê a carga horária do campo livre de jornada.
+
+    Devolve `(horas, base)` com base em `'dia'` ou `'semana'`, ou `(None, None)`
+    quando não dá para ler com segurança. O campo nasce livre na tela e chega em
+    formatos bem diferentes: `09:00H` (o padrão), `08:00 / 08 horas`, `12x36`,
+    `44h semanais`, `8h/dia`.
+
+    Na dúvida devolve None de propósito. Ler errado é pior que não ler: o número
+    vira Limite de Tolerância em documento assinado, e quem chama volta para a
+    jornada padrão de 44 h, que é o que o gerador sempre fez.
+    """
+    t = str(txt or '').strip().lower()
+    if not t:
+        return (None, None)
+    t = t.replace(',', '.')
+
+    # Escala de turno: 12x36, 24x48. O 1º número são as horas do dia — mas só
+    # quando o 2º é descanso em HORAS. 6x1 e 5x2 são escalas de DIAS e não
+    # dizem nada sobre a carga horária.
+    m = re.search(r'\b(\d{1,2})\s*[x×]\s*(\d{1,3})\b', t)
+    if m:
+        h, desc = float(m.group(1)), float(m.group(2))
+        if desc < 12 or h <= 0 or h > 24:
+            return (None, None)
+        if h <= 16:
+            return (h, 'dia')
+        # Plantão longo (24x48): o modelo diário degenera perto de 24 h — em
+        # 24 h o limite corrigido iria a zero. A escala dá o ciclo inteiro, então
+        # a carga semanal sai da regra de três: 24 h a cada 72 h = 56 h/semana.
+        return (h * 168.0 / (h + desc), 'semana')
+
+    # Faixa de horário ("08:00 às 17:00") não é duração: não dá para descontar
+    # intervalo sem inventar. Fica sem leitura.
+    if len(re.findall(r'\b\d{1,2}\s*:\s*\d{2}', t)) > 1:
+        return (None, None)
+
+    semanal = bool(re.search(r'seman|/\s*sem\b|\bsem\b|por semana', t))
+    diaria = bool(re.search(r'di[áa]ri|/\s*dia\b|\bdia\b|por dia|\bdiurn', t))
+
+    # HH:MM sozinho é duração da jornada do dia (o padrão da tela é "09:00H").
+    m = re.search(r'\b(\d{1,2})\s*:\s*(\d{2})', t)
+    if m:
+        h = float(m.group(1)) + float(m.group(2)) / 60.0
+        if semanal and 0 < h < 168:
+            return (h, 'semana')
+        return ((h, 'dia') if 0 < h < 24 else (None, None))
+
+    m = re.search(r'(\d{1,3}(?:\.\d+)?)\s*(?:h\b|hs\b|hr|hora)', t) or \
+        re.search(r'^(\d{1,3}(?:\.\d+)?)$', t)
+    if not m:
+        return (None, None)
+    h = float(m.group(1))
+    if semanal and not diaria:
+        return ((h, 'semana') if 0 < h < 168 else (None, None))
+    if diaria and not semanal:
+        return ((h, 'dia') if 0 < h < 24 else (None, None))
+    # Sem palavra que diga a base, o tamanho do número decide.
+    if 0 < h <= 16:
+        return (h, 'dia')
+    if 20 <= h < 168:
+        return (h, 'semana')
+    return (None, None)
+
+
+# Jornada usada quando o campo não é legível: 44 h semanais, que dá 0,88 — o
+# número fixo que o gerador aplicava em toda avaliação antes de 27/08/2026.
+BS_FATOR_PADRAO = 0.88
+
+
+def _fator_brief_scala(jornada_txt):
+    """Fator de redução de Brief & Scala para a jornada REAL da avaliação.
+
+    Pedido do Bernardo em 26/08/2026: "incluir a carga horária semanal ou diária
+    e realizar o cálculo". Antes disso o fator era 0,88 chumbado no código e o
+    laudo declarava "jornada de 44 horas semanais" para qualquer empresa.
+
+        semanal:  FR = (40/Hsr) × ((168 − Hsr)/128)
+        diário:   FR = (8/Hd)   × ((24  − Hd)/16)
+
+    Devolve `(fator, rotulo, leu)`. O `rotulo` vai impresso no laudo porque o
+    documento é assinado e tem de declarar de qual jornada saiu o limite.
+
+    Três regras que são de uso, não da fórmula:
+      • **teto em 1,0** — o modelo corrige jornada ESTENDIDA. Numa jornada curta
+        a conta passa de 1 e afrouxaria o limite acima do próprio TLV da ACGIH.
+        Acima de 1 o fator vira 1 e o limite fica o da ACGIH, sem correção.
+      • **piso de 0,88 quando só se conhece a jornada DIÁRIA.** Saber que o
+        turno é de 8 h não diz quantos dias tem a semana, e a base da casa é a
+        semana brasileira de 44 h. Sem esse piso, `08:00` (o valor mais comum do
+        campo) daria FR = 1 e o laudo sairia MENOS restritivo do que era antes
+        desta mudança — afrouxar limite em documento assinado, calado. Jornada
+        semanal declarada não tem piso: aí a informação é sobre a semana.
+      • **fallback 0,88** — jornada ilegível repete o comportamento antigo em
+        vez de arriscar um número inventado.
+    """
+    h, base = _jornada_horas(jornada_txt)
+    if h is None:
+        return (BS_FATOR_PADRAO, 'jornada de 44 horas semanais (padrão)', False)
+
+    if base == 'semana':
+        fr = (40.0 / h) * ((168.0 - h) / 128.0)
+        rot = 'jornada de %s horas semanais' % _fmt_h(h)
+        if fr >= 1.0:
+            return (1.0, rot + ', sem redução aplicável', True)
+        return (fr, rot, True)
+
+    fr = (8.0 / h) * ((24.0 - h) / 16.0)
+    if fr >= BS_FATOR_PADRAO:
+        # Turno normal: quem manda é a semana de 44 h, como sempre foi.
+        return (BS_FATOR_PADRAO,
+                'jornada de 44 horas semanais (turno de %s horas diárias)' % _fmt_h(h),
+                True)
+    return (fr, 'jornada de %s horas diárias' % _fmt_h(h), True)
+
+
+def _fmt_h(v):
+    """8.0 -> '8'; 8.8 -> '8,8'. Jornada em texto de laudo, sem zero à toa."""
+    return ('%.1f' % v).rstrip('0').rstrip('.').replace('.', ',')
+
+
 def _classificar_quimico(ev):
     """Veredicto por limite de UMA avaliação química. FONTE ÚNICA da seção VI
     (conclusão por avaliação) e da IX (quadro resumo).
@@ -1643,7 +1764,8 @@ def _classificar_quimico(ev):
       conc     float | None   — concentração
       nd       bool           — "<" ou N.D.: abaixo do limite de detecção
       nr15     (limite, ok)   | None
-      acgih    (lt_corrigido, unidade, ok) | None   — LT-TWA × 0,88
+      acgih    (lt_corrigido, unidade, ok) | None   — LT-TWA × Brief & Scala
+      bs       {fator, rotulo, leu_jornada} | None  — de onde saiu a correção
       stel     (limite, ok)   | None                — só quando duração <= 15 min
       ok_geral bool | None    — todos os limites aplicáveis atendidos
     """
@@ -1651,8 +1773,8 @@ def _classificar_quimico(ev):
     nd = ('<' in conc_txt) or conc_txt.upper() in ('N.D.', 'ND', 'NÃO DETECTADO', '')
     cv = _qf_num(conc_txt)
 
-    r = {'conc': cv, 'nd': nd, 'nr15': None, 'acgih': None, 'stel': None,
-         'ok_geral': None}
+    r = {'conc': cv, 'nd': nd, 'nr15': None, 'acgih': None, 'bs': None,
+         'stel': None, 'ok_geral': None}
     if nd:
         # Não detectado = abaixo do LD e portanto de qualquer LT (#9 Bernardo).
         r['ok_geral'] = True
@@ -1666,7 +1788,10 @@ def _classificar_quimico(ev):
     if ltw is not None and cv is not None:
         _um = re.search(r'(mg/m³|mg/m3|µg/m³|μg/m³|ppm|mg|f/cc)',
                         str(ev.get('ltTWA', '')), re.I)
-        ltc = ltw * 0.88                      # Brief & Scala, jornada de 44h
+        # Brief & Scala pela jornada REAL da avaliação (antes: 0,88 fixo).
+        _fr, _rot, _leu = _fator_brief_scala(ev.get('jornada', ''))
+        ltc = ltw * _fr
+        r['bs'] = {'fator': _fr, 'rotulo': _rot, 'leu_jornada': _leu}
         r['acgih'] = (ltc, (_um.group(1).lower() if _um else 'ppm'), cv < ltc)
 
     lts = _qf_num(ev.get('ltSTEL', ''))
@@ -2545,6 +2670,7 @@ def gerar_quimico_bytes(d):
     _qf = _qf_num
 
     blocks = []
+    _bs_usados = []          # (fator, rótulo da jornada) que a metodologia declara
     for i, ev in enumerate(evals):
         b = eval_tpl
         b = _rr(b, 'Cargo',                    ev.get('cargo', ''))
@@ -2645,28 +2771,43 @@ def gerar_quimico_bytes(d):
             b = b.replace('Concentração (PPM)', 'Concentração (%s)' % _uni_disp)
         _cv  = _qf(conc) if conc not in ('', 'N.D.') else None
         _ltv = _qf(ev.get('ltNR15', '') or ev.get('ltTWA', ''))
-        # BRIEF & SCALA (#1 Bernardo): corrige o LT ACGIH–TWA p/ a jornada brasileira
-        # de 44h/sem. FC = (40/44)·((168−44)/(168−40)) = 0,88. Calculado SEMPRE que há
-        # limite ACGIH-TWA (Bernardo). Substitui o antigo "não há necessidade de cálculo".
+        # BRIEF & SCALA (#1 Bernardo): corrige o LT ACGIH–TWA para a jornada REAL da
+        # avaliação — semanal ou diária, lida do campo `jornada` (pedido do Bernardo em
+        # 26/08/2026). Antes era 0,88 fixo, a conta de 44 h/sem, aplicada a toda empresa:
+        # numa escala 12x36 o modelo diário dá 0,50 e o laudo assinava REGULAR exposição
+        # acima do limite corrigido. Jornada ilegível volta para 0,88, o comportamento
+        # antigo. Calculado SEMPRE que há limite ACGIH-TWA (Bernardo).
         _fb  = lambda x: (f'{x:.4f}'.rstrip('0').rstrip('.')).replace('.', ',')
+        # Fator e limite são número de laudo assinado: 2 casas no mínimo. Sem
+        # isto saía "FR = 0,5" e "17,6136 ppm" no mesmo parágrafo.
+        _ffat = lambda x: (f'{x:.4f}'.rstrip('0').rstrip('.')).replace('.', ',') \
+            if len(f'{x:.4f}'.rstrip('0').rstrip('.').split('.')[-1]) > 2 else f'{x:.2f}'.replace('.', ',')
+        _flt = lambda x: f'{x:.2f}'.replace('.', ',')
         # extrai o número de qualquer lugar do texto (o LT TWA pode vir "ACGIH – TWA: 200 ppm")
         _mw  = re.search(r'(\d+(?:[.,]\d+)?)', str(ev.get('ltTWA', '')))
         _ltw = float(_mw.group(1).replace(',', '.')) if _mw else None
         if _ltw is not None:
             _uma  = re.search(r'(mg/m³|mg/m3|µg/m³|μg/m³|ppm|mg|f/cc)', str(ev.get('ltTWA', '')), re.I)
             _unia = (_uma.group(1).lower() if _uma else 'ppm')
-            _ltc  = _ltw * 0.88
+            _fr, _rot, _leu = _fator_brief_scala(ev.get('jornada', ''))
+            _ltc  = _ltw * _fr
+            _frtx = _ffat(_fr)
+            # A metodologia (escrita uma vez, antes das avaliações) declara os
+            # fatores que este documento realmente usou — avaliações de jornadas
+            # diferentes no mesmo laudo geram fatores diferentes.
+            if (_frtx, _rot) not in _bs_usados:
+                _bs_usados.append((_frtx, _rot))
             if _cv is not None:
                 _ok = _cv < _ltc
-                _bs = ('Aplicando o fator de redução de Brief &amp; Scala (FC = 0,88) para a '
-                       'jornada de 44 horas semanais, o Limite de Tolerância ACGIH–TWA corrigido '
+                _bs = ('Aplicando o fator de redução de Brief &amp; Scala (FR = %s) para a '
+                       '%s, o Limite de Tolerância ACGIH–TWA corrigido '
                        'é %s %s. A concentração obtida (%s %s) está %s do LT corrigido; situação '
-                       'considerada %s.' % (_fb(_ltc), _unia, _fb(_cv), _unia,
+                       'considerada %s.' % (_frtx, _rot, _flt(_ltc), _unia, _fb(_cv), _unia,
                        'abaixo' if _ok else 'ACIMA',
                        'regular' if _ok else 'IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação'))
             else:
                 _bs = ('Limite de Tolerância ACGIH–TWA corrigido pela Brief &amp; Scala '
-                       '(FC = 0,88, jornada de 44 horas semanais): %s %s.' % (_fb(_ltc), _unia))
+                       '(FR = %s, %s): %s %s.' % (_frtx, _rot, _flt(_ltc), _unia))
             b = b.replace(OLD_BRIEF, _bs)
         elif _cv is not None and _ltv is not None and _cv >= _ltv:
             b = b.replace(OLD_BRIEF, _xe(NEW_BRIEF))
@@ -2692,8 +2833,8 @@ def gerar_quimico_bytes(d):
                            'REGULAR' if _cv < _ltn else 'IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação'))
             if _ltw is not None and _cv is not None and not _und:
                 _okt = _cv < _ltc
-                _parts.append('Quanto à ACGIH (LT-TWA corrigido pela Brief & Scala = %s %s): a concentração %s limite corrigido, situação %s.'
-                    % (_fb(_ltc), _unia, 'está abaixo do' if _okt else 'ultrapassa o', 'REGULAR' if _okt else 'IRREGULAR'))
+                _parts.append('Quanto à ACGIH (LT-TWA corrigido pela Brief & Scala para %s = %s %s): a concentração %s limite corrigido, situação %s.'
+                    % (_rot, _flt(_ltc), _unia, 'está abaixo do' if _okt else 'ultrapassa o', 'REGULAR' if _okt else 'IRREGULAR'))
             _lts = _qf(ev.get('ltSTEL', ''))
             if _lts is not None and _durmin is not None and _durmin <= 15 and _cv is not None and not _und:
                 _oks = _cv < _lts
@@ -2707,15 +2848,27 @@ def gerar_quimico_bytes(d):
         blocks.append(b)
 
     # #1 Bernardo: fórmula do Brief & Scala na metodologia (antes das planilhas).
+    # Desde 27/08/2026 o texto declara a jornada e o fator que ESTE laudo usou,
+    # em vez de afirmar 44 h / 0,88 para toda empresa.
+    if _bs_usados:
+        _bs_lista = '; '.join('FR = %s para %s' % (f, r) for f, r in _bs_usados)
+        _bs_aplic = ('Neste relatório: %s. O limite corrigido (LT ACGIH × FR) é o valor '
+                     'comparado com a concentração obtida.' % _bs_lista)
+    else:
+        _bs_aplic = ('O limite corrigido (LT ACGIH × FR) é o valor comparado com a '
+                     'concentração obtida.')
     _bs_meth = ('<w:p><w:pPr><w:spacing w:after="120"/></w:pPr>'
                 '<w:r><w:rPr><w:b/><w:bCs/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
                 '<w:t xml:space="preserve">Metodologia de cálculo — Correção pela Brief &amp; Scala: </w:t></w:r>'
                 '<w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>'
-                '<w:t xml:space="preserve">os limites da ACGIH são definidos para jornada de 40 horas semanais; '
-                'como a jornada brasileira é de 44 horas, o Limite de Tolerância ACGIH é corrigido pelo fator de '
-                'redução de Brief &amp; Scala — FR = (Hsp/Hsr) × ((168 − Hsr)/(168 − Hsp)), onde Hsp = 40 h (padrão '
-                'ACGIH), Hsr = 44 h (jornada real) e 168 = horas/semana, resultando em FR = 0,88. O limite corrigido '
-                '(LT ACGIH × 0,88) é o valor comparado com a concentração obtida.</w:t></w:r></w:p>')
+                '<w:t xml:space="preserve">os limites da ACGIH são definidos para jornada padrão de 40 horas '
+                'semanais (8 horas diárias). Quando a jornada real difere desse padrão, o Limite de Tolerância '
+                'ACGIH é corrigido pelo fator de redução de Brief &amp; Scala, aplicado conforme a carga horária '
+                'declarada em cada avaliação — modelo semanal: FR = (Hsp/Hsr) × ((168 − Hsr)/(168 − Hsp)), com '
+                'Hsp = 40 h e 168 = horas/semana; modelo diário: FR = (Hdp/Hdr) × ((24 − Hdr)/(24 − Hdp)), com '
+                'Hdp = 8 h e 24 = horas/dia. O fator é aplicado apenas a jornadas estendidas: em jornada igual ou '
+                'inferior à padrão da ACGIH nenhuma redução é feita (FR = 1). ' + _xe(_bs_aplic) +
+                '</w:t></w:r></w:p>')
     xml = xml[:tbl1_s] + _bs_meth + ''.join(blocks) + xml[sec6_e:]
 
     # ── Section bounds (after eval replacement) ──────────────────────
@@ -3727,10 +3880,9 @@ def _build_ruido_aval(av, idx, img_rids):
     rows += _r_row2('Descrição das Atividades', av.get('atividades',''))
     rows += _r_row2('Medidas de Controle Col.', av.get('controleColetivo', 'N.A.'))
     rows += _r_row2('EPI Utilizado',            av.get('epi', 'Protetor Auditivo'))
-    rows += _r_row_sub('Q = 3 dB / Dosimetria NHO-01 — Exposição Ocupacional')
-    rows += _r_row2('LAVG',                    f"{av.get('lavgQ3','')} dB(A)")
-    rows += _r_row2('NEN',                     f"{av.get('nenQ3','')} dB")
-    rows += _r_row2('DOSE',                    f"{av.get('doseQ3','')} %")
+    # O bloco Q = 3 dB (NHO-01 / Fundacentro) NÃO entra no documento — decisão do
+    # Bernardo em 27/08/2026: o laudo mostra só Trabalhista (Q=5) e Previdenciária
+    # (Q=5* / NEN INSS). O dado Q3 continua sendo lido do dosímetro, mas não sai.
     rows += _r_row_sub('Q = 5 dB / Dosimetria NR-15 — Legislação Trabalhista')
     rows += _r_row2('TWA',                     f"{av.get('twaQ5','')} dB(A)")
     rows += _r_row2('LAVG',                    f"{av.get('lavgQ5','')} dB(A)")
@@ -3739,9 +3891,10 @@ def _build_ruido_aval(av, idx, img_rids):
     rows += _r_row2('NE',                      f"{av.get('neQ5','')} dB")
     rows += _r_row2('NEN',                     f"{av.get('nenQ5','')} dB")
 
-    # Conclusão automática — DUPLA: NR-15 (Q=5) e NHO-01 (Q=3), cada uma com a
-    # sua norma. Sem valor válido a conclusão daquela norma é omitida — nunca
-    # conclui "não ultrapassou" sem dado (antes o default 0 dava laudo verde).
+    # Conclusão automática — DUPLA: uma para a Legislação Trabalhista (NR-15, Q=5)
+    # e outra para a Previdenciária (NEN INSS, Q=5*). Sem valor válido a conclusão
+    # daquela legislação é omitida — nunca conclui "não ultrapassou" sem dado
+    # (antes o default 0 dava laudo verde).
     _CORES = {3: 'FFD0D0', 2: 'FFFACC', 1: 'D0FFD0', 0: 'FFFFFF'}
 
     def _num_ruido(v):
@@ -3764,13 +3917,16 @@ def _build_ruido_aval(av, idx, img_rids):
         return (f"{prefixo}: a exposição de {cargo} NÃO ultrapassou o limite de tolerância "
                 f"de 85,0 dB(A).", 1)
 
-    # NR-15 (trabalhista) usa Q=5 — TWA, com fallback p/ LAVG Q5. NHO-01 usa Q=3 (LAVG).
+    # Trabalhista usa Q=5 — TWA, com fallback p/ LAVG Q5.
+    # Previdenciária usa o NEN do bloco INSS (Q=5*) — nunca o Q=3.
     _v_nr15 = _num_ruido(av.get('twaQ5'))
     if _v_nr15 is None:
         _v_nr15 = _num_ruido(av.get('lavgQ5'))
     conclusoes = [c for c in (
-        _conclui_ruido(_v_nr15, 'Conforme NR-15, Anexo 1 (Q=5 dB)'),
-        _conclui_ruido(_num_ruido(av.get('lavgQ3')), 'Conforme NHO-01 / Fundacentro (Q=3 dB)'),
+        _conclui_ruido(_v_nr15,
+                       'Conforme a Legislação Trabalhista — NR-15, Anexo 1 (Q=5 dB)'),
+        _conclui_ruido(_num_ruido(av.get('nenQ5')),
+                       'Conforme a Legislação Previdenciária — NEN (Q=5* dB)'),
     ) if c]
     if not conclusoes:
         manual = av.get('conclusao', '')
@@ -4055,8 +4211,11 @@ def gerar_ruido_bytes(d):
 
         _qrows = ''
         for av in avals:
-            _lavg = str(av.get('lavgQ5') or av.get('lavgQ3') or '').strip()
-            _nen  = str(av.get('nenQ5') or av.get('nenQ3') or '').strip()
+            # Sem fallback para Q3: o valor de q=3 é de outro critério e sairia
+            # rotulado como Trabalhista/Previdenciária, que é justamente o que o
+            # Bernardo mandou tirar. Sem o dado de Q=5 a célula fica '-'.
+            _lavg = str(av.get('lavgQ5') or '').strip()
+            _nen  = str(av.get('nenQ5') or '').strip()
             _qrows += ('<w:tr><w:trPr><w:trHeight w:val="362"/></w:trPr>'
                        + _qg_cell(2195, av.get('setor', '') or '-')
                        + _qg_cell(2195, av.get('cargo', ''))

@@ -93,7 +93,7 @@ NIOSH - National Institute for Occupational Safety and Health.
 OSHA - Occupational Safety and Health Administration –
 NBR 12085 Agentes químicos no ar - Coleta de aerodispersóides por filtração - Método de ensaio;
 VI – PLANILHAS DE AVALIAÇÕES POR CLASSE DE CARGO
-Metodologia de cálculo — Correção pela Brief &amp; Scala: os limites da ACGIH são definidos para jornada de 40 horas semanais; como a jornada brasileira é de 44 horas, o Limite de Tolerância ACGIH é corrigido pelo fator de redução de Brief &amp; Scala — FR = (Hsp/Hsr) × ((168 − Hsr)/(168 − Hsp)), onde Hsp = 40 h (padrão ACGIH), Hsr = 44 h (jornada real) e 168 = horas/semana, resultando em FR = 0,88. O limite corrigido (LT ACGIH × 0,88) é o valor comparado com a concentração obtida.
+Metodologia de cálculo — Correção pela Brief &amp; Scala: os limites da ACGIH são definidos para jornada padrão de 40 horas semanais (8 horas diárias). Quando a jornada real difere desse padrão, o Limite de Tolerância ACGIH é corrigido pelo fator de redução de Brief &amp; Scala, aplicado conforme a carga horária declarada em cada avaliação — modelo semanal: FR = (Hsp/Hsr) × ((168 − Hsr)/(168 − Hsp)), com Hsp = 40 h e 168 = horas/semana; modelo diário: FR = (Hdp/Hdr) × ((24 − Hdr)/(24 − Hdp)), com Hdp = 8 h e 24 = horas/dia. O fator é aplicado apenas a jornadas estendidas: em jornada igual ou inferior à padrão da ACGIH nenhuma redução é feita (FR = 1). Neste relatório: FR = 0,88 para jornada de 44 horas semanais (padrão). O limite corrigido (LT ACGIH × FR) é o valor comparado com a concentração obtida.
 DADOS DA AMOSTRAGEM
 Cargo
 Pintor
@@ -148,7 +148,7 @@ Nível de Ação
 10
 Concentração (ppm)
 18,5
-Aplicando o fator de redução de Brief &amp; Scala (FC = 0,88) para a jornada de 44 horas semanais, o Limite de Tolerância ACGIH–TWA corrigido é 17,6 ppm. A concentração obtida (18,5 ppm) está ACIMA do LT corrigido; situação considerada IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação.
+Aplicando o fator de redução de Brief &amp; Scala (FR = 0,88) para a jornada de 44 horas semanais (padrão), o Limite de Tolerância ACGIH–TWA corrigido é 17,60 ppm. A concentração obtida (18,5 ppm) está ACIMA do LT corrigido; situação considerada IRREGULAR, recomendando-se a adoção imediata de medidas de controle e reavaliação.
 RESULTADOS ACGIH
 Limite de Tolerância
 Não se aplica (agente sem TLV-STEL ACGIH)
@@ -158,7 +158,7 @@ Concentração (ppm)
 18,5
 De acordo com a ACGIH, o TLV‑STEL não possui nível de ação.
 CONCLUSÃO
-Pelo que ficou evidenciado, comparando-se a concentração obtida com o respectivo Limite de Tolerância conforme a Norma Regulamentadora – 15, verifica-se que a concentração obtida (18,5) está abaixo do Limite de Tolerância (78), caracterizando situação REGULAR. Quanto à ACGIH (LT-TWA corrigido pela Brief &amp; Scala = 17,6 ppm): a concentração ultrapassa o limite corrigido, situação IRREGULAR.
+Pelo que ficou evidenciado, comparando-se a concentração obtida com o respectivo Limite de Tolerância conforme a Norma Regulamentadora – 15, verifica-se que a concentração obtida (18,5) está abaixo do Limite de Tolerância (78), caracterizando situação REGULAR. Quanto à ACGIH (LT-TWA corrigido pela Brief &amp; Scala para jornada de 44 horas semanais (padrão) = 17,60 ppm): a concentração ultrapassa o limite corrigido, situação IRREGULAR.
 VIII – MEMORIAL FOTOGRÁFICO
 IX – QUADRO RESUMO DAS AVALIAÇÕES
 SETOR

@@ -64,13 +64,6 @@ Medidas de Controle Col.
 N.A.
 EPI Utilizado
 Protetor Auditivo
-Q = 3 dB / Dosimetria NHO-01 — Exposição Ocupacional
-LAVG
-88,1 dB(A)
-NEN
-89,2 dB
-DOSE
-%
 Q = 5 dB / Dosimetria NR-15 — Legislação Trabalhista
 TWA
 dB(A)
@@ -84,8 +77,8 @@ dB
 NEN
 87,0 dB
 CONCLUSÃO
-Conforme NR-15, Anexo 1 (Q=5 dB): a exposição de Operador de Prensa ULTRAPASSOU o limite de tolerância de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou individuais.
-Conforme NHO-01 / Fundacentro (Q=3 dB): a exposição de Operador de Prensa ULTRAPASSOU o limite de tolerância de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou individuais.
+Conforme a Legislação Trabalhista — NR-15, Anexo 1 (Q=5 dB): a exposição de Operador de Prensa ULTRAPASSOU o limite de tolerância de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou individuais.
+Conforme a Legislação Previdenciária — NEN (Q=5* dB): a exposição de Operador de Prensa ULTRAPASSOU o limite de tolerância de 85,0 dB(A) — necessário adotar medidas de controle coletivas e/ou individuais.
 RESULTADOS – AVALIAÇÃO 02
 QUADRO RESUMO – AVALIAÇÃO 02 — CONFERENTE / EXPEDICAO
 Setor
@@ -104,13 +97,6 @@ Medidas de Controle Col.
 N.A.
 EPI Utilizado
 Protetor Auditivo
-Q = 3 dB / Dosimetria NHO-01 — Exposição Ocupacional
-LAVG
-80,0 dB(A)
-NEN
-80,5 dB
-DOSE
-%
 Q = 5 dB / Dosimetria NR-15 — Legislação Trabalhista
 TWA
 dB(A)
@@ -124,8 +110,8 @@ dB
 NEN
 79,8 dB
 CONCLUSÃO
-Conforme NR-15, Anexo 1 (Q=5 dB): a exposição de Conferente NÃO ultrapassou o limite de tolerância de 85,0 dB(A).
-Conforme NHO-01 / Fundacentro (Q=3 dB): a exposição de Conferente está acima do NÍVEL DE AÇÃO de 80,0 dB(A) — necessário adotar medidas de controle para reduzir a exposição.
+Conforme a Legislação Trabalhista — NR-15, Anexo 1 (Q=5 dB): a exposição de Conferente NÃO ultrapassou o limite de tolerância de 85,0 dB(A).
+Conforme a Legislação Previdenciária — NEN (Q=5* dB): a exposição de Conferente NÃO ultrapassou o limite de tolerância de 85,0 dB(A).
 ÍNDICE GERAL
 TOC \h \z \t "hil1;1" OBJETIVOS PAGEREF _Toc212137899 \h 4
 METODOLOGIAS PAGEREF _Toc212137900 \h 4
