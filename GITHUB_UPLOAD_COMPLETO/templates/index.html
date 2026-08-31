@@ -16708,7 +16708,12 @@ function nvShowStep3() {
         // Herdar dados de calibração/vazão/amostrador do planejamento
         if (item.calibrador_nome) ag.calibrador = item.calibrador_nome;
         if (item.data_calibracao) ag.cal_bomba  = item.data_calibracao;
-        ag.amostrador_codigo = item.amostrador_codigo || '';
+        // Só a 1ª cópia herda o código do plano. Duas coletas NÃO podem sair
+        // com o mesmo nº de amostrador — a cadeia de custódia e o RA do
+        // laboratório cruzam por esse número, e códigos iguais colidem.
+        // (Vale para o caminho manual: agente importado da OS já chega qtd=1.)
+        const _codPlano = _k === 0 ? (item.amostrador_codigo || '') : '';
+        ag.amostrador_codigo = _codPlano;
         ag.vazao_calibrada   = item.vazao_calibrada || '';
         ag.tipo_coleta       = item.tipo_coleta || 'pessoal';
         // Método/volume definidos no plano — antes chegavam até aqui e eram descartados
@@ -16719,9 +16724,9 @@ function nvShowStep3() {
         // Tipo de amostrador (meio) vindo do plano, sem fixar TCP
         const tipoAmostr = _nvTipoAmostrador(item.amostrador_meio) || 'TCP';
         // Pré-criar 1 amostrador com código e vazão planejados
-        if (item.amostrador_codigo || item.vazao_calibrada) {
+        if (_codPlano || item.vazao_calibrada) {
           ag.amostradores.push({
-            id_amostrador: item.amostrador_codigo || '',
+            id_amostrador: _codPlano,
             tipo_amostrador: tipoAmostr,
             vazao_inicial: parseFloat(item.vazao_calibrada) || 0,
             vazao_final: 0, hora_inicio:'', hora_final:'', intervalos:''
