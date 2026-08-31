@@ -11134,7 +11134,7 @@ async function _planBuscarOs(os) {
           _planAgenteCache = (resp && resp.agentes) ? resp.agentes : (Array.isArray(resp) ? resp : []);
         } catch(e) { _planAgenteCache = []; }
       }
-      window._planAgentes = agentes.map(a => {
+      window._planAgentes = agentes.flatMap(a => {
         // Normaliza ANTES do enriquecimento: poeira (particulado) é família
         // química e precisa herdar método/vazão/bomba do guia igual ao químico.
         let tipo = a.tipo || a.tipo_medicao || 'quimico';
@@ -11165,7 +11165,14 @@ async function _planBuscarOs(os) {
           const padrao = mods.find(x => x.id === 'airlite') || mods[0];
           if (padrao) { obj.bomba_sn = padrao.id; obj.id_bomba = (padrao.sns && padrao.sns[0]) || ''; }
         }
-        return obj;
+        // Química com qtd>1: uma LINHA por medição, cada uma com seu próprio
+        // amostrador/bomba — a cadeia de custódia e o RA do lab cruzam pelo
+        // nº do amostrador, então duas medições não podem dividir o campo.
+        if (tipo === 'quimico' && (parseInt(obj.qtd, 10) || 1) > 1) {
+          const n = parseInt(obj.qtd, 10);
+          return Array.from({length: n}, () => ({ ...obj, qtd: 1 }));
+        }
+        return [obj];
       });
       _planRenderizarAgentes();
       info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
@@ -14159,6 +14166,9 @@ function ctrlEscopoTab(tab) {
 async function ctrlAbrirBaixaDemand(demId) {
   await _ctrlPrepararBaixa();
   document.getElementById('ctrl-bx-demand').value = demId;
+  // O select de OS pode não conter esta demanda (lista vem de outro filtro);
+  // guarda o id para o fluxo multi-ponto recarregar a lista após cada baixa.
+  window._ctrlBxDemId = demId;
   await ctrlLoadMedicoesDoBaixa(demId);
   document.getElementById('ctrl-bx-data').value = new Date().toISOString().slice(0,10);
   document.getElementById('ctrl-baixa-overlay').classList.add('show');
@@ -14265,9 +14275,21 @@ async function ctrlLoadMedicoesDoBaixa(demId) {
       if (avulsoWrap) avulsoWrap.style.display = 'block';
     } else {
       sel.innerHTML = '<option value="">— Selecione o agente —</option>' +
-        pendentes.map(m =>
-          `<option value="${m.id}" data-agente="${(m.agente||'').replace(/"/g,'&quot;')}" data-tipo="${m.tipo_amostrador||''}">${_esc(m.agente)} (${m.qtd_pontos_feita}/${m.qtd_pontos_prevista})</option>`
-        ).join('');
+        pendentes.map(m => {
+          const prev  = m.qtd_pontos_prevista || 1;
+          const feita = m.qtd_pontos_feita || 0;
+          const attrs = `value="${m.id}" data-agente="${(m.agente||'').replace(/"/g,'&quot;')}" data-tipo="${m.tipo_amostrador||''}" data-feita="${feita}" data-prevista="${prev}"`;
+          // Medição com N pontos: uma opção por ponto restante — cada baixa
+          // registra UM ponto com o SEU amostrador (o backend já incrementa
+          // 1 por chamada; a cadeia de custódia cruza pelo nº do amostrador).
+          if (prev > 1) {
+            const rest = Math.max(prev - feita, 1);
+            return Array.from({length: rest}, (_, k) =>
+              `<option ${attrs}>${_esc(m.agente)} — ponto ${feita + k + 1} de ${prev}</option>`
+            ).join('');
+          }
+          return `<option ${attrs}>${_esc(m.agente)} (${feita}/${prev})</option>`;
+        }).join('');
       if (avulsoWrap) avulsoWrap.style.display = 'none';
     }
   } catch(e) { console.error(e); }
@@ -14419,7 +14441,29 @@ async function ctrlConfirmarBaixa() {
 ` +
         `• Nenhum amostrador foi movido para o laboratório`;
     _showToast(msg, 'success');
-    ctrlCloseBaixa();
+    // Medição multi-ponto: mantém o modal aberto para o próximo ponto —
+    // cada ponto leva o SEU amostrador, então o campo é limpo e a lista
+    // recarregada em vez de fechar e obrigar a refazer OS → agente → bomba.
+    const selMed  = document.getElementById('ctrl-bx-medicao');
+    const optSel  = selMed && selMed.selectedOptions[0];
+    const prev    = optSel ? (parseInt(optSel.dataset.prevista, 10) || 1) : 1;
+    const feita   = optSel ? (parseInt(optSel.dataset.feita, 10) || 0) : 0;
+    const restantes = isAvulso ? 0 : prev - (feita + 1);
+    if (restantes > 0) {
+      const demId = document.getElementById('ctrl-bx-demand').value || window._ctrlBxDemId;
+      await ctrlLoadMedicoesDoBaixa(demId);
+      selMed.value = String(medId);
+      if (amId) {
+        const usado = [...document.getElementById('ctrl-bx-amostr').options].find(o => o.value === String(amId));
+        if (usado) usado.remove();
+      }
+      document.getElementById('ctrl-bx-amostr').value = '';
+      document.getElementById('ctrl-bx-vazao').value = '';
+      ctrlBxSyncMotivo();
+      _showToast(`Falta${restantes > 1 ? 'm' : ''} ${restantes} ponto${restantes > 1 ? 's' : ''} deste agente — registre o próximo amostrador`, 'warn');
+    } else {
+      ctrlCloseBaixa();
+    }
     ctrlLoadStats();
     ctrlLoadAmostr();
     ctrlLoadDemand();
