@@ -1035,16 +1035,51 @@ def extrair_agentes_multifonte(
     if any(c in acumulado for c in _GAS_VOC):
         acumulado.pop('Gases e Vapores (geral)', None)
 
-    # Dedup poeira: em OS de sílica, "poeira" aparece como fração da amostra
-    # ("poeira respirável — sílica livre"), não como segundo agente. O alias nu
-    # 'poeira' casa dentro dessa expressão e trazia Poeira Total junto (mesma
-    # classe do bug da vibração/gases). Só mantém Poeira Total se algum alias
-    # EXPLÍCITO dela ("poeira total", "fração inalável"...) aparecer no texto.
+    # Dedup poeira: em OS de sílica, "poeira" quase sempre nomeia a FRAÇÃO da
+    # amostra, não um segundo agente — "Poeira Mineral - Sílica Livre",
+    # "poeira com percentual de sílica", "poeira respirável / sílica". Mas
+    # "1 ponto de poeira" numa linha própria É agente próprio, e a mesma OS
+    # pode ter os dois (6332201: "5 Pontos de Poeira Mineral Sílica" num GHE e
+    # "1 ponto de poeira" em outro). Por isso a decisão é por ADJACÊNCIA, não
+    # por documento: só descarta Poeira Total quando TODA menção de poeira
+    # está colada a uma menção de sílica. Medido no corpus de produção em
+    # 31/08/2026 — 35 trechos qualificadores contra 29 de agente próprio.
     if 'Sílica Cristalina' in acumulado and 'Poeira Total' in acumulado:
-        _expl = [a for a in AGENTES_SST['Poeira Total'] if _norm(a) != 'poeira']
-        _blob = _norm(' '.join([titulo or '', descricao or '', checklist_texto or '',
-                                chat_texto or '', bucket or '']))
-        if not any(_norm(e) in _blob for e in _expl):
+        # É qualificador quando o texto ENTRE as duas menções é só ligação
+        # ("mineral", "-", "(", "com percentual de"). Se no meio houver número,
+        # vírgula ou " e ", são DOIS itens da lista ("2 Sílica e 1 Poeira
+        # Total") e os dois valem.
+        _GAP_MAX = 40
+        _RE_BORDA = re.compile(r'\d|\be\b|[,;]')
+        _po_alias = [_norm(a) for a in AGENTES_SST['Poeira Total']]
+        _si_alias = [_norm(a) for a in AGENTES_SST['Sílica Cristalina']] + ['sio2', 'sio₂']
+        _poeira_solta = False
+        for _t, _, _ in list(fontes) + [(bucket or '', 'bucket', 0.0)]:
+            if not _t or _poeira_solta:
+                continue
+            _tn = _norm(_t)
+            _si_span = [(m.start(), m.end()) for s in _si_alias
+                        for m in re.finditer(re.escape(s), _tn)]
+            for _pa in _po_alias:
+                for _m in re.finditer(re.escape(_pa), _tn):
+                    _qualif = False
+                    for _s0, _s1 in _si_span:
+                        if _s0 >= _m.end():
+                            _gap = _tn[_m.end():_s0]
+                        elif _s1 <= _m.start():
+                            _gap = _tn[_s1:_m.start()]
+                        else:
+                            _qualif = True   # sobrepostos: "poeira silica"
+                            break
+                        if len(_gap) <= _GAP_MAX and not _RE_BORDA.search(_gap):
+                            _qualif = True
+                            break
+                    if not _qualif:
+                        _poeira_solta = True
+                        break
+                if _poeira_solta:
+                    break
+        if not _poeira_solta:
             acumulado.pop('Poeira Total', None)
 
     # Dedup por SUBSTRING de nome: o alias curto casa dentro do nome da
