@@ -1035,6 +1035,18 @@ def extrair_agentes_multifonte(
     if any(c in acumulado for c in _GAS_VOC):
         acumulado.pop('Gases e Vapores (geral)', None)
 
+    # Dedup poeira: em OS de sílica, "poeira" aparece como fração da amostra
+    # ("poeira respirável — sílica livre"), não como segundo agente. O alias nu
+    # 'poeira' casa dentro dessa expressão e trazia Poeira Total junto (mesma
+    # classe do bug da vibração/gases). Só mantém Poeira Total se algum alias
+    # EXPLÍCITO dela ("poeira total", "fração inalável"...) aparecer no texto.
+    if 'Sílica Cristalina' in acumulado and 'Poeira Total' in acumulado:
+        _expl = [a for a in AGENTES_SST['Poeira Total'] if _norm(a) != 'poeira']
+        _blob = _norm(' '.join([titulo or '', descricao or '', checklist_texto or '',
+                                chat_texto or '', bucket or '']))
+        if not any(_norm(e) in _blob for e in _expl):
+            acumulado.pop('Poeira Total', None)
+
     # Dedup por SUBSTRING de nome: o alias curto casa dentro do nome da
     # substância maior ("cloro" dentro de "clorofórmio", "benzeno" dentro de
     # "etilbenzeno") e os dois apareciam juntos. Quando o específico está
