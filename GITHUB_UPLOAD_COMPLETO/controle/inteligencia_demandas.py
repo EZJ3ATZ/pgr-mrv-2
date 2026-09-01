@@ -524,6 +524,11 @@ class ExtractionResult:
             or self.numero_os_confianca < 0.50
             or (self.empresa_confianca < 0.55 and self.empresa_nome is not None)
             or len(self.conflitos) > 0
+            # Inconsistência achada e não contada a ninguém é inconsistência
+            # ignorada: sem isto a marcação ficava só no JSON. Medido em
+            # 01/09/2026: leva a fila de 11 para 16 demandas, todas com
+            # inconsistência real já registrada.
+            or len(self.inconsistencias) > 0
         )
         self.extraido_em = datetime.now().isoformat()
 
@@ -579,6 +584,39 @@ _RE_QTD_LOOKBACK = re.compile(
     r'(?:(?:' + _UNIDADE_QTD + r')\s+(?:de\s+|do\s+|da\s+|dos\s+|das\s+)?)?$',
     re.I,
 )
+# Quantidade DEPOIS do nome, entre parênteses: o portal escreve a descrição
+# da task do Planner como "- Sílica Livre Cristalizada  (x2)" (routes.py:386
+# e orquestrador.py:368) e o lookback abaixo só enxerga número ANTES do nome,
+# então a quantidade voltava 1 no ida-e-volta CRM → Planner → motor.
+_RE_QTD_SUFIXO = re.compile(r'\(\s*[xX×]\s*(\d+)\s*\)')
+
+# Lista NUMERADA não é quantidade. Duas OS do corpus (6197187 e 6196200)
+# escrevem "1 ponto de poeiras madeira / 2 ponto de poeiras carvão / 3 pontos
+# de sílica / 4 ponto de VCI / 5 ponto de VMB / 6 pontos de ruído" — os
+# números são ÍNDICE de item, e o motor os lia como pontos a medir (VCI=8,
+# Sílica=6, Ruído=10). Só reconhece a forma inequívoca: 4+ itens em sequência
+# consecutiva começando em 1. Medido em 01/09/2026 nas 285 demandas — pega
+# exatamente essas 2 e nenhum dos formatos corretos (20/4/2, 05/04/05).
+_RE_ITEM_NUMERADO = re.compile(
+    r'^\s*(\d{1,2})\s+(?:pontos?|medi[çc][õo]es?|medi[çc][ãa]o|avalia)',
+    re.I | re.M,
+)
+
+
+def parece_lista_numerada(texto):
+    """True quando os números de início de item formam 1,2,3,4... — ou seja,
+    numeram a lista em vez de contar pontos. Devolve a sequência encontrada.
+    """
+    nums = [int(m.group(1)) for m in _RE_ITEM_NUMERADO.finditer(texto or '')]
+    run = []
+    for n in nums:
+        if run and n == run[-1] + 1:
+            run.append(n)
+        else:
+            if len(run) >= 4 and run[0] == 1:
+                return run
+            run = [n]
+    return run if (len(run) >= 4 and run[0] == 1) else []
 # Padrão quantidade antes: "4 ruídos" / "4x ruído" / "quatro ruídos"
 _RE_QTD_ANTES = re.compile(
     r'(\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco)\s*[xX×]?\s+(.{3,50})',
@@ -893,6 +931,16 @@ def _extrair_agentes_de_texto(
                 if q and 1 <= q <= 30:
                     qtd = q
                     qtd_explicita = True
+            if not qtd_explicita:
+                # sufixo "(xN)" logo depois do nome, na MESMA linha
+                fim_item = txt_n.find(chr(10), start)
+                pos_txt = txt_n[start:fim_item if fim_item != -1 else len(txt_n)]
+                m_suf = _RE_QTD_SUFIXO.search(pos_txt[:60])
+                if m_suf:
+                    q = _parse_int(m_suf.group(1))
+                    if q and 1 <= q <= 30:
+                        qtd = q
+                        qtd_explicita = True
             soma_qtd += qtd
 
         conf = melhor_conf
@@ -1306,6 +1354,7 @@ def validar_resultado(
     result: ExtractionResult,
     bucket: str,
     percent_complete: int,
+    descricao: str = '',
 ) -> ExtractionResult:
     """Detecta inconsistências entre campos e popula result.inconsistencias / conflitos."""
     bn = _norm(bucket or '')
@@ -1332,6 +1381,17 @@ def validar_resultado(
     # Aviso: sem agentes
     if not result.agentes:
         result.warnings.append('Nenhum agente SST identificado')
+
+    # Inconsistência 4: a descrição é uma lista numerada, então os números
+    # provavelmente enumeram itens em vez de contar pontos. NÃO altera a
+    # quantidade — errar para baixo manda o técnico a campo com amostrador
+    # de menos; quem decide é a pessoa que abriu a OS.
+    _seq = parece_lista_numerada(descricao or '')
+    if _seq:
+        result.inconsistencias.append(
+            f'A descrição parece uma lista numerada ({_seq[0]}..{_seq[-1]}): '
+            f'confira se esses números são pontos a medir ou só a ordem dos itens'
+        )
 
     # Inconsistência 3: quantidade de agente suspeita
     for ag in result.agentes:
@@ -1426,7 +1486,7 @@ def analisar_tarefa_planner(
     ])
 
     # ── Validar inconsistências ────────────────────────────────────────
-    result = validar_resultado(result, bucket_nome, percent)
+    result = validar_resultado(result, bucket_nome, percent, descricao)
 
     # ── Score final ───────────────────────────────────────────────────
     result.calcular_score()
