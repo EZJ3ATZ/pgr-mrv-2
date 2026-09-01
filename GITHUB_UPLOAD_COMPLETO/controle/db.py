@@ -22,6 +22,25 @@ def agora_brt():
     """datetime atual no fuso de Brasília (UTC-3), naive (sem tzinfo)."""
     return datetime.now(timezone.utc).astimezone(_BRT).replace(tzinfo=None)
 
+
+def data_iso(v, default=None):
+    """Normaliza data vinda do cliente para 'YYYY-MM-DD'.
+
+    As colunas de data são TEXT e várias consultas fazem (col)::date. Data em
+    formato brasileiro gravada crua derrubava o dashboard inteiro com
+    'date/time field value out of range' (2 linhas, achadas em 01/09/2026).
+    Aceita ISO e DD/MM/AAAA; qualquer outra coisa devolve o default.
+    """
+    s = str(v or '').strip()[:10]
+    if not s:
+        return default
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+        try:
+            return datetime.strptime(s, fmt).strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    return default
+
 # ── Contador de consultas por requisição (alimenta controle/perf.py) ───
 # Fica AQUI e não em perf.py de propósito: db.py não pode importar perf.py
 # (perf.py importa get_db daqui — seria ciclo). thread-local porque o gunicorn

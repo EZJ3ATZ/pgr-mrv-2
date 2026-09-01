@@ -14,7 +14,7 @@ from flask import Blueprint, request, jsonify, send_file, redirect, url_for, ren
 from flask_login import login_required, current_user
 
 from .db import (
-    USE_PG, agora_brt,
+    USE_PG, agora_brt, data_iso,
     normalizar_status_amostrador, STATUS_AMOSTRADOR, STATUS_AMOSTRADOR_LABEL,
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
@@ -1038,7 +1038,7 @@ def marcar_envio_lab(aid):
     """Registra que o amostrador foi enviado ao laboratorio (inicia contagem)."""
     init_db()
     d = request.json or {}
-    data_envio = d.get('data_envio_lab') or agora_brt().strftime('%Y-%m-%d')
+    data_envio = data_iso(d.get('data_envio_lab'), agora_brt().strftime('%Y-%m-%d'))
     dias       = int(d.get('dias_validade', 45) or 45)
     lote       = d.get('lote', '')
     obs        = d.get('observacao_venc', '')
@@ -1059,7 +1059,7 @@ def marcar_envio_lab_lote():
     d = request.json or {}
     ids = d.get('ids', [])
     if not ids: return jsonify({'erro': 'sem ids'}), 400
-    data_envio = d.get('data_envio_lab') or agora_brt().strftime('%Y-%m-%d')
+    data_envio = data_iso(d.get('data_envio_lab'), agora_brt().strftime('%Y-%m-%d'))
     dias       = int(d.get('dias_validade', 45) or 45)
     lote       = d.get('lote', '')
     placeholders = ','.join(['?'] * len(ids))
