@@ -139,3 +139,48 @@ def test_motivo_e_ignorado_quando_ha_amostrador():
         'avaliador': 'Wesley', 'vazao_calibrada': 0.15,
     })
     assert status == 200 and body['ok']
+
+def test_amostrador_ja_usado_e_recusado():
+    """Amostrador que ja teve baixa nao aceita outra: a segunda sobrescrevia
+    empresa/avaliador/data_medicao da primeira, calada."""
+    _, _, mid, aid = _seed('BX-USADO-1')
+    with get_db() as conn:
+        conn.execute("UPDATE amostradores SET status='laboratorio' WHERE id=?", (aid,))
+
+    status, body = _post({'medicao_id': mid, 'amostrador_id': aid, 'avaliador': 'Helbert'})
+    assert status == 409, body
+    assert 'No laborat' in body['erro']
+    assert _medicao(mid)['status'] == 'pendente'
+
+
+def test_avulso_com_amostrador_usado_nao_cria_medicao_orfa():
+    """Espelha test_avulso_sem_motivo_nao_cria_medicao_orfa para a guarda de
+    status: se ela rodasse DEPOIS do INSERT avulso, sobraria medicao fantasma
+    pendurada na demanda — e a demanda nunca fecharia."""
+    _, did, _, aid = _seed('BX-USADO-2')
+    with get_db() as conn:
+        conn.execute("UPDATE amostradores SET status='concluido' WHERE id=?", (aid,))
+        antes = conn.execute(
+            "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=?", (did,)).fetchone()
+        antes = antes['c'] if hasattr(antes, 'keys') else antes[0]
+
+    status, body = _post({'demanda_id': did, 'agente_avulso': 'Silica',
+                          'amostrador_id': aid, 'avaliador': 'Helbert'})
+    assert status == 409, body
+
+    with get_db() as conn:
+        depois = conn.execute(
+            "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=?", (did,)).fetchone()
+        depois = depois['c'] if hasattr(depois, 'keys') else depois[0]
+    assert depois == antes, 'guarda deixou medicao orfa na demanda'
+
+
+def test_amostrador_reservado_ainda_aceita_baixa():
+    """reservado = separado para um plano, ainda vai a campo. Nao pode travar."""
+    _, _, mid, aid = _seed('BX-RESERV-1')
+    with get_db() as conn:
+        conn.execute("UPDATE amostradores SET status='reservado' WHERE id=?", (aid,))
+
+    status, body = _post({'medicao_id': mid, 'amostrador_id': aid, 'avaliador': 'Helbert'})
+    assert status == 200, body
+    assert _medicao(mid)['status'] == 'realizado'

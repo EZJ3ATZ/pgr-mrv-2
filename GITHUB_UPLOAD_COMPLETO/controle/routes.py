@@ -1832,6 +1832,23 @@ def dar_baixa():
     if not amostrador_id and not motivo_sem_am:
         return jsonify({'erro': 'motivo_sem_amostrador obrigatorio na baixa sem amostrador'}), 400
 
+    # Amostrador ja usado nao aceita baixa nova: a segunda sobrescrevia
+    # empresa/avaliador/data_medicao da primeira, calada — e o vetor da medicao
+    # que "some". Mesma allowlist do /amostradores/baixa_simples (linha ~786),
+    # para as duas rotas nao discordarem do que e baixavel. Tem de rodar AQUI,
+    # antes do INSERT da medicao avulsa logo abaixo: recusar depois dele
+    # deixaria medicao orfa pendurada na demanda.
+    if amostrador_id:
+        with get_db() as conn:
+            _am = conn.execute(
+                'SELECT codigo, status FROM amostradores WHERE id=?',
+                (amostrador_id,)).fetchone()
+        if _am and _am['status'] not in ('disponivel', 'reservado'):
+            _lbl = STATUS_AMOSTRADOR_LABEL.get(_am['status'], _am['status'])
+            return jsonify({'erro': f'Amostrador {_am["codigo"] or amostrador_id} esta como '
+                                    f'"{_lbl}" e nao pode receber baixa nova. Use outro, ou '
+                                    f'ajuste o status dele na tela de amostradores antes.'}), 409
+
     # Modo avulso: cria medicao on-the-fly quando não tem medicao pré-cadastrada
     if not medicao_id and agente_avulso:
         if not demanda_id_avulso:
