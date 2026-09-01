@@ -1080,7 +1080,13 @@ def extrair_agentes_multifonte(
                 if _poeira_solta:
                     break
         if not _poeira_solta:
-            acumulado.pop('Poeira Total', None)
+            # A quantidade estava na menção de poeira ("23 avaliações de Poeira
+            # Mineral (Sílica)"): ela conta as amostras de SÍLICA, então tem de
+            # migrar junto — descartar o agente levando o número embora fazia a
+            # tela pedir 1 ponto onde o cliente contratou 23 (20 OS em 01/09).
+            _pt = acumulado.pop('Poeira Total', None)
+            if _pt is not None and _pt.quantidade > acumulado['Sílica Cristalina'].quantidade:
+                acumulado['Sílica Cristalina'].quantidade = _pt.quantidade
 
     # Dedup por SUBSTRING de nome: o alias curto casa dentro do nome da
     # substância maior ("cloro" dentro de "clorofórmio", "benzeno" dentro de
