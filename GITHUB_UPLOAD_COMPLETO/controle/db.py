@@ -2794,14 +2794,20 @@ def contar_vencendo():
 def stats_dashboard():
     lab = 'data_envio_lab'
     val = 'COALESCE(dias_validade,45)'
+    # A coluna é TEXT e aceitou data em formato brasileiro vinda do cliente
+    # (2 linhas em 01/09/2026): sem a guarda, o ::date estoura e o dashboard
+    # inteiro responde 500. Mesma proteção que list_amostradores_vencendo e
+    # stats_vencimento já usam — aqui tinha ficado de fora.
     if USE_PG:
-        venc_cond = f"CURRENT_DATE > ({lab})::date + {val}"
-        urg_cond  = f"CURRENT_DATE BETWEEN ({lab})::date + {val} - 3 AND ({lab})::date + {val}"
-        aler_cond = f"CURRENT_DATE BETWEEN ({lab})::date + {val} - 7 AND ({lab})::date + {val} - 4"
+        valid = "data_envio_lab ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'"
+        venc_cond = f"CASE WHEN {valid} THEN (CURRENT_DATE > ({lab})::date + {val}) ELSE FALSE END"
+        urg_cond  = f"CASE WHEN {valid} THEN (CURRENT_DATE BETWEEN ({lab})::date + {val} - 3 AND ({lab})::date + {val}) ELSE FALSE END"
+        aler_cond = f"CASE WHEN {valid} THEN (CURRENT_DATE BETWEEN ({lab})::date + {val} - 7 AND ({lab})::date + {val} - 4) ELSE FALSE END"
     else:
-        venc_cond = f"julianday('now') > julianday({lab}) + {val}"
-        urg_cond  = f"julianday('now') BETWEEN julianday({lab}) + {val} - 3 AND julianday({lab}) + {val}"
-        aler_cond = f"julianday('now') BETWEEN julianday({lab}) + {val} - 7 AND julianday({lab}) + {val} - 4"
+        valid = "data_envio_lab GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'"
+        venc_cond = f"CASE WHEN {valid} THEN (julianday('now') > julianday({lab}) + {val}) ELSE 0 END"
+        urg_cond  = f"CASE WHEN {valid} THEN (julianday('now') BETWEEN julianday({lab}) + {val} - 3 AND julianday({lab}) + {val}) ELSE 0 END"
+        aler_cond = f"CASE WHEN {valid} THEN (julianday('now') BETWEEN julianday({lab}) + {val} - 7 AND julianday({lab}) + {val} - 4) ELSE 0 END"
 
     base_filter = f"data_envio_lab IS NOT NULL AND data_envio_lab != '' AND status='laboratorio' AND COALESCE(arquivado,0)=0"
     sql = f"""
