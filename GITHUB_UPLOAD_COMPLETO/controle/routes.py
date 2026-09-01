@@ -165,10 +165,15 @@ _ADMIN_ONLY_EXACT = frozenset({
     '/controle/equipamentos/rebuild-frota',
     '/controle/amostradores/sincronizar-datas-laudo',
     '/controle/resultados_lab/migrar',
+    '/controle/amostradores/arquivar',
+    '/controle/empresas/mesclar',
+    '/controle/empresas/pendentes/page',
+    '/controle/graph/lab_preview',
+    '/controle/graph/auditoria_lab',
 })
 
 
-def _is_admin_only(path):
+def _is_admin_only(path, method='GET'):
     if path.startswith('/controle/admin') or path.startswith('/controle/reset'):
         return True
     if path.startswith('/controle/import/') or path.startswith('/controle/graph/debug'):
@@ -177,6 +182,15 @@ def _is_admin_only(path):
         return True
     # /controle/empresas/<id>/excluir-fantasma
     if path.startswith('/controle/empresas/') and path.endswith('/excluir-fantasma'):
+        return True
+    # Apagar linha é manutenção, mas o MESMO path em GET/PUT é operacional
+    # (ler coleta, editar amostrador) — por isso a regra olha o método.
+    if method == 'DELETE' and (path.startswith('/controle/amostradores/')
+                               or path.startswith('/controle/coletas/outros/')):
+        return True
+    # /controle/empresas/pendentes/<id>/vincular — remapeia 8 tabelas e APAGA a
+    # empresa pendente. É curadoria de cadastro, não fluxo do técnico.
+    if path.startswith('/controle/empresas/pendentes/') and path.endswith('/vincular'):
         return True
     return False
 
@@ -199,7 +213,7 @@ def _require_login():
     if not current_user.is_authenticated:
         return jsonify({'erro': 'Login necessário', 'redirect': '/auth/login'}), 401
     # Manutenção/diagnóstico/debug exigem role admin
-    if _is_admin_only(request.path):
+    if _is_admin_only(request.path, request.method):
         if getattr(current_user, 'role', '') != 'admin':
             return jsonify({'erro': 'Apenas administradores'}), 403
 
