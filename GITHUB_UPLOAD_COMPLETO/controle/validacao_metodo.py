@@ -102,6 +102,36 @@ def faixa(texto):
     return min(nums), max(nums)
 
 
+def alvos_por_material(texto):
+    """Vazão declarada por MATERIAL de ciclone — conjunto de alvos, não faixa.
+
+    '1,7 NYLON OU 2,0 SKC OU 2,2 HD OU 2,5 ALUMÍNIO OU 2,75 GS-3' vira
+    [(1.7,'NYLON'), (2.0,'SKC'), (2.2,'HD'), (2.5,'ALUMÍNIO'), (2.75,'GS-3')].
+
+    Cada ciclone tem A SUA vazão. Lido como faixa contínua, o intervalo
+    1,7–3,0 aprova 2,3 — que não corresponde a ciclone nenhum — e ainda sobe
+    o teto acima do maior alvo real, porque o '3' é capturado do NOME 'GS-3'.
+    São 26 dos 512 métodos da guia (medido 01/09/2026), justamente os de
+    poeira respirável e sílica.
+
+    Devolve [] quando o texto não é dessa forma — aí vale a faixa normal.
+    """
+    txt = " ".join(str(texto or "").split())
+    if not re.search(r"\s+OU\s+", txt, re.I):
+        return []
+    alvos = []
+    for parte in re.split(r"\s+OU\s+", txt, flags=re.I):
+        m = re.match(r"\s*(\d+(?:[.,]\d+)?)\s*(.*)", parte)
+        if not m:
+            return []
+        v = num_br(m.group(1))
+        if v is None:
+            return []
+        mat = re.sub(r"L\s*/?\s*MIN.*$", "", m.group(2), flags=re.I).strip()
+        alvos.append((v, mat))
+    return alvos if len(alvos) >= 2 else []
+
+
 def nominal(texto):
     """True quando a guia declara UM valor, não uma faixa ('1 L/MIN', '240L').
 
@@ -266,6 +296,24 @@ def _avaliar(campo, valor, unidade, bloco):
             'min': lo, 'max': hi, 'faixa_texto': texto,
             'regime': (bloco or {}).get('regime') or '',
             'ok': _dentro(valor, lo, hi), 'tolerancia': False, 'desvio': None}
+    # Vazão por material de ciclone: o alvo é um CONJUNTO, não um intervalo.
+    # Vale o mesmo ±5% de calibração dos alvos únicos — quem manda é o ciclone
+    # que o técnico usou, e o valor tem de estar perto de ALGUM deles.
+    alvos_mat = alvos_por_material(texto)
+    if alvos_mat and valor:
+        perto = [(abs(valor - a) / a, a, mat) for a, mat in alvos_mat if a]
+        if perto:
+            desvio, alvo, mat = min(perto)
+            item['min'] = min(a for a, _ in alvos_mat)
+            item['max'] = max(a for a, _ in alvos_mat)
+            item['desvio'] = round(desvio, 4)
+            # Sem marcar tolerancia: a vazao do ciclone e alvo de
+            # calibracao, nao teto. Dentro dos 5% e coleta boa, e nao
+            # aviso — senao toda bomba fechando em 2,01 num SKC de 2,0
+            # encheria a tela de amarelo.
+            item['ok'] = desvio <= TOLERANCIA_NOMINAL
+            item['alvo_material'] = mat
+        return item
     if item['ok'] is False and valor and nominal(texto):
         alvo = lo if lo else hi
         if alvo:
@@ -374,11 +422,20 @@ def _pct(desvio):
 
 
 def _tipos_do_metodo(amostrador_cod):
-    """Siglas de tipo em 'SKC 226-01 (TCP*****)' → ['TCP']."""
+    """Siglas de tipo em 'SKC 226-01 (TCP*****)' → ['TCP'].
+
+    Lê também o PAR em série — 'SKC 226-09 E 226-01 (TCG**** E TCP****)' vira
+    ['TCG', 'TCP'] — e o sufixo colado, '(PVC*****NBR)' vira ['PVC']. São
+    46 dos 512 métodos da guia (medido 01/09/2026): o padrão antigo exigia os
+    asteriscos encostados no fecha-parênteses, devolvia [] nesses, e a
+    conferência de amostrador era pulada em silêncio justamente neles.
+    """
     if not amostrador_cod:
         return []
     s = str(amostrador_cod).upper()
-    tipos = {m for m in re.findall(r'\(([A-Z][A-Z0-9]+)\*+\)', s)}
+    tipos = set()
+    for dentro in re.findall(r'\(([^)]*)\)', s):
+        tipos.update(re.findall(r'([A-Z][A-Z0-9]*)\*+', dentro))
     if not tipos:
         for parte in re.split(r'\s+E\s+|\s*,\s*|\s*/\s*|\s+OU\s+', s):
             p = parte.strip()
