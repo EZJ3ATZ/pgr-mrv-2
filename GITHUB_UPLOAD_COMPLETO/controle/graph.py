@@ -193,13 +193,17 @@ def get_plan_category_map(plan_id: str) -> dict:
     return details.get('categoryDescriptions', {})
 
 
-def get_task_details(task_id: str) -> dict:
-    """Busca detalhes de uma tarefa (descrição, checklist, referencias)."""
+def get_task_details(task_id: str) -> dict | None:
+    """
+    Busca detalhes de uma tarefa (descrição, checklist, referencias).
+    Devolve None quando a CHAMADA falhou — {} só quando a task não tem detalhes.
+    Quem grava precisa dessa diferença: '' vindo de falha apaga o escopo da OS.
+    """
     try:
         return graph_get(f'/planner/tasks/{task_id}/details')
     except Exception as e:
         log.warning('[graph] get_task_details %s: %s', task_id, e)
-        return {}
+        return None
 
 
 def get_user(user_id: str) -> dict:

@@ -365,6 +365,37 @@ def _task_to_demanda(task: dict, bucket_map: dict, plan: dict, group: dict) -> d
     }
 
 
+def _detalhes_preservados(conn, task_id: str) -> dict:
+    """
+    Remonta {description, checklist} no formato do Graph a partir do que já está
+    gravado na demanda. Usado quando get_task_details falha: seguir com vazio
+    apaga o escopo da OS no UPDATE e ainda zera os agentes na extração
+    (10 das 203 demandas sem descrição, 8 delas sem agente — medido 31/08/2026).
+    Task que ainda não existe devolve {} — igual ao comportamento antigo.
+    """
+    row = conn.execute(
+        'SELECT descricao, checklist FROM demandas WHERE planner_task_id=?',
+        (task_id,)
+    ).fetchone()
+    if not row:
+        return {}
+    try:
+        itens = json.loads(row['checklist'] or '[]')
+    except (ValueError, TypeError):
+        itens = []
+    return {
+        'description': row['descricao'] or '',
+        'checklist': {
+            str(i): {
+                'title':     it.get('titulo', ''),
+                'isChecked': it.get('concluido', False),
+                'orderHint': it.get('ordem', ''),
+            }
+            for i, it in enumerate(itens) if isinstance(it, dict)
+        },
+    }
+
+
 def _upsert_demanda(conn, d: dict, desc: str, checklist_json: str) -> tuple[int, str]:
     """
     Insere ou atualiza demanda pelo planner_task_id.
@@ -593,6 +624,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
         'empresa_pendente': 0,
         'comentarios':      0,
         'parse_erros':      0,
+        'detalhes_falha':   0,
         'orfas_concluidas': 0,
         'erros':            [],
         'label_filter':     label_filter,
@@ -788,6 +820,9 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
 
                         # ── Buscar detalhes SOMENTE para tasks que passaram no filtro ──
                         details = get_task_details(tid)
+                        if details is None:   # falhou a chamada (≠ task sem notas)
+                            details = _detalhes_preservados(conn, tid)
+                            stats['detalhes_falha'] += 1
                         desc = details.get('description', '')
 
                         # Se o campo "Notas" estiver vazio, tenta capturar da conversa.
