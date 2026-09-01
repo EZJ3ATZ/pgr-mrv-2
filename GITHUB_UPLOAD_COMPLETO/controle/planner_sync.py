@@ -25,7 +25,7 @@ _sync_lock = threading.Lock()
 from .graph import (
     graph_ok, get_teams_groups, get_plans_for_group,
     get_plan_buckets, get_plan_tasks, get_plan_category_map,
-    get_task_details, get_user,
+    get_task_details, get_user, PLAN_ENTREGAS_TECNICAS,
 )
 from .db import get_db, init_db, upsert_raw_task, mark_raw_task
 from .empresa_match import match_todas_demandas, encontrar_empresa, extrair_campos, obter_ou_criar_pendente
@@ -578,6 +578,7 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
     stats = {
         'grupos':           0,
         'planos':           0,
+        'planos_ignorados': 0,
         'tarefas_total':    0,
         'tarefas_filtradas': 0,
         'criadas':          0,
@@ -642,10 +643,35 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                 stats['erros'].append(f'Grupo {gnome}: {e}')
                 continue
 
+            if not any(p.get('id') == PLAN_ENTREGAS_TECNICAS for p in planos):
+                log.error('[planner_sync] plano canônico %s ausente no grupo %s — '
+                          'nenhuma demanda será importada',
+                          PLAN_ENTREGAS_TECNICAS, gnome)
+                stats['erros'].append(f'Plano canônico ausente no grupo {gnome}')
+
             for plano in planos:
                 stats['planos'] += 1
                 pid   = plano['id']
                 pnome = plano.get('title', pid)
+
+                # Só o plano canônico "Entregas Técnicas" vira demanda. Medido em
+                # 31/08/2026: 203/203 demandas já vinham dele — o filtro não dropa
+                # nada hoje, trava outro plano do grupo que ganhe label "Medições".
+                # As tasks dos outros planos AINDA entram em seen_tids: sem isso a
+                # FASE 6 leria "task sumiu do Planner" e concluiria demanda viva.
+                if pid != PLAN_ENTREGAS_TECNICAS:
+                    try:
+                        outras = get_plan_tasks(pid)
+                        seen_tids.update(t['id'] for t in outras)
+                        stats['planos_ignorados'] += 1
+                        log.info('[planner_sync] plano "%s" (%s) fora do canônico — '
+                                 '%d tarefas só rastreadas, nenhuma vira demanda',
+                                 pnome, pid, len(outras))
+                    except Exception as e:
+                        log.warning('[planner_sync] tarefas plano %s: %s', pnome, e)
+                        stats['erros'].append(f'Plano {pnome}: {e}')
+                        listagem_ok = False
+                    continue
 
                 # Mapear buckets: id → nome
                 try:
