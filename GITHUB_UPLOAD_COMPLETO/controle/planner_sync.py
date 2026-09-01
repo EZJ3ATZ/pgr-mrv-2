@@ -102,7 +102,7 @@ _BUCKETS_IGNORADOS = {
 # Tarefa mista "AET/MEDIÇÕES - ..." → importada normalmente (medição tem prioridade).
 _AET_RE     = re.compile(r'\bAET\b', re.IGNORECASE)
 _MEDICAO_RE = re.compile(
-    r'\bMEDI[CÇ][OÃ][EÕS]*\b'    # MEDIÇÃO / MEDIÇÕES / MEDICOES
+    r'\bMEDI[CÇ](?:[OÕ]ES|[AÃ]O)\b'  # com/sem acento; não casa "MEDICOS" (7 títulos no plano)
     r'|\bRUÍDO\b|\bRUIDO\b'       # ruído
     r'|\bCALOR\b|\bVIBRA[CÇ]'     # calor, vibração
     r'|\bQUÍMIC[AO]\b|\bQUIMIC[AO]\b'  # químico/a
