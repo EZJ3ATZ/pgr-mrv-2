@@ -8,7 +8,19 @@ import sqlite3
 import threading
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+# Fuso horário oficial do Brasil (sem horário de verão desde 2019) = UTC-3.
+# O servidor (Railway) roda em UTC: sem isto, carimbo feito das 21h à
+# meia-noite BRT grava a data do DIA SEGUINTE. Mora aqui, e não em routes.py,
+# porque db.py e cadeia_custodia.py também gravam data e não podem importar
+# routes (seria ciclo).
+_BRT = timezone(timedelta(hours=-3))
+
+
+def agora_brt():
+    """datetime atual no fuso de Brasília (UTC-3), naive (sem tzinfo)."""
+    return datetime.now(timezone.utc).astimezone(_BRT).replace(tzinfo=None)
 
 # ── Contador de consultas por requisição (alimenta controle/perf.py) ───
 # Fica AQUI e não em perf.py de propósito: db.py não pode importar perf.py
@@ -2154,7 +2166,7 @@ def reativar_amostrador(conn, aid, tipo=None, status='disponivel',
         sets.append('tipo=?')
         params.append(tipo)
     sets.append('data_entrada=?')
-    params.append(data_entrada or datetime.now().strftime('%Y-%m-%d'))
+    params.append(data_entrada or agora_brt().strftime('%Y-%m-%d'))
     sets.append('observacao=?')
     params.append(observacao or '')
     params.append(aid)

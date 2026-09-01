@@ -11,17 +11,10 @@ from datetime import datetime, timedelta, timezone
 log = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify, send_file, redirect, url_for, render_template_string
 
-# Fuso horário oficial do Brasil (sem horário de verão desde 2019) = UTC-3.
-# O servidor (Railway) roda em UTC; isto converte para horário de Brasília.
-_BRT = timezone(timedelta(hours=-3))
-
-def agora_brt():
-    """datetime atual no fuso de Brasília (UTC-3), naive (sem tzinfo)."""
-    return datetime.now(timezone.utc).astimezone(_BRT).replace(tzinfo=None)
 from flask_login import login_required, current_user
 
 from .db import (
-    USE_PG,
+    USE_PG, agora_brt,
     normalizar_status_amostrador, STATUS_AMOSTRADOR, STATUS_AMOSTRADOR_LABEL,
     get_db, init_db, row_to_dict, list_amostradores, list_demandas,
     get_demanda_completa, upsert_empresa, stats_dashboard,
@@ -600,7 +593,7 @@ def cria_amostrador():
                 INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao)
                 VALUES (?, ?, ?, ?, ?)""",
                 (codigo, d['tipo'], normalizar_status_amostrador(d.get('status', 'disponivel')),
-                 d.get('data_entrada', datetime.now().strftime('%Y-%m-%d')),
+                 d.get('data_entrada', agora_brt().strftime('%Y-%m-%d')),
                  d.get('observacao', '')))
             novo_id = cur.lastrowid
     registrar_evento('amostrador_reativado' if reativado else 'amostrador_criado',
@@ -636,7 +629,7 @@ def cria_amostradores_lote():
     if not limpos:
         return jsonify({'erro': 'nenhum codigo valido'}), 400
     status = normalizar_status_amostrador(d.get('status', 'disponivel'))
-    data_entrada = d.get('data_entrada') or datetime.now().strftime('%Y-%m-%d')
+    data_entrada = d.get('data_entrada') or agora_brt().strftime('%Y-%m-%d')
     obs = d.get('observacao', '')
 
     def _tipo_do_codigo(cod):
@@ -705,7 +698,7 @@ def update_amostrador(aid):
             # Ao concluir manualmente, carimba a data de conclusão (cert recebido)
             if k == 'status' and val == 'concluido':
                 fields.append('data_conclusao=COALESCE(data_conclusao, ?)')
-                params.append(datetime.now().strftime('%Y-%m-%d'))
+                params.append(agora_brt().strftime('%Y-%m-%d'))
     if 'empresa' in d:
         emp_id = upsert_empresa('', d['empresa']) if d['empresa'] else None
         fields.append('empresa_id=?'); params.append(emp_id)
@@ -749,7 +742,7 @@ def baixa_simples_lote():
 
     empresa_nome = (d.get('empresa_nome') or '').strip()
     avaliador    = d.get('avaliador', '')
-    data_med     = d.get('data_medicao') or datetime.now().strftime('%Y-%m-%d')
+    data_med     = d.get('data_medicao') or agora_brt().strftime('%Y-%m-%d')
     obs          = d.get('observacao', '')
 
     empresa_id = None
@@ -844,7 +837,7 @@ def concluir_amostradores():
                     atualizado_em=CURRENT_TIMESTAMP
                 WHERE id IN ({ph})
                   AND status NOT IN ('concluido','descartado')""",
-            [obs_final, datetime.now().strftime('%Y-%m-%d'), empresa_id] + ids
+            [obs_final, agora_brt().strftime('%Y-%m-%d'), empresa_id] + ids
         )
 
     user = getattr(current_user, 'email', 'sistema') if current_user.is_authenticated else 'sistema'
@@ -898,7 +891,7 @@ def concluir_amostradores_utilizados():
                         observacao=COALESCE(NULLIF(observacao, ''), 'Concluído — consta em cadeia de custódia'),
                         atualizado_em=CURRENT_TIMESTAMP
                     WHERE id IN ({ph})""",
-                [datetime.now().strftime('%Y-%m-%d')] + alvo
+                [agora_brt().strftime('%Y-%m-%d')] + alvo
             )
     registrar_evento('amostrador_atualizado',
                      f'{len(alvo)} amostradores concluídos (constam em cadeia de custódia)',
@@ -1031,7 +1024,7 @@ def marcar_envio_lab(aid):
     """Registra que o amostrador foi enviado ao laboratorio (inicia contagem)."""
     init_db()
     d = request.json or {}
-    data_envio = d.get('data_envio_lab') or datetime.now().strftime('%Y-%m-%d')
+    data_envio = d.get('data_envio_lab') or agora_brt().strftime('%Y-%m-%d')
     dias       = int(d.get('dias_validade', 45) or 45)
     lote       = d.get('lote', '')
     obs        = d.get('observacao_venc', '')
@@ -1052,7 +1045,7 @@ def marcar_envio_lab_lote():
     d = request.json or {}
     ids = d.get('ids', [])
     if not ids: return jsonify({'erro': 'sem ids'}), 400
-    data_envio = d.get('data_envio_lab') or datetime.now().strftime('%Y-%m-%d')
+    data_envio = d.get('data_envio_lab') or agora_brt().strftime('%Y-%m-%d')
     dias       = int(d.get('dias_validade', 45) or 45)
     lote       = d.get('lote', '')
     placeholders = ','.join(['?'] * len(ids))
@@ -1843,7 +1836,7 @@ def dar_baixa():
     bomba            = d.get('bomba', '')
     vazao_calibrada  = float(d.get('vazao_calibrada', 0) or 0)
     vol_recomendado  = float(d.get('volume_recomendado', 0) or 0)
-    data_medicao     = d.get('data_medicao', datetime.now().strftime('%Y-%m-%d'))
+    data_medicao     = d.get('data_medicao', agora_brt().strftime('%Y-%m-%d'))
     obs              = d.get('observacao', '')
 
     # Calcular tempos a partir da faixa de vazao recomendada (se enviada)
@@ -1951,7 +1944,7 @@ def baixa_rapida_demanda(did):
         return jsonify({'erro': 'motivo obrigatorio na baixa sem amostrador'}), 400
 
     avaliador    = d.get('avaliador', '')
-    data_medicao = d.get('data_medicao') or datetime.now().strftime('%Y-%m-%d')
+    data_medicao = d.get('data_medicao') or agora_brt().strftime('%Y-%m-%d')
     obs          = d.get('observacao', '')
 
     with get_db() as conn:

@@ -28,7 +28,7 @@ import re
 import logging
 from datetime import datetime
 
-from .db import get_db, row_to_dict
+from .db import get_db, row_to_dict, agora_brt
 
 log = logging.getLogger(__name__)
 
@@ -495,7 +495,7 @@ def marcar_despacho(amostrador_ids, data_envio=None, dias_validade=45, lote=''):
     """
     if not amostrador_ids:
         return 0
-    data = _fmt_data(data_envio) or datetime.now().date()
+    data = _fmt_data(data_envio) or agora_brt().date()
     ph = ','.join(['?'] * len(amostrador_ids))
     with get_db() as conn:
         cur = conn.execute(
