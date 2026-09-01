@@ -2308,6 +2308,25 @@ AGENTE_ALIASES = {
     'SODA CAUSTICA (NAOH)': 'HIDRÓXIDO DE SÓDIO',
     'SODA CÁUSTICA': 'HIDRÓXIDO DE SÓDIO',
     'SODA CAUSTICA': 'HIDRÓXIDO DE SÓDIO',
+    # Sem esta linha o fuzzy casava XILENO dentro de "HEXILENO GLICOL" — outra
+    # substância — porque escolhe o nome mais curto que contém a chave. Xileno
+    # é um terço do BTX, o combo mais medido (medido em 01/09/2026).
+    'XILENO': 'XILENO, TODOS OS ISÔMEROS',
+    'XILENOS': 'XILENO, TODOS OS ISÔMEROS',
+}
+
+# Canônicos GENÉRICOS que o guia só tem em variantes específicas, cada uma com
+# método e limite próprios: Níquel (carbonila × inorgânicos solúveis ×
+# insolúveis), Cromo (hexavalente × trivalente × metálico), Mercúrio (alquil ×
+# aril × elementar), Álcool (8 entradas), Estanho/Cobre/Querosene (2 cada).
+# O fuzzy escolhia a mais CURTA e dizia com confiança — "Níquel" virava "Níquel
+# Carbonila", que é outro agente, outro método e outro limite. Enquanto não
+# houver decisão de qual variante vale por padrão, é melhor não responder: a
+# tela já trata a lista vazia com "método não encontrado na guia, preencha a
+# vazão manualmente" (index.html:14297), que é honesto.
+_AGENTE_AMBIGUO_NO_GUIA = {
+    'NÍQUEL', 'NIQUEL', 'CROMO', 'MERCÚRIO', 'MERCURIO', 'ÁLCOOL', 'ALCOOL',
+    'ESTANHO', 'COBRE', 'QUEROSENE',
 }
 
 
@@ -2364,6 +2383,11 @@ def _buscar_metodos_agente(nome_agente):
         return re.sub(r'[\s]+', ' ', s.strip())
 
     key_norm = _norm(key_upper)
+    # Genérico com várias variantes no guia: não adivinhar (ver a nota em
+    # _AGENTE_AMBIGUO_NO_GUIA). Só barra o fuzzy — nome exato e alias, acima,
+    # já retornaram.
+    if key_norm in _AGENTE_AMBIGUO_NO_GUIA:
+        return []
     # Busca parcial normalizada — evita matches espúrios em substrings curtas
     best = None
     for nome_upper, cas in guia.get('by_name', {}).items():
