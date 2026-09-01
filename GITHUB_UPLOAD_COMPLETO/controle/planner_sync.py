@@ -313,9 +313,20 @@ def _safe_pct(v) -> int:
         return 0
 
 
+# Nomes que contêm "conclu"/"entregu" mas dizem o CONTRÁRIO ("A Concluir",
+# "Aguardando conclusão", "Não entregue"). Nenhum existe no Planner hoje — em 31/08/2026
+# só há "Entregue / Concluído" (164 demandas) e "Engenharia - Novas Demandas" (39).
+# Por isso a guarda é negativa: igualdade exata derrubaria as 164 de "Entregue / Concluído".
+_BUCKET_NAO_CONCLUIDO = re.compile(
+    r'\b(?:nao|sem|a|para|por|falta|aguardando|pendente\s+de)\s+(?:ser(?:em)?\s+)?(?:conclu|entregu)'
+)
+
+
 def _bucket_is_concluido(bucket_name: str) -> bool:
     """Retorna True se o bucket indica que a demanda foi finalizada operacionalmente."""
-    b = (bucket_name or '').lower()
+    b = _normalize(bucket_name or '')
+    if _BUCKET_NAO_CONCLUIDO.search(b):
+        return False
     return 'entregue' in b or 'conclu' in b
 
 
