@@ -68,3 +68,24 @@ def test_marca_para_revisao_sem_mexer_na_quantidade():
 def test_os_normal_nao_e_marcada_por_isso():
     res = _analisa('20 pontos de ruído\r\n4 pontos de calor')
     assert not any('lista numerada' in i for i in res.inconsistencias)
+
+
+def test_inconsistencia_sozinha_manda_para_a_fila():
+    """Prova a mudanca de encanamento SEM depender de score baixo.
+
+    Esta OS e limpa (score 0,77, numero de OS achado, zero conflitos): antes ela
+    NAO entrava na fila, e a inconsistencia de quantidade ficava so no JSON, sem
+    ninguem ver. O test_marca_para_revisao_sem_mexer_na_quantidade acima nao
+    prova isso — aquela descricao ja entrava por confianca baixa.
+    """
+    res = analisar_tarefa_planner(
+        task={'id': 't', 'title': '6525952 - Construtora Exemplo Ltda',
+              'percentComplete': 0},
+        task_details={'description': '25 pontos de ruído', 'checklist': {}},
+        group_id='g', bucket_nome='Engenharia - Novas Demandas', graph_get_fn=None)
+    # entra na fila SO por causa da inconsistencia
+    assert res.score_geral >= 0.60
+    assert res.numero_os_confianca >= 0.50
+    assert not res.conflitos
+    assert res.inconsistencias
+    assert res.needs_review is True
