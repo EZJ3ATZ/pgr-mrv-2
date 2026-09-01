@@ -1586,10 +1586,12 @@ def get_demanda_agentes(did):
                     d.get('titulo', ''), d.get('descricao', ''),
                     d.get('checklist', ''), d.get('planner_bucket', '')
                 )
-            # 3. fallback: parser antigo (só descrição)
-            if not agentes and not so_nao_medicao:
-                from .parser_agentes import extrair_agentes
-                agentes = extrair_agentes(d.get('descricao') or '')
+            # Não há 3º fallback. O parser_agentes foi aposentado em
+            # 01/09/2026: medido nas 285 demandas de produção, o motor volta
+            # vazio em 94 e o parser antigo contribuiu agente em ZERO delas.
+            # O que ele fazia era inventar — o catch-all `return 'quimico'`
+            # (parser_agentes.py:125) transforma qualquer prosa em substância.
+            # Sem agente reconhecido, a resposta honesta é lista vazia.
 
         return jsonify({'agentes': agentes, 'resumo': resumo_agentes(agentes)})
     except Exception as e:
@@ -1690,9 +1692,7 @@ def get_demanda_por_os(os_num):
                     d.get('titulo', ''), d.get('descricao', ''),
                     d.get('checklist', ''), d.get('planner_bucket', '')
                 )
-            if not agentes and not so_nao_medicao:
-                from .parser_agentes import extrair_agentes
-                agentes = extrair_agentes(d.get('descricao') or '')
+            # sem 3º fallback — ver a nota em get_demanda_agentes
 
         # Buscar empresa vinculada
         with get_db() as conn:
