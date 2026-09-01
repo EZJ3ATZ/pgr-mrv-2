@@ -2238,6 +2238,7 @@ def list_demandas(filtros=None):
 
 
 def mesclar_empresas_duplicatas():
+    import re as _re
     mescladas = 0
     with get_db() as conn:
         grupos = conn.execute("""
@@ -2249,10 +2250,34 @@ def mesclar_empresas_duplicatas():
         """).fetchall()
         for g in grupos:
             id_princ = g['id_principal']
-            dups = [r['id'] for r in conn.execute(
-                "SELECT id FROM empresas WHERE LOWER(TRIM(nome)) = ? AND id != ?",
+            k_princ = _re.sub(r'\D', '', conn.execute(
+                "SELECT cnpj FROM empresas WHERE id=?",
+                (id_princ,)).fetchone()['cnpj'] or '')
+            dups = [(r['id'], r['cnpj'] or '') for r in conn.execute(
+                "SELECT id, cnpj FROM empresas WHERE LOWER(TRIM(nome)) = ? AND id != ?",
                 (g['nome_key'], id_princ)).fetchall()]
-            for dup_id in dups:
+            for dup_id, cnpj_dup in dups:
+                # Mesmo nome NÃO é a mesma empresa: filial e homônima têm CNPJ
+                # próprio e o DELETE abaixo apagaria uma delas. Só funde quando os
+                # CNPJs batem (comparação por dígitos, a pontuação varia) ou quando
+                # um dos dois está vazio; divergência vira evento p/ triagem humana,
+                # uma vez por duplicata — o sync chama isto a cada 15min. Medido em
+                # 31/08/2026: zero grupos de nome repetido no banco, guarda é
+                # preventiva.
+                k_dup = _re.sub(r'\D', '', cnpj_dup)
+                if k_princ and k_dup and k_princ != k_dup:
+                    ja = conn.execute(
+                        "SELECT 1 FROM eventos WHERE tipo='empresa_cnpj_divergente'"
+                        " AND ref_id=? LIMIT 1", (dup_id,)).fetchone()
+                    if not ja:
+                        conn.execute(
+                            "INSERT INTO eventos (tipo, descricao, ref_id, ref_tipo, criado_em) "
+                            "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                            ('empresa_cnpj_divergente',
+                             f"{g['nome_key']}: id {id_princ} ({k_princ}) x id {dup_id} "
+                             f"({k_dup}) — não mesclado, CNPJ diferente",
+                             dup_id, 'empresa'))
+                    continue
                 # Reaponta TODAS as tabelas com empresa_id para a principal antes
                 # de deletar a duplicata; senão coletas/planejamentos/visitas/
                 # contatos ficam órfãos apontando para uma empresa inexistente.
@@ -2262,6 +2287,11 @@ def mesclar_empresas_duplicatas():
                     conn.execute(f"UPDATE {_tbl} SET empresa_id=? WHERE empresa_id=?",
                                  (id_princ, dup_id))
                 conn.execute("DELETE FROM empresas WHERE id=?", (dup_id,))
+                if k_dup and not k_princ:
+                    # só depois do DELETE: cnpj é UNIQUE, os dois não coexistem
+                    conn.execute("UPDATE empresas SET cnpj=? WHERE id=?",
+                                 (cnpj_dup, id_princ))
+                    k_princ = k_dup
                 mescladas += 1
     return mescladas
 
