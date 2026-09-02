@@ -2362,10 +2362,15 @@
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M11 18h2v-2h-2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8m0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4"/></svg>
       <span>Ajuda</span>
     </div>
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <!-- Só admin: a aba inteira consome /controle/admin/saude, que é
+         admin-only no backend. Para o técnico ela abria vazia, e os 5
+         botões de Ações Rápidas davam 403 no clique. -->
     <div class="sidebar-item" data-name="saude" onclick="goToTab('saude')" title="Observabilidade e saúde do sistema">
       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 4H4c-1.1 0-2 .9-2 2v3h2V6h16v3h2V6c0-1.1-.9-2-2-2m0 14H4v-3H2v3c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-3h-2z"/><path d="M14.89 7.55c-.34-.68-1.45-.68-1.79 0L10 13.76l-1.11-2.21A.988.988 0 0 0 8 11H2v2h5.38l1.72 3.45c.18.34.52.55.9.55s.72-.21.89-.55L14 10.24l1.11 2.21c.17.34.51.55.89.55h6v-2h-5.38z"/></svg>
       <span>Sa&#250;de do Sistema</span>
     </div>
+    {% endif %}
   </div>
 
   {% if current_user.is_authenticated and current_user.role == 'admin' %}
@@ -3803,8 +3808,13 @@
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('plan', this)" style="background:var(--blue);color:#fff;font-weight:700;">📋 Planejamento</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('nova', this)" style="background:var(--green);color:#fff;font-weight:700;">📍 Planilha de Campo</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('cadeia', this)" style="background:var(--accent);color:#fff;font-weight:700;">🧪 Cadeia de Custódia</div>
+      {% if current_user.is_authenticated and current_user.role == 'admin' %}
+      <!-- Importar sobe planilha por /controle/import/* (admin-only) e
+           hospeda o bloco Manutenção de Dados; Auditoria expõe o log com
+           usuário e IP. Nenhum dos dois é fluxo do técnico. -->
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('import', this)">Importar</div>
       <div class="ctrl-subtab" onclick="ctrlSwitchSub('audit', this)">🕵 Auditoria</div>
+      {% endif %}
     </div>
   </div>
 
@@ -3919,7 +3929,9 @@
           <option value="sem_data">⚠️ Sem data de envio</option>
         </select>
         <button onclick="ctrlAbrirEnvioLab()" class="ctrl-import-btn" style="background:#f80;">+ Registrar envio ao laboratório</button>
+      {% if current_user.is_authenticated and current_user.role == 'admin' %}
         <button onclick="ctrlSyncLab()" class="ctrl-import-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Lê os e-mails do laboratório e atualiza status + lista oficial de pendentes (admin)">🔄 Sincronizar com o lab</button>
+      {% endif %}
         {% if current_user.is_authenticated and current_user.role == 'admin' %}
         <button onclick="ctrlAuditoriaLab()" class="ctrl-import-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);" title="Confere se o site capturou tudo que passou pelos e-mails do lab: RAs recebidos × data_resultado e cadeias enviadas × data_envio_lab">🧪 Auditoria do lab</button>
         {% endif %}
@@ -5472,7 +5484,9 @@
     <input id="pf-busca" type="text" placeholder="Filtrar por empresa, OS ou técnico..." oninput="planilhasRender()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 12px;font-size:.82rem;font-family:inherit;outline:none;min-width:280px;">
     <span id="pf-resumo" style="font-size:.74rem;color:var(--text3);"></span>
     {% if current_user.is_authenticated %}
+      {% if current_user.is_authenticated and current_user.role == 'admin' %}
     <button id="pf-dedup-btn" onclick="planilhasDedup()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;" title="Remove planilhas duplicadas da mesma OS, mantendo a mais nova">🧹 Remover duplicadas</button>
+      {% endif %}
     {% endif %}
   </div>
   <div id="pf-lista"><div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div></div>
@@ -9579,7 +9593,7 @@ async function ctrlLoadGraphStatus() {
         ${st.criadas!=null ? `· ${st.criadas} criadas · ${st.atualizadas} atualizadas` : ''}
         ${(st.erros||[]).length ? `<span style="color:var(--orange)">· ${st.erros.length} erros</span>` : ''}
       </span>
-      <button onclick="ctrlSyncPlanner(this)" style="margin-left:12px;background:var(--blue);color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">⟳ Sincronizar agora</button>
+      ${document.body.dataset.role === 'admin' ? '<button onclick="ctrlSyncPlanner(this)" style="margin-left:12px;background:var(--blue);color:#fff;border:none;padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">⟳ Sincronizar agora</button>' : ''}
       ${document.body.dataset.role === 'admin' ? '<button onclick="ctrlReprocessarAgentes(this)" title="Re-extrai os agentes de TODAS as demandas do Planner (corrige OS sem agentes no painel)" style="margin-left:8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);padding:4px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">🧠 Reprocessar agentes</button>' : ''}
     `;
   } catch(e) {
