@@ -445,3 +445,16 @@ def test_roster_sem_segredo_nao_chama_o_assinador(monkeypatch):
     orq._roster_cache['ate'] = 0
     assert orq._roster_engenharia() == []
     orq._roster_cache['ate'] = 0
+
+
+def test_coordenacao_nao_entra_no_rodizio_de_medicao():
+    """Quem coordena aprova, não executa: role='coordenacao' fica fora da
+    sugestão mesmo com carga zero (o Luiz Fernando estava como técnico)."""
+    _limpar()
+    _tecnicos_teste(['Wanda Teste'])
+    with get_db() as conn:
+        conn.execute("DELETE FROM usuarios WHERE email='coord-teste@x.com'")
+        conn.execute(
+            "INSERT INTO usuarios (nome, email, senha_hash, role, ativo)"
+            " VALUES ('Ana Coordenadora', 'coord-teste@x.com', 'x', 'coordenacao', 1)")
+        assert orq.sugerir_tecnico(conn, 'medicao') == 'Wanda Teste'

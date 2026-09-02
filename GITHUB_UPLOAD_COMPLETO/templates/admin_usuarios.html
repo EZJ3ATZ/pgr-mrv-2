@@ -69,6 +69,7 @@
           <select onchange="setRole({{ u.id }}, this.value)">
             <option value="tecnico"      {% if u.role == 'tecnico' %}selected{% endif %}>Técnico</option>
             <option value="admin"        {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+            <option value="coordenacao"  {% if u.role == 'coordenacao' %}selected{% endif %}>Coordenação</option>
             <option value="visualizador" {% if u.role == 'visualizador' %}selected{% endif %}>Visualizador</option>
           </select>
         </td>

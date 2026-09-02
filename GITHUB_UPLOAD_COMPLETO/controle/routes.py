@@ -8902,7 +8902,10 @@ def admin_set_role(uid):
     if chk: return chk
     d = request.json or {}
     role = d.get('role', 'tecnico')
-    if role not in ('admin', 'tecnico', 'visualizador'):
+    # 'coordenacao' existe para separar quem APROVA de quem EXECUTA: o
+    # orquestrador da OS sugere técnico só entre role='tecnico', então
+    # coordenação cadastrada como técnico entrava no rodízio de campo.
+    if role not in ('admin', 'tecnico', 'coordenacao', 'visualizador'):
         return jsonify({'erro': 'Role inválido'}), 400
     with get_db() as conn:
         conn.execute('UPDATE usuarios SET role=? WHERE id=?', (role, uid))

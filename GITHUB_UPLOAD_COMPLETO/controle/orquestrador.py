@@ -207,6 +207,9 @@ def sugerir_tecnico(conn, raia):
     a sugestão ser estável entre chamadas.
     """
     if raia == 'medicao':
+        # Só role='tecnico': quem coordena aprova, não executa. Por isso existe
+        # o papel 'coordenacao' na tela de usuários — o Luiz Fernando estava
+        # cadastrado como técnico e caía no rodízio de campo (02/09/2026).
         candidatos = [row_to_dict(r)['nome'] for r in conn.execute(
             "SELECT nome FROM usuarios WHERE role='tecnico' AND ativo=1"
             " AND nome IS NOT NULL AND nome != '' ORDER BY nome").fetchall()]
