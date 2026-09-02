@@ -6181,7 +6181,7 @@
         { t:'Bomba Gravimétrica',     desc:'Equipamento que succiona ar pelo filtro/amostrador durante a medição química. A vazão (L/min) calibrada define o volume amostrado.' },
         { t:'Vazão Inicial',          desc:'Medida antes da coleta — quanto de ar a bomba está puxando por minuto. Ex: 0,200 L/min.' },
         { t:'Vazão Final',            desc:'Medida após a coleta — verifica se houve desvio durante a amostragem. Diferença máxima aceitável: 5%.' },
-        { t:'BDX II – GILLIAN',      desc:'Modelo de bomba gravimétrica. S/N disponíveis: <b>38356, 38357, 38358, 38359</b>.' },
+        { t:'BDX II – GILLIAN',      desc:'Modelo de bomba gravimétrica. Os S/N vêm do cadastro de equipamentos — 38356/38357/38358/38359 são números de CERTIFICADO, não de série.' },
         { t:'AIRLITE – SKC',         desc:'Modelo de bomba gravimétrica leve. S/N disponíveis: <b>A060502, A061553, A061585, A062462, A63555</b>.' },
         { t:'FORMIS – TURAM',        desc:'Modelo de bomba gravimétrica. S/N disponíveis: <b>2420120549, 2420120550, 2420120551</b>.' },
         { t:'INLITE VENTUSPRO',      desc:'Modelo de bomba de alto desempenho. S/N disponíveis: <b>25040902602B, 25040903102B, 25040907102B</b>.' },
@@ -7722,13 +7722,33 @@ function qFotoUpload(i, inp) {
 }
 
 // ── Avaliações ─────────────────────────────────────────────────────
-// Mapa estático de bombas e números de série
-const _Q_BOMBA_SNS = {
-  'bdx':     ['38356', '38357', '38358', '38359'],
+// Bombas e números de série vêm da FROTA (/controle/bombas), não de lista
+// cravada aqui. A lista antiga trazia 38356/38357/38358/38359 como S/N da
+// BDX-II, mas esses são os números de CERTIFICADO (2602A3835x) — os S/N
+// reais são 20230702024/29/30 e 20141201119. Sete coletas de produção
+// gravaram o certificado no campo do S/N por causa deste menu (medido em
+// 01/09/2026), e o laudo saía citando bomba que não existe na frota.
+let _Q_BOMBA_SNS = {};
+const _Q_BOMBA_FALLBACK = {
+  'bdx':     ['20230702024', '20230702029', '20230702030', '20141201119'],
   'airlite': ['A060502', 'A061553', 'A061585', 'A062462', 'A63555'],
   'turam':   ['2420120549', '2420120550', '2420120551'],
   'inlite':  ['25040902602B', '25040903102B', '25040907102B']
 };
+
+async function _qCarregarBombas() {
+  try {
+    const r = await fetch('/controle/bombas');
+    const d = await r.json();
+    const mapa = {};
+    (d.modelos || []).forEach(m => { if (m.id && m.sns) mapa[m.id] = m.sns; });
+    _Q_BOMBA_SNS = Object.keys(mapa).length ? mapa : {..._Q_BOMBA_FALLBACK};
+  } catch (e) {
+    // sem rede a tela ainda tem de abrir com S/N corretos
+    _Q_BOMBA_SNS = {..._Q_BOMBA_FALLBACK};
+  }
+}
+_qCarregarBombas();
 const _Q_BOMBA_LABELS = {
   'bdx':'BDX II – GILLIAN', 'airlite':'AIRLITE – SKC',
   'turam':'FORMIS – TURAM', 'inlite':'INLITE VENTUSPRO'
