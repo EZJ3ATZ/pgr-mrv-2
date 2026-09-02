@@ -17,13 +17,14 @@ Envio de e-mail é OPT-IN: só dispara com ORQ_ENVIAR_EMAILS=1 no ambiente;
 sem a flag, o corpo fica pronto em detalhe_json (status pendente_envio).
 """
 import os
+import re
 import json
 import logging
 from datetime import datetime, timezone
 
 from flask import request, jsonify
 
-from .db import get_db, row_to_dict, registrar_evento, USE_PG
+from .db import get_db, row_to_dict, registrar_evento, USE_PG, data_iso
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +35,15 @@ ONBOARDING_MIN_VIDAS = 300
 # Abaixo desta similaridade, CNPJ que casa com nome diferente vira revisão humana.
 # Mesmo limiar do fuzzy de `empresa_match.encontrar_empresa`.
 MATCH_NOME_MIN       = 0.72
+# Roster da engenharia (ergonomia/treinamento/eng) mora na BI, dentro do Assinador.
+ASSINADOR_URL        = os.environ.get(
+    'ASSINADOR_URL', 'https://assinador-ocupacional-a1-production.up.railway.app')
+ROSTER_TTL_OK        = 600   # s — cache do roster quando a busca deu certo
+ROSTER_TTL_ERRO      = 60    # s — e quando falhou, para não bater a cada raia
+# Cargo de gestão não executa demanda. Mesma régua que o Painel de Entregas
+# Técnicas já usa para tirar gestor da disputa (`painel_planner.py:1556`) —
+# reusada de propósito, para as duas telas não discordarem sobre quem é técnico.
+_RE_GESTAO = re.compile(r'DIRETOR|COORDENADOR|SUPERVISOR|GERENTE|GESTOR', re.IGNORECASE)
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS os_ordens (
@@ -132,13 +142,80 @@ def classificar_servico(servico):
 
 
 # ── Sugestão de técnico (v1: menor carga entre técnicos já ativos) ─────
+_roster_cache = {'ate': 0.0, 'nomes': []}
+
+
+def _roster_engenharia():
+    """Nomes do roster da engenharia — vive na BI, servida pelo Assinador.
+
+    Best-effort de propósito: se o Assinador não responder, devolve [] e a raia
+    fica sem sugestão. Abrir a OS nunca pode depender de outro app estar no ar.
+    """
+    import time
+    agora = time.time()
+    if agora < _roster_cache['ate']:
+        return _roster_cache['nomes']
+    segredo = os.environ.get('CRM_PLANNER_SECRET', '')
+    nomes, ok = [], False
+    if segredo:
+        try:
+            import json as _j
+            import urllib.request
+            req = urllib.request.Request(
+                ASSINADOR_URL.rstrip('/') + '/api/painel-engenharia/roster',
+                headers={'x-crm-secret': segredo})
+            with urllib.request.urlopen(req, timeout=6) as r:
+                dados = _j.loads(r.read().decode('utf-8'))
+            nomes = [t['nome'].strip() for t in dados.get('tecnicos', [])
+                     if (t.get('nome') or '').strip()
+                     and not _RE_GESTAO.search(t.get('cargo') or '')]
+            ok = True
+        except Exception as e:
+            log.warning('[orq] roster da engenharia indisponível (%s) — '
+                        'raia fica sem sugestão', e)
+    _roster_cache['nomes'] = nomes
+    _roster_cache['ate'] = agora + (ROSTER_TTL_OK if ok else ROSTER_TTL_ERRO)
+    return nomes
+
+
+def _carga_atual(conn, raia):
+    """Quanto cada pessoa já tem em aberto. Medição conta pelas `demandas`
+    (é onde o técnico de campo realmente aparece); as outras raias contam
+    pelas próprias raias, que é o único registro que o portal tem delas."""
+    if raia == 'medicao':
+        sql = """SELECT responsavel AS quem, COUNT(*) AS carga FROM demandas
+                 WHERE responsavel IS NOT NULL AND responsavel != ''
+                   AND status != 'concluida' GROUP BY responsavel"""
+        args = ()
+    else:
+        sql = """SELECT tecnico_definido AS quem, COUNT(*) AS carga FROM os_raias
+                 WHERE raia=? AND tecnico_definido IS NOT NULL
+                   AND status != 'concluida' GROUP BY tecnico_definido"""
+        args = (raia,)
+    return {row_to_dict(r)['quem']: row_to_dict(r)['carga']
+            for r in conn.execute(sql, args).fetchall()}
+
+
 def sugerir_tecnico(conn, raia):
-    rows = conn.execute(
-        """SELECT tecnico_definido AS t, COUNT(*) AS carga FROM os_raias
-           WHERE raia=? AND tecnico_definido IS NOT NULL AND status != 'concluida'
-           GROUP BY tecnico_definido ORDER BY carga ASC LIMIT 1""",
-        (raia,)).fetchone()
-    return row_to_dict(rows).get('t') if rows else None
+    """Quem tem MENOS trabalho aberto, entre quem existe de verdade.
+
+    Antes isto olhava só `os_raias.tecnico_definido` — tabela que nasce vazia,
+    então a sugestão vinha `None` para sempre e quem aprovava digitava o nome
+    na mão (medido em 01/09/2026, com o orquestrador recém-ligado). Agora o
+    candidato sai do cadastro real: medição usa os técnicos do portal, as
+    outras raias usam o roster da engenharia. Empate desempata por nome, para
+    a sugestão ser estável entre chamadas.
+    """
+    if raia == 'medicao':
+        candidatos = [row_to_dict(r)['nome'] for r in conn.execute(
+            "SELECT nome FROM usuarios WHERE role='tecnico' AND ativo=1"
+            " AND nome IS NOT NULL AND nome != '' ORDER BY nome").fetchall()]
+    else:
+        candidatos = _roster_engenharia()
+    if not candidatos:
+        return None
+    carga = _carga_atual(conn, raia)
+    return sorted(candidatos, key=lambda n: (carga.get(n, 0), n))[0]
 
 
 # ── Templates de e-mail (capturados das caixas reais, 21/07) ────────────
@@ -258,6 +335,10 @@ def abrir_os(payload, dry_run=False):
             'negocio_crm_id': str(payload.get('negocio_crm_id') or ''),
             'vencimento': (payload.get('vencimento') or '').strip(),
             'parcelamento': (payload.get('parcelamento') or '').strip(),
+            # Prazo combinado com o cliente, informado pela consultora no CRM.
+            # `data_iso` porque a coluna é TEXT e várias consultas fazem
+            # (col)::date — data em DD/MM/AAAA crua já derrubou o dashboard.
+            'prazo': data_iso(payload.get('prazo')),
             'obs': (payload.get('obs') or '').strip(),
         }
 
@@ -270,7 +351,8 @@ def abrir_os(payload, dry_run=False):
         # 2) MEDIÇÃO — direto no portal, sem Planner (requisito do Matheus)
         if 'medicao' in por_raia:
             raias_plano.append(('medicao', 'aguardando_aprovacao',
-                                {'itens': por_raia['medicao']}))
+                                {'itens': por_raia['medicao'],
+                                 'prazo': os_row['prazo']}))
 
         # 3) ENGENHARIA / ERGONOMIA / TREINAMENTO — fila a distribuir
         for raia in ('engenharia', 'ergonomia', 'treinamento'):
@@ -397,12 +479,12 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
     titulo = f"{numero} - {os_row['empresa']}"
     conn.execute(
         """INSERT INTO demandas (numero_os, empresa_id, cnpj, titulo, nome_tarefa,
-             descricao, status, origem, tipo_demanda,
+             descricao, status, origem, tipo_demanda, prazo,
              empresa_match_score, empresa_match_metodo, needs_review,
              criado_em, atualizado_em)
-           VALUES (?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?,?,?, ?, ?)""",
+           VALUES (?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?, ?,?,?, ?, ?)""",
         (numero, empresa_id, os_row['cnpj'], titulo, titulo, desc,
-         score, metodo, revisar, _now(), _now()))
+         os_row.get('prazo'), score, metodo, revisar, _now(), _now()))
     return row_to_dict(conn.execute(
         "SELECT id FROM demandas WHERE numero_os=? ORDER BY id DESC LIMIT 1",
         (numero,)).fetchone())['id']

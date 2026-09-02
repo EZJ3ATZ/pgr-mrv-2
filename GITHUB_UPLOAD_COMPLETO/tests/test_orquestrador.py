@@ -339,3 +339,109 @@ def test_sufixo_societario_diferente_nao_vira_revisao():
     d = _demanda_da_os(orq.abrir_os(dict(PAYLOAD), dry_run=False))
     assert d['needs_review'] == 0
     assert d['empresa_match_metodo'] == 'cnpj'
+
+
+# ── Técnico sugerido e prazo (fix 02/09) ────────────────────────────────
+# Antes: sugerir_tecnico lia carga de os_raias (tabela que nasce vazia) e
+# devolvia None para sempre; a demanda nascia sem prazo nenhum.
+
+def _tecnicos_teste(nomes):
+    with get_db() as conn:
+        conn.execute("DELETE FROM usuarios WHERE email LIKE 'tec-teste-%'")
+        for i, n in enumerate(nomes):
+            conn.execute(
+                "INSERT INTO usuarios (nome, email, senha_hash, role, ativo)"
+                " VALUES (?,?,?, 'tecnico', 1)",
+                (n, f'tec-teste-{i}@x.com', 'x'))
+
+
+def test_sugere_tecnico_de_medicao_pelo_cadastro_do_portal():
+    _limpar()
+    _tecnicos_teste(['Zulmira Teste', 'Abel Teste'])
+    eid = _empresa_fixa('55.444.333/0001-22', 'Empresa da Carga')
+    with get_db() as conn:
+        # Abel já tem uma demanda aberta; Zulmira não tem nenhuma
+        conn.execute("INSERT INTO demandas (titulo, empresa_id, status, origem,"
+                     " responsavel) VALUES ('carga', ?, 'pendente', 'crm_os',"
+                     " 'Abel Teste')", (eid,))
+        assert orq.sugerir_tecnico(conn, 'medicao') == 'Zulmira Teste'
+
+
+def test_sugere_engenharia_pelo_roster_do_assinador(monkeypatch):
+    _limpar()
+    monkeypatch.setattr(orq, '_roster_engenharia',
+                        lambda: ['Bianca Roster', 'Ariel Roster'])
+    with get_db() as conn:
+        r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+        eng = next(x for x in r['raias'] if x['raia'] == 'engenharia')
+        # empate de carga (ninguém tem raia aberta) → desempata por nome
+        assert eng['tecnico_sugerido'] == 'Ariel Roster'
+
+
+def test_roster_fora_do_ar_nao_derruba_a_abertura(monkeypatch):
+    """Se o Assinador não responder, a raia fica sem sugestão — mas a OS abre."""
+    _limpar()
+    monkeypatch.setattr(orq, '_roster_engenharia', lambda: [])
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    assert r['ok']
+    eng = next(x for x in r['raias'] if x['raia'] == 'engenharia')
+    assert eng['tecnico_sugerido'] is None
+
+
+def test_prazo_do_crm_desce_para_a_demanda_em_iso():
+    """A consultora digita data BR; a coluna é TEXT e consultas fazem ::date,
+    então tem que ser gravada em ISO (ver o 500 do dashboard de 26/08)."""
+    _limpar()
+    p = dict(PAYLOAD)
+    p['prazo'] = '17/07/2026'
+    d = _demanda_da_os(orq.abrir_os(p, dry_run=False))
+    assert d['prazo'] == '2026-07-17'
+
+
+def test_sem_prazo_a_demanda_nasce_sem_data():
+    _limpar()
+    d = _demanda_da_os(orq.abrir_os(dict(PAYLOAD), dry_run=False))
+    assert d['prazo'] in (None, '')
+
+
+def test_prazo_invalido_nao_grava_lixo():
+    _limpar()
+    p = dict(PAYLOAD)
+    p['prazo'] = 'quando der'
+    d = _demanda_da_os(orq.abrir_os(p, dry_run=False))
+    assert d['prazo'] in (None, '')
+
+
+def test_roster_descarta_cargo_de_gestao(monkeypatch):
+    """Coordenadora/Supervisor/Diretor não executam demanda — mesma régua que o
+    Painel de Entregas Técnicas já usa para tirar gestor da disputa."""
+    import io as _io
+    import json as _j
+    import urllib.request as _u
+
+    payload = {'tecnicos': [
+        {'nome': 'Fabiana Ferreira', 'cargo': 'Coordenadora de Segurança do Trabalho'},
+        {'nome': 'Valeria de Jesus', 'cargo': 'Supervisora de Segurança do Trabalho'},
+        {'nome': 'Bernardo Junqueira', 'cargo': 'Diretor de Operações'},
+        {'nome': 'Tainara Gomes', 'cargo': 'Técnico (a) em Segurança do Trabalho  IV'},
+        {'nome': 'Mauro Malta', 'cargo': 'Engenheiro em Segurança do Trabalho'},
+        {'nome': '   ', 'cargo': 'Técnico (a) em Segurança do Trabalho'},
+    ]}
+
+    class _Resp(_io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    monkeypatch.setenv('CRM_PLANNER_SECRET', 'x')
+    monkeypatch.setattr(_u, 'urlopen',
+                        lambda *a, **k: _Resp(_j.dumps(payload).encode('utf-8')))
+    orq._roster_cache['ate'] = 0          # ignora cache de chamadas anteriores
+    assert orq._roster_engenharia() == ['Tainara Gomes', 'Mauro Malta']
+    orq._roster_cache['ate'] = 0
+
+
+def test_roster_sem_segredo_nao_chama_o_assinador(monkeypatch):
+    monkeypatch.delenv('CRM_PLANNER_SECRET', raising=False)
+    orq._roster_cache['ate'] = 0
+    assert orq._roster_engenharia() == []
+    orq._roster_cache['ate'] = 0
