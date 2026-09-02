@@ -371,29 +371,6 @@ def get_bucket_id_by_name(plan_id, nome_contains, fallback=None):
 
 # ── SharePoint / OneDrive ────────────────────────────────────────────
 
-def upload_to_sharepoint(site_id: str, drive_id: str, folder_path: str,
-                          filename: str, content: bytes) -> dict:
-    """Faz upload de arquivo para SharePoint/OneDrive."""
-    url = f'{GRAPH_BASE}/sites/{site_id}/drives/{drive_id}/root:/{folder_path}/{filename}:/content'
-    req = urllib.request.Request(url, data=content, headers={
-        'Authorization': f'Bearer {_get_token()}',
-        'Content-Type': 'application/octet-stream',
-    }, method='PUT')
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read())
-
-
-def list_sharepoint_files(site_id: str, drive_id: str, folder_path: str = '') -> list:
-    """Lista arquivos de uma pasta no SharePoint."""
-    path = f'/sites/{site_id}/drives/{drive_id}/root'
-    if folder_path:
-        path += f':/{folder_path}:'
-    path += '/children'
-    return graph_paginate(path)
-
-
-# ── Outlook ──────────────────────────────────────────────────────────
-
 def list_emails(user_id: str, top: int = 50, folder: str = 'inbox') -> list:
     """Lista e-mails de um usuário (requer Mail.Read delegated ou Mail.Read.All app)."""
     return graph_paginate(

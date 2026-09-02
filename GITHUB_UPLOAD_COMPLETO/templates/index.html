@@ -2084,7 +2084,6 @@
 
   </style>
 </head>
-<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.82/build/spline-viewer.js"></script>
 <body data-user="{{ current_user.email if current_user.is_authenticated else 'anon' }}" data-role="{{ current_user.role if current_user.is_authenticated else '' }}">
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="mobileSidebarClose()"></div>
 
@@ -7599,36 +7598,11 @@ async function quim_importarBaixas() {
 }
 
 // ── Bomba SN update ────────────────────────────────────────────────
-function qUpdateBombaSN() {
-  // Bomba agora é por avaliação — o seletor do topo foi removido.
-  const elB = document.getElementById('q-bomba');
-  const sel = document.getElementById('q-bomba-sn');
-  if (!elB || !sel) return;
-  const model = elB.value;
-  if (!model) { sel.innerHTML = '<option value="">— Selecione a bomba primeiro —</option>'; return; }
-  fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
-    sel.innerHTML = sns.map(sn=>`<option value="${sn}">${sn}</option>`).join('');
-  }).catch(()=>{ sel.innerHTML = '<option value="">Erro ao carregar</option>'; });
-}
-
 // ── Coleta Químico: Bomba SN auto-fill (Item 6) ──────────────────────
 const _CQ_BOMBA_MAP = {
   'BDX-II GILLIAN': 'bdx', 'AIRLITE SKC': 'airlite',
   'FORMIS TURAM': 'turam', 'INLITE VENTUSPRO': 'inlite'
 };
-function cqUpdateBombaSN() {
-  const bomba = document.getElementById('cq-bomba').value;
-  const sel   = document.getElementById('cq-id-bomba');
-  if (!sel) return;
-  const model = _CQ_BOMBA_MAP[bomba];
-  if (!model) { sel.innerHTML = '<option value="">— Selecione a bomba primeiro —</option>'; return; }
-  const cur = sel.value;
-  fetch(`/api/pump_sns?model=${model}`).then(r=>r.json()).then(sns=>{
-    sel.innerHTML = '<option value="">— Selecione o S/N —</option>' + sns.map(sn=>`<option value="${sn}">${sn}</option>`).join('');
-    if (cur && sns.includes(cur)) sel.value = cur;
-  }).catch(()=>{ sel.innerHTML = '<option value="">—</option>'; });
-}
-
 // ── Cadeia de custódia import ──────────────────────────────────────
 async function qImportCadeia() {
   const f = document.getElementById('q-cadeia-file').files[0];
@@ -16890,36 +16864,6 @@ const NV_EQUIP_DB = {
   '0209':     { tipo:'therm', modelo:'Chrompack Smart TEMP', cert:'180.646', validade:'2027-03-24' },
   '18120055': { tipo:'therm', modelo:'Criffer PROTEMP4',     cert:'2604A38707', validade:'2027-04-01' },
 };
-
-function nvEquipAutoFill(campo, valor) {
-  if (!valor || valor.length < 3) return;
-  const eq = NV_EQUIP_DB[valor] || NV_EQUIP_DB[Object.keys(NV_EQUIP_DB).find(k => k.toLowerCase() === valor.toLowerCase())];
-  if (!eq) return;
-
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val) { el.value = val; el.style.borderColor='var(--green)'; setTimeout(()=>el.style.borderColor='',2000); } };
-  const showBadge = (targetId) => {
-    const el = document.getElementById(targetId);
-    if (!el) return;
-    let badge = el.parentElement.querySelector('.nv-autofill-badge');
-    if (!badge) { badge = document.createElement('div'); badge.className='nv-autofill-badge'; badge.style.cssText='font-size:.62rem;color:var(--green);margin-top:2px;'; el.parentElement.appendChild(badge); }
-    badge.textContent = '⚡ preenchido automaticamente';
-    setTimeout(() => { if(badge) badge.textContent=''; }, 3000);
-  };
-
-  if (eq.tipo === 'dosim') {
-    set('nv-eq-dosim-modelo', eq.modelo);
-    set('nv-eq-dosim-cert',   eq.cert);
-    set('nv-eq-dosim-valid',  eq.validade);
-    showBadge('nv-eq-dosim-modelo');
-  } else if (eq.tipo === 'cal') {
-    set('nv-eq-cal-modelo',  eq.modelo);
-    showBadge('nv-eq-cal-modelo');
-  } else if (eq.tipo === 'bomba') {
-    set('nv-eq-bomba-cert',  eq.cert);
-    set('nv-eq-bomba-valid', eq.validade);
-    showBadge('nv-eq-bomba-cert');
-  }
-}
 
 // ── Equipamento por nº de série: lookup + status de calibração vs data da coleta ──
 function nvEquipInfo(sn) {

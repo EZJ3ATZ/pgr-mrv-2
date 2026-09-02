@@ -64,38 +64,7 @@ PRIORITY_MAP = {
 # ── Filtro de pipeline ────────────────────────────────────────────────
 
 # Buckets que representam demandas operacionais reais de clientes
-_BUCKETS_OPERACIONAIS_PIPELINE = {
-    'medições', 'medicoes',           # bucket principal
-    'verde', 'amarela', 'vermelho', 'laranja',  # status de medições
-    '🔴 em andamento', 'em andamento',
-    'entregas técnicas', 'entregas tecnicas',
-    'entregue / concluído', 'entregue',
-    'concluído ✅', 'concluído', 'concluido',
-    'clientes da base',
-    'demandas para análise', 'demandas para analise',
-    'novas demandas', 'engenharia - novas demandas',
-    'renovação', 'renovacao',
-    'inclusão de funcionários',
-    'ajustes pontuais',
-    'correção',
-    'pcmso',
-}
-
 # Buckets que são explicitamente internos/admin — nunca viram demanda operacional
-_BUCKETS_IGNORADOS = {
-    'treinamento', 'treinamentos',
-    'tarefas administrativas', 'administrativo',
-    'reunião gestores', 'reuniao gestores',
-    'kickoff', 'materiais',
-    'projetos principais',
-    'lista de pendências', 'lista de pendencias',
-    'email respondido', 'emails respondidos',
-    'emails pendentes', 'email pendente',
-    'tarefas pendentes',
-    'avançar', 'recursos humanos', 'rh', 'onboarding',
-    'financeiro', 'compras', 'contratação',
-}
-
 # ── Filtro AET (Análise Ergonômica do Trabalho) ───────────────────────────
 # AET é ergonomia — NÃO entra no sistema de medições.
 # Regra: tarefa com "AET" no título MAS SEM componente de medição → ignorada.
@@ -261,37 +230,6 @@ def _extrair_desc_comentarios(group_id: str, thread_id: str) -> str:
     except Exception as e:
         log.debug('[planner_sync] comentarios desc erro: %s', e)
     return ''
-
-
-def _extrair_os_multi(titulo: str, desc: str, checklist: list) -> tuple[str | None, str]:
-    """
-    Extrai número de OS de múltiplas fontes.
-    Retorna (os_numero, fonte: 'titulo'|'descricao'|'checklist'|None).
-    """
-    os_num = extrair_os(titulo)
-    if os_num:
-        return os_num, 'titulo'
-
-    # Tentar na descrição
-    if desc:
-        os_num = extrair_os(desc)
-        if os_num:
-            return os_num, 'descricao'
-        # Procurar em linhas da descrição
-        for linha in desc.splitlines():
-            os_num = extrair_os(linha.strip())
-            if os_num:
-                return os_num, 'descricao'
-
-    # Tentar em itens do checklist
-    if checklist:
-        for item in checklist:
-            t = item.get('titulo', '') or ''
-            os_num = extrair_os(t)
-            if os_num:
-                return os_num, 'checklist'
-
-    return None, 'nenhuma'
 
 
 def _parse_date(s) -> str | None:

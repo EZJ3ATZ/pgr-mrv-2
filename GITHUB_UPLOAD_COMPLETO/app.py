@@ -3744,19 +3744,6 @@ def _r_p(text, bold=False, size=18, color=None, center=False, fill=None):
     return f'<w:p>{ppr}<w:r>{rpr}<w:t xml:space="preserve">{_r_esc(text)}</w:t></w:r></w:p>'
 
 
-def _r_cell(text, width=None, bold=False, fill=None, span=None, center=False, size=18):
-    """Célula de tabela."""
-    tcp = '<w:tcPr>'
-    if width:
-        tcp += f'<w:tcW w:w="{width}" w:type="dxa"/>'
-    if span:
-        tcp += f'<w:gridSpan w:val="{span}"/>'
-    if fill:
-        tcp += f'<w:shd w:val="clear" w:fill="{fill}" w:color="auto"/>'
-    tcp += '</w:tcPr>'
-    return f'<w:tc>{tcp}{_r_p(text, bold=bold, center=center, size=size)}</w:tc>'
-
-
 def _r_row2(label, value, lw=3500, vw=6967, lbold=True, size=18):
     """Linha 2-colunas: label | valor."""
     borders = ('<w:tcBorders>'
