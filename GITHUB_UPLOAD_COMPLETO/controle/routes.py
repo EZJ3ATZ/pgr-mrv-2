@@ -4488,6 +4488,28 @@ def api_salvar_medicao_wizard():
         except Exception as e:
             print(f'[medicoes] anexos da visita: {e}')
 
+    # Horario de campo e OBRIGATORIO para finalizar: e dele que sai o tempo
+    # de exposicao do laudo, e sem ele a planilha remontada sai com o campo
+    # vazio. O checklist da tela avisava, mas nao impedia — duas coletas de
+    # producao foram finalizadas sem horario (ruido 17/06 e a OS 6482868 de
+    # 16/07, esta com calor E vibracao em branco). Rascunho nao passa por
+    # aqui, entao ninguem perde trabalho no meio.
+    _horas = {
+        'ruido':   (d.get('campo_ruido') or {}),
+        'calor':   (d.get('campo_generico') or {}),
+        'vibracao': (d.get('campo_generico') or {}),
+    }.get(tipo if not tipo.startswith('vibracao') else 'vibracao')
+    if _horas is not None:
+        _hi = str(_horas.get('hora_ini') or '').strip()
+        _hf = str(_horas.get('hora_fim') or '').strip()
+        if not _hi or not _hf:
+            _lbl = {'ruido': 'de ruído', 'calor': 'de calor'}.get(
+                tipo, 'de vibração' if tipo.startswith('vibracao') else '')
+            return jsonify({'ok': False, 'erro':
+                            f'Informe a hora de início e de término da medição {_lbl} '
+                            f'antes de finalizar — é ela que dá o tempo de exposição '
+                            f'do laudo. Nada foi salvo.'}), 400
+
     if tipo == 'ruido':
         cr = d.get('campo_ruido') or {}
         payload_ruido = {
