@@ -279,3 +279,63 @@ def test_fila_vazia_quando_dormente(monkeypatch):
     monkeypatch.setenv('ORQ_ATIVO', '0')
     orq.abrir_os(dict(PAYLOAD), dry_run=False)               # preview, não grava
     assert orq.fila_aprovacao()['total'] == 0
+
+
+# ── Procedência do match de empresa (fix 01/09) ─────────────────────────
+# Antes, `_criar_demanda_medicao` casava a empresa SÓ pelo CNPJ e não marcava
+# nada: uma OS com o CNPJ trocado entrava calada na ficha de outro cliente.
+
+def _empresa_fixa(cnpj, nome):
+    with get_db() as conn:
+        conn.execute("DELETE FROM empresas WHERE cnpj=?", (cnpj,))
+        conn.execute("INSERT INTO empresas (cnpj, nome) VALUES (?,?)", (cnpj, nome))
+        return row_to_dict(conn.execute(
+            "SELECT id FROM empresas WHERE cnpj=?", (cnpj,)).fetchone())['id']
+
+
+def _demanda_da_os(resp):
+    med = next(x for x in resp['raias'] if x['raia'] == 'medicao')
+    with get_db() as conn:
+        return row_to_dict(conn.execute(
+            "SELECT * FROM demandas WHERE id=?", (med['demanda_id'],)).fetchone())
+
+
+def test_cnpj_casa_com_nome_diferente_marca_revisao():
+    _limpar()
+    eid = _empresa_fixa(PAYLOAD['cnpj'], 'BANCO DO BRASIL SA')
+    d = _demanda_da_os(orq.abrir_os(dict(PAYLOAD), dry_run=False))
+    assert d['empresa_id'] == eid                      # o CNPJ ainda manda
+    assert d['needs_review'] == 1                      # ...mas não entra calado
+    assert d['empresa_match_metodo'] == 'cnpj_nome_divergente'
+    assert 0 <= d['empresa_match_score'] < orq.MATCH_NOME_MIN
+
+
+def test_cnpj_com_o_mesmo_nome_nao_pede_revisao():
+    _limpar()
+    _empresa_fixa(PAYLOAD['cnpj'], PAYLOAD['empresa'])
+    d = _demanda_da_os(orq.abrir_os(dict(PAYLOAD), dry_run=False))
+    assert d['needs_review'] == 0
+    assert d['empresa_match_metodo'] == 'cnpj'
+    assert d['empresa_match_score'] == 1.0
+
+
+def test_empresa_nova_registra_metodo_criada():
+    _limpar()
+    p = dict(PAYLOAD)
+    p['cnpj'] = '99.888.777/0001-66'
+    p['empresa'] = 'Empresa Inexistente Para Teste Ltda'
+    with get_db() as conn:
+        conn.execute("DELETE FROM empresas WHERE cnpj=?", (p['cnpj'],))
+    d = _demanda_da_os(orq.abrir_os(p, dry_run=False))
+    assert d['needs_review'] == 0
+    assert d['empresa_match_metodo'] == 'criada'
+
+
+def test_sufixo_societario_diferente_nao_vira_revisao():
+    """"ORQ Teste Ltda" x "ORQ TESTE LTDA - ME" é a MESMA empresa: normalizar_nome
+    derruba sufixo e acento, então não pode encher o banner de falso positivo."""
+    _limpar()
+    _empresa_fixa(PAYLOAD['cnpj'], 'ORQ TESTE LTDA - ME')
+    d = _demanda_da_os(orq.abrir_os(dict(PAYLOAD), dry_run=False))
+    assert d['needs_review'] == 0
+    assert d['empresa_match_metodo'] == 'cnpj'

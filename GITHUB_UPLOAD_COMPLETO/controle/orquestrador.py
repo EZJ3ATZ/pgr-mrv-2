@@ -31,6 +31,9 @@ EMAIL_FINANCEIRO     = os.environ.get('ORQ_EMAIL_FINANCEIRO', 'grupofinanceiro@o
 EMAIL_CREDENCIAMENTO = os.environ.get('ORQ_EMAIL_CREDENCIAMENTO', 'credenciamento@ocupacional.com.br')
 EMAIL_REMETENTE      = os.environ.get('ORQ_MAIL_FROM', 'medicoes@ocupacional.com.br')
 ONBOARDING_MIN_VIDAS = 300
+# Abaixo desta similaridade, CNPJ que casa com nome diferente vira revisão humana.
+# Mesmo limiar do fuzzy de `empresa_match.encontrar_empresa`.
+MATCH_NOME_MIN       = 0.72
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS os_ordens (
@@ -348,14 +351,36 @@ def abrir_os(payload, dry_run=False):
 
 
 def _criar_demanda_medicao(conn, numero, os_row, itens):
-    """Medição contratada entra direto na tabela demandas do portal."""
+    """Medição contratada entra direto na tabela demandas do portal.
+
+    O CNPJ casa a empresa, mas casar SÓ por CNPJ é cego: um dígito errado no
+    fechamento joga a OS na ficha de outro cliente e nada avisa. Medido em
+    01/09/2026 — abri uma OS de teste com o CNPJ do Banco do Brasil e a demanda
+    entrou calada na ficha do BANCO DO BRASIL SA. Por isso, quando o CNPJ casa
+    mas o NOME não bate, a demanda nasce com `needs_review=1` e guarda o método
+    e o score do match, para aparecer no banner de revisão humana.
+    """
+    from .empresa_match import similaridade
+    metodo, score, revisar = None, None, 0
     emp = None
     if os_row['cnpj']:
-        emp = conn.execute("SELECT id FROM empresas WHERE cnpj=?",
+        emp = conn.execute("SELECT id, nome FROM empresas WHERE cnpj=?",
                            (os_row['cnpj'],)).fetchone()
+        if emp:
+            nome_banco = row_to_dict(emp).get('nome') or ''
+            sim = similaridade(os_row['empresa'], nome_banco)
+            if sim < MATCH_NOME_MIN:
+                metodo, score, revisar = 'cnpj_nome_divergente', round(sim, 3), 1
+                log.warning('[orq] OS %s: CNPJ %s casou com "%s", mas a OS diz "%s" '
+                            '(similaridade %.2f) — demanda marcada para revisão',
+                            numero, os_row['cnpj'], nome_banco, os_row['empresa'], sim)
+            else:
+                metodo, score = 'cnpj', 1.0
     if not emp:
-        emp = conn.execute("SELECT id FROM empresas WHERE nome=?",
+        emp = conn.execute("SELECT id, nome FROM empresas WHERE nome=?",
                            (os_row['empresa'],)).fetchone()
+        if emp:
+            metodo, score = 'nome_exato', 1.0
     if emp:
         empresa_id = row_to_dict(emp)['id']
     else:
@@ -364,6 +389,7 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
         empresa_id = row_to_dict(conn.execute(
             "SELECT id FROM empresas WHERE nome=?",
             (os_row['empresa'],)).fetchone())['id']
+        metodo, score = 'criada', 1.0
     desc = "MEDIÇÕES A REALIZAR:\n" + "\n".join(
         f"- {i.get('nome','?')}" + (f" (x{int(i['quantidade'])})"
         if i.get('quantidade') and float(i['quantidade']) > 1 else '')
@@ -371,9 +397,12 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
     titulo = f"{numero} - {os_row['empresa']}"
     conn.execute(
         """INSERT INTO demandas (numero_os, empresa_id, cnpj, titulo, nome_tarefa,
-             descricao, status, origem, tipo_demanda, criado_em, atualizado_em)
-           VALUES (?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?, ?)""",
-        (numero, empresa_id, os_row['cnpj'], titulo, titulo, desc, _now(), _now()))
+             descricao, status, origem, tipo_demanda,
+             empresa_match_score, empresa_match_metodo, needs_review,
+             criado_em, atualizado_em)
+           VALUES (?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?,?,?, ?, ?)""",
+        (numero, empresa_id, os_row['cnpj'], titulo, titulo, desc,
+         score, metodo, revisar, _now(), _now()))
     return row_to_dict(conn.execute(
         "SELECT id FROM demandas WHERE numero_os=? ORDER BY id DESC LIMIT 1",
         (numero,)).fetchone())['id']

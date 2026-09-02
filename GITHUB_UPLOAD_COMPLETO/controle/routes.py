@@ -7579,8 +7579,9 @@ def api_reclassificar():
 @controle_bp.route('/demandas/revisao')
 def api_fila_revisao():
     """
-    Demandas marcadas como needs_review=1 pelo motor inteligente.
-    Retorna lista com score, inconsistências e fontes disponíveis.
+    Demandas marcadas como needs_review=1 pelo motor inteligente (Planner) ou
+    pelo orquestrador da OS (`crm_os`, quando o CNPJ casa com empresa de nome
+    diferente). Retorna lista com score, inconsistências e fontes disponíveis.
     """
     init_db()
     limit = min(int(request.args.get('limit', 100) or 100), 500)
@@ -7595,7 +7596,7 @@ def api_fila_revisao():
             FROM demandas d
             LEFT JOIN empresas e ON e.id = d.empresa_id
             WHERE d.needs_review = 1
-              AND d.origem = 'planner'
+              AND d.origem IN ('planner', 'crm_os')
             ORDER BY d.atualizado_em DESC
             LIMIT ?
         """, (limit,)).fetchall()
@@ -7621,7 +7622,8 @@ def api_revisao_stats():
     init_db()
     with get_db() as conn:
         total_row = conn.execute(
-            "SELECT COUNT(*) AS c FROM demandas WHERE needs_review=1 AND origem='planner'"
+            "SELECT COUNT(*) AS c FROM demandas "
+            "WHERE needs_review=1 AND origem IN ('planner', 'crm_os')"
         ).fetchone()
         total = (row_to_dict(total_row).get('c', 0) if total_row else 0) or 0
         rows = conn.execute("""
@@ -7631,7 +7633,7 @@ def api_revisao_stats():
                    e.nome AS empresa_nome
             FROM demandas d
             LEFT JOIN empresas e ON e.id = d.empresa_id
-            WHERE d.needs_review = 1 AND d.origem = 'planner'
+            WHERE d.needs_review = 1 AND d.origem IN ('planner', 'crm_os')
             ORDER BY d.atualizado_em DESC LIMIT 20
         """).fetchall()
     return jsonify({'total': total, 'itens': [row_to_dict(r) for r in rows]})
