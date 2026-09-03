@@ -9410,7 +9410,10 @@ async function ctrlFetch(url, opt = {}, _retry = true) {
 //  - POSTs de coleta entram numa fila (mesma que o service worker sincroniza).
 //  Online: comportamento idêntico ao de antes (só grava cache em paralelo).
 // ════════════════════════════════════════════════════════════════════════
-const _OFF_GET_CACHE  = ['/controle/bombas','/controle/dosimetros-ruido','/controle/calibradores-ruido','/controle/agentes','/controle/empresas'];
+// '/controle/amostradores' entrou aqui porque alimenta a lista de codigos da
+// planilha quimica. Sem cache ela ficava vazia justamente em campo, sem rede,
+// que e onde o codigo digitado errado nasce.
+const _OFF_GET_CACHE  = ['/controle/bombas','/controle/dosimetros-ruido','/controle/calibradores-ruido','/controle/agentes','/controle/empresas','/controle/amostradores'];
 const _OFF_POST_QUEUE = ['/controle/medicoes','/controle/planejamentos'];
 function _offMatch(url, list){ const p = (url||'').split('?')[0]; return list.some(x => p === x || p.startsWith(x + '/') || p.startsWith(x + '?') || p === x); }
 
@@ -17407,7 +17410,32 @@ function nvCqUpdateAmostr(idx, ai, field, value) {
   if (_nvCqAgentes[idx]?.amostradores[ai]) _nvCqAgentes[idx].amostradores[ai][field] = value;
   nvCqRenderAmostrTable(idx);
 }
+// Lista de amostradores para o campo de codigo da planilha quimica. Digitar
+// a mao produzia 'MTS3091' onde o cadastro tem '3091' e o laboratorio devolve
+// outra grafia ainda — cada divergencia dessas e uma amostra que nao casa com
+// o laudo. Com a lista o tecnico escolhe e o codigo ja nasce certo.
+async function _nvCarregarAmostradoresDL() {
+  let dl = document.getElementById('nv-cq-amostr-dl');
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'nv-cq-amostr-dl';
+    document.body.appendChild(dl);
+  }
+  if (dl.dataset.carregado === '1') return;
+  try {
+    const todos = await ctrlFetch('/controle/amostradores');
+    const uteis = (Array.isArray(todos) ? todos : [])
+      .filter(a => a && a.codigo && ['disponivel', 'reservado'].includes(a.status));
+    // _esc so troca & < > — dentro de atributo faltam as aspas
+    const _at = s => _esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    dl.innerHTML = uteis.map(a =>
+      `<option value="${_at(a.codigo)}">${_esc(a.tipo || '')}</option>`).join('');
+    dl.dataset.carregado = '1';
+  } catch (_) { /* sem rede: segue como campo livre */ }
+}
+
 function nvCqRenderAmostrTable(idx) {
+  _nvCarregarAmostradoresDL();
   const tb = document.getElementById('nv-cqa-amostr-' + idx);
   if (!tb) return;
   const ams = _nvCqAgentes[idx]?.amostradores || [];
@@ -17423,7 +17451,7 @@ function nvCqRenderAmostrTable(idx) {
     const dvS=dv>5?'color:#92400e;font-weight:700;background:#2a1500;':dv>0?'color:#065f46;':'';
     return `<tr>
       <td style="padding:4px;border:1px solid var(--border);text-align:center;">${ai+1}</td>
-      <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" placeholder="ID" style="${inp}width:90px;" onchange="nvCqUpdateAmostr(${idx},${ai},'id_amostrador',this.value)"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" placeholder="ID" list="nv-cq-amostr-dl" autocomplete="off" style="${inp}width:90px;" onchange="nvCqUpdateAmostr(${idx},${ai},'id_amostrador',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" placeholder="0.150" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_inicial',parseFloat(this.value)||0)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" placeholder="0.150" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_final',parseFloat(this.value)||0)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_inicio||''}" style="${inp}width:78px;" onchange="nvCqUpdateAmostr(${idx},${ai},'hora_inicio',this.value)"></td>
@@ -17930,6 +17958,28 @@ function _nvSetSalvarDisabled(disabled, finalizado) {
   }
 }
 
+// O aviso de amostrador fora do cadastro precisa sobreviver ao relatorio de
+// campo, que roda logo depois e reescreve o #nv-final-status. Fica numa
+// funcao para ser chamado nos dois momentos.
+function nvMostrarAvisoAmostrador() {
+  const soltos = window._nvAmostrSoltos || [];
+  if (!soltos.length) return false;
+  const lst = soltos.join(', ');
+  const plural = soltos.length > 1;
+  const st = document.getElementById('nv-final-status');
+  if (st) st.innerHTML =
+    '<span style="color:var(--yellow);">⚠️ Medição salva. '
+    + (plural ? 'Os códigos de amostrador ' : 'O código de amostrador ')
+    + _esc(lst)
+    + (plural ? ' não existem no cadastro. ' : ' não existe no cadastro. ')
+    + 'Avise a engenharia para cadastrar ou corrigir: assim '
+    + (plural ? 'as amostras não casam ' : 'a amostra não casa ')
+    + 'com o laudo do laboratório e '
+    + (plural ? 'os tubos continuam ' : 'o tubo continua ')
+    + 'como disponível no estoque.</span>';
+  return true;
+}
+
 async function nvSalvarMedicao() {
   // Trava de reentrância: evita que duplo-clique grave a medição 2x
   if (window._nvSaving) return null;
@@ -17985,6 +18035,18 @@ async function nvSalvarMedicao() {
       ibutg_setores: window._nvCalorSetores || [],
       vibr_pontos:   window._nvVibrPontos   || [],
     });
+    // Data da medição é obrigatória. Precisa travar AQUI, não só no
+    // backend: sem rede o POST vai para a fila offline e o 400 só
+    // apareceria na sincronização, horas depois e longe desta tela.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(base.data || '')) {
+      document.getElementById('nv-final-status').innerHTML =
+        '<span style="color:var(--yellow);">⚠️ Informe a data da medição antes de finalizar.</span>';
+      _showToast('Informe a data da medição antes de finalizar.','warn');
+      document.getElementById('ctrl-nv-data')?.focus();
+      _nvSetSalvarDisabled(false);   // reabilita p/ corrigir e tentar de novo
+      return null;
+    }
+
     // Coletar agentes não medidos (do planejamento vinculado)
     const agentesPlano = window._nvAgentesPlano || [];
     const naoMedidos = [];
@@ -18002,6 +18064,7 @@ async function nvSalvarMedicao() {
     let resp = {};
     let _primeiro = true;
     const _duplicadas = [];
+    const _amostrSoltos = [];
     window._nvAgentesFalhos = [];
     for (const tp of tiposSalvar) {
       const p = { ...base, tipo: tp };
@@ -18020,6 +18083,11 @@ async function nvSalvarMedicao() {
       const r = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p)});
       // Trava backend: medição já finalizada para esta demanda (planilha duplicada)
       if (r && r.duplicada) { _duplicadas.push(r.aviso || 'Medição já finalizada.'); }
+      // Código de amostrador que não existe no cadastro: a amostra não vai
+      // casar com o laudo do laboratório e o tubo não recebeu baixa.
+      (r && r.amostradores_fora_do_cadastro || []).forEach(c => {
+        if (!_amostrSoltos.includes(c)) _amostrSoltos.push(c);
+      });
       if (_primeiro) {
         resp = r || {};
         window._nvSavedId   = resp.id   || null;
@@ -18037,6 +18105,11 @@ async function nvSalvarMedicao() {
           const extra = { ...base, tipo: 'quimico', campo_quimico: _nvCqAgentes[ai] };
           try {
             const re = await ctrlFetch('/controle/medicoes', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(extra)});
+            // os agentes 2..N sobem por aqui: sem isto o aviso de amostrador
+            // fora do cadastro so enxergava o primeiro agente da planilha
+            ((re && re.amostradores_fora_do_cadastro) || []).forEach(c => {
+              if (!_amostrSoltos.includes(c)) _amostrSoltos.push(c);
+            });
             if (re && re.ok === false) throw new Error(re.erro || re.aviso || 'falha');
           } catch (e) {
             const _qual = _nvCqAgentes[ai].substancias || `agente ${ai+1}`;
@@ -18076,8 +18149,20 @@ async function nvSalvarMedicao() {
     if (_duplicadas.length > 0) {
       _showToast('⚠️ Parte já estava finalizada: '+_duplicadas[0],'warn');
     }
-    document.getElementById('nv-final-status').innerHTML='<span style="color:var(--green);">✅ Medição salva com sucesso!</span>';
-    _showToast('✅ Medição salva!','ok');
+    if (_amostrSoltos.length) {
+      // Guardado em window: logo depois disto nvConcluirOS chama
+      // nvGerarRelatorioCampo, e a primeira linha dela sobrescreve o
+      // #nv-final-status. O aviso sozinho aqui durava menos de um segundo.
+      window._nvAmostrSoltos = _amostrSoltos.slice();
+      nvMostrarAvisoAmostrador();
+      _showToast((_amostrSoltos.length > 1 ? 'Medição salva. Confira os amostradores '
+                                           : 'Medição salva. Confira o amostrador ')
+                 + _amostrSoltos.join(', ') + ' — não está no cadastro.','warn');
+    } else {
+      window._nvAmostrSoltos = null;
+      document.getElementById('nv-final-status').innerHTML='<span style="color:var(--green);">✅ Medição salva com sucesso!</span>';
+      _showToast('✅ Medição salva!','ok');
+    }
     // Marca como finalizada: botões ficam travados até reabrir a visita
     window._nvFinalizado = true;
     window._nvSavedResp  = resp;
@@ -18344,6 +18429,8 @@ async function nvConcluirOS() {
   // ANTES: "Finalizar planilha" só salvava no banco e NÃO gerava arquivo — o técnico
   // achava que "a planilha não veio". Agora gera/baixa a planilha SEMPRE (nova ou repetida).
   try { await nvGerarRelatorioCampo(); } catch (e) {}
+  // o relatorio reescreve o #nv-final-status; repoe o aviso por cima
+  try { nvMostrarAvisoAmostrador(); } catch (e) {}
   if (jaExistia) {
     // A trava de duplicidade barrou um registro novo. Mensagem honesta (sem ✅ falso),
     // mas a planilha foi gerada do mesmo jeito pra ele baixar.

@@ -1216,6 +1216,9 @@ def rebuild_frota():
 
 
 _VAZAO_NUM_RE = re.compile(r'\d+(?:[.,]\d+)?')
+# Data da medicao: o <input type="date"> manda sempre YYYY-MM-DD, entao
+# qualquer outra coisa e campo vazio ou payload adulterado.
+_DATA_ISO_RE  = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 def parse_vazao(raw):
     """Converte a string de vazao do guia_metodos numa faixa numerica (L/min).
@@ -3664,6 +3667,57 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=Fa
         return res
 
 
+def _canonizar_amostradores(amostradores):
+    """Troca o codigo digitado pelo codigo como esta no cadastro.
+
+    O campo e texto livre. O tecnico digita 'MTS3091', 'pvc 26t91' ou so
+    'FVPH'; o cadastro guarda '3091' e '26T91' e o laboratorio devolve
+    'PVC26T91'. Cada grafia diferente e uma amostra que depois nao casa com o
+    laudo: em 02/09/2026, 6 dos 39 codigos gravados nao existiam no cadastro,
+    e por isso a coleta da Hypofarma parecia nao existir numa conferencia
+    contra o laboratorio.
+
+    Usa o MESMO resolvedor do lab_inbox e da baixa automatica, de proposito:
+    uma terceira regra de normalizacao no sistema so criaria um terceiro
+    jeito de o codigo divergir.
+
+    Devolve (lista com o codigo do cadastro, lista dos que nao resolveram).
+    """
+    from .lab_inbox import _sistema_lookup, _norm
+    nao = []
+    if not amostradores:
+        return amostradores or [], nao
+    try:
+        look = _sistema_lookup()
+    except Exception as e:                      # cadastro fora do ar nao derruba o save
+        print(f'[medicoes] canonizar amostrador: {e}')
+        return amostradores, nao
+    saida = []
+    for am in amostradores:
+        am = dict(am or {})
+        txt = str(am.get('id_amostrador') or '').strip()
+        if not txt:
+            saida.append(am)
+            continue
+        cod = _norm(txt)
+        hit = look.get(_norm(am.get('tipo_amostrador')) + cod) or look.get(cod)
+        if not hit and len(cod) >= 5:
+            # digitou so o final do codigo ('81053A' de 'EC81053A')
+            cands = {d['id']: d for k, d in look.items() if k.endswith(cod)}
+            if len(cands) == 1:
+                hit = next(iter(cands.values()))
+        if hit and hit.get('codigo'):
+            am['id_amostrador'] = hit['codigo']
+            # leva o par inteiro: `codigo` nao tem UNIQUE no banco, entao
+            # so o codigo nao identifica o tubo com seguranca
+            if hit.get('tipo'):
+                am['tipo_amostrador'] = hit['tipo']
+        else:
+            nao.append(txt)
+        saida.append(am)
+    return saida, nao
+
+
 def _baixar_amostradores_quimico(amostradores, empresa_id, avaliador, data_medicao):
     """Dá baixa automática nos amostradores digitados na planilha química.
 
@@ -4054,13 +4108,36 @@ def api_laudo_prefill():
 
 
 # ── Fichas de Campo (HTML print) ─────────────────────────────────────
-def _cods_amostr(lista):
-    """Conjunto normalizado dos códigos de amostrador de uma lista de dicts."""
+def _cods_amostr(lista, look=None):
+    """Conjunto de chaves que identificam os amostradores de uma lista de dicts.
+
+    Chave = o id do tubo no cadastro quando o código resolve; o texto
+    normalizado quando não resolve. Nunca as duas: só o id porque desde
+    02/09/2026 a coleta grava o código canônico enquanto as linhas gravadas
+    antes estão como o técnico digitou, e comparando texto 'MTS3091' e '3091'
+    — o MESMO tubo — nunca se cruzam; e só o id porque `codigo` não tem
+    UNIQUE, então incluir o texto junto faria dois tubos diferentes que
+    dividem um código colidirem e a segunda amostra da visita ser recusada.
+
+    `look` é o índice de `_sistema_lookup()`. Sem ele vale o texto, como antes.
+    """
     out = set()
     for a in (lista or []):
         c = re.sub(r'\s+', '', str((a or {}).get('id_amostrador') or '')).upper()
-        if c:
-            out.add(c)
+        if not c:
+            continue
+        hit = None
+        if look:
+            tp = re.sub(r'\s+', '', str((a or {}).get('tipo_amostrador') or '')).upper()
+            hit = look.get(tp + c) or look.get(c)
+        if hit and hit.get('id') is not None:
+            # SÓ a identidade: pôr o texto junto faria dois tubos distintos
+            # que dividem o mesmo `codigo` (não há UNIQUE) colidirem, e a
+            # segunda amostra da visita seria recusada como duplicada — o
+            # estrago da LPC descrito no comentário de _coleta_duplicada.
+            out.add('#%s' % hit['id'])
+        else:
+            out.add(c)                            # fora do cadastro: vale o texto
     return out
 
 
@@ -4102,12 +4179,19 @@ def _coleta_duplicada(tipo, demanda_id, data, substancia=None,
                 (did, d10, substancia or '')).fetchall()]
             if not rows:
                 return False
-            novos_cods = _cods_amostr(amostradores)
+            # o mesmo indice para os dois lados da comparacao, uma consulta so
+            try:
+                from .lab_inbox import _sistema_lookup
+                _look = _sistema_lookup()
+            except Exception:
+                _look = None
+            novos_cods = _cods_amostr(amostradores, _look)
             novo_func  = _norm_nome(funcionario)
             for rw in rows:
                 cods = _cods_amostr([row_to_dict(x) for x in conn.execute(
-                    "SELECT id_amostrador FROM coletas_quimico_amostr WHERE coleta_id=?",
-                    (rw['id'],)).fetchall()])
+                    "SELECT id_amostrador, tipo_amostrador FROM coletas_quimico_amostr "
+                    "WHERE coleta_id=?",
+                    (rw['id'],)).fetchall()], _look)
                 if novos_cods and cods:
                     if novos_cods & cods:
                         return True          # mesmo tubo → mesma planilha
@@ -4136,19 +4220,6 @@ def api_salvar_medicao_wizard():
     # Técnico logado — cada medição é contabilizada para quem a finalizou
     tecnico_login = (current_user.nome if current_user.is_authenticated else '') or ''
 
-    # Fotos e assinaturas da visita: antes iam só pro PDF gerado na hora e o
-    # save descartava — a planilha remontada em Planilhas Feitas saía sem elas.
-    # Anexo nunca derruba o save da medição (erro só loga).
-    if d.get('fotos') or d.get('sig_avaliado') or d.get('sig_empresa'):
-        try:
-            from .db import save_visita_anexos
-            save_visita_anexos(
-                d.get('demanda_id'), d.get('empresa_nome', ''), d.get('data', ''),
-                fotos=(d.get('fotos') if d.get('fotos') else None),
-                sig_avaliado=d.get('sig_avaliado'), sig_empresa=d.get('sig_empresa'))
-        except Exception as e:
-            print(f'[medicoes] anexos da visita: {e}')
-
     # Horario de campo e OBRIGATORIO para finalizar: e dele que sai o tempo
     # de exposicao do laudo, e sem ele a planilha remontada sai com o campo
     # vazio. O checklist da tela avisava, mas nao impedia — duas coletas de
@@ -4170,6 +4241,38 @@ def api_salvar_medicao_wizard():
                             f'Informe a hora de início e de término da medição {_lbl} '
                             f'antes de finalizar — é ela que dá o tempo de exposição '
                             f'do laudo. Nada foi salvo.'}), 400
+
+    # Data da medicao e OBRIGATORIA para finalizar. Sem ela a coleta some
+    # de tudo que filtra por periodo (Planilhas Feitas, painel, conferencia
+    # com o laudo do laboratorio) e so reaparece em auditoria manual.
+    # Aconteceu 4 vezes em producao, todas em calor: Casa Espirita 17/06,
+    # Banco do Brasil 08/07 e as duas da Multi Formato em 27/08. A tela
+    # trava antes, mas esta guarda tem de existir aqui tambem: o POST entra
+    # em fila offline e chega ao servidor sem passar pela tela de novo.
+    # A coleta 'planejada' criada pelo planejamento nao passa por aqui.
+    if not _DATA_ISO_RE.match(str(d.get('data') or '').strip()):
+        return jsonify({'ok': False, 'erro':
+                        'Informe a data da medicao antes de finalizar. Sem ela a '
+                        'coleta nao entra nas planilhas nem no cruzamento com o '
+                        'laboratorio. Nada foi salvo.'}), 400
+
+    # Fotos e assinaturas da visita: antes iam só pro PDF gerado na hora e o
+    # save descartava — a planilha remontada em Planilhas Feitas saía sem elas.
+    # Anexo nunca derruba o save da medição (erro só loga).
+    # Fica DEPOIS das guardas de propósito: antes rodava no topo da função e
+    # uma finalização recusada deixava foto e assinatura no banco, com a
+    # mensagem dizendo 'Nada foi salvo'. E como o anexo é chaveado por
+    # (demanda_id, empresa_nome, data_coleta), com a data em branco ele
+    # nascia com a chave errada e sumia da planilha remontada.
+    if d.get('fotos') or d.get('sig_avaliado') or d.get('sig_empresa'):
+        try:
+            from .db import save_visita_anexos
+            save_visita_anexos(
+                d.get('demanda_id'), d.get('empresa_nome', ''), d.get('data', ''),
+                fotos=(d.get('fotos') if d.get('fotos') else None),
+                sig_avaliado=d.get('sig_avaliado'), sig_empresa=d.get('sig_empresa'))
+        except Exception as e:
+            print(f'[medicoes] anexos da visita: {e}')
 
     if tipo == 'ruido':
         cr = d.get('campo_ruido') or {}
@@ -4269,6 +4372,16 @@ def api_salvar_medicao_wizard():
         if bx['duplicada']:
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição química já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
+        # Normaliza o codigo do amostrador SO na hora de gravar, para a
+        # coleta casar com o laudo do laboratorio depois. Fica DEPOIS de
+        # _coleta_duplicada de proposito: as 39 linhas ja gravadas em
+        # producao estao cruas, e comparar canonico contra cru cegaria a
+        # trava de duplicidade justamente na transicao.
+        # O que nao resolver segue gravado como foi digitado e volta como
+        # aviso na tela: amostrador nao reconhecido tambem nao recebe
+        # baixa, entao fica 'disponivel' no estoque estando no laboratorio.
+        _ams_canon, _ams_soltos = _canonizar_amostradores(cq.get('amostradores') or [])
+        payload_q['amostradores'] = _ams_canon
         cid = save_coleta_quimico(payload_q)
         # Baixa automática dos amostradores usados (antes SÓ existia no botão manual
         # "Dar Baixa" — a planilha gravava o uso mas o estoque não saía do lugar)
@@ -4298,7 +4411,8 @@ def api_salvar_medicao_wizard():
         return jsonify({'ok': True, 'id': cid, 'tipo': 'quimico', 'medicao_baixada': bx['baixada'],
                         'medicao_sem_match': bx.get('sem_match', False),
                         'amostradores_baixados': bxa['baixados'],
-                        'amostradores_nao_reconhecidos': bxa['nao_encontrados']})
+                        'amostradores_nao_reconhecidos': bxa['nao_encontrados'],
+                        'amostradores_fora_do_cadastro': _ams_soltos})
 
     elif tipo in ('calor', 'vibracao', 'vibracao_vci', 'vibracao_vbma'):
         import json as _json
