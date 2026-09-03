@@ -106,23 +106,7 @@ except Exception as _e:
     print(f'[controle] erro ao carregar modulo: {_e}')
     traceback.print_exc()
 
-try:
-    from controle.mobile import mobile_bp
-    app.register_blueprint(mobile_bp)
-    print('[mobile] blueprint registrado OK')
-except Exception as _me:
-    import traceback
-    print(f'[mobile] erro ao carregar blueprint: {_me}')
-    traceback.print_exc()
 
-try:
-    from controle.campo import campo_bp
-    app.register_blueprint(campo_bp)
-    print('[campo] blueprint registrado OK')
-except Exception as _ce:
-    import traceback
-    print(f'[campo] erro ao carregar blueprint: {_ce}')
-    traceback.print_exc()
 
 # ── Log de tempo de resposta de cada interação ─────────────────────────
 # Mede TODA requisição (app + blueprints) sem tocar em nenhuma view: duração,
@@ -157,7 +141,7 @@ def _quer_json():
     """True se a requisição é de uma rota de API (deve responder JSON)."""
     try:
         p = request.path or ''
-        if p.startswith('/controle') or p.startswith('/mobile') or p.startswith('/api'):
+        if p.startswith('/controle') or p.startswith('/api'):
             return True
         if request.is_json:
             return True
@@ -171,7 +155,7 @@ def _quer_json():
     return False
 
 # ── Trava global: role=visualizador é somente leitura ─────────────────
-# Vale para TODOS os blueprints (controle, mobile, campo) e rotas do app.
+# Vale para TODOS os blueprints e rotas do app.
 # /auth/ fica fora para o visualizador conseguir logar e trocar a própria senha.
 @app.before_request
 def _bloquear_escrita_visualizador():

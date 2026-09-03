@@ -1,16 +1,12 @@
 /* Service Worker — Medições Ocupacional PWA */
-const CACHE = 'medicoes-v9';
-// NÃO listar '/mobile/' aqui: responde 302 -> /mobile/hoje; cachear um redirect
-// quebra o fallback de navegação offline (o Chrome recusa response 'redirected'
-// numa navegação). O fallback usa /mobile/hoje direto. '/sw.js' também sai (o
-// handler nem o intercepta).
-const SHELL = [
-  '/mobile/hoje',
-  '/mobile/nova-visita',
-  '/campo/',
-  '/static/mobile.css',
-  '/static/manifest.json',
-];
+const CACHE = 'medicoes-v10';   // v10: o shell do app de campo saiu; o activate
+                                 // apaga as versoes velhas e com elas as paginas
+                                 // /mobile/* que ficaram cacheadas nos aparelhos
+// O app de campo (/mobile e /campo) foi aposentado em 02/09/2026 por uso zero,
+// e com ele o shell offline dele. Sobrou o strict necessário para o app de
+// escritório: ele registra este mesmo /sw.js e usa a fila 'medicoes-offline'
+// para reenviar coleta feita sem rede (index.html, _offEnqueue/_offSincronizar).
+const SHELL = [];
 
 // ── Install: cache shell (tolerante a falha — uma URL ruim não derruba tudo) ──
 self.addEventListener('install', e => {
@@ -59,7 +55,7 @@ self.addEventListener('fetch', e => {
           return r;
         })
         .catch(async () =>
-          (await caches.match(e.request)) || (await caches.match('/mobile/hoje'))
+          await caches.match(e.request)
         )
     );
     return;
@@ -75,22 +71,6 @@ self.addEventListener('fetch', e => {
         }
         return r;
       }))
-    );
-    return;
-  }
-
-  // Shell pages: network-first com fallback para cache
-  if (url.pathname.startsWith('/mobile/')) {
-    e.respondWith(
-      fetch(e.request)
-        .then(r => {
-          if (r && r.ok && !r.redirected) {    // não cacheia 401/redirect de login
-            const clone = r.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
-          return r;
-        })
-        .catch(() => caches.match(e.request))
     );
     return;
   }

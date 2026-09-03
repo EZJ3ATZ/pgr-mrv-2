@@ -1250,8 +1250,6 @@
       .page-head { flex-direction: column; align-items: flex-start; gap: 10px; }
       /* Filtros em coluna */
       .ctrl-filters, [class*="-filters"] { flex-direction: column !important; }
-      /* App mobile grid 1 col */
-      .app-mobile-grid { grid-template-columns: 1fr !important; }
       /* KPI cards 2 col em tablet */
       .home-stat-grid, [id*="stat"] { grid-template-columns: repeat(2,1fr); }
     }
@@ -1294,8 +1292,6 @@
       #bi-drawer { width: 100% !important; }
       /* Page header ajuste */
       .page-head { flex-direction: column; align-items: flex-start; gap: 12px; }
-      /* App de campo no mobile - cards em coluna */
-      .app-mobile-grid { grid-template-columns: 1fr !important; }
       /* Sticky headers nas tabelas */
       thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
       /* Textos mais legíveis */
@@ -2263,10 +2259,6 @@
   <!-- APP MÓVEL -->
   <div class="sidebar-section">
     <span class="sidebar-label">App Móvel</span>
-    <div class="sidebar-item" data-name="app-mobile" onclick="goToTab('app-mobile')">
-      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3m1 17H7V4h10zm-3 3h-4v-1h4z"/></svg>
-      <span>App de Campo</span>
-    </div>
   </div>
 
   <div class="sidebar-divider"></div>
@@ -2790,134 +2782,6 @@
         <div class="home-feature-desc">NR-1, NR-15 Anexos 1 e 3, m&#233;todos de an&#225;lise qu&#237;mica — par&#226;metros j&#225; configurados, sem digitar limites.</div>
       </div>
     </div>
-  </div>
-
-</div>
-</div>
-
-<!-- ══ Painel App Móvel ═══════════════════════════════════════════════ -->
-<div id="tab-app-mobile" class="tab-panel">
-<div class="page">
-  <div class="page-head page-head-v2">
-    <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
-    <div>
-      <h2 class="page-title sec-title">📱 App de Campo</h2>
-      <div class="page-sub sec-sub">Aplicativo PWA para medições em campo — funciona offline</div>
-    </div>
-    <a href="/mobile" target="_blank" style="text-decoration:none;">
-      <button class="btn btn-primary" style="gap:8px;display:flex;align-items:center;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        Abrir App
-      </button>
-    </a>
-  </div>
-
-  <!-- ⭐ Modo Campo (offline) — recomendado p/ uso no campo via celular/notebook -->
-  <a href="/campo/" target="_blank" style="text-decoration:none;display:block;margin-bottom:24px;">
-    <div class="card" style="display:flex;align-items:center;gap:18px;padding:22px 24px;
-         background:linear-gradient(135deg,rgba(59,130,246,.16),rgba(16,185,129,.10));
-         border:1.5px solid rgba(59,130,246,.4);cursor:pointer;">
-      <div style="font-size:2.6rem;flex-shrink:0">🧭</div>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:1.05rem;color:var(--text);display:flex;align-items:center;gap:8px;">
-          Modo Campo <span style="font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;background:rgba(16,185,129,.18);color:#6ee7b7;padding:2px 8px;border-radius:4px;">funciona offline</span>
-        </div>
-        <div style="font-size:.85rem;color:var(--text2);margin-top:4px;line-height:1.5;">
-          Tela cheia (cara de PC) com as OS do dia. Abre e registra coleta, assinatura e fotos
-          <b>mesmo sem internet</b> — sincroniza sozinho ao reconectar. Baixe os dados uma vez antes de ir a campo.
-        </div>
-      </div>
-      <span class="btn btn-primary" style="flex-shrink:0">Abrir Modo Campo →</span>
-    </div>
-  </a>
-
-  <!-- Cards principais -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;" class="app-mobile-grid">
-
-    <div class="card" style="text-align:center;padding:28px 20px;">
-      <div style="font-size:2.5rem;margin-bottom:12px;">📲</div>
-      <div style="font-weight:700;font-size:1rem;margin-bottom:8px;color:var(--text)">Instalar no Celular</div>
-      <div style="font-size:.8rem;color:var(--text2);margin-bottom:16px;line-height:1.5">Android, iOS ou como APK</div>
-      <a href="/mobile/instalar" target="_blank" style="text-decoration:none;">
-        <button class="btn btn-secondary" style="width:100%">Ver Guia de Instalação</button>
-      </a>
-    </div>
-
-    <div class="card" style="text-align:center;padding:28px 20px;">
-      <div style="font-size:2.5rem;margin-bottom:12px;">🔌</div>
-      <div style="font-weight:700;font-size:1rem;margin-bottom:8px;color:var(--text)">Funciona Offline</div>
-      <div style="font-size:.8rem;color:var(--text2);margin-bottom:16px;line-height:1.5">Registre medições sem internet. Sincroniza quando conectar.</div>
-      <a href="/mobile/hoje" target="_blank" style="text-decoration:none;">
-        <button class="btn btn-secondary" style="width:100%">Abrir Visitas de Hoje</button>
-      </a>
-    </div>
-
-    <div class="card" style="text-align:center;padding:28px 20px;">
-      <div style="font-size:2.5rem;margin-bottom:12px;">🔗</div>
-      <div style="font-weight:700;font-size:1rem;margin-bottom:8px;color:var(--text)">URL do App</div>
-      <div style="font-size:.75rem;color:var(--text2);margin-bottom:12px;word-break:break-all;background:var(--surface2);padding:8px;border-radius:6px;">
-        medicoes-ocupacional.up.railway.app/mobile
-      </div>
-      <button class="btn btn-secondary" style="width:100%" onclick="navigator.clipboard.writeText('https://medicoes-ocupacional.up.railway.app/mobile').then(()=>showToast('URL copiada!'))">
-        Copiar URL
-      </button>
-    </div>
-
-  </div>
-
-  <!-- Funcionalidades -->
-  <div class="card" style="margin-bottom:20px;">
-    <div style="font-weight:700;font-size:1rem;margin-bottom:16px;color:var(--text)">Funcionalidades do App</div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;">
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;">
-        <span style="font-size:1.3rem">📋</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">Visitas planejadas do dia</div>
-          <div style="font-size:.75rem;color:var(--text2);">Lista automática baseada no planejamento</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;">
-        <span style="font-size:1.3rem">✍️</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">Assinatura digital</div>
-          <div style="font-size:.75rem;color:var(--text2);">Responsável da empresa assina na tela</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;">
-        <span style="font-size:1.3rem">🏭</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">Busca de empresas</div>
-          <div style="font-size:.75rem;color:var(--text2);">Autocomplete direto do banco</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;">
-        <span style="font-size:1.3rem">🔄</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">Sync automático</div>
-          <div style="font-size:.75rem;color:var(--text2);">Envio quando reconectar ao Wi-Fi</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;">
-        <span style="font-size:1.3rem">📍</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">Nova visita avulsa</div>
-          <div style="font-size:.75rem;color:var(--text2);">Sem planejamento prévio necessário</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--surface2);border-radius:8px;">
-        <span style="font-size:1.3rem">☁️</span>
-        <div>
-          <div style="font-weight:600;font-size:.85rem;margin-bottom:3px;">Dados na nuvem</div>
-          <div style="font-size:.75rem;color:var(--text2);">Visitas aparecem no painel desktop</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Usuários ativos no mobile -->
-  <div class="card">
-    <div style="font-weight:700;font-size:1rem;margin-bottom:12px;color:var(--text)">Visitas Recentes pelo App</div>
-    <div id="app-mobile-visitas" style="color:var(--text2);font-size:.85rem;">Carregando...</div>
   </div>
 
 </div>
@@ -6461,10 +6325,6 @@
     </svg>
     <span>Controle</span>
   </div>
-  <div class="mobile-bottom-nav-item" id="mbn-app-mobile" onclick="goToTab('app-mobile');mbnActive('app-mobile')">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-    <span>App</span>
-  </div>
   <div class="mobile-bottom-nav-item" id="mbn-bi" onclick="goToTab('bi');mbnActive('bi')">
     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -6501,7 +6361,6 @@ function goToTab(name) {
   if (name === 'indicadores') indLoad();
   if (name === 'bi') biLoad();
   if (name === 'saude') saudeCarregar();
-  if (name === 'app-mobile') appMobileLoad();
   if (name === 'equipamentos') equipLoad();
   if (name === 'planilhas') planilhasLoad();
   if (name === 'diario') diarioLoad();
@@ -6587,33 +6446,6 @@ async function cfgSalvarPerfil() {
     await ctrlFetch('/api/me', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nome, registro_mte: mte}) });
     if (msg) { msg.textContent = '✓ Salvo!'; setTimeout(() => { if(msg) msg.textContent = ''; }, 3000); }
   } catch(e) { if(msg) { msg.style.color='#ef4444'; msg.textContent = 'Erro: ' + e.message; } }
-}
-
-function appMobileLoad() {
-    const el = document.getElementById('app-mobile-visitas');
-    if (!el) return;
-    ctrlFetch('/controle/visitas?limit=10&origem=mobile')
-        .then(r => r.json()).then(data => {
-            const visitas = Array.isArray(data) ? data : (data.visitas || data.items || []);
-            if (!visitas.length) {
-                el.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:12px 0;">Nenhuma visita pelo app ainda.</div>';
-                return;
-            }
-            el.innerHTML = visitas.slice(0,8).map(v => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
-                <div style="flex:1">
-                  <div style="font-weight:600;font-size:.85rem;">${_esc(v.empresa_nome||'Empresa')}</div>
-                  <div style="font-size:.75rem;color:var(--text2);">${v.tecnico||''} · ${v.data_visita||''}</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <a href="/controle/relatorio_visita/${v.id}" target="_blank" style="font-size:.7rem;color:#3b82f6;text-decoration:none;padding:3px 8px;border:1px solid rgba(59,130,246,.3);border-radius:5px;">📄 Relatório</a>
-                  <span style="font-size:.72rem;padding:3px 8px;border-radius:20px;background:${v.resultado==='concluido'?'rgba(34,197,94,.15)':'rgba(251,146,60,.15)'};color:${v.resultado==='concluido'?'#22c55e':'#fb923c'}">${v.resultado||'registrada'}</span>
-                </div>
-              </div>
-            `).join('');
-        }).catch(() => {
-            el.innerHTML = '<div style="color:var(--text3);font-size:.85rem;">Erro ao carregar.</div>';
-        });
 }
 
 // ── Mobile Navigation ────────────────────────────────────────────────
