@@ -12726,8 +12726,8 @@ async function ctrlNvBuscarAgente(nome) {
     }
     // Usar o 1º método como padrão (pode ter vários)
     const m1 = metodos[0];
-    const vazRange = ctrlParseRange(m1.vazao);
-    const volRange = ctrlParseRange(m1.volume);
+    const vazRange = ctrlFaixaMetodo(m1, 'vazao');
+    const volRange = ctrlFaixaMetodo(m1, 'volume');
     window._ctrlNvMetodoAtual = {
       nome: nome,
       vazao_min: vazRange[0], vazao_max: vazRange[1],
@@ -14190,8 +14190,8 @@ async function ctrlAplicarMetodo(sel) {
     return;
   }
   // Parsear vazão e volume
-  const vazRange = ctrlParseRange(metodo.vazao);
-  const volRange = ctrlParseRange(metodo.volume);
+  const vazRange = ctrlFaixaMetodo(metodo, 'vazao');
+  const volRange = ctrlFaixaMetodo(metodo, 'volume');
   window._ctrlMetodoSel = { vazao_min: vazRange[0], vazao_max: vazRange[1], volume_min: volRange[0], volume_max: volRange[1] };
   info.style.display = 'block';
   info.innerHTML = `
@@ -14200,6 +14200,24 @@ async function ctrlAplicarMetodo(sel) {
       Vazão: <b>${metodo.vazao||'—'}</b> · Volume: <b>${metodo.volume||'—'}</b> · Amostrador: <b>${metodo.amostradorCod||'—'}</b>
     </div>`;
   ctrlCalcTempo();
+}
+
+// Faixa numérica do método: usa os números que o BACKEND já calculou.
+// O parser do cliente (ctrlParseRange, abaixo) erra de dois jeitos que a guia
+// tem de sobra: lê o ponto de MILHAR como decimal, então "45 A 1.000 L" virava
+// faixa de 1 a 45 L; e aceita como medida número que é nome de código ou
+// duração, então "2,75 GS-3" dava teto de vazão 3,0 e
+// "*TWA: 1L/MIN (240MIN)" dava teto de 240 L/min. Quem sabe ler a guia é o
+// validacao_metodo, no servidor. O ctrlParseRange fica só como reserva para
+// payload antigo em cache.
+function ctrlFaixaMetodo(m, campo) {
+  const f = m && m[campo + '_faixa'];
+  if (f && typeof f === 'object') {
+    const lo = (f.min == null ? 0 : f.min);
+    const hi = (f.max == null ? 0 : f.max);
+    if (lo || hi) return [lo, hi];
+  }
+  return ctrlParseRange(m && m[campo]);
 }
 
 function ctrlParseRange(s) {
@@ -17262,7 +17280,7 @@ async function nvCqBuscarGuia(idx) {
       if (info) info.innerHTML = '<span style="color:var(--text3);">Substância não encontrada na guia — método e vazão manuais.</span>';
       return;
     }
-    const rng = ctrlParseRange(m1.vazao || '');
+    const rng = ctrlFaixaMetodo(m1, 'vazao');
     ag.vazao_min = rng[0] || 0;
     ag.vazao_max = rng[1] || 0;
     if (!ag.metodo) ag.metodo = m1.metodoCod || '';
