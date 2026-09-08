@@ -14163,13 +14163,26 @@ async function ctrlAplicarMetodo(sel) {
   const agente = opt ? opt.dataset.agente : '';
   const info = document.getElementById('ctrl-bx-metodo-info');
   if (!agente) { info.style.display='none'; window._ctrlMetodoSel = {}; return; }
-  // Buscar no guia de métodos
-  const m = ctrlMetodosCache;
+  // Método pelo ENDPOINT, não por lookup no cliente. O código antigo fazia
+  // `m.by_name[k][0]` num valor que é a string do CAS, não uma lista: `[0]`
+  // devolvia a primeira LETRA do CAS, então `metodo.metodoCod`, `.vazao` e
+  // `.volume` saíam undefined e este painel nunca achava método nenhum — o
+  // técnico via tudo em branco e preenchia a vazão a mão. Além de consertar
+  // isso, usar `/agente/<nome>/estoque` herda de graça o que o backend já
+  // resolve: nome sem acento, nome colado pelo navegador e campo com dois
+  // agentes. Um lugar só decide qual é o método.
   let metodo = null;
-  if (m && m.by_name) {
-    const k = Object.keys(m.by_name).find(k => k.toLowerCase() === agente.toLowerCase());
-    if (k) metodo = m.by_name[k][0];
-  }
+  try {
+    // o cache nasce mais abaixo no arquivo; garante aqui a ordem de carga
+    window._nvGuiaCache = window._nvGuiaCache || {};
+    const chave = agente.trim().toLowerCase();
+    let d = window._nvGuiaCache[chave];
+    if (!d) {
+      d = await ctrlFetch('/controle/agente/' + encodeURIComponent(agente.trim()) + '/estoque');
+      window._nvGuiaCache[chave] = d;
+    }
+    metodo = (d.metodos || [])[0] || null;
+  } catch (e) { metodo = null; }
   if (!metodo) {
     info.style.display = 'block';
     info.innerHTML = `<b>${agente}</b> — método não encontrado na guia. Preencha vazão manualmente.`;
