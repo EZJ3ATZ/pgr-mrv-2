@@ -8739,7 +8739,8 @@ def cadeia_custodia_medicoes():
                       cqa.hora_inicio, cqa.hora_final,
                       cq.empresa_nome, cq.nome_funcionario, cq.funcao, cq.setor,
                       cq.responsavel_coleta, cq.data_coleta, cq.demanda_id,
-                      a.id AS amostrador_id, a.status, a.data_envio_lab
+                      a.id AS amostrador_id, a.status, a.data_envio_lab,
+                      a.tipo AS tipo_do_cadastro
                FROM coletas_quimico_amostr cqa
                JOIN coletas_quimico cq ON cq.id = cqa.coleta_id
                LEFT JOIN amostradores a
@@ -8757,10 +8758,17 @@ def cadeia_custodia_medicoes():
             continue
         agente = (escolhidos.get(cod.upper()) or r.get('substancia') or '').strip()
         metodos = _buscar_metodos_agente(agente) if agente else []
-        m = escolher_metodo(metodos, metodos_escolhidos.get(cod.upper()),
-                            r.get('tipo_amostrador'))
+        # Tipo do TUBO na frente do que a coleta gravou: 15 das 31 linhas com
+        # tubo cadastrado tinham o tipo divergente (10 com 'TCP' fixo do
+        # default antigo da tela, 5 com o texto inteiro do guia), e cada uma
+        # dessas faz esta tela dizer "amostrador X não é o do método" em cima
+        # de coleta certa. O cadastro do amostrador é a fonte do que o tubo é;
+        # o campo da coleta fica como reserva para tubo fora do cadastro.
+        tipo = (str(r.get('tipo_do_cadastro') or '').strip()
+                or str(r.get('tipo_amostrador') or '').strip())
+        m = escolher_metodo(metodos, metodos_escolhidos.get(cod.upper()), tipo)
         v = validar_coleta(m, vazao=r.get('vazao_media'), volume=r.get('volume_l'),
-                           tipo_amostrador=r.get('tipo_amostrador'),
+                           tipo_amostrador=tipo,
                            tempo_min=r.get('tempo_min'),
                            hora_inicio=r.get('hora_inicio'),
                            hora_final=r.get('hora_final'))
@@ -8771,7 +8779,7 @@ def cadeia_custodia_medicoes():
             v['problemas'] = ['agente da amostra não informado na coleta']
         itens.append({
             'amostrador_id': r.get('amostrador_id'), 'codigo': cod,
-            'tipo': r.get('tipo_amostrador') or '', 'agente': agente,
+            'tipo': tipo, 'agente': agente,
             'empresa': r.get('empresa_nome') or '', 'demanda_id': r.get('demanda_id'),
             'funcionario': r.get('nome_funcionario') or '', 'funcao': r.get('funcao') or '',
             'setor': r.get('setor') or '', 'tecnico': r.get('responsavel_coleta') or '',
@@ -8793,7 +8801,7 @@ def cadeia_custodia_medicoes():
                          'amostrador': x.get('amostradorCod') or '',
                          'vazao': x.get('vazao') or '', 'volume': x.get('volume') or ''}
                         for x in (metodos or [])],
-            'metodo_incerto': escolha_incerta(metodos, r.get('tipo_amostrador')),
+            'metodo_incerto': escolha_incerta(metodos, tipo),
         })
         if len(itens) >= limite:
             break
