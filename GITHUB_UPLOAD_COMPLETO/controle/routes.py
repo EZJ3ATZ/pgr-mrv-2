@@ -1309,39 +1309,29 @@ def get_agentes():
                 'unidade': entry.get('unidade', ''),
                 'cuidados': entry.get('cuidados', ''),
             })
-        # Adicionar grupos BTX e BTXE (nao existem individualmente no guia)
-        grupos = [
-            {
-                'nome': 'BTX (Benzeno + Tolueno + Xileno)',
+        # Grupos BTX/BTXE: a definicao vive em AGENTE_GRUPOS, no topo do
+        # modulo, e e a MESMA que o _buscar_metodos_agente le. Estavam
+        # cravados aqui dentro, so este endpoint sabia deles, e o
+        # /agente/<nome>/estoque devolvia o BENZENO para quem pedisse BTX.
+        grupos = []
+        for g in AGENTE_GRUPOS.values():
+            cod = g.get('amostradorCod', '')
+            tipos = _extrair_tipos_amostrador(cod)
+            grupos.append({
+                'nome': _1linha(g.get('nome')),
                 'categoria': 'quimico',
-                'cas': '71-43-2 / 108-88-3 / 1330-20-7',
-                'metodo': 'NIOSH 1501',
-                'metodo_desc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
-                'vazao': '0,02 A 0,2 L/MIN',
-                'volume': '2 A 10 L',
-                'amostrador': 'SKC 226-01 (TCP*****)',
-                'amostrador_desc': 'TUBO DE CARVAO ATIVADO COCONUT SHELL CHARCOAL, 6X70 mm, 2 SECOES DE 50/100 mg',
-                'tipo_amostrador': 'TCP',
-                'unidade': 'ppm',
-                'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
-            },
-            {
-                'nome': 'BTXE (Benzeno + Tolueno + Xileno + Etilbenzeno)',
-                'categoria': 'quimico',
-                'cas': '71-43-2 / 108-88-3 / 1330-20-7 / 100-41-4',
-                'metodo': 'NIOSH 1501',
-                'metodo_desc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
-                'vazao': '0,02 A 0,2 L/MIN',
-                'volume': '2 A 10 L',
-                'amostrador': 'SKC 226-01 (TCP*****)',
-                'amostrador_desc': 'TUBO DE CARVAO ATIVADO COCONUT SHELL CHARCOAL, 6X70 mm, 2 SECOES DE 50/100 mg',
-                'tipo_amostrador': 'TCP',
-                'unidade': 'ppm',
-                'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
-            },
-        ]
-        for g in grupos:
-            g['vazao_faixa'] = parse_vazao(g.get('vazao', ''))
+                'cas': g.get('cas', ''),
+                'metodo': _1linha(g.get('metodoCod')),
+                'metodo_desc': _1linha(g.get('metodoDesc')),
+                'vazao': _1linha(g.get('vazao')),
+                'vazao_faixa': parse_vazao(g.get('vazao', '')),
+                'volume': _1linha(g.get('volume')),
+                'amostrador': _1linha(g.get('amostradorCod')),
+                'amostrador_desc': _1linha(g.get('amostradorDesc')),
+                'tipo_amostrador': tipos[0] if tipos else '',
+                'unidade': g.get('unidade', ''),
+                'cuidados': _1linha(g.get('cuidados')),
+            })
         agentes = grupos + agentes
 
         # Agentes FÍSICOS — não vêm do guia químico (não têm CAS/amostrador/vazão).
@@ -2292,11 +2282,18 @@ TIPOS_IGNORADOS_PREVISAO = {'FMD', 'OVM', 'ICR', 'ASL', 'IEC'}
 
 # Aliases de agentes → nome canônico no guia (para lookup exato)
 AGENTE_ALIASES = {
-    'BTX': 'BENZENO',
+    # Combo vai para o COMBO (AGENTE_GRUPOS), não para o Benzeno. Apontar para
+    # o Benzeno entregava a faixa dele, 'STEL: 3L TWA: 5 A 30L', para um tubo
+    # que também carrega Tolueno — que satura em 8 L.
+    'BTX': 'BTX (Benzeno + Tolueno + Xileno)',
+    'BTXE': 'BTXE (Benzeno + Tolueno + Xileno + Etilbenzeno)',
+    'BENZENO, TOLUENO E XILENO': 'BTX (Benzeno + Tolueno + Xileno)',
+    'BENZENO, TOLUENO, XILENO': 'BTX (Benzeno + Tolueno + Xileno)',
+    # BTE (Benzeno + Tolueno + Etilbenzeno) continua caindo no Benzeno: não
+    # existe grupo definido para ele e inventar a faixa de volume de um tubo
+    # compartilhado é decisão de campo, não de código. Mesma pergunta aberta
+    # do volume '2 A 10 L' anotada em AGENTE_GRUPOS.
     'BTE': 'BENZENO',
-    'BTXE': 'BENZENO',
-    'BENZENO, TOLUENO E XILENO': 'BENZENO',
-    'BENZENO, TOLUENO, XILENO': 'BENZENO',
     'BENZENO, TOLUENO, ETILBENZENO': 'BENZENO',
     'ARSÊNIO': 'ARSÊNIO E COMPOSTOS INORGÂNICOS',
     'ARSENIO': 'ARSÊNIO E COMPOSTOS INORGÂNICOS',
@@ -2338,6 +2335,52 @@ AGENTE_ALIASES = {
 _AGENTE_AMBIGUO_NO_GUIA = {
     'NÍQUEL', 'NIQUEL', 'CROMO', 'MERCÚRIO', 'MERCURIO', 'ÁLCOOL', 'ALCOOL',
     'ESTANHO', 'COBRE', 'QUEROSENE',
+}
+
+# Combos que o laboratório analisa num tubo só e que NÃO existem como entrada
+# no guia (lá só há Benzeno, Tolueno, Xileno e Etilbenzeno separados). Ficavam
+# cravados dentro do `/agentes` e mais ninguém sabia deles: o
+# `/agente/<nome>/estoque` caía no fuzzy e devolvia o BENZENO, com volume
+# 'STEL: 3L TWA: 5 A 30L' no lugar do volume do combo. Dois endpoints, o mesmo
+# agente, respostas diferentes — e é o `/estoque` que a planilha de campo usa.
+#
+# Definição num lugar só, lida pelos dois. Formato igual ao das entradas do
+# guia, de propósito, para que `_buscar_metodos_agente` devolva a mesma coisa
+# que devolve para qualquer outro agente.
+#
+# 🔴 Os números aqui são os que já estavam em produção e NÃO foram mexidos.
+# O volume '2 A 10 L' não corresponde a nenhum dos componentes: o guia diz
+# Benzeno 3 a 30 L, Tolueno 1 a 8 L e Xileno 2 a 23 L, então a janela
+# conservadora do tubo compartilhado seria 3 a 8 L — o teto é o do Tolueno,
+# que satura primeiro. Trocar muda quanto tempo a bomba fica ligada no campo,
+# então é decisão do Matheus com o Gabriel, não deste commit.
+_CARVAO_ATIVADO = ('TUBO DE CARVAO ATIVADO COCONUT SHELL CHARCOAL, '
+                   '6X70 mm, 2 SECOES DE 50/100 mg')
+AGENTE_GRUPOS = {
+    'BTX (BENZENO + TOLUENO + XILENO)': {
+        'nome': 'BTX (Benzeno + Tolueno + Xileno)',
+        'cas': '71-43-2 / 108-88-3 / 1330-20-7',
+        'unidade': 'ppm',
+        'metodoCod': 'NIOSH 1501',
+        'metodoDesc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
+        'vazao': '0,02 A 0,2 L/MIN',
+        'volume': '2 A 10 L',
+        'amostradorCod': 'SKC 226-01 (TCP*****)',
+        'amostradorDesc': _CARVAO_ATIVADO,
+        'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
+    },
+    'BTXE (BENZENO + TOLUENO + XILENO + ETILBENZENO)': {
+        'nome': 'BTXE (Benzeno + Tolueno + Xileno + Etilbenzeno)',
+        'cas': '71-43-2 / 108-88-3 / 1330-20-7 / 100-41-4',
+        'unidade': 'ppm',
+        'metodoCod': 'NIOSH 1501',
+        'metodoDesc': 'CROMATOGRAFIA DE GASES COM DETECTOR DE IONIZACAO DE CHAMA',
+        'vazao': '0,02 A 0,2 L/MIN',
+        'volume': '2 A 10 L',
+        'amostradorCod': 'SKC 226-01 (TCP*****)',
+        'amostradorDesc': _CARVAO_ATIVADO,
+        'cuidados': 'TRANSPORTE DE ROTINA. NAO NECESSITA REFRIGERACAO.',
+    },
 }
 
 
@@ -2396,6 +2439,18 @@ def _buscar_metodos_agente(nome_agente):
                 break
     if alias:
         chave = alias
+
+    # Combo de tubo único (BTX, BTXE) — ver AGENTE_GRUPOS. Vem antes do guia
+    # porque o combo NÃO existe lá: sem isto a chave caía no fuzzy e voltava o
+    # BENZENO, com a faixa de volume dele. Casa pelo nome inteiro e pela sigla
+    # sozinha, que é o que o técnico digita; 'BTX' e 'BTXE' são chaves
+    # distintas, então uma não responde pela outra.
+    grupo_chave = re.sub(r'\s+', '', _sa(chave))
+    for nome_g, g in AGENTE_GRUPOS.items():
+        sigla = nome_g.split(' (')[0]
+        if grupo_chave in (re.sub(r'\s+', '', _sa(nome_g)), _sa(sigla)):
+            return [dict(g)]
+
     # Tentar como CAS
     if chave in guia.get('by_cas', {}):
         return guia['by_cas'][chave]
