@@ -73,8 +73,19 @@ def num_br(texto):
         return None
 
 
+# Concentração de referência, não limite de faixa: a guia escreve o volume como
+# '20 l a 400 l @ 5mg/m³' e '7l @ 0,001ppm 80l'. O número da concentração
+# entrava na conta e virava o MÍNIMO da faixa — a poeira respirável passava a
+# aceitar de 5 L, e o 7l @ 0,001ppm lia mínimo 0,001 L. São 7 das 186 strings
+# de volume da guia. Tirar tudo depois do '@' não serve: em três delas o teto
+# vem DEPOIS ('a 50l', '80l'). Sai só o número que encosta na unidade.
+_RE_CONCENTRACAO = re.compile(
+    r'\d+(?:[.,]\d+)?\s*(?:ppm|mg\s*/?\s*m\s*(?:³|3))', re.I)
+
+
 def _numeros(texto):
-    return [n for n in (num_br(x) for x in re.findall(r'\d+(?:[.,]\d+)*', str(texto or '')))
+    t = _RE_CONCENTRACAO.sub(' ', str(texto or ''))
+    return [n for n in (num_br(x) for x in re.findall(r'\d+(?:[.,]\d+)*', t))
             if n is not None]
 
 
