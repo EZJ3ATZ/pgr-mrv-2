@@ -17203,9 +17203,27 @@ function nvCqSetCalibrador(idx, value) {
   _nvCqAgentes[idx].calibrador = (value === 'Outro') ? '' : value;
   nvCqRenderAgentes();
 }
+// Tipo do tubo pelo CÓDIGO, que é a única fonte que o técnico realmente
+// escolheu. Preenchido por _nvCarregarAmostradoresDL a partir do cadastro de
+// amostradores; se o tubo não estiver no cadastro, sai do prefixo do código
+// (PVC12V96 → PVC), que é como a frota é nomeada.
+window._nvAmostrTipo = window._nvAmostrTipo || {};
+function nvTipoDoTubo(codigo) {
+  const cod = String(codigo || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (!cod) return '';
+  if (window._nvAmostrTipo[cod]) return window._nvAmostrTipo[cod];
+  const m = cod.match(/^[A-Z]{2,5}/);
+  return m ? m[0] : '';
+}
+
 function nvCqAddAmostr(idx) {
   if (!_nvCqAgentes[idx]) return;
-  const tp = _nvCqAgentes[idx]._tipo_amostr_guia || 'TCP';
+  // Sem 'TCP' de default: o tipo nasce vazio e é preenchido pelo CÓDIGO do
+  // tubo quando o técnico informa. O default fixo gravou TCP (tubo de carvão)
+  // em tubo PVC, IOL e EC — 10 das 39 linhas de coleta química em produção —
+  // e a conferência reprovava com "amostrador TCP não é o do método", em cima
+  // de coleta certa. Vazio não reprova (`_tipo_confere` devolve None).
+  const tp = _nvCqAgentes[idx]._tipo_amostr_guia || '';
   _nvCqAgentes[idx].amostradores.push({id_amostrador:'',tipo_amostrador:tp,vazao_inicial:0,vazao_final:0,hora_inicio:'',hora_final:'',intervalos:''});
   nvCqRenderAmostrTable(idx);
 }
@@ -17262,7 +17280,17 @@ function nvCqRemAmostr(idx, ai) {
   nvCqRenderAmostrTable(idx);
 }
 function nvCqUpdateAmostr(idx, ai, field, value) {
-  if (_nvCqAgentes[idx]?.amostradores[ai]) _nvCqAgentes[idx].amostradores[ai][field] = value;
+  const am = _nvCqAgentes[idx]?.amostradores[ai];
+  if (am) {
+    am[field] = value;
+    // O tipo acompanha o TUBO, não o momento em que a linha foi criada. Antes
+    // ficava congelado no default do `nvCqAddAmostr`, então trocar o código do
+    // amostrador deixava o tipo antigo para trás.
+    if (field === 'id_amostrador') {
+      const t = nvTipoDoTubo(value);
+      if (t) am.tipo_amostrador = t;
+    }
+  }
   nvCqRenderAmostrTable(idx);
 }
 // Lista de amostradores para o campo de codigo da planilha quimica. Digitar
@@ -17281,6 +17309,16 @@ async function _nvCarregarAmostradoresDL() {
     const todos = await ctrlFetch('/controle/amostradores');
     const uteis = (Array.isArray(todos) ? todos : [])
       .filter(a => a && a.codigo && ['disponivel', 'reservado'].includes(a.status));
+    // Mapa código → tipo, do CADASTRO: é o que `nvTipoDoTubo` usa para o tipo
+    // do amostrador nascer do tubo em vez de um default fixo. Entra a frota
+    // inteira, não só a disponível — tubo já enviado ao lab continua sendo
+    // relançado em planilha antiga.
+    (Array.isArray(todos) ? todos : []).forEach(a => {
+      if (a && a.codigo && a.tipo) {
+        window._nvAmostrTipo[String(a.codigo).trim().toUpperCase().replace(/\s+/g, '')] =
+          String(a.tipo).trim().toUpperCase();
+      }
+    });
     // _esc so troca & < > — dentro de atributo faltam as aspas
     const _at = s => _esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     dl.innerHTML = uteis.map(a =>
