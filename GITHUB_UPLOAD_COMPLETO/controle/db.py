@@ -3856,6 +3856,49 @@ def get_coleta_quimico(cid):
         return c
 
 
+def _minutos_amostrados(am):
+    """Duração da amostra em minutos, das HORAS quando o cliente não manda.
+
+    `tempo_min` e `volume_l` estavam zerados em 39 de 39 linhas de produção
+    (medido em 08/09/2026). A tela calcula os dois dentro do `map` que desenha
+    a tabela (`nvCqRenderAmostrTable`, templates/index.html): o valor vai para
+    a célula e nunca é escrito no objeto que sobe, então aqui chegava
+    `tempo_min` ausente, gravava 0, e `volume_L = vazão × 0 = 0`. As horas,
+    essas sempre chegaram — estão preenchidas nas 39 linhas.
+
+    Mesmo desconto de intervalo que a tela mostra ('hh:mm' separados por
+    vírgula ou ponto e vírgula). O que o cliente mandar preenchido continua
+    vencendo: aqui é rede, não substituição.
+
+    O volume é o número que o guia de métodos cobra (a sílica pede 400 a
+    1000 L), então zero na coluna é o dado que falta para conferir a coleta.
+    A cadeia de custódia e o `validar_coleta` já contornavam recalculando de
+    vazão × horas; agora a coluna passa a valer por si.
+    """
+    import re as _re                        # o módulo não importa `re` no topo
+    from .validacao_metodo import minutos_entre
+
+    try:
+        t = float(am.get('tempo_min') or 0)
+    except (TypeError, ValueError):
+        t = 0
+    if t > 0:
+        return t
+    t = minutos_entre(am.get('hora_inicio'), am.get('hora_final')) or 0
+    if not t:
+        return 0
+    for iv in _re.split(r'[,;]+', str(am.get('intervalos') or '')):
+        iv = iv.strip()
+        if ':' not in iv:
+            continue
+        partes = iv.split(':')
+        try:
+            t -= int(partes[0] or 0) * 60 + int(partes[1] or 0)
+        except (TypeError, ValueError):
+            continue
+    return t if t > 0 else 0
+
+
 def save_coleta_quimico(data):
     cid = data.get('id')
     campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'responsavel_coleta',
@@ -3884,7 +3927,7 @@ def save_coleta_quimico(data):
                 vi  = float(am.get('vazao_inicial') or 0)
                 vf  = float(am.get('vazao_final') or 0)
                 vm  = (vi + vf) / 2 if vi and vf else 0
-                t   = float(am.get('tempo_min') or 0)
+                t   = _minutos_amostrados(am)
                 vol = round(vm * t, 3) if vm and t else 0
                 dv  = round(abs(vi - vf) / vi * 100, 2) if vi else 0
                 conn.execute(
