@@ -1214,10 +1214,27 @@ def rebuild_frota():
     return jsonify({'ok': True, 'total': total, 'detalhe': n})
 
 
-_VAZAO_NUM_RE = re.compile(r'\d+(?:[.,]\d+)?')
+# Numero que e MEDIDA. Nao vale numero colado em letra nem depois de hifen de
+# codigo: em 'STEL CO2 MÁX: 0,3 L/MIN' o 2 e da formula e virava teto de vazao
+# 2,0; em '2,75 GS-3' o 3 e o nome do ciclone e virava teto 3,0. O ponto de
+# milhar fica dentro do numero ('45 A 1.000 L') e quem converte e o num_br.
+_VAZAO_NUM_RE = re.compile(r'(?<![A-Za-zÀ-ÿ0-9,.\-])\d+(?:[.,]\d+)*')
 # Data da medicao: o <input type="date"> manda sempre YYYY-MM-DD, entao
 # qualquer outra coisa e campo vazio ou payload adulterado.
 _DATA_ISO_RE  = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
+def faixa_volume(raw):
+    """(min, max) do volume do metodo, para a TELA nao reparsear a string.
+
+    O parser do cliente lia o ponto de milhar como decimal, entao
+    "45 A 1.000 L" virava faixa de 1 a 45 L e o painel mostrava um teto 22x
+    menor que o do metodo. Quem sabe ler a guia e o validacao_metodo; aqui so
+    empacoto no formato que o JS consome.
+    """
+    from .validacao_metodo import faixa
+    lo, hi = faixa(raw)
+    return {'min': lo, 'max': hi}
+
 
 def parse_vazao(raw):
     """Converte a string de vazao do guia_metodos numa faixa numerica (L/min).
@@ -1227,15 +1244,41 @@ def parse_vazao(raw):
       - recomendada    -> valor a pre-preencher no planejamento
       - media          -> (min+max)/2
     Formatos suportados: '0,02 A 0,2 L/MIN', '2 L/MIN', '0',
-    'MAXIMO 0,1 L/MIN', listas de ciclone '1,7 NYLON OU 2,0 SKC ...', TWA/STEL."""
+    'MAXIMO 0,1 L/MIN', listas de ciclone '1,7 NYLON OU 2,0 SKC ...', TWA/STEL.
+
+    A DECISAO de min/max/recomendada e a mesma de sempre; o que mudou (08/09)
+    e QUAIS numeros entram na conta. Quatro das 80 strings de vazao da guia
+    tinham numero que nao e medida, e tres erravam por fator de 10 a 1000:
+
+      '*TWA: 1L/MIN (240MIN) ... *STEL: 2L/MIN (15MIN)'  teto 240 L/min (!)
+      '0,025 L/MIN - 0,2 L/MIN (15 MINUTOS DE AMOSTRAGEM)' teto 15 L/min
+      'TWA: 0,01 A 0,05 L/MIN STEL CO2 MÁX: 0,3 L/MIN'   teto 2,0 (o 2 do CO2)
+      '1,7 NYLON OU ... OU 2,75 GS-3'                    teto 3,0 (o 3 do GS-3)
+
+    Bomba de amostragem trabalha em torno de 2 L/min: a 'media' da primeira
+    dava 120,5 L/min, e e ela que o botao da tela aplica no amostrador.
+
+    Quem sabe ler a guia e o validacao_metodo, que ja tratava duracao entre
+    parenteses, concentracao de referencia e ponto de milhar. Aqui so reuso.
+    """
+    from .validacao_metodo import (alvos_por_material, num_br,
+                                   _RE_DURACAO, _RE_CONCENTRACAO)
+
     s = (raw or '').strip()
     res = {'raw': s, 'passivo': False, 'min': None, 'max': None,
            'recomendada': None, 'media': None}
     if not s or s == '0':
         res['passivo'] = True
         return res
-    nums = [float(n.replace(',', '.')) for n in _VAZAO_NUM_RE.findall(s)]
-    nums = [n for n in nums if n > 0]
+    # Vazao declarada por MATERIAL de ciclone: cada um tem A SUA vazao, e o
+    # maior alvo real e o teto. Sem isto o nome do ciclone entrava como numero.
+    alvos = alvos_por_material(s)
+    if alvos:
+        nums = sorted(v for v, _ in alvos)
+    else:
+        limpo = _RE_CONCENTRACAO.sub(' ', _RE_DURACAO.sub(' ', s))
+        nums = [n for n in (num_br(x) for x in _VAZAO_NUM_RE.findall(limpo))
+                if n is not None and n > 0]
     if not nums:
         res['passivo'] = True
         return res
@@ -1302,6 +1345,7 @@ def get_agentes():
                 'metodo_desc': _1linha(entry.get('metodoDesc')),
                 'vazao': _1linha(entry.get('vazao')),
                 'vazao_faixa': parse_vazao(entry.get('vazao', '')),
+                'volume_faixa': faixa_volume(entry.get('volume', '')),
                 'volume': _1linha(entry.get('volume')),
                 'amostrador': _1linha(entry.get('amostradorCod')),
                 'amostrador_desc': _1linha(entry.get('amostradorDesc')),
@@ -1325,6 +1369,7 @@ def get_agentes():
                 'metodo_desc': _1linha(g.get('metodoDesc')),
                 'vazao': _1linha(g.get('vazao')),
                 'vazao_faixa': parse_vazao(g.get('vazao', '')),
+                'volume_faixa': faixa_volume(g.get('volume', '')),
                 'volume': _1linha(g.get('volume')),
                 'amostrador': _1linha(g.get('amostradorCod')),
                 'amostrador_desc': _1linha(g.get('amostradorDesc')),
@@ -2603,6 +2648,7 @@ def estoque_para_agente(nome):
             'metodoCod': re.sub(r'\s+', ' ', m.get('metodoCod', '')).strip(),
             'vazao': re.sub(r'\s+', ' ', m.get('vazao', '')).strip(),
             'vazao_faixa': parse_vazao(m.get('vazao', '')),
+            'volume_faixa': faixa_volume(m.get('volume', '')),
             'volume': re.sub(r'\s+', ' ', m.get('volume', '')).strip(),
             'amostradorCod': re.sub(r'\s+', ' ', m.get('amostradorCod', '')).strip(),
             'amostradorDesc': re.sub(r'\s+', ' ', m.get('amostradorDesc', '')).strip(),
