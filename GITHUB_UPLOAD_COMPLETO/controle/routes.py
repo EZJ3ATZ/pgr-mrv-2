@@ -2375,8 +2375,25 @@ def _buscar_metodos_agente(nome_agente):
     chave = (nome_agente or '').strip()
     if not chave:
         return []
-    # Resolver alias primeiro
+
+    # Cego a acento nas comparações: o técnico escreve "Silica", o guia diz
+    # "SÍLICA". Sem isto a chave nunca alcança o nome certo e sobra para o
+    # fuzzy, que casava SILICA dentro de SILICATO (ver `_dentro` abaixo).
+    # `_norm_txt` (mais abaixo neste módulo) já tira acento; aqui só volta
+    # para a caixa alta que o resto da função usa.
+    def _sa(s):
+        return _norm_txt(s).upper()
+
+    # Resolver alias primeiro — exato e, se não achar, sem acento (a tabela
+    # tem entrada dobrada por causa disso: 'SÍLICA CRISTALINA' e 'SILICA
+    # CRISTALINA' apontam para o mesmo canônico).
     alias = AGENTE_ALIASES.get(chave.upper())
+    if not alias:
+        chave_sa = _sa(chave)
+        for k, v in AGENTE_ALIASES.items():
+            if _sa(k) == chave_sa:
+                alias = v
+                break
     if alias:
         chave = alias
     # Tentar como CAS
@@ -2405,22 +2422,39 @@ def _buscar_metodos_agente(nome_agente):
     # amostrador errados na coleta. As 408 chaves achatadas são únicas
     # (conferido); se algum dia colidirem, desiste em vez de escolher — chutar
     # método é pior que não achar.
-    key_flat = re.sub(r'\s+', '', key_norm)
+    key_flat = re.sub(r'\s+', '', _sa(key_norm))
     achatados = {cas for nome_upper, cas in guia.get('by_name', {}).items()
-                 if re.sub(r'\s+', '', _norm(nome_upper)) == key_flat}
+                 if re.sub(r'\s+', '', _sa(_norm(nome_upper))) == key_flat}
     if len(achatados) == 1:
         return guia.get('by_cas', {}).get(achatados.pop(), [])
 
     # Genérico com várias variantes no guia: não adivinhar (ver a nota em
     # _AGENTE_AMBIGUO_NO_GUIA). Só barra o fuzzy — nome exato e alias, acima,
     # já retornaram.
-    if key_norm in _AGENTE_AMBIGUO_NO_GUIA:
+    if _sa(key_norm) in {_sa(a) for a in _AGENTE_AMBIGUO_NO_GUIA}:
         return []
+
+    def _dentro(agulha, palheiro):
+        """`agulha` aparece em `palheiro` como PALAVRA inteira.
+
+        Substring solta casava SILICA dentro de SILICATO — o técnico escrevia
+        "Silica" e recebia Silicato de cálcio (Wollastonite): OSHA ID-121,
+        480 a 960 L, amostrador IEC, em vez de NIOSH 7500, 400 a 1000 L, PVC.
+        Duas coletas reais de 2026 estão nisso. Era a mesma armadilha que
+        obrigou o alias XILENO (casava dentro de HEXILENO GLICOL).
+        `\\b` só entra do lado em que a agulha começa/termina em caractere de
+        palavra — senão nome terminado em ')' nunca casaria.
+        """
+        ini = r'\b' if re.match(r'\w', agulha) else ''
+        fim = r'\b' if re.search(r'\w$', agulha) else ''
+        return re.search(ini + re.escape(agulha) + fim, palheiro) is not None
+
+    key_sa = _sa(key_norm)
     # Busca parcial normalizada — evita matches espúrios em substrings curtas
     best = None
     for nome_upper, cas in guia.get('by_name', {}).items():
         nome_norm = _norm(nome_upper)
-        if key_norm in nome_norm:
+        if _dentro(key_sa, _sa(nome_norm)):
             if best is None or len(nome_norm) < len(best[0]):
                 best = (nome_norm, cas)
     if best:
@@ -2433,7 +2467,7 @@ def _buscar_metodos_agente(nome_agente):
     best = None
     for nome_upper, cas in guia.get('by_name', {}).items():
         nome_norm = _norm(nome_upper)
-        if len(nome_norm) > 6 and nome_norm in key_norm:
+        if len(nome_norm) > 6 and _dentro(_sa(nome_norm), key_sa):
             if best is None or len(nome_norm) > len(best[0]):
                 best = (nome_norm, cas)
     if best:
