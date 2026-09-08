@@ -54,6 +54,29 @@ def test_faixa_maximo_abre_o_piso():
     assert faixa('MÁXIMO 6 L') == (0.0, 6.0)
 
 
+# ── concentração de referência não é limite de faixa ───────────────────
+# A guia escreve o volume com a concentração no meio: '20 l a 400 l @ 5mg/m³'.
+# O 5 entrava na conta e virava o MÍNIMO — a poeira respirável passava a
+# aceitar de 5 L, e '7l @ 0,001ppm 80l' lia mínimo 0,001 L. São 7 das 186
+# strings de volume da guia. Tirar tudo depois do '@' não serve: em três delas
+# o teto vem DEPOIS ('a 50l', '80l').
+
+@pytest.mark.parametrize('texto,esperado', [
+    ('20 l a 400 l @ 5mg/m³', (20.0, 400.0)),      # era (5.0, 400.0)
+    ('30 a 570 @3,5mg/m³', (30.0, 570.0)),         # era (3.5, 570.0)
+    ('7l @ 0,001ppm 80l', (7.0, 80.0)),            # era (0.001, 80.0)
+    ('1l @ 50ppm a 50l', (1.0, 50.0)),             # o teto vem depois do @
+    ('1l @ 50ppm até 50l', (1.0, 50.0)),
+    ('7 a 133 l @15 mg/m³', (7.0, 133.0)),         # já estava certa, segue
+])
+def test_faixa_ignora_a_concentracao(texto, esperado):
+    assert faixa(texto) == esperado
+
+
+def test_minimo_com_concentracao_nao_ganha_teto_falso():
+    assert faixa('mínimo 768 @ 0,4mg/m³') == (768.0, None)
+
+
 def test_faixa_vazia():
     assert faixa('') == (None, None)
     assert faixa(None) == (None, None)
