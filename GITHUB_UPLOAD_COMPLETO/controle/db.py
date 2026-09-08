@@ -1090,6 +1090,104 @@ def init_db():
         _auto_seed()
 
 
+# Maior vazão REAL da guia de métodos: 16 L/min, do asbesto (ABNT NBR
+# 13.158/94, amostrador ASB). Acima disso não é bomba de amostragem, é erro de
+# digitação — e volume derivado de vazão errada é lixo com aparência de número.
+_VAZAO_MAX_PLAUSIVEL = 16.0
+
+
+def _backfill_coleta_quimico(conn):
+    """Reescreve nas coletas químicas antigas o que nascia errado ou zerado.
+
+    Os dois defeitos foram corrigidos no código em 08/09/2026, mas as linhas
+    gravadas ANTES continuam no banco com o valor velho:
+
+      - `tipo_amostrador`: a tela criava a linha com 'TCP' fixo e nunca
+        corrigia quando o técnico informava o tubo, e em 5 linhas gravou o
+        texto inteiro do guia ('SKC 226-01 (TCP*****)') no lugar da sigla.
+      - `tempo_min` e `volume_L`: a tela calculava os dois só para desenhar na
+        célula e nunca mandava, então o backend gravava 0.
+
+    Os dois novos valores são DERIVADOS de fonte melhor que já está no banco —
+    o tipo sai do cadastro do tubo, o tempo sai das horas gravadas — então
+    rodar de novo dá o mesmo resultado. Idempotente de propósito: `_migrate`
+    roda a cada deploy que muda a impressão digital do schema.
+
+    ⚠ A impressão digital é o hash de `SCHEMA_*` + `inspect.getsource(_migrate)`
+    (ver `_esquema_tag`). Mexer só NESTA função não muda a tag e o backfill não
+    volta a rodar: se algum dia precisar re-executar, mexa também no `_migrate`
+    ou apague a marca com `DELETE FROM schema_versao WHERE chave='ddl'`.
+
+    O valor antigo de cada linha vai para o log (`print`), que é o que permite
+    conferir depois o que foi trocado. Não uso `registrar_evento` aqui: ele
+    abre uma 2ª conexão dentro da transação e é justamente o que faz o
+    `abrir_os` levar 33 s no SQLite dos testes.
+    """
+    trocas_tipo, trocas_tempo, recusadas = [], [], []
+    try:
+        linhas = [row_to_dict(r) for r in conn.execute("""
+            SELECT cqa.id, cqa.id_amostrador, cqa.tipo_amostrador,
+                   cqa.hora_inicio, cqa.hora_final, cqa.intervalos,
+                   cqa.vazao_media, cqa.tempo_min, a.tipo AS tipo_do_cadastro
+              FROM coletas_quimico_amostr cqa
+              LEFT JOIN amostradores a
+                     ON UPPER(TRIM(a.codigo)) = UPPER(TRIM(cqa.id_amostrador))
+        """).fetchall()]
+    except Exception as e:
+        print(f'[backfill] coletas_quimico_amostr indisponivel: {e}')
+        return
+
+    for r in linhas:
+        # 1) tipo do amostrador ← cadastro do tubo
+        cad = str(r.get('tipo_do_cadastro') or '').strip().upper()
+        atual = str(r.get('tipo_amostrador') or '').strip()
+        if cad and atual.upper() != cad:
+            conn.execute('UPDATE coletas_quimico_amostr SET tipo_amostrador=? '
+                         'WHERE id=?', (cad, r['id']))
+            trocas_tipo.append((r['id'], r.get('id_amostrador'), atual, cad))
+
+        # 2) tempo e volume ← horas gravadas
+        try:
+            t_atual = float(r.get('tempo_min') or 0)
+        except (TypeError, ValueError):
+            t_atual = 0
+        if t_atual > 0:
+            continue
+        t = _minutos_amostrados(r)
+        if not t:
+            continue
+        try:
+            vm = float(r.get('vazao_media') or 0)
+        except (TypeError, ValueError):
+            vm = 0
+        if vm > _VAZAO_MAX_PLAUSIVEL:
+            # Volume derivado de vazão impossível seria lixo com cara de dado.
+            # Grava o tempo (que sai das horas e é confiável) e deixa o volume
+            # zerado, para o técnico corrigir a vazão na tela.
+            conn.execute('UPDATE coletas_quimico_amostr SET tempo_min=? WHERE id=?',
+                         (t, r['id']))
+            recusadas.append((r['id'], r.get('id_amostrador'), vm))
+            continue
+        vol = round(vm * t, 3) if vm else 0
+        conn.execute('UPDATE coletas_quimico_amostr SET tempo_min=?, volume_L=? '
+                     'WHERE id=?', (t, vol, r['id']))
+        trocas_tempo.append((r['id'], r.get('id_amostrador'), t, vol))
+
+    if trocas_tipo:
+        print(f'[backfill] tipo_amostrador corrigido em {len(trocas_tipo)} linha(s):')
+        for i, cod, de, para in trocas_tipo:
+            print(f'[backfill]   id={i} tubo={cod} {de!r} -> {para}')
+    if trocas_tempo:
+        print(f'[backfill] tempo/volume preenchido em {len(trocas_tempo)} linha(s):')
+        for i, cod, t, vol in trocas_tempo:
+            print(f'[backfill]   id={i} tubo={cod} tempo={t}min volume={vol}L')
+    if recusadas:
+        print(f'[backfill] {len(recusadas)} linha(s) com vazao impossivel — volume '
+              f'NAO preenchido, corrigir a vazao na tela:')
+        for i, cod, vm in recusadas:
+            print(f'[backfill]   id={i} tubo={cod} vazao_media={vm} L/min')
+
+
 def _migrate(conn):
     """Garante que todas as colunas e índices existam. Idempotente."""
 
@@ -1618,6 +1716,14 @@ def _migrate(conn):
             print(f'[db] admin criado: engenharia19@ocupacional.com.br / {pwd}')
     except Exception as e:
         print(f'[db] seed admin erro: {e}')
+
+    # ── Dado antigo das coletas químicas (ver _backfill_coleta_quimico) ──
+    # Vai por último: é reescrita de dado, não schema, e nada aqui depende dela.
+    # Não pode derrubar o boot — banco sem a tabela ainda tem de subir.
+    try:
+        _backfill_coleta_quimico(conn)
+    except Exception as e:
+        print(f'[backfill] coletas quimicas: {e}')
 
 
 def _auto_seed():
