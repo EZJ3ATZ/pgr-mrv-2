@@ -1273,10 +1273,19 @@ def get_agentes():
         by_cas = guia.get('by_cas', {})
         agentes = []
         seen = set()
+
+        def _1linha(v):
+            """Texto do guia em uma linha. O guia veio de PDF e quebra nome,
+            vazão e volume no meio ("SÍLICA LIVRE\nCRISTALINA", "20 l a 400 l
+            @\n5mg/m³"); jogado num <input> o navegador APAGA o \n e a tela
+            mostra "LIVRECRISTALINA" / "@5mg/m³", colados. Sai daqui já com
+            espaço no lugar da quebra."""
+            return re.sub(r'\s+', ' ', str(v or '')).strip()
+
         for cas, entry in by_cas.items():
             if isinstance(entry, list):
                 entry = entry[0]
-            nome = (entry.get('nome') or '').strip()
+            nome = _1linha(entry.get('nome'))
             if not nome or nome in seen:
                 continue
             seen.add(nome)
@@ -1289,13 +1298,13 @@ def get_agentes():
                 'nome': nome,
                 'categoria': 'quimico',
                 'cas': entry.get('cas', cas),
-                'metodo': entry.get('metodoCod', ''),
-                'metodo_desc': entry.get('metodoDesc', ''),
-                'vazao': entry.get('vazao', ''),
+                'metodo': _1linha(entry.get('metodoCod')),
+                'metodo_desc': _1linha(entry.get('metodoDesc')),
+                'vazao': _1linha(entry.get('vazao')),
                 'vazao_faixa': parse_vazao(entry.get('vazao', '')),
-                'volume': entry.get('volume', ''),
-                'amostrador': entry.get('amostradorCod', ''),
-                'amostrador_desc': entry.get('amostradorDesc', ''),
+                'volume': _1linha(entry.get('volume')),
+                'amostrador': _1linha(entry.get('amostradorCod')),
+                'amostrador_desc': _1linha(entry.get('amostradorDesc')),
                 'tipo_amostrador': tipo_amostrador,
                 'unidade': entry.get('unidade', ''),
                 'cuidados': entry.get('cuidados', ''),
@@ -2385,6 +2394,23 @@ def _buscar_metodos_agente(nome_agente):
         return re.sub(r'[\s]+', ' ', s.strip())
 
     key_norm = _norm(key_upper)
+
+    # Casamento EXATO cego a espaço. 54 dos 408 nomes do guia têm quebra de
+    # linha (vieram quebrados do PDF do laboratório) e o <input> do navegador
+    # APAGA o \n do value sem deixar espaço no lugar: "SÍLICA LIVRE\nCRISTALINA"
+    # chega aqui como "SÍLICA LIVRECRISTALINA" e nenhuma comparação com espaço
+    # casa. Tem que vir ANTES do fuzzy — sem isto 42 dos 54 caíam na busca
+    # inversa e voltavam o método de OUTRA substância (sílica → poeira
+    # respirável, MOCA → anilina, asfalto → benzeno), ou seja vazão, volume e
+    # amostrador errados na coleta. As 408 chaves achatadas são únicas
+    # (conferido); se algum dia colidirem, desiste em vez de escolher — chutar
+    # método é pior que não achar.
+    key_flat = re.sub(r'\s+', '', key_norm)
+    achatados = {cas for nome_upper, cas in guia.get('by_name', {}).items()
+                 if re.sub(r'\s+', '', _norm(nome_upper)) == key_flat}
+    if len(achatados) == 1:
+        return guia.get('by_cas', {}).get(achatados.pop(), [])
+
     # Genérico com várias variantes no guia: não adivinhar (ver a nota em
     # _AGENTE_AMBIGUO_NO_GUIA). Só barra o fuzzy — nome exato e alias, acima,
     # já retornaram.
@@ -2399,11 +2425,19 @@ def _buscar_metodos_agente(nome_agente):
                 best = (nome_norm, cas)
     if best:
         return guia.get('by_cas', {}).get(best[1], [])
-    # Busca inversa normalizada: nome do guia dentro da chave
+    # Busca inversa normalizada: nome do guia dentro da chave. Pega o MAIS
+    # LONGO — devolver o primeiro que casava aceitava a substring curta
+    # ("POEIRA RESPIRÁVEL" dentro de "POEIRA RESPIRÁVEL + SÍLICA LIVRE
+    # CRISTALINA") e entregava o método da poeira sozinha, sem o NIOSH 7500
+    # que é justamente a parte da sílica.
+    best = None
     for nome_upper, cas in guia.get('by_name', {}).items():
         nome_norm = _norm(nome_upper)
         if len(nome_norm) > 6 and nome_norm in key_norm:
-            return guia.get('by_cas', {}).get(cas, [])
+            if best is None or len(nome_norm) > len(best[0]):
+                best = (nome_norm, cas)
+    if best:
+        return guia.get('by_cas', {}).get(best[1], [])
     return []
 
 
@@ -2436,13 +2470,16 @@ def estoque_para_agente(nome):
     for m in metodos:
         tipos_m = _extrair_tipos_amostrador(m.get('amostradorCod', ''))
         tipos_set.update(tipos_m)
+        # Uma linha: o wizard joga 'volume' e 'vazao' direto num <input>, e o
+        # guia (vindo de PDF) quebra no meio — "20 l a 400 l @\n5mg/m³" saía
+        # colado como "@5mg/m³" na tela do técnico.
         metodos_resumo.append({
-            'metodoCod': m.get('metodoCod', ''),
-            'vazao': m.get('vazao', ''),
+            'metodoCod': re.sub(r'\s+', ' ', m.get('metodoCod', '')).strip(),
+            'vazao': re.sub(r'\s+', ' ', m.get('vazao', '')).strip(),
             'vazao_faixa': parse_vazao(m.get('vazao', '')),
-            'volume': m.get('volume', ''),
-            'amostradorCod': m.get('amostradorCod', ''),
-            'amostradorDesc': m.get('amostradorDesc', ''),
+            'volume': re.sub(r'\s+', ' ', m.get('volume', '')).strip(),
+            'amostradorCod': re.sub(r'\s+', ' ', m.get('amostradorCod', '')).strip(),
+            'amostradorDesc': re.sub(r'\s+', ' ', m.get('amostradorDesc', '')).strip(),
             'tipos': tipos_m,
         })
     tipos = list(tipos_set)

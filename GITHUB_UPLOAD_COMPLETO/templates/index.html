@@ -12502,9 +12502,15 @@ async function ctrlNvInit() {
   if (!ctrlMetodosCache) {
     try { ctrlMetodosCache = await ctrlFetch('/api/metodos'); } catch(e) { ctrlMetodosCache = {}; }
   }
-  // Datalist de agentes
+  // Datalist de agentes. As chaves do guia vêm com quebra de linha (54 dos
+  // 408 — o guia nasceu de PDF) e o navegador APAGA o \n do value do input ao
+  // escolher a opção, sem deixar espaço: o técnico escolhia "Poeira Respirável
+  // + Sílica Livre Cristalina" e o campo ficava "...LivreCristalina", nome que
+  // não existe no guia. Troca a quebra por espaço ANTES de virar <option>.
   const dl = document.getElementById('ctrl-nv-agente-dl');
-  const nomes = ctrlMetodosCache && ctrlMetodosCache.by_name ? Object.keys(ctrlMetodosCache.by_name) : [];
+  const nomes = ctrlMetodosCache && ctrlMetodosCache.by_name
+    ? Object.keys(ctrlMetodosCache.by_name).map(n => n.replace(/\s+/g, ' ').trim())
+    : [];
   // Adiciona Ruído e Calor que não estão na guia de químicos
   const todos = ['Ruído', 'Calor', 'Vibração de Corpo Inteiro', 'Vibração Localizada - Mãos e Braços', ...nomes];
   dl.innerHTML = todos.map(n => `<option value="${n}">`).join('');
