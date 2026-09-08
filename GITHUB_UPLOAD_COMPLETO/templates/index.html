@@ -11521,6 +11521,15 @@ function planConfirmarAgente(tipo) {
 // com Poeira/Vibração abria sem bomba/amostrador/subtipo e sem preview de
 // equipamentos. Normaliza para os 4 tipos canônicos preservando nome e subtipo.
 const _PLAN_QUIM_FAM = ['quimico','particulado','poeira','metais','gases'];
+// Iluminamento/luximetria pelo NOME. Serve de rede para o que já está salvo
+// como químico (rascunho anterior à correção do conversor, ou linha digitada no
+// tipo errado no "Editar agentes"). NÃO pode ser um `lumin` solto: "Alumínio"
+// tem "lumin" e casaria — por isso o radical é `ilumin`, e `lux` só vale com
+// fronteira de letra (senão "flux" entrava).
+const _RE_PLAN_ILUM = /ilumin|luminanc|luminânc|luminacia|luximetr|(^|[^a-z])lux([^a-z]|$)/;
+function _planEhIluminamento(nome) {
+  return _RE_PLAN_ILUM.test(String(nome || '').toLowerCase());
+}
 function _planNormalizarAgentes() {
   (window._planAgentes || []).forEach(a => {
     if (!a) return;
@@ -11528,13 +11537,22 @@ function _planNormalizarAgentes() {
     if (t === 'vibracao_vci')       { a.tipo = 'vibracao'; a.subtipo = a.subtipo || 'vci'; }
     else if (t === 'vibracao_vbma') { a.tipo = 'vibracao'; a.subtipo = a.subtipo || 'vbma'; }
     else if (_PLAN_QUIM_FAM.includes(t)) a.tipo = 'quimico';
+    // Químico que na verdade é iluminamento: retipa e LIMPA o que veio de bomba.
+    // Sem a limpeza o plano continuava salvando nº de série de bomba, vazão e
+    // amostrador numa medição que se faz com luxímetro.
+    if (a.tipo === 'quimico' && _planEhIluminamento(a.agente)) {
+      a.tipo = 'iluminamento';
+      ['bomba_sn','id_bomba','vazao','vazao_real','vazao_faixa','valor_tipo','volume',
+       'amostrador','amostrador_codigo','calibrador_nome','data_calibracao','tipo_coleta',
+       'unidade'].forEach(k => { delete a[k]; });
+    }
   });
 }
 
 function _planRenderizarAgentes() {
   _planNormalizarAgentes();
   const lista = document.getElementById('plan-agentes-lista');
-  const tipos = {ruido:'🔊', quimico:'🧪', calor:'🌡', vibracao:'📳'};
+  const tipos = {ruido:'🔊', quimico:'🧪', calor:'🌡', vibracao:'📳', iluminamento:'💡', outro:'📋'};
   if (!window._planAgentes || window._planAgentes.length === 0) {
     lista.innerHTML = '<div style="color:var(--text3);font-size:.78rem;">Nenhum agente adicionado.</div>';
     document.getElementById('plan-equipamentos-preview').style.display = 'none';
@@ -11618,6 +11636,14 @@ function _planRenderizarAgentes() {
         </div>`;
     } else if (a.tipo === 'calor') {
       extraFields = `<div style="margin-top:4px;font-size:.73rem;color:var(--yellow);">🌡️ Chrompack IBUTG — único operacional</div>`;
+    } else if (a.tipo === 'iluminamento') {
+      // Iluminamento não usa bomba, amostrador nem laboratório: mede-se com
+      // luxímetro. Enquanto não houver luxímetro no inventário e planilha de
+      // campo própria, a linha diz isso na cara — antes ela vinha vestida de
+      // químico, com bomba AIRLITE pré-selecionada.
+      extraFields = `<div style="margin-top:4px;font-size:.73rem;color:var(--yellow);">💡 Luxímetro — sem bomba, amostrador ou envio a laboratório. Equipamento <b>não está no inventário do sistema</b> e não há planilha de campo de iluminamento: anotar os pontos em campo.</div>`;
+    } else if (a.tipo === 'outro') {
+      extraFields = `<div style="margin-top:4px;font-size:.73rem;color:var(--text3);">📋 Agente físico sem instrumento cadastrado no sistema — sem bomba nem amostrador. Confirmar o equipamento antes da visita.</div>`;
     }
 
     const _av = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
@@ -11658,6 +11684,7 @@ const _CHECKLIST_POR_TIPO = {
              {id:'cal_vazao',  label:'Calibrador de vazão disponível'}],
   calor:    [{id:'term_ok',   label:'Termômetro IBUTG testado e com carga'}],
   vibracao: [{id:'vibr_ok',  label:'Acelerômetro + acessórios separados (kit VCI/VBMA)'}],
+  iluminamento: [{id:'lux_ok', label:'Luxímetro em mãos — o aparelho NÃO está no inventário do sistema'}],
 };
 window._planChecklistState = {};
 
@@ -11901,12 +11928,14 @@ function _planAtualizarEquipamentos() {
   const bombas = agentes.filter(a => a.tipo === 'quimico').reduce((s,a) => s + (a.qtd||1), 0);
   const calor  = agentes.some(a => a.tipo === 'calor');
   const vibr   = agentes.some(a => a.tipo === 'vibracao');
+  const lux    = agentes.some(a => a.tipo === 'iluminamento');
 
   const equip = [];
   if (dosim)  { equip.push(`🎧 ${dosim} dosím.`); equip.push('📏 1 calibrador'); }
   if (bombas) { equip.push(`🔬 ${bombas} bomba(s)`); equip.push('💨 1 cal. vazão'); }
   if (calor)  { equip.push('🌡 Termômetro IBUTG'); }
   if (vibr)   { equip.push('📳 Acelerômetro'); }
+  if (lux)    { equip.push('💡 Luxímetro (fora do inventário)'); }
 
   const preview = document.getElementById('plan-equipamentos-preview');
   const chips   = document.getElementById('plan-equip-chips');
@@ -11977,12 +12006,17 @@ function _planCalcularDias() {
   const DIA_H = 9;   // dia útil de 9h (planilha usa TIME(9,0,0))
 
   let linhas = [];
+  let semDuracao = [];   // tipo que a planilha oficial de dias não prevê
   let ruidoQtd = 0, ruidoEquip = 15;
   let horasQuim = 0, equipQuim = 6;   // Poeira+Metais+Gases compartilham as 6 bombas
   let horasTec  = 0;                  // Calor+Vibração: tempo técnico que encaixa na base
   for (const [tipo, qtd] of Object.entries(por_tipo)) {
     const p = _CALC_PARAMS[tipo];
-    if (!p) continue;
+    // Iluminamento e outros físicos não têm linha na planilha "Cálculo de Dias
+    // de Medições" — não dá para inventar duração. Antes eles vinham como
+    // 'quimico' e cada ponto somava 4h de bomba no cálculo, inflando o prazo.
+    // Some do cálculo, mas NÃO some da tela: aparece como "sem duração".
+    if (!p) { semDuracao.push({tipo, qtd}); continue; }
     const horas = qtd * p.duracao_h;
     const g = GRUPO[tipo] || 'tecnico';
     if (g === 'ruido')        { ruidoQtd += qtd; ruidoEquip = p.equip; }
@@ -12004,6 +12038,13 @@ function _planCalcularDias() {
   let html = linhas.map(l =>
     `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface2);border-radius:6px;margin-bottom:4px;font-size:.82rem;">
       <span style="color:var(--text2);">${l.label} <span style="color:var(--text3);">× ${l.qtd} / ${l.equip} equip. / ${_fmtDur(l.duracao_h)} cada</span></span>
+    </div>`
+  ).join('');
+
+  const _LBL_SEM_DUR = {iluminamento:'💡 Iluminamento', outro:'📋 Outro agente físico'};
+  html += semDuracao.map(s =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--surface2);border-radius:6px;margin-bottom:4px;font-size:.82rem;">
+      <span style="color:var(--text2);">${_LBL_SEM_DUR[s.tipo] || s.tipo} <span style="color:var(--yellow);">× ${s.qtd} — sem duração na planilha oficial de dias, fora do cálculo</span></span>
     </div>`
   ).join('');
 
@@ -12422,13 +12463,19 @@ function nvRenderAgentesPlano(agentes) {
   const lista     = document.getElementById('nv-agentes-plano-lista');
   if (!container || !lista) return;
   if (!agentes || agentes.length === 0) { container.style.display = 'none'; return; }
-  const icons = {ruido:'🔊', quimico:'🧪', calor:'🌡️', vibracao:'📳'};
+  const icons = {ruido:'🔊', quimico:'🧪', calor:'🌡️', vibracao:'📳', iluminamento:'💡', outro:'📋'};
+  // Tipos que TÊM bloco de digitação na etapa 3. O que estiver fora disso
+  // (iluminamento, outro físico) continua listado aqui para o técnico marcar
+  // medido/não medido, mas o sistema não tem planilha para ele — dizer isso na
+  // tela, senão o agente aparece como se houvesse onde lançar o dado.
+  const _COM_PLANILHA = ['ruido','quimico','calor','vibracao'];
   lista.innerHTML = agentes.map((ag, i) => `
     <div id="nv-ag-row-${i}" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;transition:border-color .2s;">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
         <input type="checkbox" id="nv-ag-check-${i}" checked onchange="nvToggleAgente(this,${i})"
           style="width:17px;height:17px;cursor:pointer;accent-color:var(--green);">
         <span style="font-size:.88rem;">${icons[ag.tipo]||'📋'} ${_esc(ag.agente||ag.tipo)} ×${ag.qtd||1}</span>
+        ${_COM_PLANILHA.includes(ag.tipo) ? '' : `<span style="font-size:.72rem;color:var(--yellow);">sem planilha no sistema — anotar em campo</span>`}
         <span id="nv-ag-badge-${i}" style="margin-left:auto;font-size:.78rem;font-weight:700;color:var(--green);">✅ Medido</span>
       </label>
       <div id="nv-ag-just-${i}" style="display:none;margin-top:10px;background:var(--yellow-bg);border:1px solid var(--yellow-bd);border-radius:6px;padding:10px;">
@@ -12547,7 +12594,7 @@ async function ctrlNvOsChange(val) {
           if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);font-size:.78rem;">✓ Empresa vinculada à OS</span>`;
         }
       }
-      const _tl = {ruido:'🔊 Ruído', vibracao_vci:'〰️ VCI', vibracao_vbma:'〰️ VMB', vibracao:'〰️ Vibração', calor:'🌡️ Calor', particulado:'🌫️ Particulado', quimico:'⚗️ Químico'};
+      const _tl = {ruido:'🔊 Ruído', vibracao_vci:'〰️ VCI', vibracao_vbma:'〰️ VMB', vibracao:'〰️ Vibração', calor:'🌡️ Calor', particulado:'🌫️ Particulado', quimico:'⚗️ Químico', iluminamento:'💡 Iluminamento', outro:'📋 Outro (físico)'};
       const agentes = j.agentes || [];
       // ── Auto-selecionar chips de tipo de medição com base nos agentes da OS ──
       const tipoMap = {ruido:'nv-tipo-ruido', quimico:'nv-tipo-quimico', calor:'nv-tipo-calor',
