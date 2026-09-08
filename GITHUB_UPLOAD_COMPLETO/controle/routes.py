@@ -2428,6 +2428,43 @@ def _buscar_metodos_agente(nome_agente):
     if len(achatados) == 1:
         return guia.get('by_cas', {}).get(achatados.pop(), [])
 
+    # Campo com MAIS DE UM agente. Existe em produção: a coleta da AABB de
+    # 16/07 gravou "Ferro, óxido (Fe2O3) / Manganês e seus compostos" num
+    # campo só. Um nome desses não casa com nada e caía no fuzzy, que devolvia
+    # o método de UM dos dois — antes o Ferro, depois o Manganês, nenhum dos
+    # dois certo por si.
+    #
+    # A régua de "isto é lista?" é a da cadeia de custódia, não uma nova:
+    # `_agentes_da_linha` separa por ';' e '/', e por vírgula só quando os dois
+    # lados são agentes do guia (98 dos 408 nomes têm vírgula DENTRO do nome).
+    # Conferido: dos 408 nomes do guia, ZERO é quebrado por engano, e dos 30
+    # nomes distintos que existem em produção só este é tratado como lista.
+    #
+    # Resposta certa para uma lista é a INTERSEÇÃO: um tubo carrega um método,
+    # e nele cabem dois analitos. Ferro e Manganês compartilham exatamente
+    # NIOSH 7303 com amostrador SKC 225-5 (EC) — e o tubo daquela coleta,
+    # EC97917A, é EC: o técnico estava certo em juntar. Sem método comum
+    # devolve vazio: Tolueno e Sílica não dividem tubo, e escolher um dos dois
+    # entrega vazão e amostrador errados ao campo.
+    try:
+        from .cadeia_custodia import _agentes_da_linha
+        partes = _agentes_da_linha(chave)
+    except Exception as e:                  # cadeia fora do ar não derruba o lookup
+        print(f'[controle] separar agentes: {e}')
+        partes = []
+    if len(partes) > 1:
+        listas = [_buscar_metodos_agente(p) for p in partes]
+        if not all(listas):
+            return []
+
+        def _id_metodo(e):
+            return (e.get('metodoCod') or '', e.get('amostradorCod') or '')
+
+        comum = set.intersection(*[{_id_metodo(e) for e in l} for l in listas])
+        if not comum:
+            return []
+        return [e for e in listas[0] if _id_metodo(e) in comum]
+
     # Genérico com várias variantes no guia: não adivinhar (ver a nota em
     # _AGENTE_AMBIGUO_NO_GUIA). Só barra o fuzzy — nome exato e alias, acima,
     # já retornaram.
