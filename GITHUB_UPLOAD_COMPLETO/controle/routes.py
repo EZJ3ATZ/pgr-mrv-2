@@ -1507,7 +1507,31 @@ def _canonical_to_tipo_legado(canonical: str) -> str:
         return 'calor'
     if 'sílica' in n or 'silica' in n or 'poeira' in n or 'particulado' in n or 'material part' in n:
         return 'particulado'
+    # Agente FÍSICO que não tem tipo legado próprio (Iluminamento, Frio,
+    # Radiações, Umidade, Pressão Hiperbárica). Sem esta cerca ele caía no
+    # catch-all 'quimico' abaixo e o motor — que classificou certo, 'fisico' —
+    # era desmentido pela conversão: a linha do planejamento nascia com bomba
+    # AIRLITE pré-selecionada, vazão L/min, código de amostrador e calibrador
+    # de vazão, o `qtd 2` era partido em 2 linhas (regra "1 amostrador por
+    # medição química"), o plano previa bomba + rotâmetro em
+    # `qtd_bombas_previstas` e a planilha de campo marcava o chip Químico.
+    # Iluminamento se mede com luxímetro (NHO 11) — sem bomba, sem laboratório.
+    # Mesma classe do catch-all do parser_agentes aposentado (ver nota em
+    # get_demanda_agentes): tipo que ninguém sabe não pode virar substância.
+    if _e_fisico_sem_tipo_legado(canonical):
+        return 'iluminamento' if ('ilumin' in n or 'lumin' in n or 'lux' in n) else 'outro'
     return 'quimico'
+
+
+def _e_fisico_sem_tipo_legado(canonical: str) -> bool:
+    """True se o agente é FÍSICO no dicionário do motor. Só é consultada depois
+    dos ramos de ruído/vibração/calor, então o que chega aqui é físico que o
+    wizard não sabe medir com equipamento cadastrado."""
+    try:
+        from .inteligencia_demandas import _FISICOS
+        return canonical in _FISICOS
+    except Exception:
+        return False
 
 
 # Tipos do motor inteligente que NÃO são medição de campo: documento (PGR,
@@ -2947,6 +2971,17 @@ def previsao_estoque():
         'Vibração de Corpo Inteiro', 'Vibracao de Corpo Inteiro',
         'Pressão Hiperbárica', 'Pressao Hiperbarica',
     }
+    # Os nomes acima são os do guia de métodos; o motor de extração usa OUTROS
+    # ('Iluminamento', não 'Iluminação'; 'Calor (IBUTG)', não 'Calor'). Sem a
+    # união, agente físico vindo da extração não casava e caía em
+    # `agentes_sem_guia` — a tela pedia amostrador para medição que não usa
+    # amostrador. União em vez de lista nova: nome canônico novo no motor entra
+    # sozinho aqui.
+    try:
+        from .inteligencia_demandas import _FISICOS as _FISICOS_CANON
+        AGENTES_FISICOS |= set(_FISICOS_CANON)
+    except Exception:
+        pass
 
     necessidades = {}   # tipo -> {qtd_necessaria, falta, medicoes[]}
     agentes_sem_guia = set()
@@ -2961,7 +2996,7 @@ def previsao_estoque():
 
         metodos = _buscar_metodos_agente(agente)
         if not metodos:
-            if agente in AGENTES_FISICOS or any(f in agente for f in ['Ruído','Ruido','Calor','Vibração','Vibracao','Frio','Radiação','Radiacao','Iluminação']):
+            if agente in AGENTES_FISICOS or any(f in agente for f in ['Ruído','Ruido','Calor','Vibração','Vibracao','Frio','Radiação','Radiacao','Ilumin','Luminânc','Luximetr','Umidade']):
                 agentes_fisicos_presentes.add(agente)
                 continue
             agentes_sem_guia.add(agente)
