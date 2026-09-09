@@ -15,6 +15,7 @@ Uso:
 """
 
 import os
+import re
 import time
 import logging
 import urllib.request
@@ -330,6 +331,16 @@ def get_category_ids_by_names(plan_id, nomes):
                 hit = next((cid for cid, cn in norm.items() if alvo in cn), None)      # label contém alvo ('pgr' → 'pgr/pcmso')
             if not hit:
                 hit = next((cid for cid, cn in norm.items() if cn in alvo), None)      # alvo contém label ('treinamento nr-35' → 'treinamento')
+            if not hit:
+                # Label composto ('PGR/PCMSO') casa por PARTE, como palavra inteira do nome
+                # do serviço. O catálogo real do CRM chama o produto de
+                # 'Documentação Especifica - PGR - Programa de Gerenciamento de Riscos - NR-01':
+                # nenhuma das regras acima casava e a task de engenharia nascia SEM label
+                # (previsto pela leitura do código em 09/09/2026). Só labels com '/' entram
+                # aqui, de propósito: 'RELATÓRIO TÉCNICO' não pode casar 'Laudo Técnico'.
+                palavras = set(re.findall(r'[a-z0-9]+', alvo))
+                hit = next((cid for cid, cn in norm.items()
+                            if '/' in cn and any(tok.strip() in palavras for tok in cn.split('/'))), None)
             if hit:
                 out[hit] = True
     except Exception as e:
