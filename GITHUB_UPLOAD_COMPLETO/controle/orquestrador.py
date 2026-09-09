@@ -221,6 +221,22 @@ def sugerir_tecnico(conn, raia):
     return sorted(candidatos, key=lambda n: (carga.get(n, 0), n))[0]
 
 
+def _data_br(v):
+    """Data para gente ler: dd/mm/aaaa.
+
+    O modal "Abrir OS" do CRM manda o vencimento como o <input type=date>
+    entrega, em ISO (2026-10-10), e o e-mail do financeiro saía assim — o
+    template capturado das caixas reais usa 05/08/2026 (medido em 09/09/2026).
+    ISO vira BR; o que não for data reconhecível volta como veio.
+    """
+    s = str(v or '').strip()
+    iso = data_iso(s)
+    if not iso:
+        return s
+    ano, mes, dia = iso.split('-')
+    return f'{dia}/{mes}/{ano}'
+
+
 # ── Templates de e-mail (capturados das caixas reais, 21/07) ────────────
 def montar_email_cobranca(os_row, servicos):
     linhas = [f"Prezados,",
@@ -235,7 +251,7 @@ def montar_email_cobranca(os_row, servicos):
         except (TypeError, ValueError):
             valor = str(s.get('valor') or '-')
         if primeiro:
-            linhas.append(f"{s.get('nome','?')} | {valor} | {os_row.get('vencimento') or '-'} | "
+            linhas.append(f"{s.get('nome','?')} | {valor} | {_data_br(os_row.get('vencimento')) or '-'} | "
                           f"{os_row['numero']} | {os_row.get('parcelamento') or '1X'}")
             primeiro = False
         else:
@@ -336,7 +352,10 @@ def abrir_os(payload, dry_run=False):
             'contato_email': (payload.get('contato_email') or '').strip(),
             'contato_tel': (payload.get('contato_tel') or '').strip(),
             'negocio_crm_id': str(payload.get('negocio_crm_id') or ''),
-            'vencimento': (payload.get('vencimento') or '').strip(),
+            # Guardado em ISO (coluna TEXT que outras consultas castam com ::date);
+            # a leitura humana (e-mail do financeiro) formata com _data_br.
+            'vencimento': data_iso(payload.get('vencimento'),
+                                   default=(payload.get('vencimento') or '').strip()),
             'parcelamento': (payload.get('parcelamento') or '').strip(),
             # Prazo combinado com o cliente, informado pela consultora no CRM.
             # `data_iso` porque a coluna é TEXT e várias consultas fazem

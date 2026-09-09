@@ -458,3 +458,35 @@ def test_coordenacao_nao_entra_no_rodizio_de_medicao():
             "INSERT INTO usuarios (nome, email, senha_hash, role, ativo)"
             " VALUES ('Ana Coordenadora', 'coord-teste@x.com', 'x', 'coordenacao', 1)")
         assert orq.sugerir_tecnico(conn, 'medicao') == 'Wanda Teste'
+
+
+def test_email_cobranca_vencimento_em_dd_mm_aaaa():
+    """O modal do CRM manda o vencimento em ISO (input type=date); o template do
+    financeiro, capturado das caixas reais, usa dd/mm/aaaa. Medido em 09/09/2026:
+    o corpo saía com '2026-10-10'."""
+    _limpar()
+    p = dict(PAYLOAD); p['vencimento'] = '2026-10-10'
+    r = orq.abrir_os(p, dry_run=True)
+    corpo = next(x for x in r['raias'] if x['raia'] == 'cobranca')['detalhe']['email']['corpo']
+    assert '| 10/10/2026 |' in corpo
+    assert '2026-10-10' not in corpo
+    # quem já mandava em BR continua igual
+    r2 = orq.abrir_os(dict(PAYLOAD), dry_run=True)
+    corpo2 = next(x for x in r2['raias'] if x['raia'] == 'cobranca')['detalhe']['email']['corpo']
+    assert '| 05/08/2026 |' in corpo2
+    # vazio não vira lixo
+    p3 = dict(PAYLOAD); p3['vencimento'] = ''
+    r3 = orq.abrir_os(p3, dry_run=True)
+    corpo3 = next(x for x in r3['raias'] if x['raia'] == 'cobranca')['detalhe']['email']['corpo']
+    assert '| - |' in corpo3
+
+
+def test_vencimento_gravado_em_iso_na_os():
+    """A coluna é TEXT e outras consultas castam com ::date: BR cru gravado já
+    derrubou dashboard (ver data_iso). Entra BR ou ISO, grava ISO."""
+    _limpar()
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)          # PAYLOAD manda '05/08/2026'
+    with get_db() as conn:
+        v = row_to_dict(conn.execute(
+            "SELECT vencimento FROM os_ordens WHERE numero=?", (r['numero'],)).fetchone())['vencimento']
+    assert v == '2026-08-05'
