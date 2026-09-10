@@ -1032,6 +1032,20 @@ def get_vencendo():
         })
 
 
+# Despachar ao laboratorio muda o ESTADO do tubo, nao so a data. Sem isto,
+# 179 amostradores de producao tinham data de envio e nenhum resultado, mas so
+# 16 estavam com status 'laboratorio' — e a fila de RAs, o alerta de atraso e o
+# UPDATE que grava o resultado quando o RA chega filtram TODOS por
+# status='laboratorio' (controle/lab_inbox.py). Os outros 163 ficavam
+# invisiveis, media de 81 dias parados (medido em 10/09/2026).
+# Mesma regra que a Cadeia de Custodia ja usava em marcar_despacho(): promove
+# so quem estava na prateleira. 'concluido' e 'devolvido' sao historico e um
+# reenvio nao pode ressuscita-los na fila.
+_SQL_PROMOVE_PARA_LAB = (
+    "status=CASE WHEN status IN ('disponivel','reservado') "
+    "THEN 'laboratorio' ELSE status END")
+
+
 @controle_bp.route('/amostradores/<int:aid>/envio_lab', methods=['POST'])
 def marcar_envio_lab(aid):
     """Registra que o amostrador foi enviado ao laboratorio (inicia contagem)."""
@@ -1042,9 +1056,10 @@ def marcar_envio_lab(aid):
     lote       = d.get('lote', '')
     obs        = d.get('observacao_venc', '')
     with get_db() as conn:
-        conn.execute("""
+        conn.execute(f"""
             UPDATE amostradores
             SET data_envio_lab=?, dias_validade=?, lote=?, observacao_venc=?,
+                {_SQL_PROMOVE_PARA_LAB},
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id=?""",
             (data_envio, dias, lote, obs, aid))
@@ -1066,6 +1081,7 @@ def marcar_envio_lab_lote():
         conn.execute(f"""
             UPDATE amostradores
             SET data_envio_lab=?, dias_validade=?, lote=?,
+                {_SQL_PROMOVE_PARA_LAB},
                 atualizado_em=CURRENT_TIMESTAMP
             WHERE id IN ({placeholders})""",
             [data_envio, dias, lote] + ids)
