@@ -4257,7 +4257,12 @@ def _prefill_quimico(cid):
             'vazaoFinal':    am.get('vazao_final'),
             'vazao':         am.get('vazao_media'),
             'tempoColeta':   am.get('tempo_min'),
-            'volume':        am.get('volume_L'),
+            # A coluna nasce `volume_L` no DDL: o Postgres normaliza para
+            # `volume_l` e o SQLite preserva a maiuscula, entao a chave que
+            # chega aqui depende do banco. Lendo so `volume_L`, o volume saia
+            # vazio em TODO laudo quimico de producao — e o app local, em
+            # SQLite, mostrava preenchido e escondia o defeito (10/09/2026).
+            'volume':        am.get('volume_l', am.get('volume_L')),
             'tempoExposicao': c.get('tempo_exposto') or '',
             'acessorios':    c.get('acessorios') or '',
         })
