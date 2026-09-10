@@ -418,6 +418,82 @@ def normalizar_datas_vazias(conn=None):
         return _run(c)
 
 
+def _iso_qualquer(data):
+    """Data do laudo em ISO, venha ela em ISO ou em BR. '' quando nao e data.
+
+    Existe porque `ra_laudos` passou a guardar ISO: quem so chamava `_iso_br`
+    (que exige DD/MM/AAAA) passou a descartar a data ja normalizada e voltava
+    vazio. Aceita as duas grafias enquanto as duas convivem no banco.
+    """
+    s = str(data or '').strip()
+    m = re.match(r'^(\d{4})-(\d{2})-(\d{2})', s)
+    if m:
+        ano, mes, dia = m.groups()
+        try:
+            datetime(int(ano), int(mes), int(dia))
+        except ValueError:
+            return ''
+        return f'{ano}-{mes}-{dia}'
+    return _iso_br(s)
+
+
+_COLS_DATA_RA_LAUDO = ('data_amostragem', 'data_recebimento')
+
+
+def normalizar_datas_ra_laudos(conn=None):
+    """Converte para ISO as datas de `ra_laudos` gravadas no formato brasileiro.
+
+    Em producao (10/09/2026), 94 dos 95 laudos guardavam `DD/MM/AAAA` em coluna
+    TEXT e ZERO em ISO. Data BR em texto ordena alfabeticamente — `05/08` vem
+    antes de `29/06` —, entao todo ORDER BY, MIN, MAX e corte por periodo nessa
+    tabela devolvia a ordem errada sem dar erro. E foi assim que o dashboard caiu
+    em 01/09: `''::date` com data BR estoura no Postgres.
+
+    Idempotente: o que ja esta em ISO ou nao casa o formato fica como esta —
+    texto solto que o parser nao entendeu e evidencia do laudo, nao se apaga.
+    Devolve quantas linhas mudaram.
+    """
+    def _run(c):
+        _ensure_ra_laudos(c)
+        total = 0
+        for col in _COLS_DATA_RA_LAUDO:
+            try:
+                rows = [row_to_dict(r) for r in c.execute(
+                    f"SELECT rowid AS _rid, {col} AS v FROM ra_laudos "
+                    f"WHERE {col} LIKE '__/__/____'").fetchall()]
+            except Exception:
+                # Postgres nao tem rowid: usa a chave natural do laudo
+                try:
+                    rows = [row_to_dict(r) for r in c.execute(
+                        f"SELECT amostrador_cod, ra_num, {col} AS v FROM ra_laudos "
+                        f"WHERE {col} LIKE '__/__/____'").fetchall()]
+                except Exception as e:
+                    log.warning('[lab_inbox] ler %s de ra_laudos falhou: %s', col, e)
+                    continue
+            for r in rows:
+                iso = _iso_br(r.get('v'))
+                if not iso:
+                    continue
+                try:
+                    if '_rid' in r:
+                        cur = c.execute(
+                            f"UPDATE ra_laudos SET {col}=? WHERE rowid=?",
+                            (iso, r['_rid']))
+                    else:
+                        cur = c.execute(
+                            f"UPDATE ra_laudos SET {col}=? WHERE amostrador_cod=? "
+                            f"AND ra_num=? AND {col}=?",
+                            (iso, r.get('amostrador_cod'), r.get('ra_num'), r.get('v')))
+                    total += getattr(cur, 'rowcount', 0) or 0
+                except Exception as e:
+                    log.warning('[lab_inbox] normalizar %s falhou: %s', col, e)
+        return total
+    if conn is not None:
+        return _run(conn)
+    with get_db() as c:
+        return _run(c)
+
+
 def sincronizar_data_medicao_dos_laudos(conn=None):
     """Preenche `amostradores.data_medicao` vazia com a data de amostragem que o
     laudo já declara em `ra_laudos`.
@@ -438,7 +514,7 @@ def sincronizar_data_medicao_dos_laudos(conn=None):
         # (é quando o tubo saiu a campo).
         melhor = {}
         for r in rows:
-            iso = _iso_br(r.get('dt'))
+            iso = _iso_qualquer(r.get('dt'))
             if not iso:
                 continue
             aid = r.get('aid')
@@ -867,6 +943,10 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             # Roda no sync porque é a ponta que faltava para medir prazo, e o
             # alerta acima conta idade a partir dela.
             try:
+                # A ordem importa: normaliza o formato ANTES de propagar a data
+                # do laudo para o amostrador, senao o que ja esta em BR continua
+                # entrando cru na coluna ISO de `amostradores`.
+                normalizar_datas_ra_laudos(conn)
                 datas_do_laudo = sincronizar_data_medicao_dos_laudos(conn)
                 normalizar_datas_vazias(conn)
             except Exception as e:
@@ -1179,10 +1259,16 @@ def _upsert_ra_laudo(conn, aid, cod, email, d):
         "resultados, assunto, data_email, criado_em) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)",
         (aid, cod, ra, d.get('funcionario', ''), d.get('funcao', ''), d.get('setor', ''),
-         d.get('tecnico', ''), d.get('metodo', ''), d.get('data_amostragem', ''),
-         d.get('data_recebimento', ''), json.dumps(d.get('resultados', []), ensure_ascii=False),
+         d.get('tecnico', ''), d.get('metodo', ''),
+         # O PDF do laboratorio traz DD/MM/AAAA e o parser continua lendo assim;
+         # o que muda e a GRAVACAO. Data BR em coluna TEXT ordena alfabeticamente
+         # (05/08 antes de 29/06) e derrubou o dashboard em 01/09. O que nao casa
+         # o formato entra como veio — nao se apaga o que o laudo dizia.
+         _iso_br(d.get('data_amostragem')) or d.get('data_amostragem', ''),
+         _iso_br(d.get('data_recebimento')) or d.get('data_recebimento', ''),
+         json.dumps(d.get('resultados', []), ensure_ascii=False),
          email.get('subject', ''), email.get('data', '')))
-    iso = _iso_br(d.get('data_amostragem'))
+    iso = _iso_qualquer(d.get('data_amostragem'))
     if iso:
         conn.execute(
             "UPDATE amostradores SET data_medicao=?, atualizado_em=CURRENT_TIMESTAMP "
