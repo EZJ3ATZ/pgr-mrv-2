@@ -3725,7 +3725,11 @@ def stats_raw_pipeline():
 def save_coleta_outros(data):
     import json as _json
     cid = data.get('id')
-    campos = ['tipo', 'empresa_id', 'empresa_nome', 'demanda_id', 'numero_os',
+    # planejamento_id/visita_id: ver save_coleta_ruido — mesma omissao. Aqui a
+    # falta era pior: `extras` recolhe tudo que NAO esta em `campos`, entao o
+    # planejamento_id ia parar dentro do dados_json como texto solto.
+    campos = ['tipo', 'empresa_id', 'empresa_nome', 'demanda_id', 'planejamento_id',
+              'visita_id', 'numero_os',
               'avaliador', 'tecnico_login', 'data_coleta', 'acompanhante', 'hora_inicio', 'hora_termino',
               'unidade', 'cidade', 'observacao', 'status']
     vals = {c: data.get(c) for c in campos}
@@ -3897,7 +3901,12 @@ def get_coleta_ruido(cid):
 
 def save_coleta_ruido(data):
     cid = data.get('id')
-    campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'acompanhante',
+    # planejamento_id/visita_id ficavam de fora da lista e o INSERT nascia com a
+    # coluna nula: 96 de 96 coletas de producao sem vinculo, e os 37
+    # planejamentos sem uma coleta apontando para eles (10/09/2026). O wizard
+    # sempre mandou o id — quem descartava era esta lista.
+    campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'planejamento_id',
+              'visita_id', 'acompanhante',
               'cargo_acompanhante', 'tecnico', 'tecnico_login', 'data_coleta', 'hora_inicio',
               'hora_termino', 'calibrador', 'calibracao_inicial', 'calibracao_final',
               'desvio_calibracao', 'status_calibracao', 'unidade', 'cidade',
@@ -4020,7 +4029,9 @@ def _minutos_amostrados(am):
 
 def save_coleta_quimico(data):
     cid = data.get('id')
-    campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'responsavel_coleta',
+    # planejamento_id/visita_id: ver save_coleta_ruido — mesma omissao.
+    campos = ['empresa_id', 'empresa_nome', 'demanda_id', 'planejamento_id',
+              'visita_id', 'responsavel_coleta',
               'tecnico_login',
               'cidade', 'unidade', 'data_coleta', 'dia_semana', 'turno',
               'nome_funcionario', 'jornada', 'funcao', 'setor', 'local_atividade',
