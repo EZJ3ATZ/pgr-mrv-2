@@ -1862,6 +1862,19 @@ def api_list_baixas():
     return jsonify({'baixas': [row_to_dict(r) for r in rows], 'total': len(rows)})
 
 
+# Concluir a OS tem de carimbar QUANDO. Em producao (10/09/2026) havia 220
+# demandas com status 'concluida' e apenas 5 com data_conclusao: nenhum dos
+# caminhos que fecha a demanda gravava a data junto, entao nao existe tempo de
+# ciclo da ordem de servico — a primeira pergunta de qualquer relatorio de
+# entrega. COALESCE/NULLIF para nunca reescrever o carimbo original: reconcluir
+# uma OS nao pode mexer na data em que ela fechou de verdade.
+_SQL_CARIMBA_CONCLUSAO = "data_conclusao=COALESCE(NULLIF(data_conclusao,''), ?)"
+
+
+def _agora_conclusao():
+    return agora_brt().strftime('%Y-%m-%d %H:%M:%S')
+
+
 @controle_bp.route('/demandas/<int:did>/concluir', methods=['POST'])
 def api_concluir_demanda(did):
     """Baixa manual da demanda/OS — decisão explícita do técnico ao concluir a medição.
@@ -1876,8 +1889,9 @@ def api_concluir_demanda(did):
             return jsonify({'erro': 'Demanda não encontrada'}), 404
         os_num = row_to_dict(row).get('numero_os', '')
         conn.execute(
-            "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
-            (did,))
+            f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO}, "
+            f"atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+            (_agora_conclusao(), did))
         pid = d.get('planejamento_id')
         if pid:
             conn.execute(
@@ -2023,7 +2037,9 @@ def dar_baixa():
             "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
             (dem_id,)).fetchone()['c']
         if pend == 0:
-            conn.execute("UPDATE demandas SET status='concluida' WHERE id=?", (dem_id,))
+            conn.execute(
+                f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO} WHERE id=?",
+                (_agora_conclusao(), dem_id))
 
     return jsonify({
         'ok': True,
@@ -2095,8 +2111,9 @@ def baixa_rapida_demanda(did):
             (did,)).fetchone()['c']
         if restantes == 0:
             conn.execute(
-                "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP "
-                "WHERE id=?", (did,))
+                f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO}, "
+                f"atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                (_agora_conclusao(), did))
             for p in conn.execute(
                     "SELECT id FROM planejamentos WHERE demanda_id=? "
                     "AND status NOT IN ('concluido','cancelado')", (did,)).fetchall():
@@ -3800,10 +3817,15 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
                 novo = 'concluida'
             else:
                 novo = 'em_andamento'
-            conn.execute(
-                f"UPDATE demandas SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
-                (novo, demanda_id)
-            )
+            if novo == 'concluida':
+                conn.execute(
+                    f"UPDATE demandas SET status=?, {_SQL_CARIMBA_CONCLUSAO}, "
+                    f"atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                    (novo, _agora_conclusao(), demanda_id))
+            else:
+                conn.execute(
+                    "UPDATE demandas SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                    (novo, demanda_id))
     except Exception as e:
         log.warning('[coleta] erro ao atualizar demanda %s: %s', demanda_id, e)
 
@@ -4482,6 +4504,28 @@ _VAZAO_MAX_LMIN = 20.0      # a maior vazao real de producao e 2,506 L/min
 _TEMPO_MAX_MIN = 1440       # 24 h de coleta
 
 
+# A aba Auditoria ja oferece `coleta_ruido_criada` e `coleta_quimico_criada` como
+# filtro, com icone e rotulo (templates/index.html) — mas NENHUM codigo Python
+# gravava esses eventos. Em producao (10/09/2026) havia 1 de cada, os dois de
+# maio, contra 96 coletas gravadas de junho a setembro: a tela tinha filtro para
+# um evento que o servidor nunca produzia, e nao havia como responder "quem
+# finalizou esta planilha e quando" pelo feed.
+def _evento_coleta_criada(tipo, cid, payload, quem):
+    """Registra no feed a finalizacao de uma planilha de campo. Nunca derruba o
+    save: a coleta ja esta gravada quando isto roda."""
+    familia = 'vibracao' if str(tipo).startswith('vibracao') else tipo
+    empresa = (payload.get('empresa_nome') or '').strip() or 'sem empresa'
+    osnum = (payload.get('os') or payload.get('numero_os') or '').strip()
+    data = (payload.get('data') or '')[:10]
+    try:
+        registrar_evento(
+            f'coleta_{familia}_criada',
+            f"{empresa}" + (f" · OS {osnum}" if osnum else '') + (f" · {data}" if data else ''),
+            cid, f'coleta_{familia}', quem or 'sistema', request.remote_addr)
+    except Exception as e:
+        log.warning('[coleta] evento de %s #%s falhou: %s', familia, cid, e)
+
+
 def _validar_fisica_dos_tubos(amostradores):
     """Devolve a mensagem de erro do primeiro tubo impossivel, ou '' se todos passam."""
     for am in amostradores or []:
@@ -4633,6 +4677,7 @@ def api_salvar_medicao_wizard():
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição de ruído já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_ruido(payload_ruido)
+        _evento_coleta_criada('ruido', cid, d, tecnico_login)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido', 'medicao_baixada': bx['baixada']})
 
@@ -4712,6 +4757,7 @@ def api_salvar_medicao_wizard():
         _ams_canon, _ams_soltos = _canonizar_amostradores(cq.get('amostradores') or [])
         payload_q['amostradores'] = _ams_canon
         cid = save_coleta_quimico(payload_q)
+        _evento_coleta_criada('quimico', cid, d, tecnico_login)
         # Baixa automática dos amostradores usados (antes SÓ existia no botão manual
         # "Dar Baixa" — a planilha gravava o uso mas o estoque não saía do lugar)
         bxa = _baixar_amostradores_quimico(
@@ -4790,6 +4836,7 @@ def api_salvar_medicao_wizard():
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': f'Esta medição {_lbl} já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_outros(payload_out)
+        _evento_coleta_criada(tipo, cid, d, tecnico_login)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': tipo, 'medicao_baixada': bx['baixada']})
 
