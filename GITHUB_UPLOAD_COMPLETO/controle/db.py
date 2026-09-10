@@ -2363,13 +2363,26 @@ def list_demandas(filtros=None):
             sql += (" AND d.status != 'concluida'"
                     " AND d.prazo IS NOT NULL AND d.prazo != ''"
                     " AND julianday(d.prazo) < julianday('now')")
+    # O `limit` da query string era ignorado: a consulta terminava com
+    # LIMIT 2000 fixo e `?limit=5` devolvia a tabela inteira (85 linhas na
+    # bancada de 10/09/2026). A aba BI pede 1000 e baixava tudo a cada abertura.
+    # O teto de 2000 continua como guarda-chuva — `limit` só o reduz, nunca o
+    # aumenta —, e pedido invalido (texto, zero, negativo) cai no teto, que era
+    # o comportamento de antes.
+    try:
+        limite = int(f.get('limit') or 0)
+    except (TypeError, ValueError):
+        limite = 0
+    limite = 2000 if limite <= 0 else min(limite, 2000)
+
     ordem = f.get('ordem', 'prazo')
     if ordem == 'empresa':
-        sql += ' ORDER BY e.nome ASC, d.criado_em ASC LIMIT 2000'
+        sql += f' ORDER BY e.nome ASC, d.criado_em ASC LIMIT {limite}'
     elif ordem == 'data_criacao':
-        sql += ' ORDER BY d.criado_em ASC LIMIT 2000'
+        sql += f' ORDER BY d.criado_em ASC LIMIT {limite}'
     else:
-        sql += ' ORDER BY CASE WHEN d.status=\'concluida\' THEN 1 ELSE 0 END, d.prazo ASC LIMIT 2000'
+        sql += (" ORDER BY CASE WHEN d.status='concluida' THEN 1 ELSE 0 END,"
+                f' d.prazo ASC LIMIT {limite}')
     with get_db() as conn:
         return [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
 
