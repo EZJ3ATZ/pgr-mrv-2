@@ -333,6 +333,29 @@ def _baixar_medicoes_com_resultado(conn):
     return baixadas
 
 
+# Estar no laboratorio e ter SIDO ENVIADO — a data e o fato, o status e so o
+# rotulo. Em producao (10/09/2026) havia 179 amostradores com data_envio_lab e
+# sem resultado, dos quais so 16 estavam com status='laboratorio': os outros 163
+# ficavam invisiveis para o alerta, para a reconciliacao e para o backfill de
+# RAs, que chegava a DESCARTAR o resultado do laboratorio por causa do rotulo.
+# Historico e prateleira ficam de fora: 'concluido', 'devolvido' e 'descartado'
+# nao voltam a fila por terem uma data de envio antiga.
+_STATUS_FORA_DO_LAB = ('concluido', 'devolvido', 'descartado')
+_SQL_NO_LABORATORIO = (
+    "COALESCE(arquivado,0)=0 "
+    "AND COALESCE(data_envio_lab,'')<>'' "
+    "AND COALESCE(data_resultado,'')='' "
+    "AND LOWER(COALESCE(status,'')) NOT IN ('concluido','devolvido','descartado')")
+
+
+def no_laboratorio(amostrador):
+    """Mesma regra do SQL acima, para decidir sobre um dicionário já lido."""
+    a = amostrador or {}
+    return (str(a.get('data_envio_lab') or '').strip() != ''
+            and str(a.get('data_resultado') or '').strip() == ''
+            and str(a.get('status') or '').strip().lower() not in _STATUS_FORA_DO_LAB)
+
+
 def _alertar_resultados_atrasados(conn, dias=None):
     """Amostrador no laboratório há mais de LAB_ATRASO_DIAS (env, default 15)
     sem resultado → evento 'lab_resultado_atrasado' no feed (1x por amostrador)."""
@@ -340,8 +363,7 @@ def _alertar_resultados_atrasados(conn, dias=None):
     hoje = datetime.now().date()
     rows = [row_to_dict(r) for r in conn.execute(
         "SELECT id, codigo, data_envio_lab FROM amostradores "
-        "WHERE COALESCE(arquivado,0)=0 AND status='laboratorio' "
-        "AND COALESCE(data_envio_lab,'')<>'' AND COALESCE(data_resultado,'')=''"
+        f"WHERE {_SQL_NO_LABORATORIO}"
     ).fetchall()]
     novos = 0
     for r in rows:
@@ -816,9 +838,16 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             # Reconciliação de ALTA CONFIANÇA: laboratório com resultado (RA) → concluído.
             # 'reservado' é status legítimo escolhido na UI e NÃO é mais apagado aqui
             # (fix 03/07/2026 — a job zerava a reserva do técnico a cada 3h).
+            # Quem foi despachado e voltou com resultado esta concluido, tenha o
+            # status que tiver. Exigir status='laboratorio' aqui deixava fora os
+            # 19 'disponivel' e 23 'devolvido' que JA tinham data_resultado em
+            # producao (10/09/2026) — resultado na mao e ciclo aberto para sempre.
             conn.execute("UPDATE amostradores SET status='concluido', atualizado_em=CURRENT_TIMESTAMP "
-                         "WHERE COALESCE(arquivado,0)=0 AND status='laboratorio' "
-                         "AND COALESCE(data_resultado,'') <> ''")
+                         "WHERE COALESCE(arquivado,0)=0 "
+                         "AND COALESCE(data_envio_lab,'') <> '' "
+                         "AND COALESCE(data_resultado,'') <> '' "
+                         "AND LOWER(COALESCE(status,'')) NOT IN "
+                         "    ('concluido','devolvido','descartado')")
             # Resultado chegou → baixa medições químicas 'aguardando_lab' da OS
             try:
                 medicoes_baixadas = _baixar_medicoes_com_resultado(conn)
@@ -1204,7 +1233,11 @@ def backfill_ras(apply=False, top=200):
                     st = (amos.get('status') or '').lower()
                     if st in ('concluido', 'devolvido'):
                         report['ja_concluidos'] += 1
-                    elif st == 'laboratorio':
+                    elif no_laboratorio(amos):
+                        # Antes exigia status=='laboratorio' e mandava para
+                        # `fora_do_lab` quem tinha sido despachado com o rotulo
+                        # errado — o laudo estava na mao e o resultado era
+                        # DESCARTADO. Agora vale a data de envio.
                         report['concluiriam'] += 1
                         report['amostradores'].append(amos.get('codigo'))
                         if apply:
@@ -1231,10 +1264,17 @@ def backfill_ras(apply=False, top=200):
             _ensure_ra_laudos(conn)
             for aid, dt in plano:
                 try:
+                    # O `AND status='laboratorio'` daqui era o ponto onde o
+                    # resultado do laboratorio SUMIA: com o rotulo errado, o
+                    # UPDATE nao pegava nenhuma linha e o laudo lido era jogado
+                    # fora em silencio. Vale a data de envio; historico segue
+                    # protegido de sobrescrita.
                     _savepoint(conn, lambda: conn.execute(
                         "UPDATE amostradores SET data_resultado=COALESCE(NULLIF(data_resultado,''),?), "
                         "status='concluido', atualizado_em=CURRENT_TIMESTAMP "
-                        "WHERE id=? AND status='laboratorio'", (dt, aid)))
+                        "WHERE id=? AND COALESCE(data_envio_lab,'')<>'' "
+                        "AND LOWER(COALESCE(status,'')) NOT IN "
+                        "    ('concluido','devolvido','descartado')", (dt, aid)))
                 except Exception as ex:
                     log.warning('[backfill_ras] concluir amostrador #%s falhou: %s', aid, ex)
                     erros.append(f'concluir amostrador #{aid}: {ex}')
