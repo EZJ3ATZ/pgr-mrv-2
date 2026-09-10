@@ -17960,6 +17960,43 @@ function nvMostrarAvisoAmostrador() {
   return true;
 }
 
+// Limites de FÍSICA do equipamento — espelho de `_validar_fisica_dos_tubos`
+// (controle/routes.py). Mudou lá, muda aqui: as duas metades da guarda têm de
+// dizer a mesma coisa, senão a tela deixa passar o que o servidor recusa e o
+// item fica preso na fila offline.
+const NV_VAZAO_MAX_LMIN = 20.0;   // a maior vazão real de produção é 2,506 L/min
+const NV_TEMPO_MAX_MIN  = 1440;   // 24 h de coleta
+
+function nvValidarFisicaDosTubos(agentes) {
+  for (const ag of (agentes || [])) {
+    for (const am of ((ag && ag.amostradores) || [])) {
+      if (!am) continue;
+      const cod = String(am.id_amostrador || '?').trim() || '?';
+      const num = v => {
+        if (v === null || v === undefined || v === '') return null;
+        const n = parseFloat(String(v).replace(',', '.'));
+        return Number.isFinite(n) ? n : null;
+      };
+      for (const [campo, rotulo] of [['vazao_inicial', 'vazão inicial'],
+                                     ['vazao_final', 'vazão final'],
+                                     ['vazao_media', 'vazão média']]) {
+        const v = num(am[campo]);
+        if (v === null) continue;
+        if (v <= 0) return `Amostrador ${cod}: ${rotulo} de ${v} L/min. A vazão tem de ser maior que zero — confira o rotâmetro.`;
+        if (v > NV_VAZAO_MAX_LMIN) return `Amostrador ${cod}: ${rotulo} de ${v} L/min. Bomba de amostragem não passa de ${NV_VAZAO_MAX_LMIN} L/min — confira se faltou a vírgula (19974 no lugar de 1,9974).`;
+      }
+      const t = num(am.tempo_min);
+      if (t !== null && t !== 0) {
+        if (t < 0) return `Amostrador ${cod}: tempo de coleta de ${t} min. O tempo não pode ser negativo.`;
+        if (t > NV_TEMPO_MAX_MIN) return `Amostrador ${cod}: tempo de coleta de ${t} min (${(t / 60).toFixed(1)} h). O limite é ${NV_TEMPO_MAX_MIN} min (24 h) — confira a hora de início e de término.`;
+      }
+      const vol = num(am.volume_l ?? am.volume_L);
+      if (vol !== null && vol < 0) return `Amostrador ${cod}: volume de ${vol} L. O volume não pode ser negativo.`;
+    }
+  }
+  return '';
+}
+
 async function nvSalvarMedicao() {
   // Trava de reentrância: evita que duplo-clique grave a medição 2x
   if (window._nvSaving) return null;
@@ -18038,6 +18075,23 @@ async function nvSalvarMedicao() {
         naoMedidos.push({...ag, causa, observacao: obs});
       }
     });
+
+    // Vazão e tempo impossíveis param AQUI, antes de qualquer envio.
+    // 🔴 Sem esta trava, a guarda do servidor (que devolve 400) prenderia o
+    // item na fila offline para sempre: sem rede o POST vai para a IndexedDB
+    // `medicoes-offline` e quem esvazia a fila só remove o item quando dá
+    // certo — um 400 nunca dá. Servidor e tela sobem no mesmo commit.
+    // Mesmos limites de `_validar_fisica_dos_tubos` (controle/routes.py):
+    // é a física da bomba, não a faixa do método (essa é da Cadeia de Custódia).
+    const _erroTubo = nvValidarFisicaDosTubos(_nvCqAgentes);
+    if (_erroTubo) {
+      _showToast(_erroTubo, 'error');
+      const cx = document.getElementById('ctrl-sub-nova');
+      if (cx) cx.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window._nvSaving = false;
+      _nvSetSalvarDisabled(false);
+      return null;
+    }
 
     // Salva UMA coleta por tipo marcado (ruído, químico, calor, vibração).
     const tiposSalvar = (_nvTipos && _nvTipos.length) ? _nvTipos.slice() : (_nvTipo ? [_nvTipo] : []);

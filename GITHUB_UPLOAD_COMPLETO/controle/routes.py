@@ -4475,6 +4475,50 @@ def _coleta_duplicada(tipo, demanda_id, data, substancia=None,
         return int((row_to_dict(r).get('c') if r else 0) or 0) > 0
 
 
+# Limites de FISICA do equipamento, nao de metodo. Generosos de proposito: so
+# pegam erro grosseiro de digitacao (virgula perdida, sinal trocado). Quem julga
+# se a vazao serve para o agente e a Cadeia de Custodia, que le o guia.
+_VAZAO_MAX_LMIN = 20.0      # a maior vazao real de producao e 2,506 L/min
+_TEMPO_MAX_MIN = 1440       # 24 h de coleta
+
+
+def _validar_fisica_dos_tubos(amostradores):
+    """Devolve a mensagem de erro do primeiro tubo impossivel, ou '' se todos passam."""
+    for am in amostradores or []:
+        if not isinstance(am, dict):
+            continue
+        cod = str(am.get('id_amostrador') or '?').strip() or '?'
+        for campo, rotulo in (('vazao_inicial', 'vazão inicial'),
+                              ('vazao_final', 'vazão final'),
+                              ('vazao_media', 'vazão média')):
+            v = _safe_float(am.get(campo))
+            if v is None:
+                continue
+            if v <= 0:
+                return (f'Amostrador {cod}: {rotulo} de {v:g} L/min. '
+                        f'A vazão tem de ser maior que zero. Confira o rotâmetro '
+                        f'e corrija antes de finalizar. Nada foi salvo.')
+            if v > _VAZAO_MAX_LMIN:
+                return (f'Amostrador {cod}: {rotulo} de {v:g} L/min. '
+                        f'Bomba de amostragem não passa de {_VAZAO_MAX_LMIN:g} L/min — '
+                        f'confira se faltou a vírgula (19974 no lugar de 1,9974). '
+                        f'Nada foi salvo.')
+        t = _safe_float(am.get('tempo_min'))
+        if t is not None and t != 0:
+            if t < 0:
+                return (f'Amostrador {cod}: tempo de coleta de {t:g} min. '
+                        f'O tempo não pode ser negativo. Nada foi salvo.')
+            if t > _TEMPO_MAX_MIN:
+                return (f'Amostrador {cod}: tempo de coleta de {t:g} min '
+                        f'({t / 60:.1f} h). O limite é {_TEMPO_MAX_MIN} min (24 h) — '
+                        f'confira a hora de início e de término. Nada foi salvo.')
+        vol = _safe_float(am.get('volume_l'))
+        if vol is not None and vol < 0:
+            return (f'Amostrador {cod}: volume de {vol:g} L. '
+                    f'O volume não pode ser negativo. Nada foi salvo.')
+    return ''
+
+
 @controle_bp.route('/medicoes', methods=['POST'])
 def api_salvar_medicao_wizard():
     """Recebe payload do wizard Central Operacional e salva em coletas_ruido ou coletas_quimico."""
@@ -4519,6 +4563,19 @@ def api_salvar_medicao_wizard():
                         'Informe a data da medicao antes de finalizar. Sem ela a '
                         'coleta nao entra nas planilhas nem no cruzamento com o '
                         'laboratorio. Nada foi salvo.'}), 400
+
+    # Vazao e tempo fisicamente impossiveis nao entram no banco. Nao e a faixa
+    # do METODO (isso e da Cadeia de Custodia, que tem o guia na mao): e a
+    # fisica da bomba. A coleta 20 de producao ficou com vazao_media
+    # 9988,006 L/min e volume 0,0 L porque o tecnico digitou 19974 no lugar de
+    # 1,9974 — e foi concluida, e a cadeia dela foi gerada e despachada.
+    # A maior vazao real de producao e 2,506 L/min; o teto aqui e 8x isso, de
+    # proposito, para pegar so o erro grosseiro de digitacao.
+    if tipo == 'quimico':
+        _erro_tubo = _validar_fisica_dos_tubos(
+            (d.get('campo_quimico') or {}).get('amostradores') or [])
+        if _erro_tubo:
+            return jsonify({'ok': False, 'erro': _erro_tubo}), 400
 
     # Fotos e assinaturas da visita: antes iam só pro PDF gerado na hora e o
     # save descartava — a planilha remontada em Planilhas Feitas saía sem elas.
