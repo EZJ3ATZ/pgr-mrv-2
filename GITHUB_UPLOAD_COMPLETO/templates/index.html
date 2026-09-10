@@ -13115,11 +13115,20 @@ async function ctrlLoadAmostr() {
       const st = (a.status || '').toLowerCase();
       const parado = a.tempo_parado !== null && a.tempo_parado !== undefined ? a.tempo_parado : null;
       let corParado = 'var(--text3)', lblParado = '—';
+      // "Parado" só é ALARME para tubo dentro do ciclo (no laboratório ou
+      // reservado). `tempo_parado` conta da data_entrada quando não há medição
+      // (controle/db.py, list_amostradores), então um tubo novo na prateleira
+      // aparecia "322d ⚠" em vermelho: em produção, 147 linhas alarmavam contra
+      // as 7 que importavam — 60 de 60 devolvidos, 69 de 104 disponíveis
+      // (medido em 10/09/2026). Estoque parado é informação, não urgência; com
+      // tudo vermelho, o alarme que importa não é visto.
+      const emCiclo = st === 'laboratorio' || st === 'reservado';
       if (parado !== null) {
-        if (parado > 30) { corParado = '#e22'; lblParado = `${parado}d ⚠`; }
+        if (!emCiclo)         { corParado = 'var(--text3)'; lblParado = `${parado}d`; }
+        else if (parado > 30) { corParado = '#e22'; lblParado = `${parado}d ⚠`; }
         else if (parado > 15) { corParado = '#f80'; lblParado = `${parado}d`; }
-        else if (parado > 7) { corParado = '#fc6'; lblParado = `${parado}d`; }
-        else { corParado = 'var(--text3)'; lblParado = `${parado}d`; }
+        else if (parado > 7)  { corParado = '#fc6'; lblParado = `${parado}d`; }
+        else                  { corParado = 'var(--text3)'; lblParado = `${parado}d`; }
       }
       let rowStyle = '';
       if (st.includes('lab') && a.data_envio_lab) rowStyle = 'background:rgba(255,136,0,.03);';
@@ -13338,7 +13347,7 @@ function ctrlAmostrDrill(id) {
   ].filter(p => p[1]);
   let html = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
     <span class="ctrl-badge ${st}">${_amostrStatusLabel(a.status)}</span>
-    <span style="font-size:.78rem;color:var(--text3);">${a.tipo||'—'} · ${_esc(a.empresa_nome||'sem empresa')}${a.tempo_parado!=null?` · parado há <b style="color:${(a.tempo_parado>30)?'#e22':'var(--text2)'};">${a.tempo_parado}d</b>`:''}</span>
+    <span style="font-size:.78rem;color:var(--text3);">${a.tipo||'—'} · ${_esc(a.empresa_nome||'sem empresa')}${a.tempo_parado!=null?` · parado há <b style="color:${(a.tempo_parado>30 && (st==='laboratorio'||st==='reservado'))?'#e22':'var(--text2)'};">${a.tempo_parado}d</b>`:''}</span>
   </div>`;
   html += '<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px;">Linha do tempo</div>';
   html += passos.length
@@ -15814,7 +15823,7 @@ function _biAmstCardHtml(a) {
       ${a.data_entrada?`<span>📥 ${a.data_entrada}</span>`:''}
       ${a.data_medicao?`<span>📊 ${a.data_medicao}</span>`:''}
       ${a.data_envio_lab?`<span>🔬 ${a.data_envio_lab}</span>`:''}
-      ${a.tempo_parado!=null?`<span style="${a.tempo_parado>30?'color:#fbbf24;':''}">⏸ ${a.tempo_parado}d parado</span>`:''}
+      ${a.tempo_parado!=null?`<span style="${(a.tempo_parado>30 && ['laboratorio','reservado'].includes((a.status||'').toLowerCase()))?'color:#fbbf24;':''}">⏸ ${a.tempo_parado}d parado</span>`:''}
     </div>
   </div>`;
 }
