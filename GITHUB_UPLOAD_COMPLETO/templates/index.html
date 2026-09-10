@@ -9306,28 +9306,134 @@ async function _ctrlOfflineFallback(url, method, body){
 }
 
 // Sincroniza a fila manualmente (volta a ficar online → reenvia coletas)
+// Guarda no próprio item da fila por que o servidor recusou. Sem isto o motivo
+// era descartado (o ramo de falha nunca lia o corpo da resposta) e o item
+// tentava para sempre — 🔴 um 400 nunca satisfaz `r.ok`, então coleta com campo
+// inválido ficava presa na IndexedDB sem tela nenhuma para ver, corrigir ou
+// descartar, e para item enfileirado a fila é a ÚNICA cópia da visita.
+function _offMarcarErro(item, status, mensagem){
+  return _offOpenQueue().then(db => new Promise(res => {
+    const tx = db.transaction('queue','readwrite');
+    const st = tx.objectStore('queue');
+    const g = st.get(item.id);
+    g.onsuccess = () => {
+      const cur = g.result; if (!cur) { res(); return; }
+      cur.erro_status = status;
+      cur.erro_msg = String(mensagem || '').slice(0, 400);
+      cur.erro_em = Date.now();
+      cur.tentativas = (cur.tentativas || 0) + 1;
+      st.put(cur);
+    };
+    tx.oncomplete = () => res(); tx.onerror = () => res();
+  })).catch(()=>{});
+}
+
+// Recusa do SERVIDOR (4xx) é erro do dado: reenviar não resolve, e o técnico
+// precisa saber. 5xx e falha de rede continuam sendo retentativa legítima.
+function _offEhRecusa(item){ const s = item && item.erro_status; return s >= 400 && s < 500; }
+
 async function _offSincronizar(silencioso){
   if (!navigator.onLine) { if(!silencioso) _showToast('Sem conexão','warn'); return; }
   const fila = await _offLerFila();
   if (!fila.length) { if(!silencioso) _showToast('Nada para sincronizar'); _offAtualizarBadge(); return; }
-  let ok=0, fail=0;
+  let ok=0, fail=0, recusadas=0;
   for (const item of fila){
+    if (_offEhRecusa(item)) { recusadas++; continue; }   // já recusado: não insiste
     try {
       const r = await fetch(item.url, { method:item.method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(item.body) });
-      if (r.ok) { await _offRemoverFila(item.id); ok++; } else fail++;
+      if (r.ok) { await _offRemoverFila(item.id); ok++; }
+      else {
+        let msg = '';
+        try { const j = await r.clone().json(); msg = j.erro || j.aviso || ''; }
+        catch(_) { try { msg = (await r.text() || '').slice(0,200); } catch(__){} }
+        await _offMarcarErro(item, r.status, msg);
+        if (r.status >= 400 && r.status < 500) recusadas++; else fail++;
+      }
     } catch(_) { fail++; }
   }
   _offAtualizarBadge();
-  if (ok>0) _showToast(`☁ ${ok} coleta(s) enviada(s)${fail?` · ${fail} falhou`:''}`, 'ok');
-  else if(!silencioso) _showToast(`Falha no envio (${fail})`,'warn');
+  const partes = [];
+  if (ok) partes.push(`${ok} enviada(s)`);
+  if (recusadas) partes.push(`${recusadas} recusada(s)`);
+  if (fail) partes.push(`${fail} sem conexão`);
+  if (recusadas) _showToast(`☁ ${partes.join(' · ')} — toque em "Ver fila" para corrigir`, 'warn');
+  else if (ok) _showToast(`☁ ${partes.join(' · ')}`, 'ok');
+  else if (!silencioso) _showToast(`Falha no envio (${fail})`, 'warn');
 }
 
 async function _offAtualizarBadge(){
   const fila = await _offLerFila();
+  const recusadas = fila.filter(_offEhRecusa).length;
   const el = document.getElementById('ctrl-off-badge');
   if (el){ if(fila.length){ el.textContent = fila.length; el.style.display='inline-block'; } else el.style.display='none'; }
   const ind = document.getElementById('ctrl-off-pendentes');
-  if (ind){ ind.textContent = fila.length ? `⚠ ${fila.length} coleta(s) aguardando envio` : ''; }
+  if (ind){
+    if (!fila.length) { ind.innerHTML = ''; return; }
+    const txt = recusadas
+      ? `⚠ ${fila.length} coleta(s) na fila · <b style="color:#e22;">${recusadas} recusada(s) pelo servidor</b>`
+      : `⚠ ${fila.length} coleta(s) aguardando envio`;
+    ind.innerHTML = `${txt} <button onclick="offAbrirFila()" style="margin-left:8px;background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;">Ver fila</button>`;
+  }
+}
+
+// Tela da fila offline: ver o que está preso, por que, e poder descartar.
+// Antes não existia — `_offRemoverFila` só era chamada no ramo de sucesso, e
+// item recusado não tinha saída nenhuma.
+async function offAbrirFila(){
+  const fila = await _offLerFila();
+  const ov = document.getElementById('off-fila-overlay');
+  const cx = document.getElementById('off-fila-lista');
+  if (!ov || !cx) return;
+  if (!fila.length){
+    cx.innerHTML = '<div style="color:var(--text3);font-size:.85rem;padding:14px 0;">A fila está vazia — tudo foi enviado.</div>';
+  } else {
+    cx.innerHTML = fila.map(it => {
+      const b = it.body || {};
+      const quando = it.ts ? new Date(it.ts).toLocaleString('pt-BR') : '—';
+      const recusada = _offEhRecusa(it);
+      const cor = recusada ? '#e22' : 'var(--text3)';
+      const rotulo = recusada
+        ? `Recusada pelo servidor (${it.erro_status})`
+        : (it.erro_status ? `Falhou (${it.erro_status}) — vai tentar de novo` : 'Aguardando envio');
+      return `<div style="border:1px solid var(--border);border-left:3px solid ${cor};border-radius:8px;padding:12px 14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+          <b style="font-size:.86rem;">${_esc(b.empresa_nome || 'Sem empresa')} · ${_esc(b.tipo || '?')}</b>
+          <span style="font-size:.72rem;color:var(--text3);">${quando}</span>
+        </div>
+        <div style="font-size:.76rem;color:var(--text2);margin-bottom:6px;">
+          OS ${_esc(b.os || '—')} · data ${_esc(b.data || '—')} · técnico ${_esc(b.avaliador || '—')}
+        </div>
+        <div style="font-size:.76rem;color:${cor};font-weight:600;margin-bottom:${it.erro_msg ? '4px' : '8px'};">${rotulo}</div>
+        ${it.erro_msg ? `<div style="font-size:.75rem;color:var(--text2);background:var(--surface2);border-radius:6px;padding:8px 10px;margin-bottom:8px;line-height:1.45;">${_esc(it.erro_msg)}</div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="offTentarItem(${it.id})" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:.76rem;cursor:pointer;font-family:inherit;">↻ Tentar de novo</button>
+          <button onclick="offDescartarItem(${it.id})" style="background:transparent;color:#e22;border:1px solid rgba(238,34,34,.35);padding:6px 12px;border-radius:6px;font-size:.76rem;cursor:pointer;font-family:inherit;">🗑 Descartar</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  ov.classList.add('open'); ov.style.display = 'flex';
+}
+
+function offFecharFila(){
+  const ov = document.getElementById('off-fila-overlay');
+  if (ov){ ov.classList.remove('open'); ov.style.display = 'none'; }
+}
+
+async function offTentarItem(id){
+  const fila = await _offLerFila();
+  const it = fila.find(x => x.id === id);
+  if (!it) { offAbrirFila(); return; }
+  await _offMarcarErro(it, 0, '');          // limpa a recusa para poder reenviar
+  await _offSincronizar(true);
+  offAbrirFila();
+}
+
+async function offDescartarItem(id){
+  if (!confirm('Descartar esta coleta da fila?\n\nEla NÃO foi salva no servidor e não dá para recuperar depois. Anote o que precisar antes de confirmar.')) return;
+  await _offRemoverFila(id);
+  await _offAtualizarBadge();
+  offAbrirFila();
 }
 
 // "Preparar para o campo": baixa dados + casca do portal pra Planilha de Campo
@@ -20025,6 +20131,27 @@ document.querySelectorAll('[data-split]').forEach(initSplitText);
   setTimeout(tryHide, 800);
 })();
 </script>
+
+<!-- ══ FILA OFFLINE ═════════════════════════════════════════════════
+     Fica no nível RAIZ, não dentro de .tab-panel: overlay dentro de um
+     painel inativo nasce com display:none herdado e não abre. -->
+<div class="ctrl-overlay" id="off-fila-overlay" style="display:none;z-index:1200;"
+     onclick="if(event.target===this) offFecharFila()">
+  <div class="ctrl-modal" style="max-width:620px;">
+    <h3>☁ Coletas na fila offline</h3>
+    <div style="font-size:.76rem;color:var(--text3);margin:-6px 0 14px;line-height:1.5;">
+      Coletas finalizadas sem internet ficam aqui até serem enviadas. Uma coleta
+      <b>recusada pelo servidor</b> não vai sozinha: corrija o que ele apontou e
+      lance de novo pela Planilha de Campo, ou descarte esta cópia.
+    </div>
+    <div id="off-fila-lista"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button onclick="_offSincronizar(false).then(offAbrirFila)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:9px 16px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;">☁ Sincronizar tudo</button>
+      <button onclick="offFecharFila()" style="background:var(--brand);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;">Fechar</button>
+    </div>
+  </div>
+</div>
+
   <script src="/static/atividade.js?v=1" defer></script>
 </body>
 </html>
