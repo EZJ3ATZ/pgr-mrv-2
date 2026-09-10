@@ -1862,6 +1862,19 @@ def api_list_baixas():
     return jsonify({'baixas': [row_to_dict(r) for r in rows], 'total': len(rows)})
 
 
+# Concluir a OS tem de carimbar QUANDO. Em producao (10/09/2026) havia 220
+# demandas com status 'concluida' e apenas 5 com data_conclusao: nenhum dos
+# caminhos que fecha a demanda gravava a data junto, entao nao existe tempo de
+# ciclo da ordem de servico — a primeira pergunta de qualquer relatorio de
+# entrega. COALESCE/NULLIF para nunca reescrever o carimbo original: reconcluir
+# uma OS nao pode mexer na data em que ela fechou de verdade.
+_SQL_CARIMBA_CONCLUSAO = "data_conclusao=COALESCE(NULLIF(data_conclusao,''), ?)"
+
+
+def _agora_conclusao():
+    return agora_brt().strftime('%Y-%m-%d %H:%M:%S')
+
+
 @controle_bp.route('/demandas/<int:did>/concluir', methods=['POST'])
 def api_concluir_demanda(did):
     """Baixa manual da demanda/OS — decisão explícita do técnico ao concluir a medição.
@@ -1876,8 +1889,9 @@ def api_concluir_demanda(did):
             return jsonify({'erro': 'Demanda não encontrada'}), 404
         os_num = row_to_dict(row).get('numero_os', '')
         conn.execute(
-            "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
-            (did,))
+            f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO}, "
+            f"atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+            (_agora_conclusao(), did))
         pid = d.get('planejamento_id')
         if pid:
             conn.execute(
@@ -2023,7 +2037,9 @@ def dar_baixa():
             "SELECT COUNT(*) c FROM medicoes WHERE demanda_id=? AND status!='realizado'",
             (dem_id,)).fetchone()['c']
         if pend == 0:
-            conn.execute("UPDATE demandas SET status='concluida' WHERE id=?", (dem_id,))
+            conn.execute(
+                f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO} WHERE id=?",
+                (_agora_conclusao(), dem_id))
 
     return jsonify({
         'ok': True,
@@ -2095,8 +2111,9 @@ def baixa_rapida_demanda(did):
             (did,)).fetchone()['c']
         if restantes == 0:
             conn.execute(
-                "UPDATE demandas SET status='concluida', atualizado_em=CURRENT_TIMESTAMP "
-                "WHERE id=?", (did,))
+                f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO}, "
+                f"atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                (_agora_conclusao(), did))
             for p in conn.execute(
                     "SELECT id FROM planejamentos WHERE demanda_id=? "
                     "AND status NOT IN ('concluido','cancelado')", (did,)).fetchall():
@@ -3800,10 +3817,15 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
                 novo = 'concluida'
             else:
                 novo = 'em_andamento'
-            conn.execute(
-                f"UPDATE demandas SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
-                (novo, demanda_id)
-            )
+            if novo == 'concluida':
+                conn.execute(
+                    f"UPDATE demandas SET status=?, {_SQL_CARIMBA_CONCLUSAO}, "
+                    f"atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                    (novo, _agora_conclusao(), demanda_id))
+            else:
+                conn.execute(
+                    "UPDATE demandas SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
+                    (novo, demanda_id))
     except Exception as e:
         log.warning('[coleta] erro ao atualizar demanda %s: %s', demanda_id, e)
 
