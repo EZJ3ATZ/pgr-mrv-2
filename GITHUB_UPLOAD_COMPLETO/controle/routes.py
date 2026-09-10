@@ -4601,6 +4601,10 @@ def api_salvar_medicao_wizard():
             'empresa_id':          d.get('empresa_id'),
             'empresa_nome':        d.get('empresa_nome', ''),
             'demanda_id':          d.get('demanda_id'),
+            # De qual planejamento esta visita saiu. O wizard sempre mandou
+            # o id; ninguem gravava, e as 96 coletas de producao estao com a
+            # coluna nula (10/09/2026).
+            'planejamento_id':     d.get('planejamento_id'),
             'acompanhante':        cr.get('acomp', ''),
             'cargo_acompanhante':  cr.get('cargo_acomp', ''),
             'tecnico':             cr.get('tecnico') or d.get('avaliador', ''),
@@ -4640,6 +4644,10 @@ def api_salvar_medicao_wizard():
             'empresa_id':         d.get('empresa_id'),
             'empresa_nome':       d.get('empresa_nome', ''),
             'demanda_id':         d.get('demanda_id'),
+            # De qual planejamento esta visita saiu. O wizard sempre mandou
+            # o id; ninguem gravava, e as 96 coletas de producao estao com a
+            # coluna nula (10/09/2026).
+            'planejamento_id':    d.get('planejamento_id'),
             'responsavel_coleta': d.get('avaliador', ''),
             'tecnico_login':      tecnico_login,
             'cidade':             d.get('cidade', ''),
@@ -4745,6 +4753,10 @@ def api_salvar_medicao_wizard():
             'empresa_id':   d.get('empresa_id'),
             'empresa_nome': d.get('empresa_nome', ''),
             'demanda_id':   d.get('demanda_id'),
+            # De qual planejamento esta visita saiu. O wizard sempre mandou
+            # o id; ninguem gravava, e as 96 coletas de producao estao com a
+            # coluna nula (10/09/2026).
+            'planejamento_id': d.get('planejamento_id'),
             'numero_os':    d.get('os', ''),
             'avaliador':    d.get('avaliador', ''),
             'tecnico_login': tecnico_login,
