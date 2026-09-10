@@ -4742,6 +4742,8 @@
         <option value="">Todos os eventos</option>
         <option value="coleta_ruido_criada">Coletas de Ruído</option>
         <option value="coleta_quimico_criada">Coletas Químico</option>
+        <option value="coleta_calor_criada">Coletas de Calor</option>
+        <option value="coleta_vibracao_criada">Coletas de Vibração</option>
         <option value="planejamento_criado">Planejamentos</option>
         <option value="amostrador_criado">Amostrador criado</option>
         <option value="amostrador_atualizado">Amostrador atualizado</option>
@@ -10383,6 +10385,7 @@ function ctrlFecharEmail() {
 const _NOTIF_ICON = {
   login:'🔑', logout:'🚪', amostrador_criado:'➕', amostrador_atualizado:'✏️',
   sync_planner:'🔄', importacao:'📥', coleta_ruido_criada:'🔊', coleta_quimico_criada:'🧪',
+  coleta_calor_criada:'🌡️', coleta_vibracao_criada:'📳',
   planejamento_criado:'📋', os_concluida:'✅', laudo_gerado:'📄', medicao_salva:'📊',
   demanda_baixa_manual:'✅', demanda_baixa_rapida:'⚡', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
   empresa_nova_planner:'🏢', empresa_fantasma_excluida:'🗑️', aviso_atualizacao:'📢',
@@ -10391,7 +10394,9 @@ const _NOTIF_LABEL = {
   login:'Login', logout:'Logout', amostrador_criado:'Amostrador criado',
   amostrador_atualizado:'Amostrador atualizado', sync_planner:'Sync Planner',
   importacao:'Importação', coleta_ruido_criada:'Coleta de Ruído',
-  coleta_quimico_criada:'Coleta Químico', planejamento_criado:'Planejamento',
+  coleta_quimico_criada:'Coleta Químico',
+  coleta_calor_criada:'Coleta de Calor', coleta_vibracao_criada:'Coleta de Vibração',
+  planejamento_criado:'Planejamento',
   os_concluida:'OS Concluída', laudo_gerado:'Laudo gerado', medicao_salva:'Medição salva',
   demanda_baixa_manual:'Baixa de OS', demanda_baixa_rapida:'Baixa rápida (sem amostrador)', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
   demanda_criada_planner:'Nova OS', empresa_nova_planner:'Nova empresa',

@@ -4504,6 +4504,28 @@ _VAZAO_MAX_LMIN = 20.0      # a maior vazao real de producao e 2,506 L/min
 _TEMPO_MAX_MIN = 1440       # 24 h de coleta
 
 
+# A aba Auditoria ja oferece `coleta_ruido_criada` e `coleta_quimico_criada` como
+# filtro, com icone e rotulo (templates/index.html) — mas NENHUM codigo Python
+# gravava esses eventos. Em producao (10/09/2026) havia 1 de cada, os dois de
+# maio, contra 96 coletas gravadas de junho a setembro: a tela tinha filtro para
+# um evento que o servidor nunca produzia, e nao havia como responder "quem
+# finalizou esta planilha e quando" pelo feed.
+def _evento_coleta_criada(tipo, cid, payload, quem):
+    """Registra no feed a finalizacao de uma planilha de campo. Nunca derruba o
+    save: a coleta ja esta gravada quando isto roda."""
+    familia = 'vibracao' if str(tipo).startswith('vibracao') else tipo
+    empresa = (payload.get('empresa_nome') or '').strip() or 'sem empresa'
+    osnum = (payload.get('os') or payload.get('numero_os') or '').strip()
+    data = (payload.get('data') or '')[:10]
+    try:
+        registrar_evento(
+            f'coleta_{familia}_criada',
+            f"{empresa}" + (f" · OS {osnum}" if osnum else '') + (f" · {data}" if data else ''),
+            cid, f'coleta_{familia}', quem or 'sistema', request.remote_addr)
+    except Exception as e:
+        log.warning('[coleta] evento de %s #%s falhou: %s', familia, cid, e)
+
+
 def _validar_fisica_dos_tubos(amostradores):
     """Devolve a mensagem de erro do primeiro tubo impossivel, ou '' se todos passam."""
     for am in amostradores or []:
@@ -4655,6 +4677,7 @@ def api_salvar_medicao_wizard():
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição de ruído já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_ruido(payload_ruido)
+        _evento_coleta_criada('ruido', cid, d, tecnico_login)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': 'ruido', 'medicao_baixada': bx['baixada']})
 
@@ -4734,6 +4757,7 @@ def api_salvar_medicao_wizard():
         _ams_canon, _ams_soltos = _canonizar_amostradores(cq.get('amostradores') or [])
         payload_q['amostradores'] = _ams_canon
         cid = save_coleta_quimico(payload_q)
+        _evento_coleta_criada('quimico', cid, d, tecnico_login)
         # Baixa automática dos amostradores usados (antes SÓ existia no botão manual
         # "Dar Baixa" — a planilha gravava o uso mas o estoque não saía do lugar)
         bxa = _baixar_amostradores_quimico(
@@ -4812,6 +4836,7 @@ def api_salvar_medicao_wizard():
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': f'Esta medição {_lbl} já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
         cid = save_coleta_outros(payload_out)
+        _evento_coleta_criada(tipo, cid, d, tecnico_login)
         _atualizar_demanda_por_coleta(d.get('demanda_id'), 'concluida', d.get('planejamento_id'))
         return jsonify({'ok': True, 'id': cid, 'tipo': tipo, 'medicao_baixada': bx['baixada']})
 
