@@ -9,6 +9,7 @@ Graph mockado — nada toca o Planner real; e-mails ficam pendente_envio
 (ORQ_ENVIAR_EMAILS desligado nos testes)."""
 import re
 import json
+import time
 
 import pytest
 
@@ -42,6 +43,28 @@ def _orq_ativo_por_padrao(monkeypatch):
     monkeypatch.setenv('ORQ_ATIVO', '1')
 
 
+@pytest.fixture(autouse=True)
+def _roster_sem_rede():
+    """Nenhum teste daqui pode bater no Assinador de verdade.
+
+    `abrir_os` chama `sugerir_tecnico` por raia, que busca o roster na BI por
+    HTTP com timeout de 6 s e só guarda erro por 60 s. Numa suíte longa isso
+    vira minutos de espera de rede — foi o que estourou o `timeout-minutes: 20`
+    do job "Suíte completa" em 23/09/2026. O próprio código diz que abrir a OS
+    não pode depender de outro app estar no ar; o teste também não.
+
+    Pré-carrega o CACHE em vez de trocar a função, porque os testes do próprio
+    roster zeram `_roster_cache['ate']` antes de agir e continuam exercitando o
+    caminho de verdade com o `urlopen` que eles mesmos mockam.
+    """
+    import time as _t
+    orq._roster_cache['ate'] = _t.time() + 3600
+    orq._roster_cache['nomes'] = ['Aline Gandra', 'Tainara Gomes']
+    yield
+    orq._roster_cache['ate'] = 0
+    orq._roster_cache['nomes'] = []
+
+
 def _limpar():
     init_db()
     with get_db() as conn:
@@ -49,6 +72,9 @@ def _limpar():
         conn.execute("DELETE FROM os_raias")
         conn.execute("DELETE FROM os_ordens")
         conn.execute("DELETE FROM demandas WHERE origem='crm_os'")
+        # o numero da OS e deterministico por dia (2026.0923-001), entao o log
+        # de eventos de um teste vira "evento do mesmo numero" no seguinte
+        conn.execute("DELETE FROM eventos")
 
 
 def test_classificacao_por_keyword():
@@ -604,3 +630,152 @@ def test_prazo_da_aprovacao_atualiza_a_demanda_de_medicao(monkeypatch):
             "SELECT responsavel, prazo FROM demandas WHERE origem='crm_os'").fetchone())
     assert d['responsavel'] == 'Geferson'
     assert d['prazo'] == '2026-11-20'
+
+
+# ── Uma task por SERVIÇO, não uma por raia ──────────────────────────────
+# A engenharia trabalha assim (a DDA Móveis de 18/09 tem 3 cartões: LIP, LTCAT
+# e PGR/PCMSO). Com tudo num cartão só, "PGR entregue e PCMSO pendente" não tem
+# como aparecer — e era exatamente o controle que faltava.
+
+def _mock_graph_multi(monkeypatch, criadas):
+    """Guarda TODAS as tasks criadas, na ordem."""
+    def _criar(plan_id, title, **kw):
+        n = len(criadas) + 1
+        criadas.append({'plan_id': plan_id, 'title': title, **kw})
+        return {'id': f'TASK-{n}'}
+    descr = {}
+    monkeypatch.setattr(graph_mod, 'graph_ok', lambda: True)
+    monkeypatch.setattr(graph_mod, 'criar_planner_task', _criar)
+    monkeypatch.setattr(graph_mod, 'set_task_description',
+                        lambda tid, d: descr.update({tid: d}) or True)
+    monkeypatch.setattr(graph_mod, 'get_category_ids_by_names',
+                        lambda pid, nomes: {'_nomes': list(nomes)})
+    monkeypatch.setattr(graph_mod, 'get_bucket_id_by_name', lambda *a, **k: 'BK-ENG')
+    monkeypatch.setattr(graph_mod, 'get_plan_id_by_title', lambda *a, **k: 'PL-ERG')
+    monkeypatch.setattr(graph_mod, 'assignments_para', lambda email: {'AAD': {}} if email else None)
+    return descr
+
+
+def test_engenharia_com_tres_servicos_vira_tres_cartoes(monkeypatch):
+    _limpar()
+    criadas = []
+    descr = _mock_graph_multi(monkeypatch, criadas)
+    p = dict(PAYLOAD)
+    p['servicos'] = [
+        {'nome': 'PGR', 'categoria': 'engenharia', 'valor': 800, 'quantidade': 1},
+        {'nome': 'LTCAT', 'categoria': 'engenharia', 'valor': 700, 'quantidade': 1},
+        {'nome': 'LIP', 'categoria': 'engenharia', 'valor': 600, 'quantidade': 1},
+    ]
+    r = orq.abrir_os(p, dry_run=False)
+    resp, code = orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Evelyn', 'Luiz',
+                                  prazo='2026-11-02', tecnico_email='x@ocupacional.com.br')
+    assert code == 200 and resp['ok']
+    assert len(criadas) == 3, 'uma task por serviço'
+    assert resp['planner_task_ids'] == ['TASK-1', 'TASK-2', 'TASK-3']
+    # `planner_task_id` (coluna única) guarda o primeiro, para não quebrar quem já lê
+    assert resp['planner_task_id'] == 'TASK-1'
+    # cada cartão leva o rótulo do SEU serviço + Demanda nova, e nunca o do vizinho
+    for t, esperado in zip(criadas, ['PGR', 'LTCAT', 'LIP']):
+        nomes = t['applied_categories']['_nomes']
+        assert esperado in nomes and orq.LABEL_DEMANDA_NOVA in nomes
+        assert len([n for n in nomes if n in ('PGR', 'LTCAT', 'LIP')]) == 1
+        assert t['bucket_id'] == 'BK-ENG'
+        assert t['due_date_time'] == '2026-11-02T12:00:00Z'
+        assert t['assignments'] == {'AAD': {}}
+    # a descrição de cada cartão nomeia só o serviço dele
+    assert 'PGR' in descr['TASK-1'] and 'LTCAT' not in descr['TASK-1']
+    assert 'LTCAT' in descr['TASK-2'] and 'LIP' not in descr['TASK-2']
+    # e a lista inteira fica no detalhe da raia — é dela que a limpeza precisa
+    with get_db() as conn:
+        det = json.loads(row_to_dict(conn.execute(
+            "SELECT detalhe_json FROM os_raias WHERE id=?",
+            (_raia('engenharia'),)).fetchone())['detalhe_json'])
+    assert det['planner_task_ids'] == ['TASK-1', 'TASK-2', 'TASK-3']
+
+
+def test_um_servico_continua_um_cartao(monkeypatch):
+    _limpar()
+    criadas = []
+    _mock_graph_multi(monkeypatch, criadas)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    resp, _ = orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Evelyn', 'Luiz')
+    assert len(criadas) == 1 and resp['planner_task_ids'] == ['TASK-1']
+
+
+def test_ergonomia_nomeia_o_servico_no_titulo_e_vai_no_plano_dela(monkeypatch):
+    _limpar()
+    criadas = []
+    _mock_graph_multi(monkeypatch, criadas)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    orq.aprovar_raia(r['numero'], _raia('ergonomia'), 'Evelyn', 'Luiz', prazo='2026-11-02')
+    assert len(criadas) == 1
+    assert criadas[0]['plan_id'] == 'PL-ERG'          # plano da Ergonomia, não Entregas Técnicas
+    assert 'AET' in criadas[0]['title']
+    assert criadas[0]['due_date_time'] == '2026-11-02T12:00:00Z'
+
+
+def test_treinamento_leva_o_rotulo_treinamento_em_cada_cartao(monkeypatch):
+    _limpar()
+    criadas = []
+    _mock_graph_multi(monkeypatch, criadas)
+    p = dict(PAYLOAD)
+    p['servicos'] = [
+        {'nome': 'Treinamento NR-35', 'categoria': 'treinamento', 'valor': 200, 'quantidade': 1},
+        {'nome': 'Treinamento NR-10', 'categoria': 'treinamento', 'valor': 300, 'quantidade': 1},
+    ]
+    r = orq.abrir_os(p, dry_run=False)
+    orq.aprovar_raia(r['numero'], _raia('treinamento'), 'Evelyn', 'Luiz')
+    assert len(criadas) == 2
+    for t in criadas:
+        nomes = t['applied_categories']['_nomes']
+        assert 'TREINAMENTO' in nomes and orq.LABEL_DEMANDA_NOVA in nomes
+        # treinamento não tem bucket de entrada definido — segue nascendo sem
+        assert t['bucket_id'] is None
+
+
+# ── O evento não pode ser gravado dentro da transação ───────────────────
+# 23/09/2026: `registrar_evento` abre a PRÓPRIA conexão. Chamado com a
+# transação do `abrir_os` ainda aberta, o SQLite travava ("database is
+# locked") até o busy timeout — ~30 s por chamada — e o evento sumia, porque
+# o `except` engole. Em produção é Postgres e o sintoma não aparecia; quem
+# denunciou foi o CI, ao estourar o `timeout-minutes: 20` da suíte completa.
+
+def test_abrir_os_grava_o_evento_e_nao_trava_o_banco():
+    _limpar()
+    inicio = time.time()
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    gasto = time.time() - inicio
+    assert r['ok']
+    # o evento tem que EXISTIR — antes ele era engolido pelo except
+    with get_db() as conn:
+        ev = [row_to_dict(x) for x in conn.execute(
+            "SELECT tipo, descricao FROM eventos WHERE tipo='os_aberta_crm'")]
+    assert len(ev) == 1, 'o evento os_aberta_crm sumia quando o banco travava'
+    assert r['numero'] in ev[0]['descricao']
+    # e não pode custar o busy timeout do SQLite (eram ~30 s)
+    assert gasto < 10, f'abrir_os levou {gasto:.1f}s — banco travado de novo?'
+
+
+def test_concluir_a_os_grava_o_evento_de_conclusao(monkeypatch):
+    _limpar()
+    _mock_graph(monkeypatch)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    with get_db() as conn:
+        ids = [row_to_dict(x)['id'] for x in conn.execute("SELECT id FROM os_raias")]
+    for i in ids:
+        orq.concluir_raia(r['numero'], i)
+    with get_db() as conn:
+        ev = [row_to_dict(x) for x in conn.execute(
+            "SELECT tipo FROM eventos WHERE tipo='os_concluida'")]
+    assert len(ev) == 1, 'o evento os_concluida também se perdia'
+
+
+def test_aprovar_grava_o_evento_da_raia(monkeypatch):
+    _limpar()
+    _mock_graph(monkeypatch)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Evelyn', 'Luiz')
+    with get_db() as conn:
+        ev = [row_to_dict(x) for x in conn.execute(
+            "SELECT descricao FROM eventos WHERE tipo='os_raia_aprovada'")]
+    assert len(ev) == 1 and 'engenharia' in ev[0]['descricao']
