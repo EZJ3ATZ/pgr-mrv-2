@@ -559,6 +559,7 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
         det = json.loads(r.get('detalhe_json') or '{}')
         itens = det.get('itens') or []
         task_id = None
+        task_ids = []
         assign = None
 
         if r['raia'] == 'medicao':
@@ -583,39 +584,57 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
             # 98% a etiqueta DEMANDA_NOVA.
             due = _prazo_para_planner(prazo)
             assign = assignments_para(tecnico_email) if tecnico_email else None
-            if r['raia'] == 'ergonomia':
-                plan_id = get_plan_id_by_title(GRUPO_ERGONOMIA, 'ergonomia')
-                titulo = f"[{r['numero']}] AET - {r['empresa']}"
-                task = criar_planner_task(plan_id or PLAN_ENTREGAS_TECNICAS, titulo,
-                                          assignments=assign, due_date_time=due)
-            elif r['raia'] == 'treinamento':
-                labels = get_category_ids_by_names(
-                    PLAN_ENTREGAS_TECNICAS, ['TREINAMENTO', LABEL_DEMANDA_NOVA])
-                task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
-                                          applied_categories=labels or None,
-                                          assignments=assign, due_date_time=due)
-            else:  # engenharia
-                nomes = [i.get('nome', '') for i in itens] + [LABEL_DEMANDA_NOVA]
-                labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, nomes)
-                bucket = get_bucket_id_by_name(PLAN_ENTREGAS_TECNICAS,
-                                               'Engenharia - Novas Demandas',
-                                               BUCKET_ENG_NOVAS_DEMANDAS)
-                task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
-                                          applied_categories=labels or None,
-                                          bucket_id=bucket,
-                                          assignments=assign, due_date_time=due)
-            task_id = task.get('id')
-            try:
-                desc = (f"O.S {r['numero']} — {r['empresa']}\n"
-                        f"Responsável: {tecnico}\nAprovado por: {aprovado_por}\n\nSERVIÇOS:\n"
-                        + "\n".join(f"- {i.get('nome','?')}" for i in itens))
-                set_task_description(task_id, desc)
-            except Exception as e:
-                log.warning('[orq] descrição task %s: %s', task_id, e)
+            # UMA TASK POR SERVIÇO, não uma por raia. É como a engenharia já
+            # trabalha (a DDA Móveis de 18/09 tem 3 cartões: LIP, LTCAT e
+            # PGR/PCMSO, cada um com seu responsável e seu prazo) e é o que
+            # deixa acompanhar o que está feito e o que não está: com PGR e
+            # PCMSO no mesmo cartão, "metade entregue" não tem como aparecer.
+            # O título fica igual em todos, como eles fazem — quem distingue é
+            # o rótulo do serviço, e a descrição de cada cartão nomeia o dele.
+            for item in (itens or [{}]):
+                nome_serv = (item.get('nome') or '').strip()
+                if r['raia'] == 'ergonomia':
+                    plan_id = get_plan_id_by_title(GRUPO_ERGONOMIA, 'ergonomia')
+                    task = criar_planner_task(
+                        plan_id or PLAN_ENTREGAS_TECNICAS,
+                        f"[{r['numero']}] {nome_serv or 'AET'} - {r['empresa']}",
+                        assignments=assign, due_date_time=due)
+                else:
+                    rotulos = ([nome_serv] if nome_serv else [])
+                    if r['raia'] == 'treinamento':
+                        rotulos.append('TREINAMENTO')
+                    rotulos.append(LABEL_DEMANDA_NOVA)
+                    labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, rotulos)
+                    bucket = (get_bucket_id_by_name(PLAN_ENTREGAS_TECNICAS,
+                                                    'Engenharia - Novas Demandas',
+                                                    BUCKET_ENG_NOVAS_DEMANDAS)
+                              if r['raia'] == 'engenharia' else None)
+                    task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
+                                              applied_categories=labels or None,
+                                              bucket_id=bucket,
+                                              assignments=assign, due_date_time=due)
+                tid = task.get('id')
+                if not tid:
+                    continue
+                task_ids.append(tid)
+                try:
+                    set_task_description(
+                        tid,
+                        f"O.S {r['numero']} — {r['empresa']}\n"
+                        f"Responsável: {tecnico}\nAprovado por: {aprovado_por}\n\nSERVIÇO:\n"
+                        f"- {nome_serv or r['raia']}")
+                except Exception as e:
+                    log.warning('[orq] descrição task %s: %s', tid, e)
+            # `planner_task_id` é uma coluna só: guarda o primeiro, e a lista
+            # inteira vai no detalhe_json — é ela que a limpeza e a conferência
+            # precisam quando a raia virou mais de um cartão.
+            task_id = task_ids[0] if task_ids else None
         else:
             return {'ok': False, 'erro': 'Graph não configurado'}, 503
 
         det['criar_linha_bi'] = bool(criar_linha_bi)
+        if task_ids:
+            det['planner_task_ids'] = task_ids
         conn.execute(
             """UPDATE os_raias SET status='em_andamento', tecnico_definido=?,
                  aprovado_por=?, planner_task_id=?, aprovado_em=?, detalhe_json=?
@@ -630,6 +649,7 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
             pass
         return {'ok': True, 'numero': numero, 'raia': r['raia'],
                 'tecnico': tecnico, 'planner_task_id': task_id,
+                'planner_task_ids': task_ids,
                 'bi_linha_pendente': bool(criar_linha_bi),
                 # a tela mostra o que NÃO deu para gravar: e-mail que não resolve
                 # no Azure (ou técnico sem e-mail na BI) vira task sem responsável,
