@@ -453,14 +453,21 @@ def abrir_os(payload, dry_run=False):
             resultado.append({'raia': raia, 'status': status,
                               'tecnico_sugerido': sugerido, 'demanda_id': demanda_id})
 
-        try:
-            registrar_evento('os_aberta_crm',
-                             f"OS {numero} aberta pelo CRM: {os_row['empresa'][:60]} "
-                             f"({len(resultado)} raias)", ref_tipo='os')
-        except Exception:
-            pass
-        return {'ok': True, 'dry_run': False, 'numero': numero,
-                'os_id': os_id, 'raias': resultado}
+    # 🔴 FORA do `with`: `registrar_evento` abre a PRÓPRIA conexão, e chamá-lo
+    # com a transação desta função ainda aberta trava o SQLite ("database is
+    # locked") até o busy timeout — ~30 s por chamada, e o evento é perdido em
+    # silêncio (o except engole). Em produção é Postgres e o sintoma não
+    # aparece; foi a suíte que denunciou, em 23/09/2026, ao estourar o
+    # `timeout-minutes: 20` do CI. Evento é auditoria best-effort: gravar
+    # depois do commit não perde nada e não segura a escrita que importa.
+    try:
+        registrar_evento('os_aberta_crm',
+                         f"OS {numero} aberta pelo CRM: {os_row['empresa'][:60]} "
+                         f"({len(resultado)} raias)", ref_tipo='os')
+    except Exception:
+        pass
+    return {'ok': True, 'dry_run': False, 'numero': numero,
+            'os_id': os_id, 'raias': resultado}
 
 
 def _criar_demanda_medicao(conn, numero, os_row, itens):
@@ -559,6 +566,7 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
         det = json.loads(r.get('detalhe_json') or '{}')
         itens = det.get('itens') or []
         task_id = None
+        task_ids = []
         assign = None
 
         if r['raia'] == 'medicao':
@@ -583,59 +591,80 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
             # 98% a etiqueta DEMANDA_NOVA.
             due = _prazo_para_planner(prazo)
             assign = assignments_para(tecnico_email) if tecnico_email else None
-            if r['raia'] == 'ergonomia':
-                plan_id = get_plan_id_by_title(GRUPO_ERGONOMIA, 'ergonomia')
-                titulo = f"[{r['numero']}] AET - {r['empresa']}"
-                task = criar_planner_task(plan_id or PLAN_ENTREGAS_TECNICAS, titulo,
-                                          assignments=assign, due_date_time=due)
-            elif r['raia'] == 'treinamento':
-                labels = get_category_ids_by_names(
-                    PLAN_ENTREGAS_TECNICAS, ['TREINAMENTO', LABEL_DEMANDA_NOVA])
-                task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
-                                          applied_categories=labels or None,
-                                          assignments=assign, due_date_time=due)
-            else:  # engenharia
-                nomes = [i.get('nome', '') for i in itens] + [LABEL_DEMANDA_NOVA]
-                labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, nomes)
-                bucket = get_bucket_id_by_name(PLAN_ENTREGAS_TECNICAS,
-                                               'Engenharia - Novas Demandas',
-                                               BUCKET_ENG_NOVAS_DEMANDAS)
-                task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
-                                          applied_categories=labels or None,
-                                          bucket_id=bucket,
-                                          assignments=assign, due_date_time=due)
-            task_id = task.get('id')
-            try:
-                desc = (f"O.S {r['numero']} — {r['empresa']}\n"
-                        f"Responsável: {tecnico}\nAprovado por: {aprovado_por}\n\nSERVIÇOS:\n"
-                        + "\n".join(f"- {i.get('nome','?')}" for i in itens))
-                set_task_description(task_id, desc)
-            except Exception as e:
-                log.warning('[orq] descrição task %s: %s', task_id, e)
+            # UMA TASK POR SERVIÇO, não uma por raia. É como a engenharia já
+            # trabalha (a DDA Móveis de 18/09 tem 3 cartões: LIP, LTCAT e
+            # PGR/PCMSO, cada um com seu responsável e seu prazo) e é o que
+            # deixa acompanhar o que está feito e o que não está: com PGR e
+            # PCMSO no mesmo cartão, "metade entregue" não tem como aparecer.
+            # O título fica igual em todos, como eles fazem — quem distingue é
+            # o rótulo do serviço, e a descrição de cada cartão nomeia o dele.
+            for item in (itens or [{}]):
+                nome_serv = (item.get('nome') or '').strip()
+                if r['raia'] == 'ergonomia':
+                    plan_id = get_plan_id_by_title(GRUPO_ERGONOMIA, 'ergonomia')
+                    task = criar_planner_task(
+                        plan_id or PLAN_ENTREGAS_TECNICAS,
+                        f"[{r['numero']}] {nome_serv or 'AET'} - {r['empresa']}",
+                        assignments=assign, due_date_time=due)
+                else:
+                    rotulos = ([nome_serv] if nome_serv else [])
+                    if r['raia'] == 'treinamento':
+                        rotulos.append('TREINAMENTO')
+                    rotulos.append(LABEL_DEMANDA_NOVA)
+                    labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, rotulos)
+                    bucket = (get_bucket_id_by_name(PLAN_ENTREGAS_TECNICAS,
+                                                    'Engenharia - Novas Demandas',
+                                                    BUCKET_ENG_NOVAS_DEMANDAS)
+                              if r['raia'] == 'engenharia' else None)
+                    task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
+                                              applied_categories=labels or None,
+                                              bucket_id=bucket,
+                                              assignments=assign, due_date_time=due)
+                tid = task.get('id')
+                if not tid:
+                    continue
+                task_ids.append(tid)
+                try:
+                    set_task_description(
+                        tid,
+                        f"O.S {r['numero']} — {r['empresa']}\n"
+                        f"Responsável: {tecnico}\nAprovado por: {aprovado_por}\n\nSERVIÇO:\n"
+                        f"- {nome_serv or r['raia']}")
+                except Exception as e:
+                    log.warning('[orq] descrição task %s: %s', tid, e)
+            # `planner_task_id` é uma coluna só: guarda o primeiro, e a lista
+            # inteira vai no detalhe_json — é ela que a limpeza e a conferência
+            # precisam quando a raia virou mais de um cartão.
+            task_id = task_ids[0] if task_ids else None
         else:
             return {'ok': False, 'erro': 'Graph não configurado'}, 503
 
         det['criar_linha_bi'] = bool(criar_linha_bi)
+        if task_ids:
+            det['planner_task_ids'] = task_ids
         conn.execute(
             """UPDATE os_raias SET status='em_andamento', tecnico_definido=?,
                  aprovado_por=?, planner_task_id=?, aprovado_em=?, detalhe_json=?
                WHERE id=?""",
             (tecnico, aprovado_por, task_id, _now(),
              json.dumps(det, ensure_ascii=False), raia_id))
-        try:
-            registrar_evento('os_raia_aprovada',
-                             f"OS {numero} · {r['raia']} → {tecnico} (por {aprovado_por})"
-                             + (' + linha BI' if criar_linha_bi else ''), ref_tipo='os')
-        except Exception:
-            pass
-        return {'ok': True, 'numero': numero, 'raia': r['raia'],
-                'tecnico': tecnico, 'planner_task_id': task_id,
-                'bi_linha_pendente': bool(criar_linha_bi),
-                # a tela mostra o que NÃO deu para gravar: e-mail que não resolve
-                # no Azure (ou técnico sem e-mail na BI) vira task sem responsável,
-                # e quem aprovou precisa saber disso na hora.
-                'prazo': data_iso(prazo),
-                'sem_responsavel': bool(tecnico_email) and not assign}, 200
+        raia_nome = r['raia']
+    # fora do `with`, pelo mesmo motivo do `abrir_os`: evento abre outra conexão
+    try:
+        registrar_evento('os_raia_aprovada',
+                         f"OS {numero} · {raia_nome} → {tecnico} (por {aprovado_por})"
+                         + (' + linha BI' if criar_linha_bi else ''), ref_tipo='os')
+    except Exception:
+        pass
+    return {'ok': True, 'numero': numero, 'raia': raia_nome,
+            'tecnico': tecnico, 'planner_task_id': task_id,
+            'planner_task_ids': task_ids,
+            'bi_linha_pendente': bool(criar_linha_bi),
+            # a tela mostra o que NÃO deu para gravar: e-mail que não resolve
+            # no Azure (ou técnico sem e-mail na BI) vira task sem responsável,
+            # e quem aprovou precisa saber disso na hora.
+            'prazo': data_iso(prazo),
+            'sem_responsavel': bool(tecnico_email) and not assign}, 200
 
 
 def concluir_raia(numero, raia_id):
@@ -661,12 +690,14 @@ def concluir_raia(numero, raia_id):
             conn.execute("UPDATE os_ordens SET status='concluida', concluido_em=? WHERE id=?",
                          (_now(), r['os_id']))
             os_concluida = True
-            try:
-                registrar_evento('os_concluida', f'OS {numero} concluída (todas as raias)',
-                                 ref_tipo='os')
-            except Exception:
-                pass
-        return {'ok': True, 'os_concluida': os_concluida}, 200
+    # fora do `with`, pelo mesmo motivo do `abrir_os`: evento abre outra conexão
+    if os_concluida:
+        try:
+            registrar_evento('os_concluida', f'OS {numero} concluída (todas as raias)',
+                             ref_tipo='os')
+        except Exception:
+            pass
+    return {'ok': True, 'os_concluida': os_concluida}, 200
 
 
 # ── Painel / SLA (requisito 6: tempo por setor) ─────────────────────────
