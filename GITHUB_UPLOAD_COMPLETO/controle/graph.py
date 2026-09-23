@@ -243,7 +243,8 @@ BUCKET_ENG_NOVAS_DEMANDAS = 'xtiwN7av_kqMhLZO2ACiMmUAJZ38'
 def criar_planner_task(plan_id: str, title: str,
                        applied_categories: dict = None,
                        bucket_id: str = None,
-                       assignments: dict = None) -> dict:
+                       assignments: dict = None,
+                       due_date_time: str = None) -> dict:
     """
     Cria uma tarefa no Planner e retorna o objeto criado (com id/@odata.etag).
 
@@ -251,6 +252,10 @@ def criar_planner_task(plan_id: str, title: str,
         (labels podem ir no POST /planner/tasks, sem PATCH separado).
     bucket_id: opcional; se omitido a task nasce sem bucket (não corre risco de
         cair num bucket de "concluído" e ser marcada como feita por engano).
+    due_date_time: prazo em ISO-8601 UTC ('2026-10-15T12:00:00Z'). Medido em
+        23/09/2026 nas 200 tasks mais recentes do bucket da engenharia: 96%
+        têm prazo. Task sem prazo não entra na conta de atraso nem nas metas
+        de OTD do painel — por isso o campo vale a viagem.
     """
     payload = {'planId': plan_id, 'title': (title or 'Sem título')[:255]}
     if bucket_id:
@@ -259,7 +264,37 @@ def criar_planner_task(plan_id: str, title: str,
         payload['appliedCategories'] = applied_categories
     if assignments:
         payload['assignments'] = assignments
+    if due_date_time:
+        payload['dueDateTime'] = due_date_time
     return graph_post('/planner/tasks', payload)
+
+
+def get_user_id_by_email(email: str) -> str | None:
+    """Id do Azure AD a partir do e-mail — é o que o Planner exige em `assignments`.
+
+    O roster da engenharia (BI, servido pelo Assinador) entrega nome + e-mail;
+    o Planner só aceita o id. Medido em 23/09/2026: 36 dos 37 técnicos do roster
+    resolvem por aqui. Quem não resolve (sem e-mail na BI, ou sem conta no
+    tenant) devolve None — e a task nasce sem responsável em vez de falhar.
+    """
+    email = (email or '').strip()
+    if not email or '@' not in email:
+        return None
+    try:
+        d = graph_get(f'/users/{urllib.parse.quote(email)}?$select=id')
+        return (d or {}).get('id') or None
+    except Exception as e:
+        log.info('[graph] get_user_id_by_email %s: %s', email, e)
+        return None
+
+
+def assignments_para(email: str) -> dict | None:
+    """Monta o bloco `assignments` do Planner para um e-mail, ou None."""
+    uid = get_user_id_by_email(email)
+    if not uid:
+        return None
+    return {uid: {'@odata.type': '#microsoft.graph.plannerAssignment',
+                  'orderHint': ' !'}}
 
 
 def set_task_description(task_id: str, description: str) -> bool:

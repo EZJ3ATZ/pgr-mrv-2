@@ -490,3 +490,117 @@ def test_vencimento_gravado_em_iso_na_os():
         v = row_to_dict(conn.execute(
             "SELECT vencimento FROM os_ordens WHERE numero=?", (r['numero'],)).fetchone())['vencimento']
     assert v == '2026-08-05'
+
+
+# ── Prazo e responsável decididos por quem aprova na fila 🚦 ─────────────
+# Medido em 23/09/2026 nas 200 tasks mais recentes do bucket da engenharia:
+# 100% têm responsável, 96% têm prazo, 98% têm a etiqueta "Demanda nova".
+# Sem esses campos a task entra no painel deles sem classificação, sem dono e
+# fora da conta de atraso/OTD — por isso os três viraram parte da aprovação.
+
+def _mock_graph_capturando(monkeypatch, recebido, email_resolve=True):
+    """Igual ao _mock_graph, mas guarda o que foi mandado para o Planner."""
+    def _criar(plan_id, title, **kw):
+        recebido.update({'plan_id': plan_id, 'title': title, **kw})
+        return {'id': 'TASK-MOCK'}
+    monkeypatch.setattr(graph_mod, 'graph_ok', lambda: True)
+    monkeypatch.setattr(graph_mod, 'criar_planner_task', _criar)
+    monkeypatch.setattr(graph_mod, 'set_task_description', lambda *a, **k: True)
+    monkeypatch.setattr(graph_mod, 'get_category_ids_by_names',
+                        lambda pid, nomes: {'_nomes': list(nomes)})
+    monkeypatch.setattr(graph_mod, 'get_bucket_id_by_name', lambda *a, **k: 'BK-ENG')
+    monkeypatch.setattr(graph_mod, 'get_plan_id_by_title', lambda *a, **k: 'PL-ERG')
+    monkeypatch.setattr(
+        graph_mod, 'assignments_para',
+        (lambda email: {'AAD-ID': {'@odata.type': '#microsoft.graph.plannerAssignment',
+                                   'orderHint': ' !'}}) if email_resolve else (lambda email: None))
+
+
+def _raia(nome):
+    with get_db() as conn:
+        return row_to_dict(conn.execute(
+            "SELECT id FROM os_raias WHERE raia=?", (nome,)).fetchone())['id']
+
+
+def test_aprovar_manda_prazo_responsavel_e_demanda_nova(monkeypatch):
+    _limpar()
+    got = {}
+    _mock_graph_capturando(monkeypatch, got)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    resp, code = orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Evelyn Duarte',
+                                  'Luiz Fernando', prazo='2026-10-15',
+                                  tecnico_email='engenharia13@ocupacional.com.br')
+    assert code == 200 and resp['ok']
+    # meio-dia UTC: 00:00Z apareceria como o dia anterior à tarde no Brasil
+    assert got['due_date_time'] == '2026-10-15T12:00:00Z'
+    assert list(got['assignments'].keys()) == ['AAD-ID']
+    assert orq.LABEL_DEMANDA_NOVA in got['applied_categories']['_nomes']
+    assert resp['prazo'] == '2026-10-15' and resp['sem_responsavel'] is False
+
+
+def test_aprovar_aceita_prazo_em_formato_br(monkeypatch):
+    _limpar()
+    got = {}
+    _mock_graph_capturando(monkeypatch, got)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    orq.aprovar_raia(r['numero'], _raia('treinamento'), 'Evelyn Duarte', 'Luiz',
+                     prazo='15/10/2026', tecnico_email='x@ocupacional.com.br')
+    assert got['due_date_time'] == '2026-10-15T12:00:00Z'
+    assert orq.LABEL_DEMANDA_NOVA in got['applied_categories']['_nomes']
+
+
+def test_aprovar_sem_prazo_e_sem_email_continua_valendo(monkeypatch):
+    """Chamada antiga (sem os campos novos) não pode quebrar: a task nasce sem
+    prazo e sem responsável, exatamente como era antes."""
+    _limpar()
+    got = {}
+    _mock_graph_capturando(monkeypatch, got)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    resp, code = orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Evelyn', 'Luiz')
+    assert code == 200 and resp['ok']
+    assert got.get('due_date_time') is None
+    assert got.get('assignments') is None
+    assert resp['prazo'] is None and resp['sem_responsavel'] is False
+
+
+def test_tecnico_sem_conta_no_azure_avisa_quem_aprovou(monkeypatch):
+    """Kellen Ferreira está no roster da BI sem e-mail e não existe no tenant
+    (conferido 23/09/2026). Escolher alguém assim não pode travar a fila: a
+    task nasce sem responsável e a resposta diz isso."""
+    _limpar()
+    got = {}
+    _mock_graph_capturando(monkeypatch, got, email_resolve=False)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    resp, code = orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Kellen Ferreira',
+                                  'Luiz', prazo='2026-10-15',
+                                  tecnico_email='nao-existe@ocupacional.com.br')
+    assert code == 200 and resp['ok']
+    assert got.get('assignments') is None
+    assert resp['sem_responsavel'] is True
+    assert got['due_date_time'] == '2026-10-15T12:00:00Z'
+
+
+def test_prazo_invalido_nao_derruba_a_aprovacao(monkeypatch):
+    _limpar()
+    got = {}
+    _mock_graph_capturando(monkeypatch, got)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    resp, code = orq.aprovar_raia(r['numero'], _raia('engenharia'), 'Evelyn', 'Luiz',
+                                  prazo='data errada', tecnico_email='x@ocupacional.com.br')
+    assert code == 200 and resp['ok']
+    assert got.get('due_date_time') is None and resp['prazo'] is None
+
+
+def test_prazo_da_aprovacao_atualiza_a_demanda_de_medicao(monkeypatch):
+    """Medição não vai para o Planner — o prazo tem que cair na demanda."""
+    _limpar()
+    got = {}
+    _mock_graph_capturando(monkeypatch, got)
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    orq.aprovar_raia(r['numero'], _raia('medicao'), 'Geferson', 'Luiz',
+                     prazo='20/11/2026')
+    with get_db() as conn:
+        d = row_to_dict(conn.execute(
+            "SELECT responsavel, prazo FROM demandas WHERE origem='crm_os'").fetchone())
+    assert d['responsavel'] == 'Geferson'
+    assert d['prazo'] == '2026-11-20'
