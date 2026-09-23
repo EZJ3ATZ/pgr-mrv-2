@@ -32,6 +32,15 @@ EMAIL_FINANCEIRO     = os.environ.get('ORQ_EMAIL_FINANCEIRO', 'grupofinanceiro@o
 EMAIL_CREDENCIAMENTO = os.environ.get('ORQ_EMAIL_CREDENCIAMENTO', 'credenciamento@ocupacional.com.br')
 EMAIL_REMETENTE      = os.environ.get('ORQ_MAIL_FROM', 'medicoes@ocupacional.com.br')
 ONBOARDING_MIN_VIDAS = 300
+# Etiqueta de NATUREZA que a engenharia põe em toda demanda que entra: 195 das
+# 200 tasks mais recentes do bucket "Engenharia - Novas Demandas" têm (medido
+# 23/09/2026). O painel lê `category19/20/21` para classificar a natureza — sem
+# ela a task aparece lá sem classificação nenhuma.
+LABEL_DEMANDA_NOVA   = 'Demanda nova'
+# Prazo sugerido quando quem aprova não informa. Mediana real do bucket entre
+# criar a task e o prazo: 39 dias (p25 37, p75 40, n=239). 40 é o arredondado
+# para cima — sugestão, não regra: a tela deixa mudar.
+PRAZO_SUGERIDO_DIAS  = 40
 # Abaixo desta similaridade, CNPJ que casa com nome diferente vira revisão humana.
 # Mesmo limiar do fuzzy de `empresa_match.encontrar_empresa`.
 MATCH_NOME_MIN       = 0.72
@@ -513,7 +522,19 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
 
 
 # ── Aprovação (Valéria/Luiz) → cria task no Planner ─────────────────────
-def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False):
+def _prazo_para_planner(prazo):
+    """'2026-10-15' (ou ISO completo) → '2026-10-15T12:00:00Z' para o Planner.
+
+    Meio-dia UTC de propósito: o Planner guarda o prazo em UTC e a tela mostra
+    no fuso de quem olha — 00:00Z vira o dia ANTERIOR à tarde no Brasil
+    ([[feedback_prazo_meia_noite_utc]]). Data inválida devolve None.
+    """
+    d = data_iso(prazo)
+    return f'{d}T12:00:00Z' if d else None
+
+
+def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
+                 prazo=None, tecnico_email=None):
     if not _orq_ativo():
         return {'ok': True, 'dormente': True, 'numero': numero, 'raia_id': raia_id,
                 'tecnico': tecnico,
@@ -521,7 +542,8 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False):
                             'nada criado no Planner nem gravado.'}, 200
     from .graph import (graph_ok, criar_planner_task, set_task_description,
                         get_category_ids_by_names, get_bucket_id_by_name,
-                        get_plan_id_by_title, PLAN_ENTREGAS_TECNICAS,
+                        get_plan_id_by_title, assignments_para,
+                        PLAN_ENTREGAS_TECNICAS,
                         BUCKET_ENG_NOVAS_DEMANDAS, GRUPO_ERGONOMIA)
     with get_db() as conn:
         _ensure_schema(conn)
@@ -537,31 +559,51 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False):
         det = json.loads(r.get('detalhe_json') or '{}')
         itens = det.get('itens') or []
         task_id = None
+        assign = None
 
         if r['raia'] == 'medicao':
-            # demanda já existe no portal — só define o responsável
+            # demanda já existe no portal — só define o responsável e, se quem
+            # aprovou informou prazo, atualiza o da demanda (a consultora já
+            # pode ter posto um no modal da OS; quem supervisiona manda mais).
             if r.get('demanda_id'):
-                conn.execute("UPDATE demandas SET responsavel=?, atualizado_em=? WHERE id=?",
-                             (tecnico, _now(), r['demanda_id']))
+                p = data_iso(prazo)
+                if p:
+                    conn.execute(
+                        "UPDATE demandas SET responsavel=?, prazo=?, atualizado_em=? WHERE id=?",
+                        (tecnico, p, _now(), r['demanda_id']))
+                else:
+                    conn.execute("UPDATE demandas SET responsavel=?, atualizado_em=? WHERE id=?",
+                                 (tecnico, _now(), r['demanda_id']))
         elif graph_ok():
             titulo = f"{r['numero']} - {r['empresa']}"
+            # Quem aprova na fila 🚦 decide o técnico e o prazo. O que a tela
+            # manda vale; o que ela não manda a task nasce sem — e o painel da
+            # engenharia perde a linha nas metas. Medido em 23/09/2026 nas 200
+            # tasks mais recentes do bucket: 100% têm responsável, 96% prazo,
+            # 98% a etiqueta DEMANDA_NOVA.
+            due = _prazo_para_planner(prazo)
+            assign = assignments_para(tecnico_email) if tecnico_email else None
             if r['raia'] == 'ergonomia':
                 plan_id = get_plan_id_by_title(GRUPO_ERGONOMIA, 'ergonomia')
                 titulo = f"[{r['numero']}] AET - {r['empresa']}"
-                task = criar_planner_task(plan_id or PLAN_ENTREGAS_TECNICAS, titulo)
+                task = criar_planner_task(plan_id or PLAN_ENTREGAS_TECNICAS, titulo,
+                                          assignments=assign, due_date_time=due)
             elif r['raia'] == 'treinamento':
-                labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, ['TREINAMENTO'])
+                labels = get_category_ids_by_names(
+                    PLAN_ENTREGAS_TECNICAS, ['TREINAMENTO', LABEL_DEMANDA_NOVA])
                 task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
-                                          applied_categories=labels or None)
+                                          applied_categories=labels or None,
+                                          assignments=assign, due_date_time=due)
             else:  # engenharia
-                nomes = [i.get('nome', '') for i in itens]
+                nomes = [i.get('nome', '') for i in itens] + [LABEL_DEMANDA_NOVA]
                 labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, nomes)
                 bucket = get_bucket_id_by_name(PLAN_ENTREGAS_TECNICAS,
                                                'Engenharia - Novas Demandas',
                                                BUCKET_ENG_NOVAS_DEMANDAS)
                 task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
                                           applied_categories=labels or None,
-                                          bucket_id=bucket)
+                                          bucket_id=bucket,
+                                          assignments=assign, due_date_time=due)
             task_id = task.get('id')
             try:
                 desc = (f"O.S {r['numero']} — {r['empresa']}\n"
@@ -588,7 +630,12 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False):
             pass
         return {'ok': True, 'numero': numero, 'raia': r['raia'],
                 'tecnico': tecnico, 'planner_task_id': task_id,
-                'bi_linha_pendente': bool(criar_linha_bi)}, 200
+                'bi_linha_pendente': bool(criar_linha_bi),
+                # a tela mostra o que NÃO deu para gravar: e-mail que não resolve
+                # no Azure (ou técnico sem e-mail na BI) vira task sem responsável,
+                # e quem aprovou precisa saber disso na hora.
+                'prazo': data_iso(prazo),
+                'sem_responsavel': bool(tecnico_email) and not assign}, 200
 
 
 def concluir_raia(numero, raia_id):
@@ -714,9 +761,14 @@ def registrar_rotas(bp):
                             or getattr(current_user, 'email', 'usuário'))
         if not body.get('raia_id') or not (body.get('tecnico') or '').strip():
             return jsonify({'ok': False, 'erro': 'raia_id e tecnico obrigatórios'}), 400
+        # `prazo` e `tecnico_email` são OPCIONAIS de propósito: a tela nova do
+        # Assinador manda os dois, e uma chamada antiga (ou o teste por API)
+        # continua valendo — só nasce sem prazo e sem responsável.
         resp, code = aprovar_raia(numero, body['raia_id'], body['tecnico'].strip(),
                                   (body.get('aprovado_por') or '').strip() or 'coordenação',
-                                  bool(body.get('criar_linha_bi')))
+                                  bool(body.get('criar_linha_bi')),
+                                  prazo=body.get('prazo'),
+                                  tecnico_email=(body.get('tecnico_email') or '').strip() or None)
         return jsonify(resp), code
 
     @bp.route('/os/<numero>/raia/<int:raia_id>/concluir', methods=['POST'])
