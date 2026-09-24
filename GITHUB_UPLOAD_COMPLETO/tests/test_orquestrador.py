@@ -870,3 +870,46 @@ def test_email_entregue_com_202_vazio_conclui_a_raia(monkeypatch):
     r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
     status = {x['raia']: x['status'] for x in r['raias']}
     assert status['cobranca'] == status['credenciamento'] == status['onboarding'] == 'concluida'
+
+
+# ── "A OS de medições tem que cair direto no sistema de medições" (24/09/2026) ──
+# A demanda nascia no banco com origem='crm_os' e as telas operacionais (Home,
+# Por empresa, quadro de demandas, nova visita, baixa) só listavam 'planner'.
+# E a raia esperava uma aprovação que a fila do Assinador nunca mostra.
+
+def _os_com_medicao():
+    _limpar()
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    med = next(x for x in r['raias'] if x['raia'] == 'medicao')
+    return r, med
+
+
+def test_medicao_da_os_aparece_nas_telas_operacionais():
+    from controle.db import list_operational_demands, list_operational_por_empresa
+    r, med = _os_com_medicao()
+    ops = [d for d in list_operational_demands({'os': r['numero']})]
+    assert [d['id'] for d in ops] == [med['demanda_id']]
+    assert ops[0]['operational_status'] == 'aberta'
+    por_emp = list_operational_por_empresa({'os': r['numero']})
+    assert len(por_emp) == 1 and por_emp[0]['demandas_pendentes'] == 1
+
+
+def test_medicao_nasce_entregue_e_nao_espera_a_fila():
+    r, med = _os_com_medicao()
+    assert med['status'] == 'em_andamento'
+    fila = orq.fila_aprovacao()
+    lista = fila.get('fila') if isinstance(fila, dict) else fila
+    assert not any((x.get('raia') == 'medicao') for x in (lista or []))
+
+
+def test_andamento_mostra_medicao_concluida_quando_a_demanda_conclui():
+    from controle.db import list_operational_demands
+    r, med = _os_com_medicao()
+    with get_db() as conn:
+        conn.execute("UPDATE demandas SET status='concluida', data_conclusao='2026-10-01' WHERE id=?",
+                     (med['demanda_id'],))
+    painel = orq.painel(negocio='neg-1')
+    ra = next(x for x in painel['ordens'][0]['raias'] if x['raia'] == 'medicao')
+    assert ra['status'] == 'concluida' and ra['demanda_status'] == 'concluida'
+    ops = list_operational_demands({'os': r['numero']})
+    assert ops[0]['operational_status'] == 'concluida'
