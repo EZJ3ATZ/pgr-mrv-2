@@ -15,6 +15,12 @@ Requisitos aprovados pelo Bernardo (22/07):
 
 Envio de e-mail é OPT-IN: só dispara com ORQ_ENVIAR_EMAILS=1 no ambiente;
 sem a flag, o corpo fica pronto em detalhe_json (status pendente_envio).
+
+MODO TESTE (24/09/2026): com ORQ_EMAIL_TESTE=<endereço> no ambiente, TODO e-mail da
+OS (cobrança, credenciamento, onboarding) vai SÓ para esse endereço, sem cópia, com
+"[TESTE OS]" no assunto e o destinatário real escrito no topo do corpo. Serve para ligar
+o ORQ_ENVIAR_EMAILS e abrir uma OS de verdade sem que o financeiro ou o cliente recebam
+nada. Tirar a variável = envio real. Sem ORQ_ENVIAR_EMAILS=1, nada sai de qualquer jeito.
 """
 import os
 import re
@@ -304,10 +310,29 @@ def montar_email_onboarding(os_row):
             'corpo': corpo}
 
 
+def aplicar_modo_teste(msg):
+    """Com ORQ_EMAIL_TESTE no ambiente, desvia o e-mail para esse endereço (ver o
+    cabeçalho do módulo). Sem a variável, devolve a mensagem intacta.
+
+    Lida a cada envio, e não no import, para o desvio valer assim que a variável
+    existir, sem depender da ordem de import."""
+    teste = (os.environ.get('ORQ_EMAIL_TESTE') or '').strip()
+    if not teste:
+        return msg
+    para = (msg.get('para') or '').strip() or '(sem destinatário: o contato do cliente está vazio)'
+    cc = (msg.get('cc') or '').strip()
+    aviso = (f"[MODO TESTE] Em produção este e-mail iria para: {para}"
+             + (f" · cópia: {cc}" if cc else "") + "\n\n")
+    return {**msg, 'para': teste, 'cc': '',
+            'assunto': f"[TESTE OS] {msg.get('assunto') or ''}",
+            'corpo': aviso + (msg.get('corpo') or '')}
+
+
 def enviar_email_graph(msg):
     """Envia via Graph sendMail (app-only) a partir de EMAIL_REMETENTE.
     Retorna (ok, erro). Nunca levanta — falha vira raia pendente_envio."""
     try:
+        msg = aplicar_modo_teste(msg)
         from .graph import graph_post
         payload = {'message': {
             'subject': msg['assunto'],
