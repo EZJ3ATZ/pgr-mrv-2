@@ -729,8 +729,9 @@ def test_treinamento_leva_o_rotulo_treinamento_em_cada_cartao(monkeypatch):
     for t in criadas:
         nomes = t['applied_categories']['_nomes']
         assert 'TREINAMENTO' in nomes and orq.LABEL_DEMANDA_NOVA in nomes
-        # treinamento não tem bucket de entrada definido — segue nascendo sem
-        assert t['bucket_id'] is None
+        # 24/09/2026: entra no bucket da engenharia, como as 98 tasks de
+        # treinamento do plano (nenhuma sem bucket). Antes nascia solta.
+        assert t['bucket_id'] == 'BK-ENG'
 
 
 # ── O evento não pode ser gravado dentro da transação ───────────────────

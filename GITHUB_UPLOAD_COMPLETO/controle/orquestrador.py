@@ -637,10 +637,15 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
                         rotulos.append('TREINAMENTO')
                     rotulos.append(LABEL_DEMANDA_NOVA)
                     labels = get_category_ids_by_names(PLAN_ENTREGAS_TECNICAS, rotulos)
+                    # Treinamento entra no MESMO bucket da engenharia: das 98 tasks
+                    # com o rótulo TREINAMENTO no plano (medido 24/09/2026), 55 estão
+                    # em "Engenharia - Novas Demandas" e 43 em "Entregue / Concluído";
+                    # nenhuma sem bucket. Sem bucket a task nascia solta, fora do
+                    # quadro que a engenharia olha (achado da jornada de 09/09).
                     bucket = (get_bucket_id_by_name(PLAN_ENTREGAS_TECNICAS,
                                                     'Engenharia - Novas Demandas',
                                                     BUCKET_ENG_NOVAS_DEMANDAS)
-                              if r['raia'] == 'engenharia' else None)
+                              if r['raia'] in ('engenharia', 'treinamento') else None)
                     task = criar_planner_task(PLAN_ENTREGAS_TECNICAS, titulo,
                                               applied_categories=labels or None,
                                               bucket_id=bucket,
