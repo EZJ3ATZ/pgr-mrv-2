@@ -779,3 +779,60 @@ def test_aprovar_grava_o_evento_da_raia(monkeypatch):
         ev = [row_to_dict(x) for x in conn.execute(
             "SELECT descricao FROM eventos WHERE tipo='os_raia_aprovada'")]
     assert len(ev) == 1 and 'engenharia' in ev[0]['descricao']
+
+
+# ── Modo teste do e-mail (24/09/2026) ────────────────────────────────────
+# Para ligar ORQ_ENVIAR_EMAILS e abrir uma OS de verdade sem que o financeiro
+# ou o cliente recebam nada: com ORQ_EMAIL_TESTE, tudo vai só para lá.
+
+def _captura_envios(monkeypatch):
+    enviados = []
+    monkeypatch.setattr(graph_mod, 'graph_post',
+                        lambda path, payload, *a, **k: enviados.append((path, payload)) or {})
+    return enviados
+
+
+def test_modo_teste_desvia_o_email_e_diz_para_quem_iria(monkeypatch):
+    enviados = _captura_envios(monkeypatch)
+    monkeypatch.setenv('ORQ_EMAIL_TESTE', 'teste@ocupacional.com.br')
+    ok, err = orq.enviar_email_graph({'para': 'ana@cliente.com', 'cc': 'credenciamento@ocupacional.com.br',
+                                      'assunto': 'Credenciamento', 'corpo': 'Olá'})
+    assert ok and err is None
+    (_, payload), = enviados
+    m = payload['message']
+    assert [r['emailAddress']['address'] for r in m['toRecipients']] == ['teste@ocupacional.com.br']
+    assert 'ccRecipients' not in m                      # a cópia também não sai
+    assert m['subject'] == '[TESTE OS] Credenciamento'
+    assert 'ana@cliente.com' in m['body']['content']
+    assert 'credenciamento@ocupacional.com.br' in m['body']['content']
+
+
+def test_sem_modo_teste_o_email_vai_ao_destinatario_real(monkeypatch):
+    enviados = _captura_envios(monkeypatch)
+    monkeypatch.delenv('ORQ_EMAIL_TESTE', raising=False)
+    orq.enviar_email_graph({'para': 'ana@cliente.com', 'cc': 'suportesoc@ocupacional.com.br',
+                            'assunto': 'ONBOARDING', 'corpo': 'Olá'})
+    (_, payload), = enviados
+    m = payload['message']
+    assert m['toRecipients'][0]['emailAddress']['address'] == 'ana@cliente.com'
+    assert m['ccRecipients'][0]['emailAddress']['address'] == 'suportesoc@ocupacional.com.br'
+    assert m['subject'] == 'ONBOARDING'
+
+
+def test_os_real_com_email_ligado_em_modo_teste_nao_manda_nada_para_fora(monkeypatch):
+    """O ensaio que antecede ligar o e-mail: OS de verdade, e-mail ligado,
+    e os três e-mails (cobrança, credenciamento, onboarding) chegam SÓ no teste."""
+    _limpar()
+    enviados = _captura_envios(monkeypatch)
+    monkeypatch.setenv('ORQ_ENVIAR_EMAILS', '1')
+    monkeypatch.setenv('ORQ_EMAIL_TESTE', 'teste@ocupacional.com.br')
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
+    assert r['ok']
+    assert len(enviados) == 3
+    destinos = {rec['emailAddress']['address']
+                for _, p in enviados for rec in p['message']['toRecipients']}
+    assert destinos == {'teste@ocupacional.com.br'}
+    assert all('ccRecipients' not in p['message'] for _, p in enviados)
+    assert all(p['message']['subject'].startswith('[TESTE OS] ') for _, p in enviados)
+    status = {x['raia']: x['status'] for x in r['raias']}
+    assert status['cobranca'] == status['credenciamento'] == status['onboarding'] == 'concluida'
