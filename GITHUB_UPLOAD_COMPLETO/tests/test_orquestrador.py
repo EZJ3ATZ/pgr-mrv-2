@@ -7,6 +7,7 @@ onboarding só p/ cliente novo >300 vidas, credenciamento = e-mail, aprovação
 (Valéria/Luiz) cria a task no Planner e marca opcional a linha do BI.
 Graph mockado — nada toca o Planner real; e-mails ficam pendente_envio
 (ORQ_ENVIAR_EMAILS desligado nos testes)."""
+import io
 import re
 import json
 import time
@@ -835,5 +836,37 @@ def test_os_real_com_email_ligado_em_modo_teste_nao_manda_nada_para_fora(monkeyp
     assert destinos == {'teste@ocupacional.com.br'}
     assert all('ccRecipients' not in p['message'] for _, p in enviados)
     assert all(p['message']['subject'].startswith('[TESTE OS] ') for _, p in enviados)
+    status = {x['raia']: x['status'] for x in r['raias']}
+    assert status['cobranca'] == status['credenciamento'] == status['onboarding'] == 'concluida'
+
+
+# ── sendMail responde 202 SEM corpo (achado do ensaio de 24/09/2026) ─────
+# O e-mail saía e `graph_post` levantava no `json.loads(b'')`: a raia ficava
+# "pendente_envio" com um e-mail que já tinha sido entregue. Aqui o `urlopen`
+# de verdade do `graph_post` é trocado por uma resposta vazia, como a do Graph.
+
+class _RespVazia(io.BytesIO):
+    status = 202
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+
+def test_graph_post_aceita_resposta_sem_corpo(monkeypatch):
+    import urllib.request as _u
+    monkeypatch.setattr(graph_mod, '_headers', lambda: {})
+    monkeypatch.setattr(_u, 'urlopen', lambda *a, **k: _RespVazia(b''))
+    assert graph_mod.graph_post('/users/x@ocupacional.com.br/sendMail', {'message': {}}) == {}
+    monkeypatch.setattr(_u, 'urlopen', lambda *a, **k: _RespVazia(b'{"id": "T1"}'))
+    assert graph_mod.graph_post('/planner/tasks', {}) == {'id': 'T1'}
+
+
+def test_email_entregue_com_202_vazio_conclui_a_raia(monkeypatch):
+    import urllib.request as _u
+    _limpar()
+    monkeypatch.setattr(graph_mod, '_headers', lambda: {})
+    monkeypatch.setattr(_u, 'urlopen', lambda *a, **k: _RespVazia(b''))
+    monkeypatch.setenv('ORQ_ENVIAR_EMAILS', '1')
+    monkeypatch.setenv('ORQ_EMAIL_TESTE', 'teste@ocupacional.com.br')
+    r = orq.abrir_os(dict(PAYLOAD), dry_run=False)
     status = {x['raia']: x['status'] for x in r['raias']}
     assert status['cobranca'] == status['credenciamento'] == status['onboarding'] == 'concluida'

@@ -129,7 +129,12 @@ def graph_post(path: str, payload: dict) -> dict:
     req = urllib.request.Request(url, data=body, headers=_headers(), method='POST')
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
-            return json.loads(r.read())
+            raw = r.read()
+            # 202/204 SEM corpo é resposta normal: é assim que o sendMail responde
+            # ("202 Accepted", vazio). `json.loads(b'')` levantava DEPOIS do envio, e
+            # quem chamava tratava um e-mail ENTREGUE como falha: no ensaio da OS de
+            # 24/09/2026 os 3 e-mails chegaram e as 3 raias ficaram "pendente_envio".
+            return json.loads(raw) if raw and raw.strip() else {}
     except urllib.error.HTTPError as e:
         body_txt = e.read().decode('utf-8', 'replace')
         raise RuntimeError(f'Graph POST {path} → {e.code}: {body_txt[:300]}')
