@@ -1606,6 +1606,7 @@ def _migrate(conn):
                          WHEN LOWER(COALESCE(d.planner_bucket,\'\')) LIKE \'%entregue%\'
                            OR LOWER(COALESCE(d.planner_bucket,\'\')) LIKE \'%conclu%\'
                          THEN \'concluida\'
+                         WHEN d.origem = \'crm_os\' AND d.status = \'concluida\' THEN \'concluida\'
                          WHEN d.status = \'em_andamento\' THEN \'em_andamento\'
                          ELSE \'aberta\'
                        END AS operational_status
@@ -1614,7 +1615,7 @@ def _migrate(conn):
                 LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
                 WHERE d.tipo_demanda NOT IN (\'interna\', \'administrativa\')
                   AND d.empresa_id > 0
-                  AND d.origem = \'planner\'
+                  AND d.origem IN (\'planner\', \'crm_os\')
                   AND UPPER(d.titulo) NOT LIKE \'%PROCESSO ANTIGO%\'
             ''')
         else:
@@ -1630,6 +1631,7 @@ def _migrate(conn):
                          WHEN LOWER(COALESCE(d.planner_bucket,'')) LIKE '%entregue%'
                            OR LOWER(COALESCE(d.planner_bucket,'')) LIKE '%conclu%'
                          THEN 'concluida'
+                         WHEN d.origem = 'crm_os' AND d.status = 'concluida' THEN 'concluida'
                          WHEN d.status = 'em_andamento' THEN 'em_andamento'
                          ELSE 'aberta'
                        END AS operational_status
@@ -1638,7 +1640,7 @@ def _migrate(conn):
                 LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
                 WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
                   AND d.empresa_id > 0
-                  AND d.origem = 'planner'
+                  AND d.origem IN ('planner', 'crm_os')
                   AND UPPER(d.titulo) NOT LIKE '%PROCESSO ANTIGO%';
             ''')
     except Exception as e:
@@ -3445,6 +3447,8 @@ def list_operational_demands(filtros=None):
                  WHEN LOWER(COALESCE(d.planner_bucket,'')) LIKE '%entregue%'
                    OR LOWER(COALESCE(d.planner_bucket,'')) LIKE '%conclu%'
                  THEN 'concluida'
+                 -- a demanda da OS não tem bucket do Planner: a conclusão é o status dela
+                 WHEN d.origem = 'crm_os' AND d.status = 'concluida' THEN 'concluida'
                  WHEN d.status = 'em_andamento' THEN 'em_andamento'
                  ELSE 'aberta'
                END AS operational_status
@@ -3459,7 +3463,9 @@ def list_operational_demands(filtros=None):
         ) mm ON mm.demanda_id = d.id
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
-          AND d.origem = 'planner'
+          -- 'crm_os': medição que a OS do CRM cria direto aqui, sem Planner (24/09/2026).
+          -- Sem isto a demanda nascia no banco e não aparecia em NENHUMA tela operacional.
+          AND d.origem IN ('planner', 'crm_os')
           AND UPPER(d.titulo) NOT LIKE '%PROCESSO ANTIGO%'
     """
     params = []
@@ -3526,7 +3532,9 @@ def list_operational_por_empresa(filtros=None):
         LEFT JOIN ms_users u ON u.ms_id = d.ms_assignee_id
         WHERE d.tipo_demanda NOT IN ('interna', 'administrativa')
           AND d.empresa_id > 0
-          AND d.origem = 'planner'
+          -- 'crm_os': medição que a OS do CRM cria direto aqui, sem Planner (24/09/2026).
+          -- Sem isto a demanda nascia no banco e não aparecia em NENHUMA tela operacional.
+          AND d.origem IN ('planner', 'crm_os')
           AND UPPER(d.titulo) NOT LIKE '%PROCESSO ANTIGO%'
     """
     params = []

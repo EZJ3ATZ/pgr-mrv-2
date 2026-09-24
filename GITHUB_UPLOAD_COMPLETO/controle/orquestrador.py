@@ -405,10 +405,16 @@ def abrir_os(payload, dry_run=False):
         raias_plano.append(('cobranca', 'pendente_envio', {'email': email_cob}))
 
         # 2) MEDIÇÃO — direto no portal, sem Planner (requisito do Matheus)
+        # 24/09/2026: "a OS de medições tem que cair direto no sistema de medições".
+        # Ela nascia 'aguardando_aprovacao', mas a fila do Assinador só mostra
+        # engenharia/ergonomia/treinamento: ninguém aprovava e a raia ficava parada
+        # para sempre. Agora nasce ENTREGUE (a demanda já está no portal, e é lá que
+        # a medição distribui). Definir o técnico depois continua possível.
         if 'medicao' in por_raia:
-            raias_plano.append(('medicao', 'aguardando_aprovacao',
+            raias_plano.append(('medicao', 'em_andamento',
                                 {'itens': por_raia['medicao'],
-                                 'prazo': os_row['prazo']}))
+                                 'prazo': os_row['prazo'],
+                                 'entregue_em': 'sistema de medições'}))
 
         # 3) ENGENHARIA / ERGONOMIA / TREINAMENTO — fila a distribuir
         for raia in ('engenharia', 'ergonomia', 'treinamento'):
@@ -459,7 +465,7 @@ def abrir_os(payload, dry_run=False):
             if raia == 'medicao':
                 demanda_id = _criar_demanda_medicao(conn, numero, os_row, det['itens'])
                 det['demanda_id'] = demanda_id
-            if status == 'aguardando_aprovacao':
+            if status == 'aguardando_aprovacao' or raia == 'medicao':
                 sugerido = sugerir_tecnico(conn, raia)
             # e-mails: envia já se habilitado
             if status == 'pendente_envio' and _envio_habilitado():
@@ -586,7 +592,11 @@ def aprovar_raia(numero, raia_id, tecnico, aprovado_por, criar_linha_bi=False,
         if not row:
             return {'ok': False, 'erro': 'raia não encontrada'}, 404
         r = row_to_dict(row)
-        if r['status'] != 'aguardando_aprovacao':
+        # medição já nasce entregue ao sistema de medições ('em_andamento'); definir o
+        # técnico e o prazo dela depois é permitido enquanto não concluir
+        estados_ok = (('aguardando_aprovacao', 'em_andamento') if r['raia'] == 'medicao'
+                      else ('aguardando_aprovacao',))
+        if r['status'] not in estados_ok:
             return {'ok': False, 'erro': f"raia está '{r['status']}', não aguardando aprovação"}, 409
         det = json.loads(r.get('detalhe_json') or '{}')
         itens = det.get('itens') or []
@@ -748,6 +758,18 @@ def painel(negocio=None):
             raias = [row_to_dict(x) for x in conn.execute(
                 "SELECT * FROM os_raias WHERE os_id=? ORDER BY id", (o['id'],)).fetchall()]
             for ra in raias:
+                # a medição é tocada no sistema de medições: quem manda no andamento
+                # é a demanda (concluída lá = concluída aqui). Só leitura, sem gravar.
+                if ra.get('raia') == 'medicao' and ra.get('demanda_id'):
+                    dem = conn.execute(
+                        "SELECT status, data_conclusao FROM demandas WHERE id=?",
+                        (ra['demanda_id'],)).fetchone()
+                    if dem:
+                        dem = row_to_dict(dem)
+                        ra['demanda_status'] = dem.get('status')
+                        if dem.get('status') == 'concluida' and ra.get('status') != 'concluida':
+                            ra['status'] = 'concluida'
+                            ra['concluido_em'] = dem.get('data_conclusao') or ra.get('concluido_em')
                 ini = ra.get('iniciado_em')
                 fim = ra.get('concluido_em') or _now()
                 try:
