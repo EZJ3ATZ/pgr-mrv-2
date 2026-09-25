@@ -2304,7 +2304,7 @@
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
       </svg>
-      <span>Gerador de PGR</span>
+      <span>Gerador de PGR MRV</span>
     </div>
 
     <div class="sidebar-item" data-name="calor" onclick="goToTab('calor')" style="opacity:.75;">
@@ -2642,9 +2642,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-3-3v6M4 4h16v4H4zm2 4v12h12V8H6z"/>
         </svg>
       </div>
-      <div class="home-mod-name">Gerador de PGR</div>
-      <div class="home-mod-desc">Programa de Gerenciamento de Riscos · NR-1. DOCX completo com GHEs, cargos e agentes de risco.</div>
-      <span class="home-mod-tag" style="background:var(--orange-dim);color:var(--orange);">NR-1</span>
+      <div class="home-mod-name">Gerador de PGR MRV</div>
+      <div class="home-mod-desc">Mudou para o Assinador: PGR das empreiteiras da MRV a partir da ficha de cadastro.</div>
+      <span class="home-mod-tag" style="background:var(--orange-dim);color:var(--orange);">Assinador</span>
     </div>
 
     <div class="home-mod" onclick="goToTab('calor')">
@@ -2908,157 +2908,28 @@
 <!-- ══ Painel PGR ═══════════════════════════════════════════════════════ -->
 <div id="tab-pgr" class="tab-panel">
 <div class="page">
-
   <div class="page-head page-head-v2">
     <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Módulo · Ocupacional SST</div>
-    <div class="page-title sec-title">Programa de Gerenciamento de Riscos</div>
-    <div class="page-sub sec-sub">Preencha os dados da empresa, adicione os cargos e clique em Gerar PGR.</div>
+    <div class="page-title sec-title">Gerador de PGR MRV</div>
+    <div class="page-sub sec-sub">O gerador de PGR das empreiteiras da MRV mudou para o Assinador.</div>
   </div>
-
-  <!-- Upload PDF -->
   <div class="card">
     <div class="card-header">
       <div class="card-icon">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
         </svg>
       </div>
       <div>
-        <div class="card-title">Importar PDF da Empresa</div>
-        <div class="card-desc">Extração automática de CNPJ, endereço e cargos</div>
+        <div class="card-title">Agora é no Assinador</div>
+        <div class="card-desc">Sobe a mesma ficha de cadastro da MRV. A empresa vem da Receita pelo CNPJ e os riscos que eram acrescentados à mão (metais, MEK, fumos, álcool) já saem no documento.</div>
       </div>
     </div>
-
-    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
-      <div class="upload-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-        </svg>
-      </div>
-      <strong>Clique para selecionar o PDF</strong>
-      <p>ou arraste o arquivo aqui · PDF até 10 MB</p>
-      <div id="pdf-name"></div>
-    </div>
-    <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePdf(this)">
-    <p class="tip">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      Dados extraídos são sugestão — confirme antes de gerar.
-    </p>
+    <a class="btn-gerar" style="display:inline-flex;text-decoration:none;justify-content:center"
+       href="{{ assinador_pgr_mrv_url or 'https://assinador-ocupacional-a1-production.up.railway.app/pgr-mrv' }}" target="_blank" rel="noopener">
+      Abrir o Gerador PGR MRV no Assinador
+    </a>
   </div>
-
-  <!-- Dados da Empresa -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3M9 7h1m-1 4h1m4-4h1m-1 4h1M9 21v-4a2 2 0 012-2h2a2 2 0 012 2v4"/>
-        </svg>
-      </div>
-      <div>
-        <div class="card-title">Dados da Empresa</div>
-        <div class="card-desc">Razão social, CNPJ e endereço completo</div>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Razão Social / Nome</label>
-      <input type="text" id="f-nome" placeholder="Nome completo da empresa ou MEI">
-    </div>
-    <div class="grid2 field">
-      <div>
-        <label>CNPJ</label>
-        <input type="text" id="f-cnpj" placeholder="00.000.000/0001-00">
-      </div>
-      <div>
-        <label>CEP</label>
-        <input type="text" id="f-cep" placeholder="00000-000">
-      </div>
-    </div>
-    <div class="grid3 field">
-      <div>
-        <label>Logradouro</label>
-        <input type="text" id="f-rua" placeholder="Rua / Avenida">
-      </div>
-      <div>
-        <label>Número</label>
-        <input type="text" id="f-numero" placeholder="Nº">
-      </div>
-      <div>
-        <label>Complemento</label>
-        <input type="text" id="f-compl" placeholder="Apto, Bloco...">
-      </div>
-    </div>
-    <div class="grid3">
-      <div>
-        <label>Bairro</label>
-        <input type="text" id="f-bairro" placeholder="Bairro">
-      </div>
-      <div>
-        <label>Cidade</label>
-        <input type="text" id="f-cidade" placeholder="Cidade">
-      </div>
-      <div>
-        <label>UF</label>
-        <select id="f-uf">
-          <option value="MG" selected>MG</option>
-          <option value="SP">SP</option><option value="RJ">RJ</option>
-          <option value="ES">ES</option><option value="GO">GO</option>
-          <option value="BA">BA</option><option value="PR">PR</option>
-          <option value="SC">SC</option><option value="RS">RS</option>
-          <option value="DF">DF</option><option value="MT">MT</option>
-          <option value="MS">MS</option><option value="PA">PA</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cargos -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-1a4 4 0 00-5.916-3.519M9 20H4v-1a4 4 0 015.916-3.519M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-        </svg>
-      </div>
-      <div>
-        <div class="card-title">Cargos da Empresa</div>
-        <div class="card-desc">O GHE e os agentes de risco são preenchidos automaticamente</div>
-      </div>
-    </div>
-
-    <div class="cargo-row">
-      <input type="text" id="cargo-input" placeholder="Digite o cargo..."
-             onkeydown="if(event.key==='Enter')addCargo()">
-      <select id="cargo-select" onchange="selectCargo(this)">
-        <option value="">— Selecionar da lista —</option>
-        {% for c in cargos_sugestoes %}
-        <option value="{{ c }}">{{ c }}</option>
-        {% endfor %}
-      </select>
-      <button class="btn-add" onclick="addCargo()">+ Adicionar</button>
-    </div>
-
-    <div id="cargo-list"></div>
-
-    <div id="cargo-alert" class="cargo-alert">
-      Cargo não reconhecido no GHE MRV. Verifique a grafia ou entre em contato para cadastrá-lo.
-    </div>
-
-    <p class="tip" style="margin-top:12px">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      Cargos sem GHE reconhecido serão sinalizados em amarelo.
-    </p>
-  </div>
-
-  <!-- Gerar -->
-  <button class="btn-gerar" id="btn-gerar" onclick="gerarPGR()">
-    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-    </svg>
-    Gerar PGR
-  </button>
-  <div class="status" id="status"></div>
-
 </div>
 </div>
 
@@ -6775,202 +6646,12 @@ homeLoadStats();
   resetTimer();
 })();
 
-// ── Estado ───────────────────────────────────────────────────────────
-let cargos = [];
-
-// ── Drag & Drop ──────────────────────────────────────────────────────
-const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('active'));
-dz.addEventListener('drop', e => {
-  e.preventDefault();
-  dz.classList.remove('active');
-  const file = e.dataTransfer.files[0];
-  if (file && file.name.endsWith('.pdf')) processFile(file);
-});
-
-function handlePdf(input) {
-  if (input.files[0]) processFile(input.files[0]);
-}
-
-async function processFile(file) {
-  document.getElementById('pdf-name').textContent = 'Extraindo dados...';
-  const fd = new FormData();
-  fd.append('pdf', file);
-  try {
-    const r = await fetch('/extrair', { method: 'POST', body: fd });
-    const d = await r.json();
-    document.getElementById('pdf-name').textContent = 'Carregado: ' + file.name;
-    dz.classList.add('active');
-    setField('f-nome',   d.nome);
-    setField('f-cnpj',   d.cnpj);
-    setField('f-rua',    d.rua);
-    setField('f-numero', d.numero);
-    setField('f-compl',  d.complemento);
-    setField('f-cep',    d.cep);
-    setField('f-bairro', d.bairro);
-    setField('f-cidade', d.cidade);
-    if (d.uf) document.getElementById('f-uf').value = d.uf;
-    if (d.cargos && d.cargos.length) { cargos = d.cargos; renderCargos(); }
-    showStatus('Dados extraídos. Confirme as informações antes de gerar.', 'ok');
-  } catch (e) {
-    document.getElementById('pdf-name').textContent = 'Erro ao extrair dados';
-    showStatus('Não foi possível extrair os dados. Preencha manualmente.', 'err');
-  }
-}
-
-function setField(id, val) {
-  if (val) document.getElementById(id).value = val;
-}
-
-function selectCargo(sel) {
-  if (sel.value) {
-    document.getElementById('cargo-input').value = sel.value;
-    sel.value = '';
-  }
-}
-
-function addCargo() {
-  const v = document.getElementById('cargo-input').value.trim();
-  if (!v) return;
-  if (!cargos.includes(v)) { cargos.push(v); renderCargos(); }
-  document.getElementById('cargo-input').value = '';
-}
-
-function remCargo(i) { cargos.splice(i, 1); renderCargos(); }
-
-// ── GHE lookup ───────────────────────────────────────────────────────
-function getGHE(cargo) {
-  const c = cargo.toUpperCase();
-  if (c.includes('PEDREIRO ACABAMENTO') || c.includes('AZULEJ') || c.includes('LADRILH')) return 'ACABAMENTO';
-  if (c.includes('GESSEIRO') || c.includes('REJUNT')) return 'GESSO_REJUNTE';
-  if (c.includes('ADMIN') || c.includes('ANALISTA') || c.includes('ENGENHEIRO') || c.includes('TOPOGRAFO') || c.includes('APONTADOR')) return 'ADMINISTRATIVO';
-  if (c.includes('ENCARREGADO ALMOXARIFE')) return 'SUPERVISAO';
-  if (c.includes('ALMOXARIFE') || c.includes('FERRAMENTEIRO')) return 'ALMOXARIFADO';
-  if (c.includes('TECNICO EDIF') || c.includes('TECNICO SEGUR') || c.includes('TECNICO AMBI') || c.includes('TECNICO INSTAL') || c.includes('ESTAGIARIO') || c.includes('ASSISTENTE TECNICO') || c.includes('AUXILIAR SEGUR') || c.includes('AUXILIAR TECNICO SEGUR')) return 'APOIO_PRODUCAO';
-  if (c.includes('ARMADOR') || c.includes('AUXILIAR ARMAD') || c.includes('AJUDANTE ARMAD') || c.includes('FERREIRO')) return 'ARMACAO';
-  if (c.includes('CARPINT') || c.includes('SERRAD') || c.includes('MARCENEIRO')) return 'CARPINTARIA';
-  if (c.includes('BETONEIRA')) return 'CENTRAL_BETONEIRA';
-  if (c.includes('ELETRICISTA POS ENTREGA')) return 'ASSIST_TEC_ELETRICA';
-  if (c.includes('POS ENTREGA')) return 'ASSIST_TEC_ESPEC';
-  if (c.includes('ELETRIC') && !c.includes('ENCARREGADO')) return 'ELETRICA';
-  if (c.includes('BOMBEIRO') || c.includes('ENCANADOR') || c.includes('HIDRAUL')) return 'HIDRAULICA';
-  if (c.includes('MAQUINAS LEVE') || c.includes('MAQUINAS PEQUENO')) return 'MAQUINAS_PEQUENO_PORTE';
-  if (c.includes('OPERADOR MAQUIN') || c.includes('MAQUINAS GERAL') || c.includes('MAQUINAS PESAD') || c.includes('OPERADOR EQUIP')) return 'MAQUINAS_GERAL';
-  if (c.includes('CREMALHEIRA') || c.includes('GRUA') || c.includes('SINALEIRO') || c.includes('GUINCHO') || c.includes('ELEVADOR CARGA')) return 'MAQUINAS_ESTAC';
-  if (c.includes('JARDINEIRO')) return 'PAISAGISMO';
-  if (c.includes('POLIVALENTE')) return 'POLIVALENTE';
-  if (c.includes('PINTOR') || c.includes('AUXILIAR PINT')) return 'PINTURA';
-  if (c.includes('PORTEIRO') || c.includes('VIGIA') || c.includes('GUARITEIRO')) return 'PORTARIA';
-  if (c.includes('SERRALHEIRO') || c.includes('SOLDADOR')) return 'SERRALHERIA';
-  if (c.includes('FAXINEIRO') || c.includes('AUXILIAR LIMPEZA') || c.includes('AUXILIAR SERVICOS GERAIS')) return 'SERVICOS_GERAIS';
-  if (c.includes('ENCARREGADO') || c.includes('MESTRE') || c.includes('SUPERVISOR') || c.includes('CABO TURMA') || c.includes('CONTRA MESTRE') || c.includes('PROFISSIONAL LIDER')) return 'SUPERVISAO';
-  if (c.includes('MONTADOR FORMA') || c.includes('MONTADOR FORMAS') || c.includes('AUXILIAR MONTADOR') || c.includes('MEIO OFICIAL MONTADOR')) return 'ESTRUTURA_PAREDE';
-  if (c === 'MONTADOR' || c === 'MONTADOR DE FORMA METALICA') return 'ESTRUTURA_PAREDE';
-  if (c.includes('PEDREIRO') || c.includes('MEIO OFICIAL') || c.includes('AUXILIAR PEDREIRO') || c.includes('OFICIAL PLENO') || c.includes('MONTADOR ANDAIME') || c.includes('MONTADOR ESQUADRIA')) return 'ESTRUTURA_ALVENARIA';
-  if (c.trim() === 'OFICIAL') return 'ESTRUTURA_ALVENARIA';
-  if (c.includes('SERVENTE') || c.includes('AJUDANTE') || c.includes('AUXILIAR DE LIMP') || c.includes('AUXILIAR DE SERVICO') || c.includes('AUXILIAR OBRAS') || c.includes('AUXILIAR PRODUCAO')) return 'OPERACIONAL';
-  return null;
-}
-
-function renderCargos() {
-  const el = document.getElementById('cargo-list');
-  let temDesconhecido = false;
-  el.innerHTML = cargos.map((c, i) => {
-    const ghe = getGHE(c);
-    if (!ghe) temDesconhecido = true;
-    const tag = ghe
-      ? `<span class="ghe-tag">${ghe}</span>`
-      : `<span class="ghe-tag unknown">Não reconhecido</span>`;
-    return `<div class="cargo-item ${!ghe ? 'cargo-unknown' : ''}">
-      <div class="cargo-meta">
-        <span class="cargo-name">${c}</span>
-        ${tag}
-      </div>
-      <button class="btn-rem" onclick="remCargo(${i})" title="Remover">✕</button>
-    </div>`;
-  }).join('');
-  document.getElementById('cargo-alert').style.display = temDesconhecido ? 'block' : 'none';
-}
-
-// ── Gerar PGR ────────────────────────────────────────────────────────
-async function gerarPGR() {
-  const nome = document.getElementById('f-nome').value.trim();
-  if (!nome) { showStatus('Informe a Razão Social da empresa.', 'err'); return; }
-  if (!cargos.length) { showStatus('Adicione pelo menos um cargo.', 'err'); return; }
-
-  const btn = document.getElementById('btn-gerar');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin">↻</span> Gerando...';
-  showStatus('Gerando PGR, aguarde...', 'loading');
-
-  try {
-    const resp = await fetch('/gerar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nome,
-        cnpj:        document.getElementById('f-cnpj').value,
-        rua:         document.getElementById('f-rua').value,
-        numero:      document.getElementById('f-numero').value,
-        complemento: document.getElementById('f-compl').value,
-        cep:         document.getElementById('f-cep').value,
-        bairro:      document.getElementById('f-bairro').value,
-        cidade:      document.getElementById('f-cidade').value || 'Belo Horizonte',
-        uf:          document.getElementById('f-uf').value,
-        cargos
-      })
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json();
-      if (resp.status === 422 && err.aviso) throw new Error(err.erro);
-      throw new Error(err.erro || 'Erro desconhecido');
-    }
-
-    const ct = resp.headers.get('Content-Type') || '';
-    if (ct.includes('application/json')) {
-      const json = await resp.json();
-      if (json.aviso_gerado) {
-        baixarBlob(json.docx_b64, json.filename);
-        showStatus('PGR gerado com avisos:<br>' + json.alertas.map(a => '· ' + a).join('<br>'), 'warn');
-        return;
-      }
-      throw new Error(json.erro || 'Erro desconhecido');
-    }
-
-    const blob = await resp.blob();
-    const cd   = resp.headers.get('Content-Disposition') || '';
-    const m    = cd.match(/filename="(.+)"/);
-    baixarUrl(URL.createObjectURL(blob), m ? m[1] : `PGR - ${nome}.docx`);
-    showStatus('PGR gerado com sucesso. Download iniciado automaticamente.', 'ok');
-  } catch (e) {
-    showStatus('Erro: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg> Gerar PGR`;
-  }
-}
-
-function baixarBlob(b64, filename) {
-  const bytes = atob(b64);
-  const arr   = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  baixarUrl(URL.createObjectURL(new Blob([arr], {
-    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  })), filename);
-}
-
+// ── Download (usado pelos laudos de calor, químico e ruído) ───────────
+// O JavaScript do gerador de PGR MRV saiu com ele (agora é o /pgr-mrv do Assinador).
 function baixarUrl(url, filename) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
-}
-
-function showStatus(msg, type) {
-  const el = document.getElementById('status');
-  el.className = 'status ' + type;
-  el.innerHTML = msg;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -8696,7 +8377,6 @@ window.calorPrefillCarregar = calorPrefillCarregar;
 
 // ── Mapeamento de campos de empresa por gerador ───────────────────────
 const EMPRESA_FIELDS = {
-  pgr:    { nome:'f-nome', cnpj:'f-cnpj', cep:'f-cep', rua:'f-rua', numero:'f-num', compl:'f-compl', bairro:'f-bairro', cidade:'f-cidade', uf:'f-uf' },
   calor:  { nome:'c-nome', cnpj:'c-cnpj', cep:'c-cep', end:'c-end', bairro:'c-bairro', cidade:'c-cidade', uf:'c-uf', cnae:'c-cnae', cnaeDesc:'c-cnae-desc' },
   ruido:  { nome:'r-razao', fantasia:'r-fantasia', cnpj:'r-cnpj', cep:'r-cep', end:'r-end', bairro:'r-bairro', cidade:'r-cidade', cnae:'r-cnae', cnaeDesc:'r-cnae-desc' },
   quim:   { nome:'q-razao', titulo:'q-titulo', cnpj:'q-cnpj', cep:'q-cep', end:'q-end', numero:'q-num', bairro:'q-bairro', cidade:'q-cidade', uf:'q-uf', cnae:'q-cnae', cnaeDesc:'q-cnae-desc', grauRisco:'q-grau-risco' }
@@ -8884,7 +8564,6 @@ function _carregarEmpresaCache(prefix, cnpj) {
 // Injetar dropdown nos 4 geradores
 function _injetarCacheDropdowns() {
   const map = [
-    { pref:'pgr',   anchor:'f-nome' },
     { pref:'calor', anchor:'c-nome' },
     { pref:'ruido', anchor:'r-razao' },
     { pref:'quim',  anchor:'q-razao' },
@@ -18649,7 +18328,7 @@ const _GS_MODULE_MAP = [
   { keys:['ruido','ruído','decibel','dB','nr-15','nr15','histograma','dosimetro','dosímetro'], tab:'ruido', sub:null, icon:'🔊', label:'Laudo de Ruído', sub2:'NR-15 Anexo 1' },
   { keys:['calor','ibutg','temperatura','nr-15 an.3','termico','térmico'], tab:'calor', sub:null, icon:'🔥', label:'Laudo de Calor', sub2:'NR-15 Anexo 3 — IBUTG' },
   { keys:['quimico','químico','agente','sílica','silica','chumbo','benzeno','niosh','osha','concentracao','concentração'], tab:'quimico', sub:null, icon:'⚗️', label:'Análise Química', sub2:'NR-15 Anexo 13' },
-  { keys:['pgr','programa','gerenciamento','risco','nr-1','nr1','ghe'], tab:'pgr', sub:null, icon:'📋', label:'Gerador de PGR', sub2:'NR-1' },
+  { keys:['pgr','programa','gerenciamento','risco','nr-1','nr1','ghe'], tab:'pgr', sub:null, icon:'📋', label:'Gerador de PGR MRV', sub2:'mudou para o Assinador' },
   { keys:['indicador','grafico','gráfico','kpi','analytic','bi','relatorio','relatório'], tab:'bi', sub:null, icon:'📈', label:'Analytics BI', sub2:'Indicadores e gráficos' },
   { keys:['consistencia','consistência','divergencia','divergência','alerta','verificacao','verificação'], tab:'consistencia', sub:null, icon:'⚠️', label:'Consistência Operacional', sub2:'Alertas e divergências' },
   { keys:['ajuda','help','tutorial','guia','como usar','nao sei','não sei'], tab:'ajuda', sub:null, icon:'❓', label:'Central de Ajuda', sub2:'Guias e passo a passo' },
@@ -18772,7 +18451,7 @@ async function gsSearch(q) {
     // fallback: seções genéricas
     if (!results.length) {
       const sections = [
-        { key:'pgr', icon:'📄', label:'PGR', sub:'Gerar documento PGR' },
+        { key:'pgr', icon:'📄', label:'PGR MRV', sub:'Mudou para o Assinador' },
         { key:'calor', icon:'🌡️', label:'Laudo de Calor', sub:'Gerar laudo IBUTG' },
         { key:'quimico', icon:'⚗️', label:'Análise Química', sub:'Laudo de agentes químicos' },
         { key:'controle', icon:'📊', label:'Controle', sub:'Medições e amostradores' },

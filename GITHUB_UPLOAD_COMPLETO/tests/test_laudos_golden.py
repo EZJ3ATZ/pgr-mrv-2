@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Golden tests dos geradores de documento (os 4 laudos DOCX).
+"""Golden tests dos geradores de documento (os 3 laudos DOCX).
+
+O gerador de PGR MRV saiu do portal em 25/09/2026 (agora é o /pgr-mrv do Assinador,
+com teste próprio lá: tests_pgr_mrv.py). Os casos de PGR deste arquivo saíram com ele.
 
 O QUE ISTO PEGA: qualquer mudança no texto/número do documento gerado. Editar o
 template no Word, mexer num `replace`, trocar uma fórmula — tudo aparece como diff
@@ -21,7 +24,7 @@ import pathlib
 
 import pytest
 
-from tests.laudos_casos import (CALOR, EMPRESA, PGR, QUIMICO, RUIDO,
+from tests.laudos_casos import (CALOR, EMPRESA, QUIMICO, RUIDO,
                                 docx_texto, normalizar)
 
 GOLDENS = pathlib.Path(__file__).parent / 'goldens'
@@ -37,18 +40,12 @@ def _gera(qual):
         blob = A.gerar_ruido_bytes(RUIDO)
     elif qual == 'calor':
         blob = A.gerar_calor_bytes(CALOR)
-    elif qual == 'pgr':
-        blob = A.gerar_docx_bytes(
-            PGR['nome'], PGR['cnpj'], PGR['rua'], PGR['numero'], PGR['complemento'],
-            PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'],
-            cnae=PGR['cnae'], descricao_cnae=PGR['descricao_cnae'],
-            grau_risco=PGR['grau_risco'])
     else:
         raise AssertionError(f'gerador desconhecido: {qual}')
     return normalizar(docx_texto(blob))
 
 
-@pytest.mark.parametrize('qual', ['quimico', 'ruido', 'calor', 'pgr'])
+@pytest.mark.parametrize('qual', ['quimico', 'ruido', 'calor'])
 def test_documento_bate_com_o_gabarito(qual):
     atual = _gera(qual)
     alvo = GOLDENS / f'{qual}.golden.txt'
@@ -229,27 +226,10 @@ def test_calor_ibutg_por_ponto_bate_com_a_formula():
                 f'(tbn={p["tbn"]} tbs={p["tbs"] or "vazio"} tg={p["tg"]})')
 
 
-def test_pgr_clona_uma_linha_por_cargo():
-    """Regressão 12/06: `replace` único fazia a tabela Setor/Cargo listar só o 1º."""
-    t = _gera('pgr')
-    for cargo in PGR['cargos']:
-        assert cargo in t, f'cargo {cargo} ausente do PGR (tabela não clonou?)'
-
-
-def test_pgr_nao_vaza_a_empresa_de_referencia_do_template():
-    """O template do PGR foi montado sobre uma empresa real. Nome, CNPJ, endereço
-    e cidade dela não podem sobrar no documento de outro cliente."""
-    t = _gera('pgr')
-    assert 'MARCIO DA SILVA' not in t, 'razão social do template vazou'
-    assert '63.370.132' not in t, 'CNPJ do template vazou'
-    assert 'Sibipurunas' not in t, 'endereço do template vazou'
-    assert 'Ribeirão das Neves' not in t, 'cidade do template vazou'
-
-
 def test_nenhum_documento_vaza_placeholder_ou_erro():
     """Varredura barata que o harness de 15/06 já fazia nos PDFs: nada de None,
     undefined, NaN, {{ }} ou traceback dentro do documento assinado."""
-    for qual in ('quimico', 'ruido', 'calor', 'pgr'):
+    for qual in ('quimico', 'ruido', 'calor'):
         t = _gera(qual)
         for ruim in ('undefined', 'NaN', '{{', 'Traceback', 'None None'):
             assert ruim not in t, f'{qual}: documento contém {ruim!r}'
@@ -297,52 +277,6 @@ def test_calor_deveria_aguentar_tbn_nao_numerico_sem_500():
     from app import _ibutg_ponto
     ibutg, _ = _ibutg_ponto({'tbn': '25,0', 'tbs': '', 'tg': '30,0'})
     assert ibutg >= 0
-
-
-def test_pgr_respeita_cnae_descricao_e_grau_do_cadastro():
-    """Corrigido em 28/07: o PGR não substituía CNAE, descrição do CNAE nem grau de
-    risco, então todo documento saía com os da empresa de referência do template
-    (43.99-1-03 / "Obras de alvenaria" / grau 03). Decisão do Matheus: puxar do
-    CADASTRO da empresa (`db.dados_cadastro_empresa`), já que o form não pede."""
-    t = _gera('pgr')
-    assert '43.99-1-03' not in t, 'CNAE do template ainda no PGR'
-    assert 'Obras de alvenaria' not in t, 'descrição CNAE do template ainda no PGR'
-    assert PGR['cnae'] in t, 'CNAE do cadastro não chegou ao PGR'
-    assert PGR['descricao_cnae'] in t, 'descrição do CNAE do cadastro não chegou'
-    # grau '4' do cadastro sai como '04' (o template usa 2 dígitos) e o '03' do
-    # template não pode sobrar em NENHUM dos dois lugares: capa e linha do
-    # treinamento de CIPA, cujo dimensionamento depende do grau.
-    assert 'Grau de Risco 04' in t, 'grau do cadastro não chegou à linha da CIPA'
-    assert 'Grau de Risco 03' not in t, 'grau do template sobrou no PGR'
-    assert '\n04\n' in ('\n' + t + '\n'), 'grau do cadastro não chegou à capa'
-
-
-def test_pgr_grau_de_1_digito_ganha_zero_a_esquerda():
-    """O template escreve o grau com 2 dígitos ('03'). Cadastro com '3' tem de sair
-    '03' para o documento não misturar duas tipografias."""
-    import app as A
-    blob = A.gerar_docx_bytes(
-        PGR['nome'], PGR['cnpj'], PGR['rua'], PGR['numero'], PGR['complemento'],
-        PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'],
-        cnae='11.11-1-11', descricao_cnae='X', grau_risco='3')
-    t = normalizar(docx_texto(blob))
-    assert 'Grau de Risco 03' in t, "grau '3' deveria sair como '03'"
-
-
-def test_pgr_marca_faltante_com_interrogacao_em_vez_do_template():
-    """Cadastro sem os dados NÃO pode cair no valor do template (que é de outra
-    empresa). Vira '???', a convenção que o PGR já usa para medição sem data
-    confirmada — em branco no meio da capa passaria batido."""
-    import app as A
-    blob = A.gerar_docx_bytes(
-        PGR['nome'], PGR['cnpj'], PGR['rua'], PGR['numero'], PGR['complemento'],
-        PGR['cep'], PGR['bairro'], PGR['cidade'], PGR['uf'], PGR['cargos'],
-        cnae='', descricao_cnae='', grau_risco='')
-    t = normalizar(docx_texto(blob))
-    assert '43.99-1-03' not in t, 'sem CNAE no cadastro, vazou o do template'
-    assert 'Obras de alvenaria' not in t, 'sem descrição, vazou a do template'
-    assert 'Grau de Risco 03' not in t, 'sem grau no cadastro, vazou o do template'
-    assert '???' in t, 'campo ausente deveria aparecer como ???'
 
 
 def test_dados_cadastro_empresa_casa_por_cnpj_e_por_nome():
