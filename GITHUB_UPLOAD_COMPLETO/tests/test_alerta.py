@@ -46,6 +46,13 @@ alerta.garantir_tabela()
 enviados = []
 alerta._enviar = lambda assunto, corpo: (enviados.append((assunto, corpo)), (True, None))[1]
 
+# ── relogio fixo em horario comercial ──
+# O passo 5 precisa de um alerta NOVO e usa o de sync parado, que so vale em dia
+# util das 8h as 18h (_horario_comercial). Sem fixar, a suite falhava a noite e
+# no fim de semana, e o CI barrava qualquer PR aberto fora do expediente. As
+# travas testadas aqui (repeticao, teto, digest) nao dependem da hora.
+alerta._horario_comercial = lambda dt=None: True
+
 
 def linhas_5xx(n):
     with db.get_db() as conn:
