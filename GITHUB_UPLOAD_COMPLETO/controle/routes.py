@@ -185,7 +185,8 @@ def _is_admin_only(path, method='GET'):
     # Apagar linha é manutenção, mas o MESMO path em GET/PUT é operacional
     # (ler coleta, editar amostrador) — por isso a regra olha o método.
     if method == 'DELETE' and (path.startswith('/controle/amostradores/')
-                               or path.startswith('/controle/coletas/outros/')):
+                               or path.startswith('/controle/coletas/outros/')
+                               or path.startswith('/controle/equipamentos/')):
         return True
     # /controle/empresas/pendentes/<id>/vincular — remapeia 8 tabelas e APAGA a
     # empresa pendente. É curadoria de cadastro, não fluxo do técnico.
@@ -1097,8 +1098,10 @@ def get_demandas():
 
 @controle_bp.route('/equipamentos')
 def get_equipamentos():
-    """Lista inventário de equipamentos. ?tipo=X&status=Y"""
+    """Lista o inventário (equipamentos e acessórios). ?tipo=X&status=Y
+    Cada linha volta com `categoria`, tirada do catálogo pelo tipo."""
     init_db()
+    from .db import equip_categoria
     tipo   = request.args.get('tipo', '').strip()
     status = request.args.get('status', '').strip()
     with get_db() as conn:
@@ -1108,7 +1111,17 @@ def get_equipamentos():
         if status: q += ' AND status=?'; params.append(status)
         q += ' ORDER BY tipo, marca, observacao'
         rows = conn.execute(q, params).fetchall()
-    return jsonify([row_to_dict(r) for r in rows])
+    itens = [row_to_dict(r) for r in rows]
+    for e in itens:
+        e['categoria'] = equip_categoria(e.get('tipo'))
+    return jsonify(itens)
+
+
+@controle_bp.route('/equipamentos/tipos')
+def get_equipamentos_tipos():
+    """Catálogo do formulário de cadastro (tipo, rótulo, categoria, exemplo)."""
+    from .db import equip_tipos
+    return jsonify(equip_tipos())
 
 
 @controle_bp.route('/equipamentos/calibracao')
@@ -1124,9 +1137,112 @@ def get_equipamentos_calibracao():
     return jsonify(equipamentos_calibracao(dias))
 
 
+_EQUIP_STATUS = ('disponivel', 'em_uso', 'manutencao', 'reservado')
+_EQUIP_QTD_NOME = {'quantidade': 'Quantidade', 'qtd_danificada': 'Danificados',
+                   'qtd_limpeza': 'Precisam de limpeza'}
+
+
+def _equip_qtd(valor, campo):
+    """Quantidade de acessório: inteiro >= 0. Devolve (numero, erro)."""
+    try:
+        n = int(str(valor).strip())
+    except (TypeError, ValueError):
+        return None, f'{_EQUIP_QTD_NOME[campo]}: informe um número inteiro.'
+    if n < 0:
+        return None, f'{_EQUIP_QTD_NOME[campo]} não pode ser negativo.'
+    return n, None
+
+
+def _equip_qtds_erro(q):
+    """Danificados e 'precisam de limpeza' são PARTE do total, não somam a ele:
+    o inventário do Wesley tem 9 suportes de cassete, 1 danificado e os 9
+    precisando de limpeza."""
+    total = q.get('quantidade') or 0
+    for campo in ('qtd_danificada', 'qtd_limpeza'):
+        if (q.get(campo) or 0) > total:
+            return f'{_EQUIP_QTD_NOME[campo]} não pode passar da quantidade total ({total}).'
+    return None
+
+
+def _txt(v, n):
+    return str(v or '').strip()[:n]
+
+
+@controle_bp.route('/equipamentos', methods=['POST'])
+def cria_equipamento():
+    """Cadastra equipamento ou acessório. Aberto ao técnico: é ele quem sabe o
+    que tem na maleta. O tipo tem de estar no catálogo (/equipamentos/tipos)."""
+    init_db()
+    from .db import equip_tipo
+    d = request.get_json(silent=True) or {}
+    cat = equip_tipo(_txt(d.get('tipo'), 40))
+    if not cat:
+        return jsonify({'erro': 'Escolha o tipo de equipamento ou acessório.'}), 400
+    tipo = cat['tipo']
+    descricao = _txt(d.get('observacao'), 200)
+    if tipo.startswith('outro_') and not descricao:
+        return jsonify({'erro': 'Descreva o item: "Outro" precisa de um nome.'}), 400
+    marca, modelo = _txt(d.get('marca'), 80), _txt(d.get('modelo'), 80)
+    serie = cert = dcal = None
+    status = 'disponivel'
+    q = {'quantidade': 1, 'qtd_danificada': 0, 'qtd_limpeza': 0}
+    if cat['categoria'] == 'acessorio':
+        for campo in q:
+            if d.get(campo) not in (None, ''):
+                q[campo], erro = _equip_qtd(d.get(campo), campo)
+                if erro:
+                    return jsonify({'erro': erro}), 400
+        erro = _equip_qtds_erro(q)
+        if erro:
+            return jsonify({'erro': erro}), 400
+    else:
+        serie = _txt(d.get('numero_serie'), 60) or None
+        cert  = _txt(d.get('cert_numero'), 60) or None
+        bruto = _txt(d.get('data_calibracao'), 10)
+        dcal  = data_iso(bruto)
+        if bruto and not dcal:
+            return jsonify({'erro': 'Data de calibração inválida.'}), 400
+        status = _txt(d.get('status'), 20) or 'disponivel'
+        if status not in _EQUIP_STATUS:
+            return jsonify({'erro': 'Status inválido.'}), 400
+
+    def _chave(*v):
+        return tuple(str(x or '').strip().lower() for x in v)
+
+    with get_db() as conn:
+        mesmos = [row_to_dict(r) for r in conn.execute(
+            'SELECT numero_serie, observacao, marca, modelo '
+            'FROM equipamentos_inventario WHERE tipo=?', (tipo,)).fetchall()]
+        # Cadastro repetido conta em dobro: mesmo nº de série no equipamento, ou
+        # mesma descrição/marca/modelo no acessório (aí o caminho é a quantidade).
+        if serie and any(_chave(m['numero_serie']) == _chave(serie) for m in mesmos):
+            return jsonify({'erro': f'Já existe {cat["label"]} com nº de série {serie}.'}), 409
+        if cat['categoria'] == 'acessorio' and any(
+                _chave(m['observacao'], m['marca'], m['modelo']) == _chave(descricao, marca, modelo)
+                for m in mesmos):
+            return jsonify({'erro': f'{cat["label"]} já está no inventário: '
+                                    'ajuste a quantidade na lista.'}), 409
+        cur = conn.execute(
+            'INSERT INTO equipamentos_inventario (tipo, marca, modelo, numero_serie, '
+            'compatibilidade, status, cert_numero, observacao, data_calibracao, '
+            "quantidade, qtd_danificada, qtd_limpeza, origem) "
+            "VALUES (?,?,?,?,'',?,?,?,?,?,?,?,'manual')",
+            (tipo, marca or None, modelo or None, serie, status, cert, descricao or None,
+             dcal, q['quantidade'], q['qtd_danificada'], q['qtd_limpeza']))
+        eid = cur.lastrowid
+    # fora do `with`: evento dentro da transação aberta trava o SQLite (ver ci.yml)
+    registrar_evento('equipamento_criado',
+                     f'{cat["label"]}: {descricao or cat["label"]}'
+                     + (f' (S/N {serie})' if serie else '')
+                     + (f' ({q["quantidade"]} un.)' if cat['categoria'] == 'acessorio' else ''),
+                     eid, 'equipamento', None, request.remote_addr)
+    return jsonify({'ok': True, 'id': eid}), 201
+
+
 @controle_bp.route('/equipamentos/<int:eid>', methods=['PUT'])
 def update_equipamento(eid):
-    """Atualiza campos de um equipamento (SN, cert, validade, status)."""
+    """Atualiza campos de um item do inventário (SN, cert, validade, status;
+    no acessório, as quantidades)."""
     init_db()
     d = request.get_json(force=True) or {}
     allowed = {'numero_serie', 'cert_numero', 'cert_validade', 'status', 'observacao', 'modelo', 'data_calibracao'}
@@ -1135,12 +1251,47 @@ def update_equipamento(eid):
         if k in allowed:
             sets.append(f'{k}=?')
             vals.append(v)
-    if not sets:
+    novas = {}
+    for campo in _EQUIP_QTD_NOME:
+        if campo in d:
+            novas[campo], erro = _equip_qtd(d[campo], campo)
+            if erro:
+                return jsonify({'erro': erro}), 400
+    if not sets and not novas:
         return jsonify({'erro': 'Nenhum campo válido'}), 400
-    sets.append('atualizado_em=CURRENT_TIMESTAMP')
-    vals.append(eid)
     with get_db() as conn:
-        conn.execute(f'UPDATE equipamentos_inventario SET {", ".join(sets)} WHERE id=?', vals)
+        atual = conn.execute('SELECT quantidade, qtd_danificada, qtd_limpeza '
+                             'FROM equipamentos_inventario WHERE id=?', (eid,)).fetchone()
+        if not atual:
+            return jsonify({'erro': 'Item não encontrado'}), 404
+        if novas:
+            erro = _equip_qtds_erro({**row_to_dict(atual), **novas})
+            if erro:
+                return jsonify({'erro': erro}), 400
+            for k, v in novas.items():
+                sets.append(f'{k}=?')
+                vals.append(v)
+        sets.append('atualizado_em=CURRENT_TIMESTAMP')
+        conn.execute(f'UPDATE equipamentos_inventario SET {", ".join(sets)} WHERE id=?', vals + [eid])
+    return jsonify({'ok': True})
+
+
+@controle_bp.route('/equipamentos/<int:eid>', methods=['DELETE'])
+def remove_equipamento(eid):
+    """Tira um item do inventário. Só admin (_is_admin_only): apagar cadastro é
+    manutenção, não fluxo do técnico. Nenhuma outra tabela aponta para este id."""
+    init_db()
+    with get_db() as conn:
+        row = conn.execute('SELECT tipo, observacao, modelo, numero_serie '
+                           'FROM equipamentos_inventario WHERE id=?', (eid,)).fetchone()
+        if not row:
+            return jsonify({'erro': 'Item não encontrado'}), 404
+        e = row_to_dict(row)
+        conn.execute('DELETE FROM equipamentos_inventario WHERE id=?', (eid,))
+    registrar_evento('equipamento_excluido',
+                     f'{e["tipo"]}: {e.get("observacao") or e.get("modelo") or ""}'
+                     + (f' (S/N {e["numero_serie"]})' if e.get('numero_serie') else ''),
+                     eid, 'equipamento', None, request.remote_addr)
     return jsonify({'ok': True})
 
 
@@ -1190,7 +1341,8 @@ def _eq_ins(conn, tipo, marca, modelo, sn, label, cert, dcal, compat=''):
 def rebuild_frota():
     """Reconstrói o inventário COMPLETO com a frota real dos certificados:
     bombas, dosímetros de ruído (Chrompack+Inlite), calibradores, vibração e calor.
-    Substitui os equipamentos desses tipos pelos dados conferidos nos PDFs."""
+    Substitui os equipamentos desses tipos pelos dados conferidos nos PDFs.
+    O que foi cadastrado pela tela (origem='manual') não vem dos PDFs e fica."""
     init_db()
     import sys
     app_mod = sys.modules.get('app')
@@ -1202,7 +1354,8 @@ def rebuild_frota():
     n = {'bomba': 0, 'dosimetro': 0, 'calibrador_ruido': 0, 'vibrador': 0, 'termometro': 0}
     with get_db() as conn:
         conn.execute("DELETE FROM equipamentos_inventario WHERE tipo IN "
-                     "('bomba','dosimetro','calibrador_ruido','vibrador','termometro')")
+                     "('bomba','dosimetro','calibrador_ruido','vibrador','termometro') "
+                     "AND COALESCE(origem,'') <> 'manual'")
         for marca, modelo, sn, label, cert, dcal in _BOMBAS_FROTA:
             _eq_ins(conn, 'bomba', marca, modelo, sn, label, cert, dcal); n['bomba'] += 1
         for mkey, items in (dosim or {}).items():

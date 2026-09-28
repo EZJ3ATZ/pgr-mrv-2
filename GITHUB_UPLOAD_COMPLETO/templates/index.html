@@ -5258,12 +5258,15 @@
   <div class="page-head page-head-v2">
     <div class="sec-eyebrow"><span class="sec-eyebrow-dot"></span>Cadastros · Ocupacional SST</div>
     <div class="page-title sec-title">Inventário de Equipamentos</div>
-    <div class="page-sub sec-sub">Bombas, calibradores, vibrômetros e termômetro — nº de série, certificado e validade de calibração (validade = data da calibração + 2 anos)</div>
+    <div class="page-sub sec-sub">Equipamentos com nº de série, certificado e validade de calibração (validade = data da calibração + 2 anos) e acessórios contados por quantidade</div>
   </div>
-  <div style="margin-bottom:14px;">
+  <div style="margin-bottom:14px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+    <button class="btn-primary-v2" onclick="equipAbrirAdicionar()">+ Adicionar</button>
     {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <div style="flex:1;min-width:260px;">
     <button onclick="equipRebuildBombas()" style="background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text2);padding:7px 14px;font-size:.78rem;font-weight:600;cursor:pointer;">🔬 Reconstruir inventário dos certificados</button>
-    <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">Aplica a frota real (séries, nº de certificado e data de calibração dos PDFs): bombas SKC AIRLITE / Gilian BDX-II / Formis TURAM / Inlite, dosímetros de ruído Chrompack SmartdB + Inlite DoseMax, calibradores, vibração SmartVib e calor SmartTemp. A validade (2 anos) é calculada sozinha.</div>
+    <div style="font-size:.7rem;color:var(--text3);margin-top:4px;">Aplica a frota real (séries, nº de certificado e data de calibração dos PDFs): bombas SKC AIRLITE / Gilian BDX-II / Formis TURAM / Inlite, dosímetros de ruído Chrompack SmartdB + Inlite DoseMax, calibradores, vibração SmartVib e calor SmartTemp. A validade (2 anos) é calculada sozinha. O que foi cadastrado pelo + Adicionar não é apagado.</div>
+    </div>
     {% endif %}
   </div>
   <div id="equip-inv-loading" style="display:none;color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando inventário...</div>
@@ -11652,49 +11655,182 @@ function planilhaAbrir(chave) {
 }
 
 // ── Aba dedicada: Inventário de Equipamentos ──────────────────────────
+// Equipamento: um por linha, com série, certificado e calibração.
+// Acessório (suporte de cassete, mangueira, ciclone...): contado por quantidade,
+// só para saber o que está guardado. Não entra na planilha de campo.
+let _equipTipos = null;   // catálogo do servidor: [{tipo, label, categoria, exemplo}]
+
+async function _equipCatalogo() {
+  if (!_equipTipos) {
+    _equipTipos = await ctrlFetch('/controle/equipamentos/tipos');
+    _equipTipos.forEach(t => { _TIPO_LABELS[t.tipo] = t.label; });
+  }
+  return _equipTipos;
+}
+
+function _equipAttr(s) { return _esc(s == null ? '' : s).replace(/"/g, '&quot;'); }
+
 async function equipLoad() {
   const loading = document.getElementById('equip-inv-loading');
   const list    = document.getElementById('equip-inv-list');
   if (!list) return;
   try {
     if (loading) loading.style.display = 'block';
-    const equips = await ctrlFetch('/controle/equipamentos');
+    const [tipos, equips] = await Promise.all([_equipCatalogo(), ctrlFetch('/controle/equipamentos')]);
     if (loading) loading.style.display = 'none';
-    if (!equips || !equips.length) {
-      list.innerHTML = '<div style="color:var(--text3);font-size:.85rem;">Nenhum equipamento cadastrado.</div>';
-      return;
-    }
+    const ordem = {};
+    tipos.forEach((t, i) => { ordem[t.tipo] = i; });
     const grupos = {};
-    equips.forEach(e => { (grupos[e.tipo] = grupos[e.tipo] || []).push(e); });
+    (equips || []).forEach(e => { (grupos[e.tipo] = grupos[e.tipo] || []).push(e); });
+    const tiposDa = cat => Object.keys(grupos)
+      .filter(t => (grupos[t][0].categoria || 'equipamento') === cat)
+      .sort((a, b) => (ordem[a] ?? 999) - (ordem[b] ?? 999));
+    const admin = document.body.dataset.role === 'admin';
     const inp = 'background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 9px;font-size:.8rem;font-family:inherit;';
-    list.innerHTML = Object.entries(grupos).map(([tipo, items]) => `
+    const lbl = 'font-size:.66rem;color:var(--text3);';
+    const nomeDe = e => e.observacao || e.modelo || _TIPO_LABELS[e.tipo] || e.tipo;
+    const remover = e => admin
+      ? `<button onclick="equipRemover(${e.id})" title="Tirar este item do inventário" style="margin-left:auto;align-self:flex-end;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text3);padding:4px 10px;font-size:.72rem;cursor:pointer;font-family:inherit;">Remover</button>`
+      : '';
+    const cartao = (tipo, linhas) => `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px;">
-        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:12px;">${_TIPO_LABELS[tipo]||tipo}</div>
-        ${items.map(e => `
+        <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:12px;">${_esc(_TIPO_LABELS[tipo] || tipo)}</div>
+        ${linhas}
+      </div>`;
+    const linhaEquip = e => `
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem;">
-            <span style="min-width:150px;color:var(--text);font-weight:600;">${(e.observacao||e.modelo||'—')}</span>
-            ${e.marca ? `<span style="font-size:.7rem;color:var(--text3);">${e.marca}</span>` : ''}
-            <label style="font-size:.66rem;color:var(--text3);">N° Série
-              <input type="text" placeholder="—" value="${(e.numero_serie||'').replace(/"/g,'&quot;')}" style="${inp}width:135px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{numero_serie:this.value})"></label>
-            <label style="font-size:.66rem;color:var(--text3);">Certificado
-              <input type="text" placeholder="—" value="${(e.cert_numero||'').replace(/"/g,'&quot;')}" style="${inp}width:110px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{cert_numero:this.value})"></label>
-            <label style="font-size:.66rem;color:var(--text3);">Data calibração
-              <input type="date" value="${e.data_calibracao||''}" style="${inp}width:150px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{data_calibracao:this.value},true)"></label>
+            <span style="min-width:150px;color:var(--text);font-weight:600;">${_esc(nomeDe(e))}</span>
+            ${e.marca ? `<span style="font-size:.7rem;color:var(--text3);">${_esc(e.marca)}</span>` : ''}
+            <label style="${lbl}">N° Série
+              <input type="text" placeholder="—" value="${_equipAttr(e.numero_serie)}" style="${inp}width:135px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{numero_serie:this.value})"></label>
+            <label style="${lbl}">Certificado
+              <input type="text" placeholder="—" value="${_equipAttr(e.cert_numero)}" style="${inp}width:110px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{cert_numero:this.value})"></label>
+            <label style="${lbl}">Data calibração
+              <input type="date" value="${_equipAttr(e.data_calibracao)}" style="${inp}width:150px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{data_calibracao:this.value},true)"></label>
             <span style="align-self:flex-end;padding-bottom:5px;">${_calibChip(e.data_calibracao, e.cert_validade)}</span>
-            <label style="font-size:.66rem;color:var(--text3);">Status
+            <label style="${lbl}">Status
               <select style="${inp}width:auto;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{status:this.value})">
                 ${['disponivel','em_uso','manutencao','reservado'].map(s=>`<option value="${s}" ${e.status===s?'selected':''}>${s}</option>`).join('')}
               </select></label>
-          </div>`).join('')}
-      </div>`).join('');
+            ${remover(e)}
+          </div>`;
+    const qtd = (e, campo, rotulo) => `
+            <label style="${lbl}">${rotulo}
+              <input type="number" min="0" step="1" value="${Number(e[campo]) || 0}" style="${inp}width:90px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{${campo}:this.value})"></label>`;
+    const linhaAcess = e => {
+      const extra = [e.marca, e.modelo].filter(Boolean).join(' · ');
+      return `
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem;">
+            <span style="min-width:150px;color:var(--text);font-weight:600;">${_esc(nomeDe(e))}</span>
+            ${extra ? `<span style="font-size:.7rem;color:var(--text3);">${_esc(extra)}</span>` : ''}
+            ${qtd(e, 'quantidade', 'Quantidade')}
+            ${qtd(e, 'qtd_danificada', 'Danificados')}
+            ${qtd(e, 'qtd_limpeza', 'Precisam de limpeza')}
+            ${remover(e)}
+          </div>`;
+    };
+    const secao = (titulo, sub, tiposSec, linha, vazio, topo) => `
+      <div style="margin:${topo}px 0 12px;">
+        <div style="font-size:.95rem;font-weight:700;color:var(--text);">${titulo}</div>
+        <div style="font-size:.74rem;color:var(--text3);margin-top:2px;">${sub}</div>
+      </div>
+      ${tiposSec.length
+        ? tiposSec.map(t => cartao(t, grupos[t].map(linha).join(''))).join('')
+        : `<div style="color:var(--text3);font-size:.82rem;padding:2px 0 10px;">${vazio}</div>`}`;
+    list.innerHTML =
+      secao('Equipamentos', 'Um por linha: nº de série, certificado e validade da calibração.',
+            tiposDa('equipamento'), linhaEquip, 'Nenhum equipamento cadastrado.', 4) +
+      secao('Acessórios', 'Contados por quantidade: total, danificados e os que precisam de limpeza.',
+            tiposDa('acessorio'), linhaAcess, 'Nenhum acessório cadastrado. Use o + Adicionar.', 26);
   } catch(e) {
     if (loading) loading.style.display = 'none';
-    list.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${e.message}</div>`;
+    list.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${_esc(e.message)}</div>`;
   }
 }
 
+async function equipAbrirAdicionar() {
+  const ov = document.getElementById('equip-add-overlay');
+  if (!ov) return;
+  let tipos;
+  try { tipos = await _equipCatalogo(); }
+  catch(e) { _showToast('Erro ao carregar os tipos: ' + e.message, 'err'); return; }
+  const grupo = (cat, rotulo) => `<optgroup label="${rotulo}">` +
+    tipos.filter(t => t.categoria === cat)
+         .map(t => `<option value="${_equipAttr(t.tipo)}">${_esc(t.label)}</option>`).join('') +
+    '</optgroup>';
+  document.getElementById('equip-add-tipo').innerHTML = '<option value="">Escolha o tipo</option>' +
+    grupo('acessorio', 'Acessórios') + grupo('equipamento', 'Equipamentos');
+  ['equip-add-desc', 'equip-add-marca', 'equip-add-modelo', 'equip-add-serie', 'equip-add-cert', 'equip-add-dcal']
+    .forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('equip-add-qtd').value  = '1';
+  document.getElementById('equip-add-dan').value  = '0';
+  document.getElementById('equip-add-limp').value = '0';
+  document.getElementById('equip-add-erro').style.display = 'none';
+  equipAddTipoMudou();
+  ov.classList.add('show');
+  document.getElementById('equip-add-tipo').focus();
+}
+
+function equipFecharAdicionar() {
+  const ov = document.getElementById('equip-add-overlay');
+  if (ov) ov.classList.remove('show');
+}
+
+// Os campos seguem o tipo: equipamento pede série/certificado/calibração;
+// acessório pede quantidade, danificados e os que precisam de limpeza.
+function equipAddTipoMudou() {
+  const tipo = document.getElementById('equip-add-tipo').value;
+  const t = (_equipTipos || []).find(x => x.tipo === tipo);
+  const cat = t ? t.categoria : '';
+  document.getElementById('equip-add-campos').style.display       = t ? '' : 'none';
+  document.getElementById('equip-add-campos-equip').style.display = cat === 'equipamento' ? '' : 'none';
+  document.getElementById('equip-add-campos-acess').style.display = cat === 'acessorio' ? '' : 'none';
+  document.getElementById('equip-add-desc').placeholder = (t && t.exemplo) || 'opcional';
+  document.getElementById('equip-add-desc-lbl').textContent =
+    tipo.startsWith('outro_') ? 'Descrição (obrigatória)' : 'Descrição';
+}
+
+async function equipAddSalvar() {
+  const v = id => document.getElementById(id).value.trim();
+  const erroBox = document.getElementById('equip-add-erro');
+  const falha = msg => { erroBox.textContent = msg; erroBox.style.display = 'block'; };
+  const tipo = v('equip-add-tipo');
+  const t = (_equipTipos || []).find(x => x.tipo === tipo);
+  if (!t) return falha('Escolha o tipo.');
+  const corpo = { tipo, observacao: v('equip-add-desc'), marca: v('equip-add-marca'), modelo: v('equip-add-modelo') };
+  if (t.categoria === 'acessorio') {
+    corpo.quantidade     = v('equip-add-qtd');
+    corpo.qtd_danificada = v('equip-add-dan');
+    corpo.qtd_limpeza    = v('equip-add-limp');
+  } else {
+    corpo.numero_serie    = v('equip-add-serie');
+    corpo.cert_numero     = v('equip-add-cert');
+    corpo.data_calibracao = v('equip-add-dcal');
+  }
+  const btn = document.getElementById('equip-add-ok');
+  btn.disabled = true;
+  try {
+    await ctrlFetch('/controle/equipamentos', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corpo)});
+    equipFecharAdicionar();
+    _showToast('Adicionado ao inventário: ' + t.label, 'ok');
+    equipLoad();
+    if (t.categoria === 'equipamento' && typeof carregarCalibAlerta === 'function') carregarCalibAlerta();
+  } catch(e) { falha(e.message); }
+  finally { btn.disabled = false; }
+}
+
+async function equipRemover(id) {
+  if (!confirm('Tirar este item do inventário? Não dá para desfazer.')) return;
+  try {
+    await ctrlFetch('/controle/equipamentos/' + id, {method:'DELETE'});
+    _showToast('Item removido do inventário', 'ok');
+    equipLoad();
+    if (typeof carregarCalibAlerta === 'function') carregarCalibAlerta();
+  } catch(e) { _showToast('Erro ao remover: ' + e.message, 'err'); }
+}
+
 async function equipRebuildBombas() {
-  if (!confirm('Reconstruir o inventário completo a partir dos certificados?\n\nAplica bombas, dosímetros de ruído (Chrompack + Inlite), calibradores, vibração e calor — com série, nº de certificado e data de calibração conferidos nos PDFs.\n\nSubstitui os equipamentos atuais desses tipos.')) return;
+  if (!confirm('Reconstruir o inventário completo a partir dos certificados?\n\nAplica bombas, dosímetros de ruído (Chrompack + Inlite), calibradores, vibração e calor — com série, nº de certificado e data de calibração conferidos nos PDFs.\n\nSubstitui os equipamentos desses tipos que vieram dos certificados. O que foi cadastrado pelo + Adicionar e os acessórios ficam.')) return;
   try {
     const r = await ctrlFetch('/controle/equipamentos/rebuild-frota', {method:'POST'});
     const d = r.detalhe || {};
@@ -11707,9 +11843,12 @@ async function equipRebuildBombas() {
 async function equipSalvar(id, campos, reload) {
   try {
     await ctrlFetch('/controle/equipamentos/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(campos)});
-    _showToast('Equipamento atualizado', 'ok');
+    _showToast('Inventário atualizado', 'ok');
     if (reload) { equipLoad(); if (typeof carregarCalibAlerta === 'function') carregarCalibAlerta(); }
-  } catch(e) { _showToast('Erro ao salvar: ' + e.message, 'err'); }
+  } catch(e) {
+    _showToast('Erro ao salvar: ' + e.message, 'err');
+    equipLoad();   // o campo volta a mostrar o que ficou gravado, não o valor recusado
+  }
 }
 
 function _planAtualizarEquipamentos() {
@@ -19832,6 +19971,45 @@ document.querySelectorAll('[data-split]').forEach(initSplitText);
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
       <button onclick="_offSincronizar(false).then(offAbrirFila)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:9px 16px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;">☁ Sincronizar tudo</button>
       <button onclick="offFecharFila()" style="background:var(--brand);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ INVENTÁRIO: adicionar equipamento ou acessório ══════════════════
+     Nível RAIZ pelo mesmo motivo da fila offline. -->
+<div class="ctrl-overlay" id="equip-add-overlay" style="z-index:1200;"
+     onclick="if(event.target===this) equipFecharAdicionar()">
+  <div class="ctrl-modal" style="max-width:540px;">
+    <h3>Adicionar ao inventário</h3>
+    <label for="equip-add-tipo">Tipo</label>
+    <select id="equip-add-tipo" onchange="equipAddTipoMudou()"></select>
+    <div id="equip-add-campos" style="display:none;">
+      <label for="equip-add-desc" id="equip-add-desc-lbl">Descrição</label>
+      <input type="text" id="equip-add-desc" maxlength="200">
+      <div class="row2">
+        <div><label for="equip-add-marca">Marca</label><input type="text" id="equip-add-marca" maxlength="80" placeholder="opcional"></div>
+        <div><label for="equip-add-modelo">Modelo</label><input type="text" id="equip-add-modelo" maxlength="80" placeholder="opcional"></div>
+      </div>
+      <div id="equip-add-campos-equip" style="display:none;">
+        <div class="row2">
+          <div><label for="equip-add-serie">Nº de série</label><input type="text" id="equip-add-serie" maxlength="60" placeholder="opcional"></div>
+          <div><label for="equip-add-cert">Certificado</label><input type="text" id="equip-add-cert" maxlength="60" placeholder="opcional"></div>
+        </div>
+        <label for="equip-add-dcal">Data da calibração</label>
+        <input type="date" id="equip-add-dcal">
+      </div>
+      <div id="equip-add-campos-acess" style="display:none;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end;">
+          <div><label for="equip-add-qtd">Quantidade</label><input type="number" id="equip-add-qtd" min="0" step="1" value="1"></div>
+          <div><label for="equip-add-dan">Danificados</label><input type="number" id="equip-add-dan" min="0" step="1" value="0"></div>
+          <div><label for="equip-add-limp">Precisam de limpeza</label><input type="number" id="equip-add-limp" min="0" step="1" value="0"></div>
+        </div>
+      </div>
+    </div>
+    <div id="equip-add-erro" class="ctrl-warn-box" style="display:none;"></div>
+    <div class="ctrl-actions">
+      <button class="ctrl-btn-cancel" onclick="equipFecharAdicionar()">Cancelar</button>
+      <button class="ctrl-btn-ok" id="equip-add-ok" onclick="equipAddSalvar()">Adicionar</button>
     </div>
   </div>
 </div>

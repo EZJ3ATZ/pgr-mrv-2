@@ -1346,6 +1346,15 @@ def _migrate(conn):
         print(f'[migrate] equipamentos seed: {_e}')
     # Data da última calibração (validade = +2 anos). cert_validade fica como override manual.
     _add_col(conn, 'equipamentos_inventario', 'data_calibracao', 'TEXT')
+    # Acessório (suporte de cassete, mangueira, ciclone...) é contado por QUANTIDADE,
+    # não por nº de série: é assim que o inventário do Wesley registra (quantos há,
+    # quantos danificados, quantos precisam de limpeza). Equipamento fica com 1.
+    _add_col(conn, 'equipamentos_inventario', 'quantidade', 'INTEGER DEFAULT 1')
+    _add_col(conn, 'equipamentos_inventario', 'qtd_danificada', 'INTEGER DEFAULT 0')
+    _add_col(conn, 'equipamentos_inventario', 'qtd_limpeza', 'INTEGER DEFAULT 0')
+    # 'manual' = cadastrado pela tela. O "Reconstruir dos certificados" apaga e
+    # recria a frota dos PDFs; sem esta marca levaria junto o que o técnico cadastrou.
+    _add_col(conn, 'equipamentos_inventario', 'origem', 'TEXT')
 
 
     # ── amostradores ──
@@ -2974,12 +2983,68 @@ def stats_dashboard():
         return row_to_dict(conn.execute(sql).fetchone())
 
 
+# Tipos que o técnico pode cadastrar no inventário. A categoria decide o controle:
+#   equipamento → um por linha, com nº de série, certificado e data de calibração;
+#   acessorio   → contado por quantidade (total, danificados, precisam de limpeza).
+# Os 5 primeiros são a frota que já existia. Os acessórios saem do inventário do
+# Wesley (Engenharia Interno\Wesley Rodrigues\Outros\Inventartio Preliminar.docx,
+# 31/03/2026) e das fichas de campo dele (químico: ciclones, redutor, IOM, suporte
+# de cassete; vedação: kits 3M FT-10/FT-30). Termo-higrômetro e monóxido também vêm
+# das fichas; calibrador de vazão e luxímetro a planilha e o planejamento já citavam
+# como "fora do inventário".
+# (tipo, rótulo, categoria, exemplo para o campo de descrição)
+EQUIP_TIPOS = [
+    ('bomba',              'Bomba de amostragem',            'equipamento', ''),
+    ('dosimetro',          'Dosímetro de ruído',             'equipamento', ''),
+    ('calibrador_ruido',   'Calibrador acústico',            'equipamento', ''),
+    ('vibrador',           'Medidor de vibração',            'equipamento', ''),
+    ('termometro',         'Termômetro IBUTG',               'equipamento', ''),
+    ('calibrador_vazao',   'Calibrador de vazão',            'equipamento', 'ex.: Defender 510-M, TSI 4143F'),
+    ('termo_higrometro',   'Termo-higrômetro',               'equipamento', ''),
+    ('luximetro',          'Luxímetro',                      'equipamento', ''),
+    ('medidor_co',         'Medidor de monóxido de carbono', 'equipamento', ''),
+    ('outro_equipamento',  'Outro equipamento',              'equipamento', 'diga qual é o equipamento'),
+    ('suporte_cassete',    'Suporte para cassete',           'acessorio',   ''),
+    ('mangueira',          'Mangueira',                      'acessorio',   ''),
+    ('ciclone_aluminio',   'Ciclone de alumínio',            'acessorio',   ''),
+    ('ciclone_nylon',      'Ciclone de nylon',               'acessorio',   ''),
+    ('calibrador_ciclone', 'Calibrador de ciclone',          'acessorio',   ''),
+    ('suporte_iom',        'Suporte IOM',                    'acessorio',   ''),
+    ('calibrador_iom',     'Calibrador de IOM',              'acessorio',   ''),
+    ('redutor_vazao',      'Redutor de vazão',               'acessorio',   'ex.: 2 seções, 4 seções'),
+    ('chave_calibracao',   'Chave de calibração',            'acessorio',   ''),
+    ('chave_corte',        'Chave de corte',                 'acessorio',   ''),
+    ('quebrador_tcp',      'Quebrador de TCP',               'acessorio',   ''),
+    ('kit_vedacao',        'Kit de ensaio de vedação',       'acessorio',   'ex.: 3M FT-10 (sacarina), 3M FT-30 (Bitrex)'),
+    ('outro_acessorio',    'Outro acessório',                'acessorio',   'diga qual é o acessório'),
+]
+_EQUIP_TIPO = {t[0]: {'tipo': t[0], 'label': t[1], 'categoria': t[2], 'exemplo': t[3]}
+               for t in EQUIP_TIPOS}
+
+
+def equip_tipos():
+    """Catálogo na ordem da tela, para o formulário de cadastro."""
+    return [dict(_EQUIP_TIPO[t[0]]) for t in EQUIP_TIPOS]
+
+
+def equip_tipo(tipo):
+    """Entrada do catálogo, ou None se o tipo não existe."""
+    return _EQUIP_TIPO.get(tipo)
+
+
+def equip_categoria(tipo):
+    """Tipo fora do catálogo (legado) conta como equipamento: era o único que existia."""
+    t = _EQUIP_TIPO.get(tipo)
+    return t['categoria'] if t else 'equipamento'
+
+
 def equipamentos_calibracao(dias_alerta=90):
     """Calcula o status de calibração de cada equipamento.
     Validade = data_calibracao + 2 anos. Se cert_validade estiver preenchido
     manualmente, ele tem prioridade (override).
     Retorna {itens:[...], vencidos:n, vencendo:n, dias_alerta}.
     status de cada item: 'vencido' | 'vencendo' (<= dias_alerta) | 'ok' | 'sem_data'.
+    Acessório não tem calibração e fica de fora.
     """
     from datetime import date as _date, timedelta as _td
     hoje = _date.today()
@@ -3005,6 +3070,8 @@ def equipamentos_calibracao(dias_alerta=90):
         ).fetchall()
     for r in rows:
         d = row_to_dict(r) if 'row_to_dict' in globals() else (dict(r) if hasattr(r, 'keys') else {})
+        if equip_categoria(d.get('tipo')) == 'acessorio':
+            continue
         dcal = _parse(d.get('data_calibracao'))
         venc_manual = _parse(d.get('cert_validade'))
         venc = venc_manual or (dcal + _td(days=730) if dcal else None)
