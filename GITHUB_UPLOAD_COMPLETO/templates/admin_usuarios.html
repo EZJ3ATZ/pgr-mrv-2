@@ -45,7 +45,21 @@
 <body>
   <a class="back" href="/">← Voltar</a>
   <h1>Gerenciamento de Usuários</h1>
-  <p class="sub">Ative novos cadastros e gerencie roles dos técnicos</p>
+  <p class="sub">O login é só pela Microsoft: cadastre o e-mail @ocupacional.com.br de quem pode entrar e a pessoa entra com a conta dela, sem senha.</p>
+
+  <div class="addbar">
+    <div class="f-nome"><input type="text" id="nu-nome" placeholder="Nome completo"></div>
+    <div class="f-nome"><input type="text" id="nu-email" placeholder="nome@ocupacional.com.br"></div>
+    <div class="f-cargo">
+      <select id="nu-role">
+        <option value="tecnico" selected>Técnico</option>
+        <option value="coordenacao">Coordenação</option>
+        <option value="visualizador">Visualizador</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <button class="btn btn-brand" onclick="addUsuario()">+ Adicionar</button>
+  </div>
 
   <table>
     <thead>
@@ -148,6 +162,22 @@
       const m = document.getElementById('msg');
       m.textContent = txt; m.classList.add('show');
       setTimeout(() => m.classList.remove('show'), 2500);
+    }
+
+    async function addUsuario() {
+      const nome  = document.getElementById('nu-nome').value.trim();
+      const email = document.getElementById('nu-email').value.trim();
+      const role  = document.getElementById('nu-role').value;
+      if (!nome || !email) { showMsg('Informe nome e e-mail.'); return; }
+      const r = await fetch('/controle/admin/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, role })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { showMsg(d.erro || 'Erro ao cadastrar'); return; }
+      showMsg('Usuário cadastrado: já pode entrar pela Microsoft.');
+      setTimeout(() => location.reload(), 900);
     }
 
     async function ativar(uid) {
