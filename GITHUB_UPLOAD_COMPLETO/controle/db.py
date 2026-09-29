@@ -1703,28 +1703,25 @@ def _migrate(conn):
     _add_col(conn, 'eventos', 'usuario_id', 'INTEGER')
     _casar_eventos_com_usuarios(conn)
 
-    # ── Garante que admin seed existe e é role=admin ──
+    # ── Admin = a conta Microsoft do Matheus (ver _admin_na_conta_microsoft) ──
     try:
-        conn.execute(
-            "UPDATE usuarios SET role='admin', ativo=1 WHERE email='engenharia19@ocupacional.com.br'"
-        )
-    except Exception:
-        pass
+        _admin_na_conta_microsoft(conn)
+    except Exception as e:
+        print(f'[migrate] admin: {e}')
 
     # ── Cria admin se tabela vazia (primeiro deploy no Railway) ──
+    # Sem senha: o login é só pela Microsoft. senha_hash fica vazio (a coluna é
+    # NOT NULL e nada mais lê senha).
     try:
-        from werkzeug.security import generate_password_hash
         _crow = conn.execute('SELECT COUNT(*) AS c FROM usuarios').fetchone()
         count = (_crow.get('c', 0) if isinstance(_crow, dict) else _crow[0]) if _crow else 0
         if count == 0:
-            pwd = os.environ.get('ADMIN_SETUP_PASSWORD', 'Ocupacional@2026')
             conn.execute(
                 "INSERT INTO usuarios (nome, email, senha_hash, role, ativo) "
-                "VALUES (?,?,?,?,1)",
-                ('Matheus Costa', 'engenharia19@ocupacional.com.br',
-                 generate_password_hash(pwd), 'admin')
+                "VALUES (?,?,'',?,1)",
+                ('Matheus Costa', ADMIN_EMAIL, 'admin')
             )
-            print(f'[db] admin criado: engenharia19@ocupacional.com.br / {pwd}')
+            print(f'[db] admin criado: {ADMIN_EMAIL} (entra pela Microsoft)')
     except Exception as e:
         print(f'[db] seed admin erro: {e}')
 
@@ -1761,6 +1758,25 @@ def _auto_seed():
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
+
+ADMIN_EMAIL = 'matheus.costa@ocupacional.com.br'
+_ADMIN_EMAIL_ANTIGO = 'engenharia19@ocupacional.com.br'
+
+
+def _admin_na_conta_microsoft(conn):
+    """Login só pela Microsoft (28/09/2026): o cadastro do admin tem de ser o
+    e-mail com que ele entra. O do Matheus nasceu como engenharia19@, que hoje é
+    a caixa operacional do sistema (lê o laboratório, manda os alertas) e também
+    é conta de login: deixado assim, quem tivesse a senha da engenharia19 entraria
+    como admin, e ele mesmo ficaria de fora. Idempotente: só move a linha se o
+    e-mail novo ainda não existe (a coluna é UNIQUE)."""
+    conn.execute(
+        'UPDATE usuarios SET email=? WHERE lower(email)=? AND NOT EXISTS ('
+        'SELECT 1 FROM usuarios u2 WHERE lower(u2.email)=?)',
+        (ADMIN_EMAIL, _ADMIN_EMAIL_ANTIGO, ADMIN_EMAIL))
+    conn.execute("UPDATE usuarios SET role='admin', ativo=1 WHERE lower(email)=?",
+                 (ADMIN_EMAIL,))
+
 
 def _casar_eventos_com_usuarios(conn):
     """Backfill de `eventos.usuario_id` a partir do nome em texto livre.

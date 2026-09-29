@@ -8899,6 +8899,39 @@ def admin_tecnico_mte_toggle(tid):
     return jsonify({'ok': True})
 
 
+_ROLES_USUARIO = ('admin', 'tecnico', 'coordenacao', 'visualizador')
+
+
+@controle_bp.route('/admin/usuarios', methods=['POST'])
+@login_required
+def admin_criar_usuario():
+    """Cadastra quem pode entrar. O login é só pela Microsoft (28/09/2026): o
+    admin cadastra o e-mail corporativo, a pessoa entra com a conta dela e não
+    existe senha. Substitui o autocadastro com senha (/auth/register)."""
+    chk = _require_admin()
+    if chk: return chk
+    d = request.get_json(silent=True) or {}
+    nome  = str(d.get('nome') or '').strip()[:120]
+    email = str(d.get('email') or '').strip().lower()[:160]
+    role  = d.get('role') or 'tecnico'
+    if not nome or not email:
+        return jsonify({'erro': 'Informe nome e e-mail.'}), 400
+    if email.count('@') != 1 or not email.endswith('@ocupacional.com.br'):
+        return jsonify({'erro': 'Use o e-mail @ocupacional.com.br da pessoa: é a conta Microsoft com que ela entra.'}), 400
+    if role not in _ROLES_USUARIO:
+        return jsonify({'erro': 'Role inválido'}), 400
+    with get_db() as conn:
+        if conn.execute('SELECT 1 FROM usuarios WHERE lower(email)=?', (email,)).fetchone():
+            return jsonify({'erro': 'Este e-mail já está cadastrado: use Ativar na lista.'}), 409
+        cur = conn.execute(
+            "INSERT INTO usuarios (nome, email, senha_hash, role, ativo) VALUES (?,?,'',?,1)",
+            (nome, email, role))
+        uid = cur.lastrowid
+    registrar_evento('admin_criar_usuario', f'{nome} ({email}) role={role}',
+                     usuario=current_user.nome, ip=request.remote_addr)
+    return jsonify({'ok': True, 'id': uid}), 201
+
+
 @controle_bp.route('/admin/usuarios/<int:uid>/ativar', methods=['POST'])
 @login_required
 def admin_ativar_usuario(uid):
@@ -8933,7 +8966,7 @@ def admin_set_role(uid):
     # 'coordenacao' existe para separar quem APROVA de quem EXECUTA: o
     # orquestrador da OS sugere técnico só entre role='tecnico', então
     # coordenação cadastrada como técnico entrava no rodízio de campo.
-    if role not in ('admin', 'tecnico', 'coordenacao', 'visualizador'):
+    if role not in _ROLES_USUARIO:
         return jsonify({'erro': 'Role inválido'}), 400
     with get_db() as conn:
         conn.execute('UPDATE usuarios SET role=? WHERE id=?', (role, uid))
