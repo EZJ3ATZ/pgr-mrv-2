@@ -149,6 +149,11 @@ def classificar_servico(servico):
     cat = (servico.get('categoria') or '').strip().lower()
     if cat in ('medicao', 'ergonomia', 'treinamento', 'engenharia'):
         return cat
+    # 01/10/2026: produto de GESTÃO (per capita / mensal, ex. "Gestão em SST
+    # Completa") é PGR + PCMSO do contrato — vai para a engenharia por regra,
+    # não por sobra do default. Decisão do Matheus na OS da ALUGREEN.
+    if cat == 'gestao':
+        return 'engenharia'
     nome = (servico.get('nome') or '').lower()
     for raia, kws in _KW.items():
         if any(k in nome for k in kws):
@@ -439,8 +444,13 @@ def abrir_os(payload, dry_run=False):
                                 {'email': montar_email_onboarding(os_row)}))
 
         if dry_run:
+            # A tela do CRM mostra isto ANTES de confirmar ("ciência do que vai
+            # acontecer"): se o e-mail sai, para quem, e se está em modo teste.
             return {'ok': True, 'dry_run': True, 'dormente': dormente,
                     'numero': numero,
+                    'envio_emails': _envio_habilitado(),
+                    'email_teste': (os.environ.get('ORQ_EMAIL_TESTE') or '').strip() or None,
+                    'email_financeiro': EMAIL_FINANCEIRO,
                     'raias': [{'raia': r, 'status': s, 'detalhe': d}
                               for r, s, d in raias_plano]}
 
