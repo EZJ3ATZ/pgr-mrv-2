@@ -556,13 +556,20 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
         if i.get('quantidade') and float(i['quantidade']) > 1 else '')
         for i in itens)
     titulo = f"{numero} - {os_row['empresa']}"
+    # 01/10/2026: os serviços vão também ESTRUTURADOS no checklist (um item por
+    # produto, nome do catálogo do CRM). O motor de agentes lê o checklist com
+    # peso maior que a descrição, e o catálogo entrou no dicionário dele — assim
+    # a medição recebe os agentes certos sem adivinhar no texto.
+    checklist = json.dumps(
+        [str(i.get('nome') or '').strip() for i in itens if str(i.get('nome') or '').strip()],
+        ensure_ascii=False)
     conn.execute(
         """INSERT INTO demandas (numero_os, empresa_id, cnpj, titulo, nome_tarefa,
-             descricao, status, origem, tipo_demanda, prazo,
+             descricao, checklist, status, origem, tipo_demanda, prazo,
              empresa_match_score, empresa_match_metodo, needs_review,
              criado_em, atualizado_em)
-           VALUES (?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?, ?,?,?, ?, ?)""",
-        (numero, empresa_id, os_row['cnpj'], titulo, titulo, desc,
+           VALUES (?,?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?, ?,?,?, ?, ?)""",
+        (numero, empresa_id, os_row['cnpj'], titulo, titulo, desc, checklist,
          os_row.get('prazo'), score, metodo, revisar, _now(), _now()))
     return row_to_dict(conn.execute(
         "SELECT id FROM demandas WHERE numero_os=? ORDER BY id DESC LIMIT 1",

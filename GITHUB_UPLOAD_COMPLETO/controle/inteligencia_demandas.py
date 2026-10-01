@@ -362,6 +362,88 @@ AGENTES_SST: Dict[str, List[str]] = {
     ],
 }
 
+# ── Catálogo de produtos de MEDIÇÃO do CRM (01/10/2026) ──────────────────
+# A OS que nasce no CRM traz o serviço com o NOME DO CATÁLOGO. Medido em 01/10:
+# o motor lia 68 dos 135 produtos; estes entram como canônicos próprios (químicos
+# que não existiam) ou como alias de um agente que já existia. Nome novo no
+# catálogo do CRM = linha nova aqui; o canônico É o nome do catálogo.
+_CATALOGO_CRM: Dict[str, List[str]] = {
+    'Éter Etílico de Dietileno Glicol': ['eter etilico de dietileno glicol'],
+    '1-Metoxi 2-Propanol': ['1-metoxi 2-propanol'],
+    '2-Etoxietanol': ['2-etoxietanol'],
+    '2-Metoxietanol': ['2-metoxietanol'],
+    'Acetato de 2-Etoxietila': ['acetato de 2-etoxietila'],
+    'Acetato de 2-Metoxietila': ['acetato de 2-metoxietila'],
+    'Acetato de Butila': ['acetato de butila'],
+    'Acetato de Etila': ['acetato de etila'],
+    'Acetato de Metila': ['acetato de metila'],
+    'Acetato de Pentila': ['acetato de pentila'],
+    'Acetato de Vinila': ['acetato de vinila'],
+    'Acetonitrila': ['acetonitrila'],
+    'Aguarrás Mineral': ['aguarras mineral'],
+    'Asfalto': ['asfalto'],
+    'Azida de Sódio': ['azida de sodio'],
+    'Borato': ['borato'],
+    'Carvão, poeiras': ['carvao, poeiras'],
+    'Cianoacrilato de etila': ['cianoacrilato de etila'],
+    'Ciclohexano': ['ciclohexano'],
+    'Ciclohexanona': ['ciclohexanona'],
+    'Cimento Portland': ['cimento portland'],
+    'Clorodifluormetano (Freon 22)': ['clorodifluormetano', 'clorodifluormetano (freon 22)'],
+    'Dióxido de titânio': ['dioxido de titanio'],
+    'Estearatos': ['estearatos'],
+    'Farinha': ['farinha'],
+    'Fenol': ['fenol'],
+    'Fibra de Vidro': ['fibra de vidro'],
+    'Fluoretos': ['fluoretos'],
+    'Gasolina': ['gasolina'],
+    'Glifosato': ['glifosato'],
+    'Glutaraldeído': ['glutaraldeido'],
+    'Grafite': ['grafite'],
+    'Hexametileno Diisocianato': ['hexametileno diisocianato'],
+    'Hidroquinona': ['hidroquinona'],
+    'Hidroxitolueno Butilado (FIV)': ['hidroxitolueno butilado', 'hidroxitolueno butilado (fiv)'],
+    'Hidróxido de Cálcio': ['hidroxido de calcio'],
+    'Isoforona': ['isoforona'],
+    'Isopropilbenzeno': ['isopropilbenzeno'],
+    'Madeira': ['madeira'],
+    'Metabissulfito de Sódio': ['metabissulfito de sodio'],
+    'Metil Isobutil Cetona': ['metil isobutil cetona'],
+    'Molibdênio': ['molibdenio'],
+    'Nafta de Petróleo': ['nafta de petroleo'],
+    'PNOS Respirável - Partículas não especificadas de outra maneira': ['pnos respiravel - particulas nao especificadas de outra maneira'],
+    'Pentano': ['pentano'],
+    'Peróxido de Hidrogênio': ['peroxido de hidrogenio'],
+    'Sulfato de Bário (Bário e seus compostos)': ['sulfato de bario', 'sulfato de bario (bario e seus compostos)'],
+    'Sulfato de Cálcio': ['sulfato de calcio'],
+    'Talco': ['talco'],
+    'Tetracloroetileno': ['tetracloroetileno'],
+    'Tricloroetileno': ['tricloroetileno'],
+    'Trietanolamina': ['trietanolamina'],
+    'Trimetilbenzeno': ['trimetilbenzeno'],
+    'Tungstênio': ['tungstenio'],
+    'Vapores de Etanolamina': ['vapores de etanolamina'],
+    'Varredura de Metais': ['varredura de metais'],
+    'Zircônio': ['zirconio'],
+    'Ácido Acrílico': ['acido acrilico'],
+    'Ácido Metacrílico': ['acido metacrilico'],
+    'Ácido Oxálico': ['acido oxalico'],
+    'Ácido Perclórico': ['acido perclorico'],
+    'Ácido peracético': ['acido peracetico'],
+    'Óleo Diesel': ['oleo diesel'],
+    'Óxido Nitroso': ['oxido nitroso'],
+    'Óxido de Cálcio': ['oxido de calcio'],
+    'Óxido de Magnésio': ['oxido de magnesio'],
+}
+_CATALOGO_CRM_ALIASES: Dict[str, List[str]] = {}
+for _k, _v in _CATALOGO_CRM.items():
+    AGENTES_SST.setdefault(_k, [])
+    AGENTES_SST[_k].extend(a for a in _v if a not in AGENTES_SST[_k])
+for _k, _v in _CATALOGO_CRM_ALIASES.items():
+    AGENTES_SST.setdefault(_k, [])
+    AGENTES_SST[_k].extend(a for a in _v if a not in AGENTES_SST[_k])
+
+
 # ── Classificação por tipo ───────────────────────────────────────────────
 _FISICOS = {
     'Ruído Ocupacional', 'Calor (IBUTG)', 'Vibração de Corpo Inteiro (VCI)',
@@ -383,6 +465,17 @@ _CONTIDO_EM: Dict[str, set] = {
     'Ferro':   {'Óxido de Ferro'},          # "Ferro, óxido (Fe2O3)" casa os dois
     'Álcool':  {'2-Butóxi Etanol (EGBE)'},  # "butóxi etanol" contém "etanol"
 }
+
+
+# Nomes do catálogo do CRM que CONTÊM um agente genérico (ex.: "2-Etoxietanol" contém
+# "etanol"): o específico vence, o genérico some. Gerado em 01/10/2026 medindo o
+# catálogo inteiro contra o motor.
+_CONTIDO_EM_CATALOGO: Dict[str, set] = {'Éter Etílico': {'2-Etoxietanol', '2-Metoxietanol'}, 'Álcool': {'2-Etoxietanol', '2-Metoxietanol', 'Trietanolamina', 'Vapores de Etanolamina'}, 'Ácido Acético': {'Ácido peracético'}, 'Poeira Total': {'Carvão, poeiras'}, 'Hexano': {'Ciclohexano', 'Ciclohexanona'}, 'Ciclohexano': {'Ciclohexanona'}, 'Cloro': {'Clorodifluormetano (Freon 22)', 'Tetracloroetileno', 'Tricloroetileno'}, 'Isocianatos (MDI/TDI)': {'Hexametileno Diisocianato'}, 'Óxido de Cálcio': {'Hidróxido de Cálcio'}, 'Tolueno': {'Hidroxitolueno Butilado (FIV)', 'Trimetilbenzeno'}, 'Benzeno': {'Isopropilbenzeno'}, 'Etilbenzeno': {'Trimetilbenzeno'}}
+_CONTIDO_EM_CATALOGO.setdefault('Éter Etílico', set()).add('Éter Etílico de Dietileno Glicol')
+_CONTIDO_EM_CATALOGO.setdefault('Etileno Glicol', set()).add('Éter Etílico de Dietileno Glicol')
+_CONTIDO_EM_CATALOGO.setdefault('Gases e Vapores (geral)', set()).add('Borato')
+for _k, _v in _CONTIDO_EM_CATALOGO.items():
+    _CONTIDO_EM.setdefault(_k, set()).update(_v)
 
 
 def _tipo_agente(canonical: str) -> str:
