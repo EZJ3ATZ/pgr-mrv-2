@@ -11337,6 +11337,11 @@ function _planNormalizarAgentes() {
        'amostrador','amostrador_codigo','calibrador_nome','data_calibracao','tipo_coleta',
        'unidade'].forEach(k => { delete a[k]; });
     }
+    // Dia da medição por linha (OS de mais de um dia). Legado: a linha química só
+    // tinha a "data da calibração da bomba", sem rótulo, e os técnicos a preenchiam
+    // com o dia da visita (11 datas futuras em prod em 01/10/2026) — vale como dia.
+    if (!a.dia_medicao && a.data_calibracao) a.dia_medicao = String(a.data_calibracao).slice(0, 10);
+    if (a.dia_medicao && a.tipo === 'quimico') a.data_calibracao = a.dia_medicao;  // a bomba é calibrada no dia
   });
 }
 
@@ -11383,7 +11388,6 @@ function _planRenderizarAgentes() {
             <option ${a.calibrador_nome==='DEFENDER 510M S/N:126958'?'selected':''}>DEFENDER 510M S/N:126958</option>
             <option ${a.calibrador_nome==='TSI 4143F – 41432019013'?'selected':''}>TSI 4143F – 41432019013</option>
           </select>
-          <input type="date" value="${a.data_calibracao||''}" title="Data da calibração da bomba" onchange="window._planAgentes[${i}].data_calibracao=this.value" style="${inp}width:130px;">
         </div>`;
     } else if (a.tipo === 'ruido') {
       const isInlite = a.marca_dosimetro==='inlite';
@@ -11447,6 +11451,9 @@ function _planRenderizarAgentes() {
           <input type="number" min="1" value="${a.qtd||1}" onchange="window._planAgentes[${i}].qtd=Math.max(1,parseInt(this.value)||1);_planRenderizarAgentes();" title="Quantidade — clique para editar" style="${inp}width:50px;text-align:center;">
           <input type="text" value="${_av(a.metodo)}" placeholder="método" onchange="window._planAgentes[${i}].metodo=this.value;" title="Método analítico — clique para editar" style="${inp}min-width:110px;flex:1;color:var(--text3);font-size:.7rem;">
           <input type="text" value="${_av(a.funcao)}" placeholder="Função / Setor" onchange="window._planAgentes[${i}].funcao=this.value;" title="Função e setor do avaliado (formato: Função / Setor) — a planilha de campo herda cargo/setor daqui" style="${inp}min-width:130px;flex:1;">
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:.68rem;color:var(--text3);white-space:nowrap;">📅 Dia da medição
+            <input type="date" value="${_av(a.dia_medicao)}" onchange="_planSetDiaMedicao(${i}, this.value)" title="Dia em que esta medição será feita. Linhas em dias diferentes = OS de mais de um dia; a estimativa passa a contar as datas distintas." style="${inp}width:128px;">
+          </span>
         </span>
         <button type="button" onclick="planRemoverAgente(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0 4px;flex-shrink:0;">✕</button>
       </div>
@@ -11454,11 +11461,38 @@ function _planRenderizarAgentes() {
     </div>`;
   }).join('');
   _planAtualizarEquipamentos();
+  _planSyncDataPrevista();
 }
 
 function planRemoverAgente(idx) {
   window._planAgentes.splice(idx, 1);
   _planRenderizarAgentes();
+}
+
+// ── Dia da medição por linha (OS de mais de um dia) ───────────────────
+function _planDiasProgramados() {
+  const dias = new Set();
+  (window._planAgentes || []).forEach(a => {
+    const d = String((a && a.dia_medicao) || '').slice(0, 10);
+    if (d.length === 10 && d[4] === '-' && d[7] === '-') dias.add(d);
+  });
+  return [...dias].sort();
+}
+function _planSetDiaMedicao(i, v) {
+  const a = (window._planAgentes || [])[i];
+  if (!a) return;
+  a.dia_medicao = v || '';
+  if (a.tipo === 'quimico') a.data_calibracao = a.dia_medicao;  // a bomba é calibrada no dia da medição
+  _planSyncDataPrevista();
+  _planCalcularDias();
+}
+// Data Prevista da Visita vazia assume o primeiro dia programado nas linhas. Plano
+// confirmado sem data não aparecia na agenda (caso real: plano 54, 30/09/2026).
+function _planSyncDataPrevista() {
+  const el = document.getElementById('plan-data-prevista');
+  if (!el || el.value) return;
+  const dias = _planDiasProgramados();
+  if (dias.length) el.value = dias[0];
 }
 
 // ── Checklist pré-visita ──────────────────────────────────────────────
@@ -11957,7 +11991,12 @@ function _planCalcularDias() {
   const diasQuim  = horasQuim > 0 ? Math.ceil(horasQuim / (equipQuim * DIA_H)) : 0;
   const base      = Math.max(diasRuido, diasQuim);
   const extra     = Math.ceil(Math.max(0, horasTec - base * DIA_H) / DIA_H) || 0;
-  const total     = base + extra;
+  const totalCalc = base + extra;
+  // Dias programados pelo técnico (datas distintas nas linhas): o cálculo mede a
+  // capacidade dos equipamentos e não enxerga retorno marcado nem restrição do
+  // cliente. Quando o técnico espalha as linhas em mais dias, valem os dias dele.
+  const diasProg  = _planDiasProgramados();
+  const total     = Math.max(totalCalc, diasProg.length);
 
   window._planDiasEstimado = total;
 
@@ -11983,10 +12022,15 @@ function _planCalcularDias() {
   if (horasQuim > 0) html += _lr('Químicos — Poeira+Metais+Gases (6 bombas)', `${diasQuim} dia${diasQuim!==1?'s':''}`);
   html += _lr('Base — maior entre ruído e químicos (mesmo dia)', `${base} dia${base!==1?'s':''}`, true);
   if (horasTec > 0)  html += _lr(`Tempo técnico (Calor+Vibração) = ${_fmtDur(horasTec)}`, extra > 0 ? `+${extra} dia${extra!==1?'s':''}` : 'encaixa na base');
+  if (diasProg.length) {
+    const _fmtD = d => d.split('-').reverse().slice(0, 2).join('/');
+    html += _lr(`Dias programados nas linhas (${diasProg.map(_fmtD).join(', ')})`,
+                `${diasProg.length} dia${diasProg.length!==1?'s':''}`, diasProg.length > totalCalc);
+  }
   html += `</div>`;
 
   html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:8px;margin-top:8px;">
-    <span style="font-weight:700;color:var(--text);">Total estimado (medições em paralelo)</span>
+    <span style="font-weight:700;color:var(--text);">Total estimado <span style="font-weight:500;color:var(--text3);font-size:.78rem;">${diasProg.length > totalCalc ? 'pelos dias programados nas linhas' : '(medições em paralelo)'}</span></span>
     <span style="font-weight:800;font-size:1.1rem;color:#93c5fd;">${total} dia${total !== 1 ? 's' : ''}</span>
   </div>`;
 
@@ -11999,12 +12043,15 @@ function planUsarDias() {
   if (!dias) return;
   const dataInput = document.getElementById('plan-data-prevista');
   if (!dataInput) return;
+  const diasProg = _planDiasProgramados();
+  if (diasProg.length && !dataInput.value) dataInput.value = diasProg[0];
   const base = dataInput.value;
   if (!base) {
     _showToast(`${dias} dia${dias>1?'s':''} estimados. Preencha a data de início primeiro.`, 'warn');
     return;
   }
-  // Calcula dias úteis a partir da data base
+  // Calcula dias úteis a partir da data base; com dias programados nas linhas, o
+  // término é o último dia programado (pode ser um retorno semanas depois).
   const d = new Date(base + 'T12:00:00');
   let adicionados = 0;
   while (adicionados < dias - 1) {
@@ -12012,7 +12059,9 @@ function planUsarDias() {
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6) adicionados++;
   }
-  const fim = _dataISO(d);
+  let fim = _dataISO(d);
+  if (diasProg.length && diasProg[diasProg.length - 1] > fim) fim = diasProg[diasProg.length - 1];
+  const _rot = `${dias} dia${dias>1?'s':''}${diasProg.length ? ' programados' : ' úteis'}`;
   // Mostrar data de término calculada na interface
   const calcBody = document.getElementById('plan-calc-body');
   if (calcBody) {
@@ -12022,15 +12071,15 @@ function planUsarDias() {
     if (!calcBody.querySelector('.plan-calc-termino')) {
       calcBody.insertAdjacentHTML('beforeend',
         `<div class="plan-calc-termino" style="margin-top:8px;padding:8px 12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:6px;font-size:.82rem;">
-          📅 <b>Início:</b> ${baseFmt} → <b>Término estimado:</b> ${fimFmt} (${dias} dia${dias>1?'s':''} úteis)
+          📅 <b>Início:</b> ${baseFmt} → <b>Término estimado:</b> ${fimFmt} (${_rot})
         </div>`
       );
     } else {
       calcBody.querySelector('.plan-calc-termino').innerHTML =
-        `📅 <b>Início:</b> ${baseFmt} → <b>Término estimado:</b> ${fimFmt} (${dias} dia${dias>1?'s':''} úteis)`;
+        `📅 <b>Início:</b> ${baseFmt} → <b>Término estimado:</b> ${fimFmt} (${_rot})`;
     }
   }
-  _showToast(`${dias} dia${dias>1?'s':''} úteis · Término: ${fim.split('-').reverse().join('/')}`, 'success');
+  _showToast(`${_rot} · Término: ${fim.split('-').reverse().join('/')}`, 'success');
 }
 
 async function planSalvar(status) {
@@ -12038,6 +12087,7 @@ async function planSalvar(status) {
   const os          = (document.getElementById('plan-nv-os')?.value || '').trim();
   const empresa_id  = parseInt(document.getElementById('plan-empresa-id')?.value || '0');
   const tecnico     = document.getElementById('plan-tecnico')?.value || '';
+  _planSyncDataPrevista();   // data prevista vazia assume o 1º dia programado nas linhas
   const data_prev   = document.getElementById('plan-data-prevista')?.value || '';
   const demanda_id  = parseInt(document.getElementById('plan-demanda-id')?.value || '0') || null;
   const obs         = document.getElementById('plan-obs')?.value || '';
