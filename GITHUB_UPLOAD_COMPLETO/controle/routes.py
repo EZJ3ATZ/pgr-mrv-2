@@ -2469,17 +2469,23 @@ def api_diario_tecnicos():
                  {'acao': 'visita', 'tipo': 'visita',
                   'empresa': dd.get('empresa_nome') or '', 'os': '',
                   'resultado': dd.get('resultado') or ''})
-        # Agendado: visitas previstas (planejamentos) neste dia
+        # Agendado: visitas previstas (planejamentos) neste dia — pela data prevista
+        # ou por qualquer "dia da medição" das linhas (OS de mais de um dia)
         try:
             arows = conn.execute(
-                "SELECT p.tecnico, p.numero_os, e.nome AS empresa_nome "
+                "SELECT p.tecnico, p.numero_os, p.data_prevista, p.agentes_previstos, "
+                "e.nome AS empresa_nome "
                 "FROM planejamentos p LEFT JOIN empresas e ON e.id=p.empresa_id "
-                "WHERE substr(COALESCE(p.data_prevista,''),1,10)=?", (data,)).fetchall()
+                "WHERE substr(COALESCE(p.data_prevista,''),1,10)=? "
+                "OR COALESCE(CAST(p.agentes_previstos AS TEXT),'') LIKE ?",
+                (data, f'%{data}%')).fetchall()
         except Exception:
             arows = []
     agendados = []
     for r in arows:
         dd = row_to_dict(r)
+        if data not in _dias_planejamento(dd):
+            continue
         agendados.append({'tecnico': (dd.get('tecnico') or '').strip() or 'Sem técnico',
                           'empresa': dd.get('empresa_nome') or '', 'os': dd.get('numero_os') or ''})
     out = [{'tecnico': t, 'qtd': len(items), 'atividades': items} for t, items in ativ.items()]
@@ -2519,14 +2525,19 @@ def api_diario_calendario():
             vrows = []
         for r in vrows:
             _bump(row_to_dict(r).get('data_visita'), 'feito')
+        # Agendado: data prevista e os dias programados nas linhas (OS de mais de um dia)
         try:
             prows = conn.execute(
-                "SELECT data_prevista FROM planejamentos WHERE substr(COALESCE(data_prevista,''),1,7)=?",
-                (mes,)).fetchall()
+                "SELECT data_prevista, agentes_previstos FROM planejamentos "
+                "WHERE substr(COALESCE(data_prevista,''),1,7)=? "
+                "OR COALESCE(CAST(agentes_previstos AS TEXT),'') LIKE ?",
+                (mes, f'%{mes}-%')).fetchall()
         except Exception:
             prows = []
         for r in prows:
-            _bump(row_to_dict(r).get('data_prevista'), 'agendado')
+            for _d in _dias_planejamento(row_to_dict(r)):
+                if _d[:7] == mes:
+                    _bump(_d, 'agendado')
     return jsonify({'mes': mes, 'dias': dias})
 
 
@@ -8308,6 +8319,32 @@ def api_list_planejamentos():
     return jsonify(list_planejamentos(f))
 
 
+def _dias_planejamento(p):
+    """Dias de medição de um planejamento: a data prevista mais o 'dia_medicao' de
+    cada linha de agente (OS de mais de um dia). Legado: a linha química só tinha
+    'data_calibracao', sem rótulo, e os técnicos a preenchiam com o dia da visita
+    (em prod, 01/10/2026: 24 de 35 iguais à data prevista e 11 datas futuras) —
+    vale como dia da medição enquanto o plano não for salvo de novo."""
+    import json as _j
+    dias = set()
+    d0 = str(p.get('data_prevista') or '')[:10]
+    if len(d0) == 10:
+        dias.add(d0)
+    ag = p.get('agentes_previstos') or []
+    if isinstance(ag, str):
+        try:
+            ag = _j.loads(ag or '[]')
+        except Exception:
+            ag = []
+    for a in ag or []:
+        if not isinstance(a, dict):
+            continue
+        d = str(a.get('dia_medicao') or a.get('data_calibracao') or '')[:10]
+        if len(d) == 10 and d[4] == '-' and d[7] == '-':
+            dias.add(d)
+    return dias
+
+
 @controle_bp.route('/planejamentos', methods=['POST'])
 def api_criar_planejamento():
     """
@@ -8320,6 +8357,13 @@ def api_criar_planejamento():
     d = request.json or {}
     if not d.get('empresa_id') or not d.get('tecnico'):
         return jsonify({'erro': 'empresa_id e tecnico são obrigatórios'}), 400
+
+    # Data Prevista vazia assume o 1º dia programado nas linhas (OS de mais de um
+    # dia). Plano confirmado sem data não aparecia na agenda em dia nenhum.
+    if not d.get('data_prevista'):
+        _dias = _dias_planejamento(d)
+        if _dias:
+            d['data_prevista'] = min(_dias)
 
     # Cálculo automático de equipamentos pelos agentes previstos
     agentes = d.get('agentes_previstos') or []
@@ -8417,6 +8461,15 @@ def api_editar_planejamento(pid):
     if not get_planejamento(pid):
         return jsonify({'erro': 'não encontrado'}), 404
     d = request.json or {}
+
+    # Data Prevista vazia assume o 1º dia programado nas linhas (OS de mais de um dia)
+    if not d.get('data_prevista'):
+        _merged = dict(get_planejamento(pid) or {})
+        _merged.update(d)
+        if not _merged.get('data_prevista'):
+            _dias = _dias_planejamento(_merged)
+            if _dias:
+                d['data_prevista'] = min(_dias)
 
     # Recalcular equipamentos quando agentes vierem no payload
     if 'agentes_previstos' in d:
