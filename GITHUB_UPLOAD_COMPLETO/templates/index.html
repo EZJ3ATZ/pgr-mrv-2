@@ -14839,15 +14839,28 @@ async function ccMedGerar() {
     // (a linha é montada a partir do inventário). ANTES ela era descartada em
     // silêncio e o arquivo saía sem ela — foi a queixa do Wesley (11/08): "a
     // cadeia não puxa todas as medições realizadas". Agora avisa QUAL falta.
+    // 06/10/2026: em vez de parar ("cadastre em Amostradores e gere de novo"),
+    // cadastra na hora — o bloqueio mandava o técnico para a planilha (nenhuma
+    // cadeia gerada pelo sistema em 30 dias). A confirmação mostra os códigos
+    // para pegar o que foi digitado errado.
     const semCadastro = marcados.filter(m => m.amostrador_id == null).map(m => m.codigo);
-    const ids = marcados.map(m => m.amostrador_id).filter(x => x != null);
     if (semCadastro.length) {
-      alert('⚠️ Estes amostradores não estão cadastrados no estoque e ficariam FORA da cadeia:\n\n' +
-            semCadastro.join('\n') +
-            '\n\nCadastre-os em Amostradores (ou corrija o código digitado na planilha) e gere de novo — ' +
-            'sem isso o laboratório não recebe essas amostras e o resultado não tem onde entrar.');
-      return;   // o finally devolve o botão
+      if (!confirm('Estes amostradores não estavam no estoque e serão cadastrados agora para entrar na cadeia:\n\n' +
+                   semCadastro.join('\n') +
+                   '\n\nConfira se o código está certo: é o que vai para o laboratório. Continuar?')) {
+        return;   // o finally devolve o botão
+      }
+      const rc = await fetch('/controle/cadeia-custodia/cadastrar-tubos', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({codigos: semCadastro}),
+      });
+      const jc = await rc.json().catch(() => ({}));
+      if (!rc.ok || !jc.ok) throw new Error(jc.erro || 'não foi possível cadastrar os amostradores');
+      marcados.forEach(m => {
+        if (m.amostrador_id == null) m.amostrador_id = (jc.ids || {})[String(m.codigo).trim().toUpperCase()] ?? null;
+      });
     }
+    const ids = marcados.map(m => m.amostrador_id).filter(x => x != null);
     if (!ids.length) throw new Error('amostradores sem cadastro no inventário');
     const agentesPorCod = {};
     marcados.forEach(m => { agentesPorCod[m.codigo] = [ags[m.codigo]]; });

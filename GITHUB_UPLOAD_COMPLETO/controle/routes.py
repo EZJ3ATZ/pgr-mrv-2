@@ -9448,6 +9448,61 @@ def cadeia_custodia_gravar_agentes():
     return jsonify({'ok': True, 'gravados': gravados, 'sem_coleta': ignorados})
 
 
+@controle_bp.route('/cadeia-custodia/cadastrar-tubos', methods=['POST'])
+@login_required
+def cadeia_cadastrar_tubos():
+    """Tubo da coleta que não está no estoque entra no cadastro na hora de gerar
+    a cadeia (06/10/2026).
+
+    Antes a tela parava em "cadastre em Amostradores e gere de novo", e em 30
+    dias nenhuma cadeia foi gerada pelo sistema: o técnico voltava para a
+    planilha. A tela mostra os códigos e pede confirmação (é o que pega código
+    digitado errado); aqui só cadastra. Código que já existe arquivado é o
+    mesmo tubo físico: reativa em vez de duplicar.
+
+    Body: {"codigos": ["PVC94117", ...]} -> {"ids": {"PVC94117": 812}, ...}
+    """
+    import re as _re
+    from .db import reativar_amostrador
+    init_db()
+    d = request.get_json(silent=True) or {}
+    cods = list(dict.fromkeys(str(c).strip().upper() for c in (d.get('codigos') or []) if str(c).strip()))
+    if not cods:
+        return jsonify({'ok': False, 'erro': 'informe os códigos'}), 400
+    if len(cods) > 200:
+        return jsonify({'ok': False, 'erro': 'no máximo 200 por vez'}), 400
+    ids, criados, reativados = {}, [], []
+    with get_db() as conn:
+        for cod in cods:
+            ex = conn.execute("SELECT id, COALESCE(arquivado,0) AS arquivado FROM amostradores "
+                              "WHERE UPPER(TRIM(codigo))=?", (cod,)).fetchone()
+            if ex:
+                ex = row_to_dict(ex)
+                if int(ex['arquivado'] or 0) == 1:
+                    reativar_amostrador(conn, ex['id'], observacao='Reativado pela cadeia de custódia.')
+                    reativados.append(cod)
+                ids[cod] = ex['id']
+                continue
+            col = conn.execute("SELECT tipo_amostrador FROM coletas_quimico_amostr "
+                               "WHERE UPPER(TRIM(id_amostrador))=? AND COALESCE(tipo_amostrador,'')<>'' "
+                               "ORDER BY id DESC LIMIT 1", (cod,)).fetchone()
+            m = _re.match(r'^([A-Z]+)\d', cod)
+            tipo = (m.group(1) if m else '') or (row_to_dict(col).get('tipo_amostrador') if col else '') or 'AMOSTRADOR'
+            conn.execute("INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao, arquivado) "
+                         "VALUES (?, ?, 'disponivel', ?, ?, 0)",
+                         (cod, tipo, agora_brt().strftime('%Y-%m-%d'),
+                          'Cadastrado pela cadeia de custódia (não estava no estoque). Conferir.'))
+            ids[cod] = row_to_dict(conn.execute("SELECT id FROM amostradores WHERE codigo=? ORDER BY id DESC LIMIT 1",
+                                                (cod,)).fetchone())['id']
+            criados.append(cod)
+    if criados or reativados:
+        registrar_evento('amostrador_criado',
+                         f'Cadeia de custódia: {len(criados)} tubo(s) cadastrado(s) e {len(reativados)} '
+                         f'reativado(s) fora do estoque: ' + ', '.join((criados + reativados)[:10]),
+                         usuario=getattr(current_user, 'email', 'sistema'), ip=request.remote_addr)
+    return jsonify({'ok': True, 'ids': ids, 'criados': criados, 'reativados': reativados})
+
+
 @controle_bp.route('/cadeia-custodia/preview', methods=['POST'])
 @login_required
 def cadeia_custodia_preview():
