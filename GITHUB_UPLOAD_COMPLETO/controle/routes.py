@@ -9503,3 +9503,7 @@ def cadeia_custodia_gerar():
 # Registrado aqui (import time) para entrar no blueprint ANTES do register.
 from .orquestrador import registrar_rotas as _orq_registrar_rotas
 _orq_registrar_rotas(controle_bp)
+
+# OS de MEDIÇÃO que chega do CRM pronta (padrão de 06/10/2026) — /controle/os/medicao
+from .os_medicao import registrar_rotas as _osmed_registrar_rotas
+_osmed_registrar_rotas(controle_bp)
