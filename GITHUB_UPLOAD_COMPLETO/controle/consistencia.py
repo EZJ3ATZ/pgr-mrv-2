@@ -278,39 +278,75 @@ def detectar_empresas_duplicadas() -> list:
 
 
 def detectar_coletas_sem_resultado(dias: int = 45) -> list:
-    """Coletas enviadas ao lab há mais de N dias sem resultado registrado."""
+    """Coleta QUÍMICA há mais de N dias cujo tubo não tem resultado do lab.
+
+    Ruído não entra: o dosímetro dá o resultado na hora, nada vai ao laboratório.
+    O resultado mora no amostrador (`data_resultado`) ou em `resultados_lab`, não
+    no status da coleta — que é sempre 'concluida'. A regra antiga procurava
+    'concluido' no status e acusava TODA coleta com mais de 45 dias, ruído
+    inclusive: 57 alertas abertos e todos falsos em 06/10/2026.
+    """
     limite = (datetime.now() - timedelta(days=dias)).isoformat()[:10]
     alertas = []
+    # Erro sobe de propósito: o runner marca o check como falho e NÃO fecha os
+    # alertas abertos — lista vazia por falha de consulta fecharia todos.
     with get_db() as conn:
-        for tbl in ('coletas_ruido', 'coletas_quimico'):
-            # coletas_quimico não tem coluna 'os' (só coletas_ruido) — seleciona
-            # NULL para manter o mesmo formato de linha nas duas tabelas.
-            os_col = 'os' if tbl == 'coletas_ruido' else 'NULL AS os'
-            try:
-                rows = conn.execute(f'''
-                    SELECT id, empresa_nome, data_coleta, {os_col}, status
-                    FROM {tbl}
-                    WHERE data_coleta < ?
-                      AND (status IS NULL OR status NOT IN ('resultado_ok','concluido','cancelado'))
-                    LIMIT 30
-                ''', (limite,)).fetchall()
-            except Exception as e:
-                print(f'[consistencia] coletas_sem_resultado {tbl} falhou: {e}')
-                continue
-            for r in rows:
-                r = dict(r)
-                alertas.append({
-                    'tipo': 'coleta_sem_resultado', 'severidade': 'alto',
-                    'descricao': (
-                        f'{tbl.replace("coletas_","").capitalize()} — '
-                        f'{r.get("empresa_nome") or "—"} '
-                        f'(OS {r.get("os") or "—"}, {r.get("data_coleta") or "—"}) '
-                        f'há mais de {dias} dias sem resultado.'
-                    ),
-                    'entidade_tipo': tbl,
-                    'entidade_id': r['id'],
-                })
+        rows = [dict(r) for r in conn.execute('''
+            SELECT c.id, c.empresa_nome, c.data_coleta, ca.id_amostrador AS tubo,
+                   a.id AS aid, COALESCE(a.data_resultado, '') AS res
+            FROM coletas_quimico c
+            JOIN coletas_quimico_amostr ca ON ca.coleta_id = c.id
+            LEFT JOIN amostradores a ON UPPER(a.codigo) = UPPER(ca.id_amostrador)
+            WHERE c.data_coleta < ?
+              AND COALESCE(c.status, '') <> 'cancelado'
+        ''', (limite,)).fetchall()]
+        com_resultado = {(dict(r)['cod'] or '').strip().upper() for r in conn.execute(
+            'SELECT DISTINCT amostrador_cod AS cod FROM resultados_lab').fetchall()}
+
+    pendentes = {}   # coleta id -> linha + tubos sem resultado
+    for r in rows:
+        tubo = (r.get('tubo') or '').strip()
+        if not tubo or r.get('res') or tubo.upper() in com_resultado:
+            continue
+        p = pendentes.setdefault(r['id'], {**r, 'tubos': []})
+        p['tubos'].append(tubo if r.get('aid') else f'{tubo} (fora do inventário)')
+
+    for cid, p in pendentes.items():
+        alertas.append({
+            'tipo': 'coleta_sem_resultado', 'severidade': 'alto',
+            'descricao': (
+                f'Químico — {p.get("empresa_nome") or "—"} ({p.get("data_coleta") or "—"}): '
+                f'{", ".join(p["tubos"])} há mais de {dias} dias sem resultado do laboratório.'
+            ),
+            'entidade_tipo': 'coletas_quimico',
+            'entidade_id': cid,
+        })
     return alertas
+
+
+def fechar_divergencias_superadas(tipo: str, atuais: list) -> int:
+    """Fecha as divergências abertas de `tipo` que a regra deixou de acusar.
+
+    Sem isto o alerta só saía por clique, e o clique não adiantava: na rodada
+    seguinte a regra recriava o mesmo alerta se a condição seguisse de pé, e o
+    que deixava de valer ficava aberto para sempre.
+    """
+    vivos = {(d['entidade_tipo'], d['entidade_id']) for d in atuais if d.get('tipo') == tipo}
+    ph = _ph()
+    fechados = 0
+    with get_db() as conn:
+        abertos = conn.execute(
+            f'SELECT id, entidade_tipo, entidade_id FROM divergencias '
+            f'WHERE tipo={ph} AND status={ph}', (tipo, 'aberta')).fetchall()
+        for r in abertos:
+            r = dict(r)
+            if (r['entidade_tipo'], r['entidade_id']) in vivos:
+                continue
+            conn.execute(
+                f'UPDATE divergencias SET status={ph}, resolvido_em=CURRENT_TIMESTAMP, '
+                f'resolvido_por={ph} WHERE id={ph}', ('resolvida', 'sistema', r['id']))
+            fechados += 1
+    return fechados
 
 
 def detectar_visitas_sem_coleta(dias: int = 7) -> list:
@@ -423,15 +459,24 @@ def run_consistencia_geral() -> dict:
     ]
 
     todos = []
+    sem_result_ok = False
     for nome, fn in checks:
         try:
             items = fn()
             resultado['checks'][nome] = len(items)
             todos.extend(items)
+            sem_result_ok = sem_result_ok or nome == 'coletas_sem_result'
         except Exception as e:
             resultado['checks'][nome] = f'erro:{e}'
 
     resultado['divergencias_novas'] = salvar_divergencias(todos)
+    # Só fecha se a regra rodou: check que falhou não pode zerar os alertas dele.
+    if sem_result_ok:
+        try:
+            resultado['coletas_sem_result_fechadas'] = fechar_divergencias_superadas(
+                'coleta_sem_resultado', todos)
+        except Exception as e:
+            resultado['coletas_sem_result_fechadas'] = f'erro:{e}'
 
     # Registra execução nos eventos
     try:
