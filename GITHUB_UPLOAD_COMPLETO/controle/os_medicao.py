@@ -132,6 +132,36 @@ def avisos_de_estoque(itens):
     return out
 
 
+def avisos_de_duplicidade(p):
+    """Transição (até o Ploomes sair e o MAESTRO parar): a mesma OS pode chegar
+    pelo Planner e pelo CRM. Mesmo nº MAESTRO numa demanda do Planner em aberto
+    = revisão; mesma empresa com OS de medição aberta no Planner = aviso.
+    Devolve (avisos, revisar)."""
+    emp = p.get('empresa') or {}
+    cnpj, nome = _txt(emp.get('cnpj'), 20), _txt(emp.get('nome'), 300)
+    maestro = _txt(p.get('numero_maestro'), 20)
+    avisos, revisar = [], 0
+    with get_db() as conn:
+        if maestro:
+            r = conn.execute("SELECT id FROM demandas WHERE origem='planner' AND numero_os=? "
+                             "AND status!='concluida' LIMIT 1", (maestro,)).fetchone()
+            if r:
+                avisos.append(f'A OS {maestro} também chegou pelo Planner (demanda #{row_to_dict(r)["id"]}). '
+                              f'Confira para não medir duas vezes.')
+                revisar = 1
+        if not revisar and (cnpj or nome):
+            rows = conn.execute(
+                "SELECT d.id, d.numero_os FROM demandas d JOIN empresas e ON e.id=d.empresa_id "
+                "WHERE d.origem='planner' AND d.status IN ('aberta','em_andamento','pendente') "
+                "AND ((? <> '' AND e.cnpj=?) OR e.nome=?) ORDER BY d.id DESC LIMIT 3",
+                (cnpj, cnpj, nome)).fetchall()
+            if rows:
+                lista = ', '.join(f'#{row_to_dict(x)["id"]} (OS {row_to_dict(x)["numero_os"] or "sem nº"})' for x in rows)
+                avisos.append(f'Esta empresa já tem OS de medição aberta pelo Planner: {lista}. '
+                              f'Confira se não é a mesma.')
+    return avisos, revisar
+
+
 def _prazo(p):
     if data_iso(p.get('prazo')):
         return data_iso(p.get('prazo'))
@@ -182,6 +212,12 @@ def receber(p, teste=False):
         avisos += avisos_de_estoque(itens)
     except Exception as e:   # aviso nunca derruba a OS
         log.warning('[os_medicao] conferência de estoque falhou: %s', e)
+    revisar_dup = 0
+    try:
+        av_dup, revisar_dup = avisos_de_duplicidade(p)
+        avisos += av_dup
+    except Exception as e:
+        log.warning('[os_medicao] conferência de duplicidade falhou: %s', e)
     resumo = [{'produto': it['produto'], 'agente': it['agente'], 'quantidade': it['quantidade'],
                'situacao': it['situacao']} for it in itens]
     if teste:
@@ -229,7 +265,7 @@ def receber(p, teste=False):
                 "empresa_match_score, empresa_match_metodo, needs_review, criado_em, atualizado_em) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?, 'pendente', 'crm_os', 'operacional', ?, ?,?,?, ?, ?)",
                 (numero, empresa_id, cnpj, titulo, titulo, desc, checklist, agentes, dados, origem_ref,
-                 prazo, score, metodo, revisar, _agora(), _agora()))
+                 prazo, score, metodo, 1 if (revisar or revisar_dup) else 0, _agora(), _agora()))
             did = row_to_dict(conn.execute("SELECT id FROM demandas WHERE origem_ref=? ORDER BY id DESC LIMIT 1",
                                            (origem_ref,)).fetchone())['id']
             criada = True
