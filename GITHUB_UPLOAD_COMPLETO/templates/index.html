@@ -4994,7 +4994,7 @@
         </select>
       </div>
       <div>
-        <label>Modelo da Bomba</label>
+        <label>Modelo da Bomba <span class="ctrl-bx-opc" style="display:none;font-weight:400;text-transform:none;color:var(--text3);">— opcional</span></label>
         <select id="ctrl-bx-bomba-modelo" onchange="ctrlPreencherSNs(this.value)">
           <option value="">— Selecione bomba —</option>
         </select>
@@ -5002,7 +5002,7 @@
     </div>
     <div class="row2">
       <div>
-        <label>N° Série Bomba</label>
+        <label>N° Série Bomba <span class="ctrl-bx-opc" style="display:none;font-weight:400;text-transform:none;color:var(--text3);">— opcional</span></label>
         <select id="ctrl-bx-bomba-sn">
           <option value="">— SN —</option>
         </select>
@@ -5013,7 +5013,7 @@
       </div>
     </div>
     <div>
-      <label>Vazão Calibrada (L/min)
+      <label>Vazão Calibrada (L/min) <span class="ctrl-bx-opc" style="display:none;font-weight:400;text-transform:none;color:var(--text3);">— opcional</span>
         <button type="button" onclick="ctrlSugerirVazao()" style="margin-left:8px;background:#0a7;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⚡ Média</button>
         <button type="button" onclick="ctrlSugerirVazaoTeto()" style="margin-left:4px;background:#f59e0b;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⬆ Teto</button>
       </label>
@@ -14120,6 +14120,11 @@ function ctrlBxSyncMotivo() {
   document.getElementById('ctrl-bx-motivo-wrap').style.display = semAmostrador ? 'block' : 'none';
   document.getElementById('ctrl-bx-motivo-outro').style.display =
     (semAmostrador && motivo === 'Outro') ? 'block' : 'none';
+  // Sem amostrador, bomba/S/N/vazão não são exigidos (servidor e tela já aceitam
+  // vazio) — sem a marca o técnico inventava bomba e vazão para "completar" (13/08).
+  document.querySelectorAll('.ctrl-bx-opc').forEach(el => {
+    el.style.display = semAmostrador ? 'inline' : 'none';
+  });
 }
 
 function ctrlPreencherSNs(modeloId) {
