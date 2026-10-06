@@ -2888,6 +2888,7 @@ def estoque_para_agente(nome):
                 FROM amostradores a
                 LEFT JOIN empresas e ON e.id = a.empresa_id
                 WHERE a.tipo IN ({placeholders})
+                  AND COALESCE(a.arquivado,0)=0   -- arquivo morto não é estoque nem opção na baixa
                 ORDER BY
                   CASE WHEN a.status='disponivel' THEN 0 ELSE 1 END,
                   a.tipo, a.codigo
@@ -3246,10 +3247,14 @@ def previsao_estoque():
     hoje = _date.today()
 
     # Contar estoque atual por tipo + calcular quando/por que pedir
+    # Arquivado fica fora: a recontagem do Wesley (05/08) arquiva o estoque velho
+    # com status 'disponivel' intacto, e sem o filtro a tela somava a prateleira
+    # antiga com a nova (06/10: 29 TCP na tela, 10 deles arquivados).
     with get_db() as conn:
         for tipo, dados in necessidades.items():
             r = conn.execute(
-                "SELECT COUNT(*) c FROM amostradores WHERE tipo=? AND status='disponivel'",
+                "SELECT COUNT(*) c FROM amostradores WHERE tipo=? AND status='disponivel' "
+                "AND COALESCE(arquivado,0)=0",
                 (tipo,)).fetchone()
             estoque = r['c'] if r else 0
             dados['em_estoque'] = estoque

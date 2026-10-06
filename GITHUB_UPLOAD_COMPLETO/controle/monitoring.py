@@ -405,7 +405,7 @@ def diagnostico_banco() -> dict:
             resultado['amostradores'] = {
                 'total':          _cnt('SELECT COUNT(*) FROM amostradores'),
                 'no_lab':         _cnt("SELECT COUNT(*) FROM amostradores WHERE status='laboratorio'"),
-                'disponiveis':    _cnt("SELECT COUNT(*) FROM amostradores WHERE status='disponivel'"),
+                'disponiveis':    _cnt("SELECT COUNT(*) FROM amostradores WHERE status='disponivel' AND COALESCE(arquivado,0)=0"),
                 'parados_lab_30d': _cnt(_parados_sql),
                 'vencendo_7d':    _cnt(_vencendo_sql),
                 'vencidos':       _cnt(_vencidos_sql),
