@@ -22,7 +22,7 @@ import json
 import logging
 from datetime import datetime
 from .graph import graph_get
-from .db import get_db, row_to_dict
+from .db import get_db, row_to_dict, USE_PG
 
 log = logging.getLogger(__name__)
 
@@ -461,19 +461,18 @@ def normalizar_datas_ra_laudos(conn=None):
         _ensure_ra_laudos(c)
         total = 0
         for col in _COLS_DATA_RA_LAUDO:
+            # Postgres nao tem rowid: decide ANTES de perguntar. Tentar o rowid e
+            # cair no except abortava a transacao inteira do sync do lab, que
+            # desfazia tudo o que ja tinha feito (status, envio, resultado) —
+            # de 10/09 a 06/10 o sync rodou a cada 3h sem gravar nada.
+            sel = ("SELECT amostrador_cod, ra_num, {col} AS v" if USE_PG
+                   else "SELECT rowid AS _rid, {col} AS v").format(col=col)
             try:
                 rows = [row_to_dict(r) for r in c.execute(
-                    f"SELECT rowid AS _rid, {col} AS v FROM ra_laudos "
-                    f"WHERE {col} LIKE '__/__/____'").fetchall()]
-            except Exception:
-                # Postgres nao tem rowid: usa a chave natural do laudo
-                try:
-                    rows = [row_to_dict(r) for r in c.execute(
-                        f"SELECT amostrador_cod, ra_num, {col} AS v FROM ra_laudos "
-                        f"WHERE {col} LIKE '__/__/____'").fetchall()]
-                except Exception as e:
-                    log.warning('[lab_inbox] ler %s de ra_laudos falhou: %s', col, e)
-                    continue
+                    f"{sel} FROM ra_laudos WHERE {col} LIKE '__/__/____'").fetchall()]
+            except Exception as e:
+                log.warning('[lab_inbox] ler %s de ra_laudos falhou: %s', col, e)
+                continue
             for r in rows:
                 iso = _iso_br(r.get('v'))
                 if not iso:
@@ -950,9 +949,14 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 # A ordem importa: normaliza o formato ANTES de propagar a data
                 # do laudo para o amostrador, senao o que ja esta em BR continua
                 # entrando cru na coluna ISO de `amostradores`.
-                normalizar_datas_ra_laudos(conn)
-                datas_do_laudo = sincronizar_data_medicao_dos_laudos(conn)
-                normalizar_datas_vazias(conn)
+                # Em SAVEPOINT: no Postgres um statement que falha aqui abortava a
+                # transacao e o rollback levava junto todo o sync acima.
+                def _datas():
+                    normalizar_datas_ra_laudos(conn)
+                    n = sincronizar_data_medicao_dos_laudos(conn)
+                    normalizar_datas_vazias(conn)
+                    return n
+                datas_do_laudo = _savepoint(conn, _datas)
             except Exception as e:
                 log.warning('[lab_inbox] sincronizar data_medicao falhou: %s', e)
             if max_visto and max_visto != watermark:
