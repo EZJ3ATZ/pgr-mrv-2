@@ -146,3 +146,13 @@ def test_situacao_para_o_crm():
         s = c.get('/controle/os/medicao/situacao?origem_id=neg-osmed-1', headers=H).get_json()
         assert s['encontrada'] and s['demanda_id'] == did and s['etapa'] == 'recebida'
         assert c.get('/controle/os/medicao/situacao?origem_id=nao-existe', headers=H).get_json() == {'encontrada': False}
+
+
+def test_avisa_quando_falta_tubo_no_estoque():
+    with get_db() as conn:
+        conn.execute("DELETE FROM amostradores WHERE tipo IN ('DNPH','FMD') AND status='disponivel'")
+    p = _payload(teste=True)
+    p['itens'] = [{'produto': 'Formaldeído', 'quantidade': 6}]
+    d = _post(p).get_json()
+    aviso = [a for a in d['avisos'] if a.startswith('Estoque:')]
+    assert aviso and 'Formaldeído' in aviso[0] and 'DNPH' in aviso[0] and 'há 0' in aviso[0]

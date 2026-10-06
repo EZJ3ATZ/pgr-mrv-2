@@ -106,6 +106,32 @@ def validar(p):
     return erros, itens, avisos, dias_campo
 
 
+def avisos_de_estoque(itens):
+    """Para cada item químico, confere se há tubo do método em estoque para os
+    pontos pedidos (06/10/2026). Hoje 14 tipos de tubo do catálogo nunca
+    estiveram no inventário (formaldeído com 11 pontos pendentes) e o técnico
+    descobria na véspera da visita. O laboratório leva ~7 dias para mandar."""
+    from .routes import _buscar_metodos_agente, _extrair_tipos_amostrador
+    quimicos = [it for it in itens if it.get('tipo') in ('quimico', 'particulado')]
+    if not quimicos:
+        return []
+    with get_db() as conn:
+        estoque = {(row_to_dict(r).get('tipo') or '').upper(): row_to_dict(r)['n'] for r in conn.execute(
+            "SELECT tipo, COUNT(*) AS n FROM amostradores WHERE status='disponivel' "
+            "AND COALESCE(arquivado,0)=0 GROUP BY tipo").fetchall()}
+    out = []
+    for it in quimicos:
+        tipos = sorted({t.upper() for m in _buscar_metodos_agente(it['agente'])
+                        for t in _extrair_tipos_amostrador(m.get('amostradorCod', ''))})
+        if not tipos:
+            continue
+        tem = sum(estoque.get(t, 0) for t in tipos)
+        if tem < it['quantidade']:
+            out.append(f'Estoque: {it["produto"]} pede {it["quantidade"]} tubo(s) '
+                       f'({" ou ".join(tipos)}) e há {tem}. Pedir ao laboratório (leva ~7 dias).')
+    return out
+
+
 def _prazo(p):
     if data_iso(p.get('prazo')):
         return data_iso(p.get('prazo'))
@@ -152,6 +178,10 @@ def receber(p, teste=False):
     erros, itens, avisos, dias_campo = validar(p)
     if erros:
         return {'ok': False, 'erro': 'A OS de medição não está no padrão.', 'campos': erros}, 400
+    try:
+        avisos += avisos_de_estoque(itens)
+    except Exception as e:   # aviso nunca derruba a OS
+        log.warning('[os_medicao] conferência de estoque falhou: %s', e)
     resumo = [{'produto': it['produto'], 'agente': it['agente'], 'quantidade': it['quantidade'],
                'situacao': it['situacao']} for it in itens]
     if teste:
