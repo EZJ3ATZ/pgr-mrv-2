@@ -66,12 +66,17 @@ def _classificar(sender, subject):
 
 
 def _sistema_lookup():
-    """norm(codigo) e norm(tipo+codigo) -> dict do amostrador."""
+    """norm(codigo) e norm(tipo+codigo) -> dict do amostrador.
+
+    Traz `data_envio_lab` porque o backfill decide por `no_laboratorio()`, que
+    olha a data de envio: sem ela no dicionário a resposta era sempre "fora do
+    lab" e o backfill casava o laudo e NÃO concluía ninguém ("0 concluídos" em
+    toda rodada; 7 tubos com RA entregue seguiam no laboratório em 06/10)."""
     look = {}
     with get_db() as conn:
         rows = conn.execute(
-            "SELECT id, codigo, tipo, status, data_resultado, atualizado_em FROM amostradores "
-            "WHERE COALESCE(arquivado,0)=0").fetchall()
+            "SELECT id, codigo, tipo, status, data_envio_lab, data_resultado, atualizado_em "
+            "FROM amostradores WHERE COALESCE(arquivado,0)=0").fetchall()
     for r in rows:
         d = row_to_dict(r)
         cod, tp = _norm(d.get('codigo')), _norm(d.get('tipo'))
