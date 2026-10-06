@@ -3982,8 +3982,16 @@ def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_i
             if atual in ('aberta', 'pendente'):
                 novo = 'em_andamento'
             elif coleta_status in ('concluida', 'concluido') and origem != 'planner':
-                # Para demandas locais (não-Planner), marcar concluída ao concluir coleta
-                novo = 'concluida'
+                # Demanda local (manual, OS do CRM): conclui ao concluir coleta SÓ se
+                # não houver medição em aberto. Antes concluía na 2ª planilha
+                # qualquer — uma OS com ruído e 3 químicos fechava com 2 químicos
+                # por medir e o resultado do lab por chegar (06/10/2026). Quem tem
+                # linhas em `medicoes` fecha pela baixa (_baixar_medicao_pendente
+                # e o resultado do lab); sem linhas, segue a regra antiga.
+                r2 = row_to_dict(conn.execute(
+                    "SELECT COUNT(*) AS n, SUM(CASE WHEN status!='realizado' THEN 1 ELSE 0 END) AS abertas "
+                    "FROM medicoes WHERE demanda_id=?", (demanda_id,)).fetchone())
+                novo = 'concluida' if not (r2.get('n') or 0) or not (r2.get('abertas') or 0) else 'em_andamento'
             else:
                 novo = 'em_andamento'
             if novo == 'concluida':
@@ -4018,11 +4026,19 @@ _KW_FISICOS = ['ruido', 'dosimetr', 'calor', 'ibutg', 'ibtug', 'termic',
                'sobrecarga', 'vibra', 'ilumin']
 
 
-def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=False):
+def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=False, pontos=None):
     """Ao finalizar uma planilha de campo, dá baixa na medição pendente
     correspondente (mesma demanda + tipo de agente) marcando-a como 'realizado'.
     Assim a medição sai do pool de 'medições pendentes' e não fica disponível
     para replanejamento em outro dia.
+
+    pontos: quantos pontos ESTA planilha mediu (06/10/2026). Sem ele, a 1ª
+    planilha completava a medição inteira e a do 2º dia ou do 2º trabalhador
+    era RECUSADA como "duplicada": numa OS com Sílica x6, só a 1ª planilha
+    entrava e as outras 5 iam para fora do sistema. Com pontos, soma em
+    qtd_pontos_feita e só finaliza quando alcança a prevista; planilha além do
+    previsto entra como excedente em vez de ser recusada. None mantém o
+    comportamento antigo (completa de uma vez).
 
     aguardar_lab=True (química): a planilha de campo NÃO finaliza a medição —
     ela vai para 'aguardando_lab' e só vira 'realizado' quando o resultado
@@ -4080,23 +4096,38 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=Fa
                 return res  # medição avulsa (sem demanda planejada) → não trava
             pendentes = [r for r in matched if _g(r, 'status', 4) not in _FINALIZADOS]
             if not pendentes:
-                res['duplicada'] = True
                 res['tinha_pendente'] = True
+                if pontos is None:
+                    res['duplicada'] = True
+                else:
+                    res['excedente'] = True   # mediu além do previsto: registra, não recusa
                 return res
             alvo = pendentes[0]
             mid = _g(alvo, 'id', 0)
             prev = _g(alvo, 'qtd_pontos_prevista', 2) or 1
-            novo_status = 'aguardando_lab' if aguardar_lab else 'realizado'
+            feita_antes = _g(alvo, 'qtd_pontos_feita', 3) or 0
+            if pontos is None:
+                feita = prev
+            else:
+                try:
+                    feita = feita_antes + max(1, int(pontos))
+                except (TypeError, ValueError):
+                    feita = feita_antes + 1
+            completa = feita >= prev
+            novo_status = ('aguardando_lab' if aguardar_lab else 'realizado') if completa else 'pendente'
             # UPDATE condicional: re-afirma o estado pendente no WHERE (mesmo padrão
             # do fix de reserva de amostrador, commit 0ad9508). Duas planilhas da
             # MESMA OS finalizando em paralelo (TOCTOU/CWE-362): ambas leem 'pendente'
             # no SELECT acima, mas só UMA consegue o UPDATE — a segunda bloqueia até o
             # commit da primeira, re-avalia o WHERE já com status finalizado e afeta 0
             # linhas. Quem perde a corrida vira 'duplicada' em vez de gravar 2× coleta.
+            # O contador também entra no WHERE: duas planilhas somando pontos em
+            # paralelo não podem gravar o mesmo "feita + 1" (a 2ª afeta 0 linhas).
             cur = conn.execute(
                 "UPDATE medicoes SET qtd_pontos_feita=?, status=? "
-                "WHERE id=? AND status NOT IN ('realizado','aguardando_lab')",
-                (prev, novo_status, mid)
+                "WHERE id=? AND status NOT IN ('realizado','aguardando_lab') "
+                "AND COALESCE(qtd_pontos_feita,0)=?",
+                (feita, novo_status, mid, feita_antes)
             )
             if (cur.rowcount or 0) == 0:
                 res['duplicada'] = True
@@ -4108,8 +4139,11 @@ def _baixar_medicao_pendente(demanda_id, tipo, agente_nome=None, aguardar_lab=Fa
             ).fetchone()
             rest = pend['c'] if hasattr(pend, 'keys') else pend[0]
             if rest == 0:
-                conn.execute("UPDATE demandas SET status='concluida' WHERE id=?", (demanda_id,))
+                conn.execute(f"UPDATE demandas SET status='concluida', {_SQL_CARIMBA_CONCLUSAO} WHERE id=?",
+                             (_agora_conclusao(), demanda_id))
             res['baixada'] = mid
+            res['pontos_feitos'] = feita
+            res['pontos_previstos'] = prev
             res['tinha_pendente'] = True
             return res
     except Exception as e:
@@ -4841,7 +4875,9 @@ def api_salvar_medicao_wizard():
         if _coleta_duplicada('ruido', d.get('demanda_id'), d.get('data')):
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta planilha de ruído (mesma OS e data) já foi finalizada. Não registrada de novo.'})
-        bx = _baixar_medicao_pendente(d.get('demanda_id'), 'ruido')
+        # pontos = trabalhadores avaliados nesta planilha (cada um é uma dosimetria)
+        bx = _baixar_medicao_pendente(d.get('demanda_id'), 'ruido',
+                                      pontos=len(cr.get('trabalhadores') or []) or 1)
         if bx['duplicada']:
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição de ruído já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
@@ -4910,8 +4946,9 @@ def api_salvar_medicao_wizard():
                             'aviso': 'Esta planilha química (mesma OS, data, substância e amostrador) já foi finalizada. Não registrada de novo.'})
         # Química NÃO finaliza na planilha de campo: fica 'aguardando_lab' e a
         # baixa real acontece quando o resultado (RA) chega por e-mail (lab_inbox).
+        # pontos = 1: a planilha química é de UM trabalhador (uma amostra do agente)
         bx = _baixar_medicao_pendente(d.get('demanda_id'), 'quimico',
-                                      cq.get('substancias', ''), aguardar_lab=True)
+                                      cq.get('substancias', ''), aguardar_lab=True, pontos=1)
         if bx['duplicada']:
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': 'Esta medição química já foi finalizada para esta demanda. Planilha duplicada não registrada.'})
@@ -4999,7 +5036,9 @@ def api_salvar_medicao_wizard():
             _lbl = 'de vibração' if tipo.startswith('vibracao') else 'de calor'
             return jsonify({'ok': False, 'duplicada': True,
                             'aviso': f'Esta planilha {_lbl} (mesma OS e data) já foi finalizada. Não registrada de novo.'})
-        bx = _baixar_medicao_pendente(d.get('demanda_id'), tipo)
+        # pontos = setores de calor ou pontos de vibração medidos nesta planilha
+        _pts = len(ibutg_setores) if tipo == 'calor' else len(gen.get('vibr_pontos') or [])
+        bx = _baixar_medicao_pendente(d.get('demanda_id'), tipo, pontos=_pts or 1)
         if bx['duplicada']:
             _lbl = 'vibração' if tipo.startswith('vibracao') else 'de calor'
             return jsonify({'ok': False, 'duplicada': True,
