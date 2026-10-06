@@ -20,6 +20,7 @@
     :root {
       /* Brand */
       --primary:     #1B6B6B;
+      --brand:       var(--primary);   /* 13 usos e nunca definida: botões saíam sem fundo (28/09) */
       --primary-d:   #145252;
       --primary-l:   #2A9D9D;
       --primary-xl:  #7ee8e8;
@@ -5150,7 +5151,7 @@
         <div style="font-size:.72rem;color:var(--text3);margin-top:2px;" id="emp-painel-cnpj"></div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button onclick="empIrParaCampo()" title="Ir para Vista de Campo desta empresa" style="background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:8px;padding:7px 11px;color:var(--brand);cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+        <button onclick="empIrParaCampo()" title="Ir para Vista de Campo desta empresa" style="background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.25);border-radius:8px;padding:7px 11px;color:var(--primary-l);cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;">
           🏗️ Campo
         </button>
         <button onclick="empIrParaOS()" title="Ver pipeline de OS desta empresa" style="background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:7px 11px;color:var(--blue);cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:5px;white-space:nowrap;">
@@ -9397,7 +9398,7 @@ function ctrlSeriePreview() {
     const resumo = Object.keys(cont).sort().map(t => `${t} (${cont[t]})`).join(', ');
     tiposHtml = `<div style="color:var(--text3);margin-top:4px;">Tipos detectados pelo prefixo: ${resumo}</div>`;
   }
-  el.innerHTML = `<b style="color:var(--brand);">${cods.length}</b> amostrador(es): ${amostra}` + tiposHtml +
+  el.innerHTML = `<b style="color:var(--primary-l);">${cods.length}</b> amostrador(es): ${amostra}` + tiposHtml +
     (dup.length ? `<div style="color:var(--yellow);margin-top:4px;">⚠ ${dup.length} código(s) repetido(s) na lista — serão ignorados.</div>` : '');
 }
 async function ctrlSalvarSerie() {
@@ -9876,7 +9877,7 @@ function ctrlContatoSelectResultado(btn, valor) {
   });
   btn.style.background = 'rgba(45,212,191,.15)';
   btn.style.borderColor = 'rgba(45,212,191,.4)';
-  btn.style.color = 'var(--brand)';
+  btn.style.color = 'var(--primary-l)';
   document.getElementById('ctrl-contato-resultado').value = valor;
 }
 
@@ -10158,7 +10159,7 @@ async function notifLoad() {
         return `<div style="display:flex;gap:9px;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(29,184,154,.10);border-left:3px solid var(--brand);">
           <div style="font-size:1rem;line-height:1.2;">${icon}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:.78rem;font-weight:700;color:var(--brand);">${label}</div>
+            <div style="font-size:.78rem;font-weight:700;color:var(--primary-l);">${label}</div>
             ${desc ? `<div style="font-size:.73rem;color:var(--text2);line-height:1.35;margin-top:2px;">${desc}</div>` : ''}
             <div style="font-size:.65rem;color:var(--text3);margin-top:3px;">${q.txt}</div>
           </div>
