@@ -159,6 +159,59 @@ def _achados_quebrou(conn):
                             float(horas)))
     except Exception:
         pass
+
+    # 4) rotina automática que parou de GRAVAR
+    out += _achados_rotinas(conn)
+    return out
+
+
+# Mede a SAÍDA de cada rotina, não se ela "rodou": de 10/09 a 06/10/2026 o sync
+# do laboratório rodou a cada 3h, o agendador dizia "executed successfully", e
+# um rollback no fim desfazia tudo. O resumo diário dizia "Nada aberto".
+# (chave, nome, consulta que devolve o último registro em `m`, tolerância em h)
+ROTINAS = (
+    ('rotina:lab_sync', 'Sync do laboratório (e-mails do lab)',
+     "SELECT atualizado_em AS m FROM ms_sync_state WHERE chave='lab_sync_result'",
+     7),     # roda a cada 3h: 7h = duas rodadas perdidas
+    ('rotina:ra_backfill', 'Backfill de RAs (diário 05h45 UTC)',
+     "SELECT atualizado_em AS m FROM ms_sync_state WHERE chave='ra_backfill_result'",
+     26),
+    ('rotina:consistencia', 'Checagem de consistência (diária 06h UTC)',
+     "SELECT MAX(criado_em) AS m FROM eventos WHERE tipo='consistencia_check'",
+     26),
+)
+
+
+def _horas_desde(valor):
+    """Horas desde um carimbo do banco (UTC, texto ou datetime). None se ilegível."""
+    if not valor:
+        return None
+    txt = str(valor)[:19].replace('T', ' ')
+    try:
+        dt = datetime.strptime(txt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+    return (datetime.now(tz=timezone.utc) - dt).total_seconds() / 3600
+
+
+def _achados_rotinas(conn):
+    out = []
+    for chave, nome, sql, tolerancia in ROTINAS:
+        try:
+            r = conn.execute(sql).fetchone()
+        except Exception:
+            continue
+        horas = _horas_desde(r['m'] if r else None)
+        # Sem registro nenhum = instalação nova (ou a rotina nunca existiu
+        # aqui): não é parada, é ausência — não alerta.
+        if horas is None or horas < tolerancia:
+            continue
+        out.append((chave, 'quebrou',
+                    f'{nome} sem gravar há {int(horas)}h',
+                    f'O último resultado gravado é de {int(horas)}h atrás e o '
+                    f'esperado é no máximo {tolerancia}h. A rotina pode estar '
+                    f'rodando e desfazendo tudo no fim: ver o log do Railway.',
+                    float(horas)))
     return out
 
 

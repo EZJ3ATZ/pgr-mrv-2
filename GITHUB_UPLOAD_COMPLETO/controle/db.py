@@ -224,7 +224,12 @@ class _PGCursor:
     # SCHEMA_VERSAO entrou em 13/08/2026: a PK é `chave` (texto). Sem isto o
     # RETURNING id abortava a transação do init_db() — e como _db_ready só é
     # marcado no fim, o DDL voltava a rodar em CADA chamada de init_db().
-    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE', 'RA_LAUDOS', 'SCHEMA_VERSAO')
+    # Tabela sem coluna `id` TEM de estar aqui: o INSERT ganha ' RETURNING id' e
+    # estoura no Postgres. ALERTA_ESTADO faltava: nenhum alerta 'quebrou' abria em
+    # producao e o resumo diario dizia 'Nada aberto' (06/10/2026). O teste
+    # test_alerta_rotinas confere esta lista contra os CREATE TABLE do codigo.
+    _NO_ID_TABLES = ('MS_USERS', 'MS_SYNC_STATE', 'RA_LAUDOS', 'SCHEMA_VERSAO',
+                     'ALERTA_ESTADO')
 
     def execute(self, sql, params=None):
         _t0 = time.perf_counter()
