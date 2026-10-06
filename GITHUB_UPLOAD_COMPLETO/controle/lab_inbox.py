@@ -51,6 +51,37 @@ def _codes(texto):
     return list(dict.fromkeys(out))
 
 
+_TIPOS_TUBO = None
+
+
+def _tipos_de_tubo(conn):
+    """Prefixos que são tubo de verdade: os tipos já cadastrados + os do guia.
+    Sem esta cerca, qualquer token do e-mail com cara de código (NF12345,
+    OS6718294) viraria amostrador."""
+    global _TIPOS_TUBO
+    if _TIPOS_TUBO is None:
+        tipos = set()
+        try:
+            from .routes import _extrair_tipos_amostrador
+            caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'guia_metodos.json')
+            guia = json.load(open(caminho, encoding='utf-8'))
+            for ms in (guia.get('by_cas') or {}).values():
+                for m in (ms if isinstance(ms, list) else [ms]):
+                    if isinstance(m, dict):
+                        tipos.update(_extrair_tipos_amostrador(m.get('amostradorCod', '')))
+        except Exception as e:
+            log.warning('[lab_inbox] tipos do guia: %s', e)
+        _TIPOS_TUBO = {t.upper() for t in tipos if t}
+    cadastrados = {(row_to_dict(r).get('tipo') or '').upper()
+                   for r in conn.execute('SELECT DISTINCT tipo FROM amostradores').fetchall()}
+    return _TIPOS_TUBO | {t for t in cadastrados if t}
+
+
+def _prefixo_tubo(cod):
+    m = re.match(r'^([A-Z]+)\d', cod or '')
+    return m.group(1) if m else ''
+
+
 def _classificar(sender, subject):
     s = (sender or '').lower()
     sub = (subject or '').lower()
@@ -788,6 +819,11 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
 
     cat_count = {'remessa': 0, 'recebimento': 0, 'resultado': 0, 'pendentes': 0, 'ignorado': 0}
     fora = set()
+    novos_tubos = {}   # código -> data do e-mail de remessa (tubo novo do lab)
+    with get_db() as _c:
+        tipos_tubo = _tipos_de_tubo(_c)
+        codigos_existentes = {_norm(row_to_dict(r).get('codigo'))
+                              for r in _c.execute('SELECT codigo FROM amostradores').fetchall()}
     # último sinal de status por código (cronológico → o último vence)
     estado_final = {}   # codigo_sistema_key -> ('disponivel'|'devolvido', data)
     pendentes = None
@@ -860,6 +896,16 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
             novo = 'disponivel' if cat == 'remessa' else 'devolvido'
             for c in no_sis:
                 estado_final[c] = (novo, e['data'])
+            # Remessa nova com tubo que não existe no cadastro: entra no estoque
+            # sozinho (06/10/2026). Antes ia para `fora` e dependia de alguém
+            # digitar tubo por tubo; o estoque deixava de bater com a prateleira
+            # e a cadeia de custódia recusava o tubo. Só com watermark conhecido
+            # (nunca reprocessa remessa antiga), só prefixo de tubo real e nunca
+            # código que já existe, nem arquivado.
+            if cat == 'remessa' and watermark:
+                for c in codes:
+                    if c not in look and _prefixo_tubo(c) in tipos_tubo and c not in codigos_existentes:
+                        novos_tubos.setdefault(c, e['data'])
 
     # monta plano de mudanças (status atual != alvo)
     plano = []
@@ -912,12 +958,24 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
     alertas_atraso = 0
     alertas_sem_envio = 0
     datas_do_laudo = 0
+    tubos_cadastrados = []
     if apply:
         with get_db() as conn:
             for p in plano:
                 conn.execute("UPDATE amostradores SET status=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                              (p['para'], p['id']))
                 aplicadas += 1
+            for cod, dt in sorted(novos_tubos.items()):
+                try:
+                    _savepoint(conn, lambda cod=cod, dt=dt: conn.execute(
+                        "INSERT INTO amostradores (codigo, tipo, status, data_entrada, observacao, arquivado) "
+                        "VALUES (?, ?, 'disponivel', ?, ?, 0)",
+                        (cod, _prefixo_tubo(cod), dt or None,
+                         f'Cadastrado sozinho pela remessa do laboratório (e-mail de {dt}). '
+                         f'Conferir na prateleira.')))
+                    tubos_cadastrados.append(cod)
+                except Exception as e:
+                    log.warning('[lab_inbox] cadastrar tubo da remessa %s: %s', cod, e)
             for rid in envio_faltam:   # auto-data o envio (só quem estava sem data)
                 conn.execute("UPDATE amostradores SET data_envio_lab=?, atualizado_em=CURRENT_TIMESTAMP WHERE id=?",
                              (envio_por_id[rid], rid))
@@ -986,6 +1044,7 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
                 'alertas_sem_envio': alertas_sem_envio,
                 'datas_do_laudo': datas_do_laudo,
                 'resultados_total': len(resultados),
+                'tubos_cadastrados_remessa': tubos_cadastrados,
                 'por_categoria': cat_count,
                 'fetch_erros': fetch_erros,
             }, ensure_ascii=False))
@@ -1010,6 +1069,8 @@ def sincronizar_lab(apply=False, top=120, parse_anexos=True):
         'alertas_sem_envio': alertas_sem_envio,
         'datas_do_laudo': datas_do_laudo,
         'codigos_fora_do_sistema': sorted(fora)[:30],
+        'tubos_novos_da_remessa': sorted(novos_tubos),
+        'tubos_cadastrados_remessa': tubos_cadastrados,
         'resultados_total': len(resultados),
         'resultados_recentes': resultados[:10],
     }
