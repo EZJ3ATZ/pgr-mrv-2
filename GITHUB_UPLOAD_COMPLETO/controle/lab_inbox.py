@@ -27,6 +27,10 @@ from .db import get_db, row_to_dict
 log = logging.getLogger(__name__)
 
 MAILBOX  = 'engenharia19@ocupacional.com.br'
+# Caixas de setor que recebem RA e não são login de ninguém. Desde 04/08/2026 o
+# lab manda parte dos RAs SÓ para a suporteengenharia@: 15 RAs (ago-set) nunca
+# entraram, e 7 tubos ficaram "no laboratório" com o resultado já entregue.
+CAIXAS_SETOR = ['suporteengenharia@ocupacional.com.br']
 LAB_DOM  = 'uniscientificgroup.com.br'
 _CODE_RE = re.compile(r'[A-Z]{2,5}\d{2,}[A-Z0-9]*')
 
@@ -78,10 +82,10 @@ def _sistema_lookup():
 
 
 def _mailboxes():
-    """Caixas a varrer: a oficial do lab + e-mail de cada técnico cadastrado
-    (todos @ocupacional.com.br). O app é App-only com Mail.Read.All tenant-wide,
-    então alcança todas sem vínculo/OAuth por usuário."""
-    boxes = [MAILBOX]
+    """Caixas a varrer: a oficial do lab + as de setor + e-mail de cada técnico
+    cadastrado (todos @ocupacional.com.br). O app é App-only com Mail.Read.All
+    tenant-wide, então alcança todas sem vínculo/OAuth por usuário."""
+    boxes = [MAILBOX] + CAIXAS_SETOR
     try:
         with get_db() as conn:
             rows = conn.execute(
