@@ -156,3 +156,22 @@ def test_avisa_quando_falta_tubo_no_estoque():
     d = _post(p).get_json()
     aviso = [a for a in d['avisos'] if a.startswith('Estoque:')]
     assert aviso and 'Formaldeído' in aviso[0] and 'DNPH' in aviso[0] and 'há 0' in aviso[0]
+
+
+def test_mesma_os_ja_aberta_pelo_planner_vai_para_revisao():
+    with get_db() as conn:
+        conn.execute("DELETE FROM demandas WHERE numero_os='7654321'")
+        eid = conn.execute("SELECT id FROM empresas ORDER BY id LIMIT 1").fetchone()['id']
+        pid = conn.execute("INSERT INTO demandas (numero_os, empresa_id, status, origem) "
+                           "VALUES ('7654321', ?, 'em_andamento', 'planner')", (eid,)).lastrowid
+    try:
+        r = _post(_payload(origem='neg-osmed-dup', numero_maestro='7654321'))
+        d = r.get_json()
+        assert r.status_code == 201, d
+        assert any('7654321' in a and f'#{pid}' in a for a in d['avisos'])
+        with get_db() as conn:
+            nr = conn.execute('SELECT needs_review FROM demandas WHERE id=?', (d['demanda_id'],)).fetchone()['needs_review']
+        assert int(nr) == 1
+    finally:
+        with get_db() as conn:
+            conn.execute("DELETE FROM demandas WHERE numero_os='7654321'")
