@@ -173,7 +173,7 @@ def _fetch_sent_to_lab(boxes, look, top=110, max_anexo_mb=8, max_downloads=90, p
             data = graph_get(
                 f"/users/{box}/mailFolders/sentitems/messages"
                 f"?$top={top}&$orderby=sentDateTime desc"
-                f"&$select=id,subject,toRecipients,sentDateTime,hasAttachments,body")
+                f"&$select=id,subject,toRecipients,sentDateTime,hasAttachments,uniqueBody")
         except Exception:
             continue
         for m in data.get('value', []):
@@ -184,7 +184,12 @@ def _fetch_sent_to_lab(boxes, look, top=110, max_anexo_mb=8, max_downloads=90, p
             dt = (m.get('sentDateTime') or '')[:10]
             if not dt:
                 continue
-            body = (m.get('body') or {}).get('content', '')
+            # SÓ o que a pessoa escreveu (uniqueBody), nunca o histórico citado.
+            # Com `body`, a resposta ao "Amostradores pendentes de retorno" de
+            # 02/09 citava 63 códigos da lista DO LAB e o sync carimbou envio em
+            # 60 tubos que estavam na prateleira — viraram "atrasados no lab".
+            # Despacho de verdade vem na cadeia em anexo, lida logo abaixo.
+            body = (m.get('uniqueBody') or {}).get('content', '')
             cods = _codigos_no_texto(((m.get('subject', '') or '') + ' ' + body), look)
             if not cods and m.get('hasAttachments') and parse_anexos and baixados < max_downloads:
                 try:
