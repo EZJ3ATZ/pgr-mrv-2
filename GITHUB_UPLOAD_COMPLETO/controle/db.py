@@ -2333,9 +2333,14 @@ def list_amostradores(filtros=None):
         arquivar_amostradores_concluidos(30)
     except Exception as e:
         print(f'[controle] arquivamento auto falhou: {e}')
+    # No laboratório, sem data de medição, o relógio corre do ENVIO, não da
+    # entrada no estoque: o tubo enviado em 27/07 e recadastrado em 26/08 dizia
+    # "parado há 41d" quando estava no lab havia 71.
     sql = f"""
         SELECT a.*, e.nome AS empresa_nome,
-               {_ds("COALESCE(NULLIF(a.data_medicao,''), NULLIF(a.data_entrada,''), a.atualizado_em)")} AS tempo_parado
+               {_ds("CASE WHEN a.status='laboratorio' "
+                    "THEN COALESCE(NULLIF(a.data_medicao,''), NULLIF(a.data_envio_lab,''), NULLIF(a.data_entrada,''), a.atualizado_em) "
+                    "ELSE COALESCE(NULLIF(a.data_medicao,''), NULLIF(a.data_entrada,''), a.atualizado_em) END")} AS tempo_parado
         FROM amostradores a
         LEFT JOIN empresas e ON e.id = a.empresa_id
         WHERE 1=1
