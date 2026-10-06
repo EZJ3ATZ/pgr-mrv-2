@@ -511,6 +511,43 @@ def abrir_os(payload, dry_run=False):
             'os_id': os_id, 'raias': resultado}
 
 
+def casar_ou_criar_empresa(conn, cnpj, nome, numero=''):
+    """Empresa da OS -> (empresa_id, metodo, score, revisar).
+
+    CNPJ casa primeiro; se o nome do banco não bate com o da OS (similaridade
+    abaixo de MATCH_NOME_MIN), `revisar=1` — ver docstring abaixo. Sem CNPJ,
+    nome exato; sem nada, cria a empresa. Usada também pela OS de medição que
+    chega do CRM pronta (controle/os_medicao.py).
+    """
+    from .empresa_match import similaridade
+    metodo, score, revisar = None, None, 0
+    emp = None
+    if cnpj:
+        emp = conn.execute("SELECT id, nome FROM empresas WHERE cnpj=?", (cnpj,)).fetchone()
+        if emp:
+            nome_banco = row_to_dict(emp).get('nome') or ''
+            sim = similaridade(nome, nome_banco)
+            if sim < MATCH_NOME_MIN:
+                metodo, score, revisar = 'cnpj_nome_divergente', round(sim, 3), 1
+                log.warning('[orq] OS %s: CNPJ %s casou com "%s", mas a OS diz "%s" '
+                            '(similaridade %.2f) — demanda marcada para revisão',
+                            numero, cnpj, nome_banco, nome, sim)
+            else:
+                metodo, score = 'cnpj', 1.0
+    if not emp:
+        emp = conn.execute("SELECT id, nome FROM empresas WHERE nome=?", (nome,)).fetchone()
+        if emp:
+            metodo, score = 'nome_exato', 1.0
+    if emp:
+        empresa_id = row_to_dict(emp)['id']
+    else:
+        conn.execute("INSERT INTO empresas (cnpj, nome) VALUES (?,?)", (cnpj or None, nome))
+        empresa_id = row_to_dict(conn.execute(
+            "SELECT id FROM empresas WHERE nome=?", (nome,)).fetchone())['id']
+        metodo, score = 'criada', 1.0
+    return empresa_id, metodo, score, revisar
+
+
 def _criar_demanda_medicao(conn, numero, os_row, itens):
     """Medição contratada entra direto na tabela demandas do portal.
 
@@ -521,36 +558,8 @@ def _criar_demanda_medicao(conn, numero, os_row, itens):
     mas o NOME não bate, a demanda nasce com `needs_review=1` e guarda o método
     e o score do match, para aparecer no banner de revisão humana.
     """
-    from .empresa_match import similaridade
-    metodo, score, revisar = None, None, 0
-    emp = None
-    if os_row['cnpj']:
-        emp = conn.execute("SELECT id, nome FROM empresas WHERE cnpj=?",
-                           (os_row['cnpj'],)).fetchone()
-        if emp:
-            nome_banco = row_to_dict(emp).get('nome') or ''
-            sim = similaridade(os_row['empresa'], nome_banco)
-            if sim < MATCH_NOME_MIN:
-                metodo, score, revisar = 'cnpj_nome_divergente', round(sim, 3), 1
-                log.warning('[orq] OS %s: CNPJ %s casou com "%s", mas a OS diz "%s" '
-                            '(similaridade %.2f) — demanda marcada para revisão',
-                            numero, os_row['cnpj'], nome_banco, os_row['empresa'], sim)
-            else:
-                metodo, score = 'cnpj', 1.0
-    if not emp:
-        emp = conn.execute("SELECT id, nome FROM empresas WHERE nome=?",
-                           (os_row['empresa'],)).fetchone()
-        if emp:
-            metodo, score = 'nome_exato', 1.0
-    if emp:
-        empresa_id = row_to_dict(emp)['id']
-    else:
-        conn.execute("INSERT INTO empresas (cnpj, nome) VALUES (?,?)",
-                     (os_row['cnpj'] or None, os_row['empresa']))
-        empresa_id = row_to_dict(conn.execute(
-            "SELECT id FROM empresas WHERE nome=?",
-            (os_row['empresa'],)).fetchone())['id']
-        metodo, score = 'criada', 1.0
+    empresa_id, metodo, score, revisar = casar_ou_criar_empresa(
+        conn, os_row['cnpj'], os_row['empresa'], numero)
     desc = "MEDIÇÕES A REALIZAR:\n" + "\n".join(
         f"- {i.get('nome','?')}" + (f" (x{int(i['quantidade'])})"
         if i.get('quantidade') and float(i['quantidade']) > 1 else '')

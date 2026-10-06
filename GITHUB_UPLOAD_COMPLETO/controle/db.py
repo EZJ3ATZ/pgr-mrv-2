@@ -1241,6 +1241,11 @@ def _migrate(conn):
         ('needs_review',  'INTEGER DEFAULT 0'),
         ('extracao_json', 'TEXT DEFAULT NULL'),
         ('agentes_manual','TEXT DEFAULT NULL'),
+        # OS de medição que chega do CRM pronta (controle/os_medicao.py):
+        # origem_ref = id do negócio (reenviar atualiza em vez de duplicar);
+        # dados_os = o que a OS trouxe (local, contato, prazo, itens) em JSON.
+        ('origem_ref',    'TEXT DEFAULT NULL'),
+        ('dados_os',      'TEXT DEFAULT NULL'),
     ]:
         _add_col(conn, 'demandas', col, dfn)
 
