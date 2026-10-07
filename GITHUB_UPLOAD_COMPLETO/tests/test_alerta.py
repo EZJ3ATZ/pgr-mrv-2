@@ -95,8 +95,8 @@ checa('reabriu e avisou de novo', len(enviados) == 2, f'{len(enviados)}')
 print('\n== 5) teto diario suprime e avisa que suprimiu ==')
 # ja foram 2 avisos hoje; o teto e 2 → o proximo alerta novo tem de ser suprimido
 with db.get_db() as conn:
-    conn.execute("INSERT INTO eventos (tipo,descricao,criado_em) "
-                 "VALUES ('sync_planner','t',datetime('now','-9 hours'))")
+    conn.execute("INSERT INTO ms_sync_state (chave,valor,atualizado_em) "
+                 "VALUES ('last_sync','t',datetime('now','-9 hours'))")
 antes = len(enviados)
 r5 = alerta.verificar()
 checa('alerta novo foi suprimido pelo teto', r5['suprimidos'] >= 1,

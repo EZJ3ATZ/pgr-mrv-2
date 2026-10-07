@@ -63,7 +63,7 @@ def setup_function(_):
 
 def teardown_function(_):
     with get_db() as conn:
-        conn.execute("DELETE FROM ms_sync_state WHERE chave='lab_sync_result'")
+        conn.execute("DELETE FROM ms_sync_state WHERE chave IN ('lab_sync_result', 'last_sync')")
 
 
 def test_lab_sync_parado_alerta():
@@ -81,6 +81,53 @@ def test_sem_registro_nao_e_parada():
         conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
         conn.execute("DELETE FROM ms_sync_state WHERE chave='lab_sync_result'")
     assert 'rotina:lab_sync' not in _chaves()
+
+
+def _grava_last_sync(horas_atras):
+    with get_db() as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS ms_sync_state (chave TEXT PRIMARY KEY, valor TEXT, atualizado_em TEXT)")
+        conn.execute("DELETE FROM ms_sync_state WHERE chave='last_sync'")
+        conn.execute("INSERT INTO ms_sync_state (chave, valor, atualizado_em) VALUES ('last_sync', 'x', ?)",
+                     (_utc(horas_atras),))
+
+
+def _quebrou_em_expediente():
+    orig = alerta._horario_comercial
+    alerta._horario_comercial = lambda dt=None: True
+    try:
+        with get_db() as conn:
+            return {a[0]: a for a in alerta._achados_quebrou(conn)}
+    finally:
+        alerta._horario_comercial = orig
+
+
+# ── 3. sync do Planner: mede a volta do agendador, não demanda nova (07/10) ─
+def test_sync_rodando_sem_demanda_nova_nao_alerta():
+    # 07/10 08h09: a última demanda nova era de 14h antes, o agendador rodava a cada 15 min
+    _grava_last_sync(0.25)
+    with get_db() as conn:
+        conn.execute("INSERT INTO eventos (tipo, descricao, criado_em) VALUES ('demanda_criada_planner', 't', ?)", (_utc(14),))
+    assert 'sync_parado' not in _quebrou_em_expediente()
+
+
+def test_sync_sem_rodar_alerta():
+    _grava_last_sync(3)
+    achado = _quebrou_em_expediente().get('sync_parado')
+    assert achado and 'sem rodar há 3h' in achado[2]
+
+
+# ── 4. silêncio do medidor conta só depois das 8h ─────────────────────────
+def test_madrugada_nao_conta_como_silencio():
+    agora = datetime(2026, 10, 7, 8, 9, tzinfo=alerta.BRT)
+    ultimo_acesso_4h = (agora - timedelta(hours=4, minutes=9)).astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    horas = alerta._horas_no_expediente(ultimo_acesso_4h, agora=agora)
+    assert horas is not None and horas < 0.2
+
+
+def test_silencio_no_meio_do_dia_conta_inteiro():
+    agora = datetime(2026, 10, 7, 15, 0, tzinfo=alerta.BRT)
+    ultimo_11h = (agora - timedelta(hours=4)).astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    assert alerta._horas_no_expediente(ultimo_11h, agora=agora) >= 3.9
 
 
 def test_rotina_parada_entra_no_quebrou_do_alerta():

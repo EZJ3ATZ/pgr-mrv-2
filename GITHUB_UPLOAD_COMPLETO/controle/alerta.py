@@ -98,6 +98,21 @@ def _horario_comercial(dt=None):
     return d.weekday() < 5 and 8 <= d.hour < 18
 
 
+def _horas_no_expediente(valor, agora=None):
+    """Horas de silêncio desde `valor` (UTC) contando só a partir das 8h de hoje.
+    Às 8h09 de 07/10/2026 o "nenhuma requisição há 3h" contava a madrugada: o
+    último acesso era das 4h e ninguém tinha chegado ainda."""
+    a = agora or _agora()
+    horas = _horas_desde(valor, a)
+    if horas is None:
+        return None
+    desde_8h = (a - a.replace(hour=8, minute=0, second=0, microsecond=0)).total_seconds() / 3600
+    return min(horas, max(desde_8h, 0.0))
+
+
+SYNC_PARADO_H = 2   # o agendador do Planner dá a volta a cada 15 min: 2h = 8 voltas perdidas
+
+
 # ── as regras ──────────────────────────────────────────────────────────
 def _achados_quebrou(conn):
     """Coisas que exigem alguém agora."""
@@ -124,39 +139,31 @@ def _achados_quebrou(conn):
     try:
         if _horario_comercial():
             r = conn.execute('SELECT MAX(criado_em) AS m FROM perf_log').fetchone()
-            ultimo = (r['m'] if r else None)
-            if ultimo:
-                txt = str(ultimo)[:19].replace('T', ' ')
-                try:
-                    dt = datetime.strptime(txt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
-                    horas = (datetime.now(tz=timezone.utc) - dt).total_seconds() / 3600
-                except Exception:
-                    horas = 0
-                if horas >= 3:
-                    out.append(('log_parou', 'quebrou',
-                                f'Nenhuma requisição medida há {int(horas)}h',
-                                'Ou ninguém está usando em horário comercial, ou a '
-                                'medição parou de gravar.', float(horas)))
+            horas = _horas_no_expediente(r['m'] if r else None)
+            if horas is not None and horas >= 3:
+                out.append(('log_parou', 'quebrou',
+                            f'Nenhuma requisição medida há {int(horas)}h',
+                            'Ou ninguém está usando em horário comercial, ou a '
+                            'medição parou de gravar.', float(horas)))
     except Exception:
         pass
 
-    # 3) sync do Planner parado — é a espinha do portal
+    # 3) sync do Planner parado — é a espinha do portal.
+    # Mede a VOLTA do agendador (ms_sync_state.last_sync, gravada a cada 15 min),
+    # não "novidade": até 07/10/2026 olhava os eventos sync_planner e
+    # demanda_criada_planner, que só nascem com demanda nova (1 por dia) ou com a
+    # varredura manual do lab. Às 8h09 acusou "14h sem novidade" com o sync
+    # rodando a cada 15 min.
     try:
-        r = conn.execute("SELECT MAX(criado_em) AS m FROM eventos "
-                         "WHERE tipo IN ('sync_planner','demanda_criada_planner')").fetchone()
-        ultimo = (r['m'] if r else None)
-        if ultimo and _horario_comercial():
-            txt = str(ultimo)[:19].replace('T', ' ')
-            try:
-                dt = datetime.strptime(txt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
-                horas = (datetime.now(tz=timezone.utc) - dt).total_seconds() / 3600
-            except Exception:
-                horas = 0
-            if horas >= 6:
-                out.append(('sync_parado', 'quebrou',
-                            f'Sync do Planner sem novidade há {int(horas)}h',
-                            'O pipeline Planner → demandas pode estar parado.',
-                            float(horas)))
+        r = conn.execute("SELECT atualizado_em AS m FROM ms_sync_state "
+                         "WHERE chave='last_sync'").fetchone()
+        horas = _horas_desde(r['m'] if r else None)
+        if horas is not None and horas >= SYNC_PARADO_H and _horario_comercial():
+            out.append(('sync_parado', 'quebrou',
+                        f'Sync do Planner sem rodar há {int(horas)}h',
+                        'O agendador Planner → demandas não completa a volta desde '
+                        'então. Ver o log do Railway (planner_sync).',
+                        float(horas)))
     except Exception:
         pass
 
@@ -182,7 +189,7 @@ ROTINAS = (
 )
 
 
-def _horas_desde(valor):
+def _horas_desde(valor, agora=None):
     """Horas desde um carimbo do banco (UTC, texto ou datetime). None se ilegível."""
     if not valor:
         return None
@@ -191,7 +198,7 @@ def _horas_desde(valor):
         dt = datetime.strptime(txt, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
     except Exception:
         return None
-    return (datetime.now(tz=timezone.utc) - dt).total_seconds() / 3600
+    return ((agora or datetime.now(tz=timezone.utc)) - dt).total_seconds() / 3600
 
 
 def _achados_rotinas(conn):
