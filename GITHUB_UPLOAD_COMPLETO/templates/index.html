@@ -17993,6 +17993,17 @@ function nvValidarFisicaDosTubos(agentes) {
   return '';
 }
 
+// Leva da Etapa 5 ao agente químico cujo tubo barrou a finalização: abre a
+// Etapa 3, expande o bloco e rola até ele.
+function nvIrCorrigirTubo(idx) {
+  if (idx >= 0 && _nvCqAgentes[idx]) _nvCqAgentes[idx].expanded = true;
+  nvGotoStep(3);
+  nvCqRenderAgentes();
+  const _st = document.getElementById('nv-final-status'); if (_st) _st.innerHTML = '';
+  const alvo = document.getElementById('nv-cqa-title-' + idx) || document.getElementById('nv-s3-quimico');
+  if (alvo) setTimeout(() => alvo.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+}
+
 async function nvSalvarMedicao() {
   // Trava de reentrância: evita que duplo-clique grave a medição 2x
   if (window._nvSaving) return null;
@@ -18079,11 +18090,20 @@ async function nvSalvarMedicao() {
     // certo — um 400 nunca dá. Servidor e tela sobem no mesmo commit.
     // Mesmos limites de `_validar_fisica_dos_tubos` (controle/routes.py):
     // é a física da bomba, não a faixa do método (essa é da Cadeia de Custódia).
-    const _erroTubo = nvValidarFisicaDosTubos(_nvCqAgentes);
+    // Só confere os tubos quando o químico está marcado: desmarcado, os blocos
+    // ficam escondidos e não são salvos (laço abaixo), mas travavam a
+    // finalização com tubo sobrado de outra planilha que o técnico não via
+    // (Helbert 08/10, OS 6681026 só VMB: "EC94047A vazão final 0").
+    const _erroTubo = _nvTipos.includes('quimico') ? nvValidarFisicaDosTubos(_nvCqAgentes) : '';
     if (_erroTubo) {
       _showToast(_erroTubo, 'error');
-      const cx = document.getElementById('ctrl-sub-nova');
-      if (cx) cx.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Botão para voltar direto ao agente do erro — o toast some e o técnico
+      // ficava na Etapa 5 sem saber onde estava o tubo.
+      const _idxErro = _nvCqAgentes.findIndex(ag => nvValidarFisicaDosTubos([ag]));
+      const _st = document.getElementById('nv-final-status');
+      if (_st) _st.innerHTML = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--red);border-radius:8px;background:rgba(239,68,68,.08);">`
+        + `<span style="flex:1 1 220px;color:var(--text);">⚠️ ${_esc(_erroTubo)}</span>`
+        + `<button type="button" onclick="nvIrCorrigirTubo(${_idxErro})" style="background:var(--red);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer;font-family:inherit;font-size:.82rem;">↩ Voltar e corrigir</button></div>`;
       window._nvSaving = false;
       _nvSetSalvarDisabled(false);
       return null;
