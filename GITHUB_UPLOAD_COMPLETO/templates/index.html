@@ -4058,13 +4058,16 @@
     </button>
   </div>
 
-  <!-- Progress Bar -->
+  <!-- Progress Bar — 4 etapas. A antiga Etapa 2 (Planejamento) saiu em 09/10/2026 a
+       pedido do Helbert e do Wesley: tudo que ela pedia já vem do plano vinculado
+       ou é preenchido por trabalhador/setor na etapa de Campo. Os ids internos
+       (nv-s3/nv-s4/nv-s5, data-s) ficaram para não renomear nv-s3-* nem invalidar
+       rascunhos salvos; o número que o técnico vê sai de _NV_ETAPAS. -->
   <div class="nv-prog" id="nv-prog">
     <div class="nv-prog-item active" data-s="1"><div class="nv-prog-circle">1</div><div class="nv-prog-label">Empresa</div></div>
-    <div class="nv-prog-item" data-s="2"><div class="nv-prog-circle">2</div><div class="nv-prog-label">Planejamento</div></div>
-    <div class="nv-prog-item" data-s="3"><div class="nv-prog-circle">3</div><div class="nv-prog-label">Campo</div></div>
-    <div class="nv-prog-item" data-s="4"><div class="nv-prog-circle">4</div><div class="nv-prog-label">Validações</div></div>
-    <div class="nv-prog-item" data-s="5"><div class="nv-prog-circle">5</div><div class="nv-prog-label">Finalizar</div></div>
+    <div class="nv-prog-item" data-s="3"><div class="nv-prog-circle">2</div><div class="nv-prog-label">Campo</div></div>
+    <div class="nv-prog-item" data-s="4"><div class="nv-prog-circle">3</div><div class="nv-prog-label">Validações</div></div>
+    <div class="nv-prog-item" data-s="5"><div class="nv-prog-circle">4</div><div class="nv-prog-label">Finalizar</div></div>
   </div>
 
   <!-- ─── ETAPA 1: EMPRESA / OS ─── -->
@@ -4125,72 +4128,13 @@
     </div>
   </div>
 
-  <!-- ─── ETAPA 2: PLANEJAMENTO ─── -->
-  <div id="nv-s2" class="nv-step" style="display:none;">
-    <div class="nv-card">
-      <div class="nv-card-title">Etapa 2 — Planejamento da Medição</div>
-
-      <div id="nv-plan-ruido" style="display:none;">
-        <div style="background:rgba(34,197,94,.07);border-left:3px solid var(--green);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Ruído</b> — NR-15 Anexo 1 + NHO-01 FUNDACENTRO. Dosimetria individual por trabalhador.</div>
-        <div class="nv-g2 nv-f">
-          <div><label>Nº de Dosímetros</label><input type="number" id="nv-plan-n-dosim" min="1" step="1" value="5" placeholder="Qtd. de dosímetros" style="width:100%;"></div>
-          <div><label>Estratégia</label><select id="nv-plan-estrategia"><option>Individual (por trabalhador)</option><option>Por Função/GHE</option><option>Ambiental (ponto fixo)</option></select></div>
-        </div>
-        <div class="nv-f" style="margin-top:10px;"><label>Setores / Funções Prioritários</label><input type="text" id="nv-plan-setores" placeholder="Ex: Armação, Forma, Concretagem..."></div>
-      </div>
-
-      <div id="nv-plan-quimico" style="display:none;">
-        <div style="background:rgba(96,165,250,.07);border-left:3px solid var(--blue);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Agentes Químicos</b> — Adicione cada agente. O sistema buscará o método analítico correspondente.</div>
-        <div class="nv-f" style="margin-bottom:10px;">
-          <label>Agente a Amostrar</label>
-          <input type="text" id="ctrl-nv-agente" placeholder="Ex: Tolueno, Poeira Respirável, BTX..." oninput="ctrlNvBuscarAgente(this.value)" autocomplete="off" list="ctrl-nv-agente-dl">
-          <datalist id="ctrl-nv-agente-dl"></datalist>
-        </div>
-        <div id="ctrl-nv-metodo-info" style="display:none;padding:8px 10px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:5px;font-size:.78rem;margin-bottom:8px;"></div>
-        <div class="nv-g2 nv-f" style="margin-bottom:10px;">
-          <div><label>Modelo da Bomba</label><select id="ctrl-nv-bomba-modelo" onchange="ctrlNvPreencherSNs(this.value)"><option value="">— Selecione —</option></select></div>
-          <div><label>N° Série da Bomba</label><select id="ctrl-nv-bomba-sn"><option value="">— SN —</option></select></div>
-        </div>
-        <div id="ctrl-nv-estoque-info" style="display:none;padding:8px 10px;background:rgba(0,170,119,.08);border-left:3px solid #0a7;border-radius:5px;font-size:.78rem;margin-bottom:8px;"></div>
-        <div class="nv-g2 nv-f" style="margin-bottom:10px;">
-          <div><label>Amostrador</label><select id="ctrl-nv-amostr-sel"><option value="">— Selecione agente primeiro —</option></select><input type="text" id="ctrl-nv-amostr" placeholder="ou digite manualmente" style="margin-top:4px;font-size:.78rem;"></div>
-          <div><label>Função / Setor</label><input type="text" id="ctrl-nv-funcao" placeholder="Ex: Pintor / Acabamento"></div>
-        </div>
-        <div class="nv-f">
-          <label>Vazão Calibrada (L/min)
-            <button type="button" onclick="ctrlNvUsarVazaoMedia()" style="margin-left:8px;background:var(--green);color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⚡ Média</button>
-            <button type="button" onclick="ctrlNvUsarVazaoTeto()" style="margin-left:4px;background:#f59e0b;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:.7rem;cursor:pointer;">⬆ Teto</button>
-          </label>
-          <input type="number" step="0.001" id="ctrl-nv-vazao" placeholder="0.150" oninput="ctrlNvCalcTempoPreview()">
-          <div id="ctrl-nv-tempo-preview" style="display:none;margin-top:6px;padding:7px;background:rgba(0,170,119,.08);border-radius:5px;font-size:.8rem;text-align:center;"></div>
-          <div id="ctrl-nv-vazao-aviso"></div>
-        </div>
-        <button onclick="ctrlNvAdicionarItem()" style="margin-top:12px;width:100%;background:var(--green);color:#fff;border:none;padding:10px;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;">+ Adicionar Agente</button>
-        <div id="ctrl-nv-count" style="display:none;"></div>
-      </div>
-
-      <div id="nv-plan-calor" style="display:none;">
-        <div style="background:rgba(245,158,11,.07);border-left:3px solid var(--yellow);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Calor — IBUTG</b> — NR-15 Anexo 3. Medição nos postos de trabalho.</div>
-        <div class="nv-g2 nv-f"><div><label>Pontos de Medição</label><input type="number" id="nv-plan-pontos-calor" min="1" value="3"></div><div><label>Regime de Trabalho</label><select id="nv-plan-regime"><option>Leve — 75% trabalho / 25% descanso</option><option>Moderado — 50% / 50%</option><option>Pesado — 25% / 75%</option><option>Contínuo — sem descanso</option></select></div></div>
-      </div>
-
-      <div id="nv-plan-vibracao" style="display:none;">
-        <div style="background:rgba(167,139,250,.07);border-left:3px solid var(--purple);padding:11px 13px;border-radius:6px;margin-bottom:14px;font-size:.8rem;"><b>Vibração</b> — NR-9 / ISO 2631.</div>
-        <div class="nv-g2 nv-f"><div><label>Tipo</label><select id="nv-plan-tipo-vibr"><option>VCI — Vibração de Corpo Inteiro</option><option>VBMA — Vibração de Mãos e Braços</option></select></div><div><label>Equipamento / Fonte</label><input type="text" id="nv-plan-fonte-vibr" placeholder="Ex: Motoniveladora"></div></div>
-      </div>
-
-      <!-- Lista agentes adicionados -->
-      <div id="ctrl-nv-lista" style="min-height:36px;margin-top:12px;"></div>
-    </div>
-  </div>
-
-  <!-- ─── ETAPA 3: CAMPO ─── -->
+  <!-- ─── ETAPA 2 (id interno nv-s3): CAMPO ─── -->
   <div id="nv-s3" class="nv-step" style="display:none;">
 
     <!-- RUÍDO -->
     <div id="nv-s3-ruido" style="display:none;">
       <div class="nv-card">
-        <div class="nv-card-title">Etapa 3 — Campo · Dosimetria de Ruído</div>
+        <div class="nv-card-title">Etapa 2 — Campo · Dosimetria de Ruído</div>
         <div class="nv-g3 nv-f" style="margin-bottom:12px;">
           <div><label>Acompanhante da Inspeção</label><input type="text" id="nv-cr-acomp" placeholder="Nome"></div>
           <div><label>Cargo do Acompanhante</label><input type="text" id="nv-cr-cargo-acomp" placeholder="Cargo"></div>
@@ -4245,7 +4189,7 @@
       <div class="nv-card" style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <div class="nv-card-title" style="margin:0;">Etapa 3 — Campo · Agentes Químicos</div>
+            <div class="nv-card-title" style="margin:0;">Etapa 2 — Campo · Agentes Químicos</div>
             <div style="font-size:.75rem;color:var(--text3);margin-top:3px;">Um bloco por agente/funcionário monitorado. Cada bloco tem bomba, amostrador e dados próprios.</div>
           </div>
           <button id="nv-cqa-add-btn" onclick="nvCqAddAgente()" style="background:var(--orange);color:#fff;border:none;border-radius:6px;padding:8px 18px;cursor:pointer;font-size:.83rem;font-weight:600;font-family:inherit;flex-shrink:0;margin-left:12px;">+ Adicionar Agente</button>
@@ -4258,7 +4202,7 @@
     <!-- GENÉRICO (Calor / Vibração) -->
     <div id="nv-s3-generic" style="display:none;">
       <div class="nv-card">
-        <div class="nv-card-title" id="nv-s3-generic-title">Etapa 3 — Campo</div>
+        <div class="nv-card-title" id="nv-s3-generic-title">Etapa 2 — Campo</div>
         <div id="nv-gen-plano-hint" style="display:none;background:rgba(34,197,94,.07);border-left:3px solid var(--green);padding:9px 12px;border-radius:6px;margin-bottom:12px;font-size:.78rem;color:var(--text2);"></div>
         <!-- Bloco COMPARTILHADO: só quando a visita tem UM dos dois (calor OU vibração).
              Com calor E vibração juntos, cada agente tem horário próprio na sua
@@ -4328,19 +4272,19 @@
     </div>
   </div>
 
-  <!-- ─── ETAPA 4: VALIDAÇÕES ─── -->
+  <!-- ─── ETAPA 3 (id interno nv-s4): VALIDAÇÕES ─── -->
   <div id="nv-s4" class="nv-step" style="display:none;">
     <div class="nv-card">
-      <div class="nv-card-title">Etapa 4 — Validações Automáticas</div>
+      <div class="nv-card-title">Etapa 3 — Validações Automáticas</div>
       <div id="nv-valid-results" style="min-height:80px;"><div style="text-align:center;padding:28px;color:var(--text3);font-size:.84rem;">Verificando dados preenchidos...</div></div>
       <button onclick="nvRunValidacoes()" style="margin-top:14px;width:100%;background:#1E3A8A;color:#fff;border:none;padding:11px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">🔍 Revalidar</button>
     </div>
   </div>
 
-  <!-- ─── ETAPA 6: FINALIZAÇÃO ─── -->
+  <!-- ─── ETAPA 4 (id interno nv-s5): FINALIZAÇÃO ─── -->
   <div id="nv-s5" class="nv-step" style="display:none;">
     <div class="nv-card">
-      <div class="nv-card-title">Etapa 5 — Finalização</div>
+      <div class="nv-card-title">Etapa 4 — Finalização</div>
 
       <!-- ── Agentes do Planejamento (só aparece quando vinculado) ── -->
       <div id="nv-agentes-plano" style="display:none;margin-bottom:16px;">
@@ -4409,7 +4353,7 @@
   <!-- Navigation -->
   <div class="nv-nav">
     <button class="nv-btn-bk" id="nv-btn-back" onclick="nvBack()" style="visibility:hidden;">← Voltar</button>
-    <div style="font-size:.72rem;color:var(--text3);" id="nv-step-label">Etapa 1 de 5</div>
+    <div style="font-size:.72rem;color:var(--text3);" id="nv-step-label">Etapa 1 de 4</div>
     <button class="nv-btn-nx" id="nv-btn-next" onclick="nvNext()">Próximo →</button>
   </div>
   </div>
@@ -5622,21 +5566,20 @@
         {t:'Para que serve?', d:`Organizar uma visita ANTES de ir a campo: data prevista, técnico responsável, quais agentes medir e quantos amostradores levar. Evita esquecer material.`},
         {t:'Como criar um planejamento', d:`<b>1.</b> Digite o número da OS no campo "OS" — o sistema busca automaticamente a empresa e importa os agentes do Planner.<br><b>2.</b> Confirme a data e o técnico.<br><b>3.</b> Os agentes já vêm preenchidos. Adicione manualmente se precisar.<br><b>4.</b> Clique em "Salvar Planejamento".`},
         {t:'Agentes no planejamento', d:`Para agentes físicos (ruído, calor, vibração): informe quantidade. Para químicos: informe o nome do agente (ex: Tolueno, Benzeno), quantidade, bomba e nº série.`},
-        {t:'Botão "Ir para Campo"', d:`Linka o planejamento à Planilha de Campo (fluxo de 5 etapas). Pré-preenche empresa, OS, técnico, data e agentes automaticamente — incluindo bomba e SN selecionados no planejamento.`},
+        {t:'Botão "Ir para Campo"', d:`Linka o planejamento à Planilha de Campo (fluxo de 4 etapas). Pré-preenche empresa, OS, técnico, data e agentes automaticamente — incluindo bomba e SN selecionados no planejamento.`},
         {t:'Status do planejamento', d:`<b>Rascunho</b>: criado mas não confirmado. <b>Confirmado</b>: data e equipe definidas. <b>Em Execução</b>: saiu para campo. <b>Concluído</b>: visita realizada. <b>Cancelado</b>: descartado.`},
       ]
     },
     {
       id:'campo',
       icon:'📝',
-      titulo:'Planilha de Campo — 5 Etapas',
+      titulo:'Planilha de Campo — 4 Etapas',
       cor:'var(--green)',
       itens:[
         {t:'Etapa 1 — Dados Gerais', d:`Informe: empresa, OS, avaliador, data da medição, tipo(s) de medição (pode ser múltiplos: ruído + calor + químico). Se veio do Planejamento, tudo já vem preenchido.`},
-        {t:'Etapa 2 — Dados de Ruído (se aplicável)', d:`Lista de trabalhadores avaliados com dosímetro: nome, cargo, setor, horas. Calibração do dosímetro (antes e depois). O sistema calcula automaticamente se o desvio está dentro do tolerado (±0,5 dB).`},
-        {t:'Etapa 3 — Dados Químicos (se aplicável)', d:`Um bloco por agente/substância. Cada bloco tem: funcionário, função, setor, bomba, ID da bomba, data de calibração, substância amostrada, EPIs. Clique "+ Adicionar Agente" para mais substâncias. Cada agente tem sua tabela de amostradores com vazão inicial/final.`},
-        {t:'Etapa 4 — Validação (Revalidar)', d:`Clique em "Revalidar" para ver um checklist: empresa OK, tipos OK, data OK, avaliador OK, trabalhadores adicionados, bomba selecionada, desvio de calibração dentro do tolerado. Itens em amarelo são avisos, em vermelho são erros que impedem a geração.`},
-        {t:'Etapa 5 — Assinatura e Geração', d:`Dois campos de assinatura digital: <b>Técnico da Ocupacional</b> (quem mediu) e <b>Responsável da Empresa / Acompanhante</b>. Clique na área branca e assine com o mouse/touch. Clique "Gerar Planilha de Campo" para baixar o PDF. <b>IMPORTANTE</b>: a assinatura do Técnico da Ocupacional é obrigatória para gerar o documento.`},
+        {t:'Etapa 2 — Campo (ruído, químico, calor, vibração)', d:`Uma seção por tipo marcado. <b>Ruído:</b> trabalhadores com dosímetro (nome, cargo, setor, horas) e calibrador. <b>Químico:</b> um bloco por agente/substância com funcionário, bomba, calibração, EPIs e amostradores com vazão inicial/final — "+ Adicionar Agente" para mais. <b>Calor:</b> um setor por ponto IBUTG (TBS/TBN/TG e atividade). <b>Vibração:</b> um trabalhador por avaliação, escolhendo VCI ou VMB em cada um. Com planejamento vinculado, tudo já vem semeado do plano.`},
+        {t:'Etapa 3 — Validação (Revalidar)', d:`Clique em "Revalidar" para ver um checklist: empresa OK, tipos OK, data OK, avaliador OK, trabalhadores adicionados, bomba selecionada, desvio de calibração dentro do tolerado. Itens em amarelo são avisos, em vermelho são erros que impedem a geração.`},
+        {t:'Etapa 4 — Assinatura e Geração', d:`Dois campos de assinatura digital: <b>Técnico da Ocupacional</b> (quem mediu) e <b>Responsável da Empresa / Acompanhante</b>. Clique na área branca e assine com o mouse/touch. Clique "Gerar Planilha de Campo" para baixar o PDF. <b>IMPORTANTE</b>: a assinatura do Técnico da Ocupacional é obrigatória para gerar o documento.`},
         {t:'Por que os dados não batem no PDF gerado?', d:`Verifique: (1) empresa e OS preenchidas corretamente na etapa 1; (2) para químico, substância preenchida no campo "Substância Amostrada"; (3) agentes adicionados na etapa 3; (4) amostradores com vazão inicial e final preenchidas.`},
       ]
     },
@@ -5674,7 +5617,7 @@
       titulo:'Coleta Digital (Ruído e Químico)',
       cor:'#38bdf8',
       itens:[
-        {t:'Diferença da Planilha de Campo', d:`A Coleta Digital é um formulário mais rápido sem o fluxo de 5 etapas. Não gera PDF para assinatura. É para <b>lançamento rápido</b> de dados no banco. A Planilha de Campo gera o documento oficial assinado.`},
+        {t:'Diferença da Planilha de Campo', d:`A Coleta Digital é um formulário mais rápido sem o fluxo de 4 etapas. Não gera PDF para assinatura. É para <b>lançamento rápido</b> de dados no banco. A Planilha de Campo gera o documento oficial assinado.`},
         {t:'Aba Químico', d:`Preencha: empresa, cidade, funcionário, função, substâncias, bomba, data de calibração, e os amostradores (filtros) com vazão inicial/final e hora início/fim. Os dados ficam salvos para consulta e histórico.`},
         {t:'Aba Ruído', d:`Preencha os dados dosimétricos por trabalhador: dosímetro, LEX,8h, Laeq, dose, etc. Salva o histórico de medições de ruído.`},
         {t:'AutoSave', d:`A coleta digital salva automaticamente enquanto você digita (ícone de sincronização no topo). Dados não se perdem ao fechar acidentalmente.`},
@@ -12282,6 +12225,8 @@ function planIrParaCampo(planejamento_id) {
 
 async function ctrlNvVincularPlanejamento(pid) {
   window._nvLinkingPlan = true;  // guarda: ctrlNvOsChange não re-vincula durante isto
+  // Plano que estava vinculado ANTES — decide se os blocos de campo são trocados
+  const _planoAnterior = window._nvPlanejamentoId || null;
   try {
     const p = await ctrlFetch('/controle/planejamentos/' + pid);
     if (!p) return;
@@ -12384,13 +12329,8 @@ async function ctrlNvVincularPlanejamento(pid) {
       });
     }
 
-    // ── Setores/Funções Prioritários ← funções dos agentes do plano ──
-    // (o IBUTG/calor semeia os setores a partir deste campo)
-    const setoresEl = document.getElementById('nv-plan-setores');
-    if (setoresEl && !setoresEl.value) {
-      const _sts = [...new Set(window._nvAgentesPlano.map(a => (a.funcao || '').trim()).filter(Boolean))];
-      if (_sts.length) setoresEl.value = _sts.join(', ');
-    }
+    // (Os setores do IBUTG são semeados em nvCalorSeedSetores direto das funções
+    //  dos agentes do plano, em _ctrlNvItens — o campo da antiga Etapa 2 saiu.)
 
     // ── Banner de planejamento vinculado (com observação e checklist do plano) ──
     const s1 = document.getElementById('nv-s1');
@@ -12411,9 +12351,26 @@ async function ctrlNvVincularPlanejamento(pid) {
       s1.insertBefore(banner, s1.firstChild);
     }
 
-    // ── Marcar checkboxes de tipo com base nos agentes do planejamento ──
+    // ── Tipos e blocos de campo vêm DO PLANO ──
+    // Antes só MARCAVA os tipos do plano, nunca desmarcava o que já estava
+    // marcado, e nvShowStep3 não trocava os blocos de químico que já existiam:
+    // a OS 6681026 (plano #59, só VMB) abriu com Agentes Químicos e a bomba
+    // Inlite 25040902602B de outra planilha (Helbert 08/10). Quando o plano é
+    // OUTRO (ou não havia), os tipos e os blocos por tipo voltam ao zero e são
+    // semeados do plano na Etapa de Campo. Religar o MESMO plano (rascunho
+    // recuperado) não apaga o que o técnico já digitou.
     const agentes = window._nvAgentesPlano;
     if (agentes.length > 0) {
+      if (_planoAnterior !== pid) {
+        ['ruido','quimico','calor','vibracao'].forEach(v => {
+          const el = document.getElementById('nv-tipo-' + v); if (el) el.checked = false;
+        });
+        _nvCqAgentes = []; _nvCrTrabs = [];
+        window._nvVibrPontos = []; window._nvCalorSetores = [];
+        window._nvRuidoHerdado = false;
+        ['nvCqRenderAgentes','nvCrRenderTrabs','nvVibrRenderPontos','nvCalorRenderSetores']
+          .forEach(fn => { try { if (typeof window[fn] === 'function') window[fn](); } catch(_) {} });
+      }
       const tipoMap = {ruido:'nv-tipo-ruido', quimico:'nv-tipo-quimico', calor:'nv-tipo-calor',
                        particulado:'nv-tipo-quimico', poeira:'nv-tipo-quimico', metais:'nv-tipo-quimico', gases:'nv-tipo-quimico',
                        vibracao:'nv-tipo-vibracao', vibracao_vci:'nv-tipo-vibracao', vibracao_vbma:'nv-tipo-vibracao'};
@@ -12500,8 +12457,6 @@ function nvToggleAgente(cb, idx) {
 /* ── NOVA MEDIÇÃO — workflow completo ────────────────────────────── */
 window._ctrlNvEmpresa = null;
 window._ctrlNvItens = [];
-window._ctrlNvMetodoAtual = null;
-window._ctrlNvBombasCache = null;
 
 async function ctrlNvInit() {
   // Data hoje
@@ -12515,30 +12470,10 @@ async function ctrlNvInit() {
     const _bf = document.getElementById('nv-btn-finalizar');
     if (_bf) { _bf.disabled=false; _bf.style.opacity=''; _bf.style.cursor='pointer'; _bf.textContent='✓ Finalizar planilha'; }
   }
-  // Carregar bombas
-  if (!window._ctrlNvBombasCache) {
-    try { window._ctrlNvBombasCache = await ctrlFetch('/controle/bombas'); }
-    catch(e) { window._ctrlNvBombasCache = {modelos:[]}; }
-  }
-  const sel = document.getElementById('ctrl-nv-bomba-modelo');
-  sel.innerHTML = '<option value="">— Selecione —</option>' +
-    window._ctrlNvBombasCache.modelos.map(b => `<option value="${b.id}">${b.nome}</option>`).join('');
-  // Carregar métodos (uma vez)
+  // Carregar métodos (uma vez) — os blocos de químico da Etapa de Campo usam
   if (!ctrlMetodosCache) {
     try { ctrlMetodosCache = await ctrlFetch('/api/metodos'); } catch(e) { ctrlMetodosCache = {}; }
   }
-  // Datalist de agentes. As chaves do guia vêm com quebra de linha (54 dos
-  // 408 — o guia nasceu de PDF) e o navegador APAGA o \n do value do input ao
-  // escolher a opção, sem deixar espaço: o técnico escolhia "Poeira Respirável
-  // + Sílica Livre Cristalina" e o campo ficava "...LivreCristalina", nome que
-  // não existe no guia. Troca a quebra por espaço ANTES de virar <option>.
-  const dl = document.getElementById('ctrl-nv-agente-dl');
-  const nomes = ctrlMetodosCache && ctrlMetodosCache.by_name
-    ? Object.keys(ctrlMetodosCache.by_name).map(n => n.replace(/\s+/g, ' ').trim())
-    : [];
-  // Adiciona Ruído e Calor que não estão na guia de químicos
-  const todos = ['Ruído', 'Calor', 'Vibração de Corpo Inteiro', 'Vibração Localizada - Mãos e Braços', ...nomes];
-  dl.innerHTML = todos.map(n => `<option value="${n}">`).join('');
 }
 
 let _nvOsTimer = null;
@@ -12722,205 +12657,9 @@ async function ctrlNvSalvarCadEmpresa() {
   } catch(e) { alert('Erro: ' + e.message); }
 }
 
-async function ctrlNvBuscarAgente(nome) {
-  const info = document.getElementById('ctrl-nv-metodo-info');
-  const estoqueInfo = document.getElementById('ctrl-nv-estoque-info');
-  const selAm = document.getElementById('ctrl-nv-amostr-sel');
-  window._ctrlNvMetodoAtual = null;
-  nome = (nome || '').replace(/\s+/g, ' ').trim();  // agente do Planner pode vir com \n — quebrava a URL do estoque
-  if (!nome) {
-    info.style.display = 'none';
-    estoqueInfo.style.display = 'none';
-    selAm.innerHTML = '<option value="">— Selecione agente primeiro —</option>';
-    return;
-  }
-  // Buscar estoque + métodos no backend (cruza guia com banco)
-  try {
-    const d = await ctrlFetch(`/controle/agente/${encodeURIComponent(nome)}/estoque`);
-    const metodos = d.metodos || [];
-    if (!metodos.length) {
-      const nl = nome.toLowerCase();
-      const fisico = nl.includes('ruído') || nl.includes('ruido') || nl.includes('calor') || nl.includes('vibra');
-      info.style.display = 'block';
-      info.innerHTML = fisico
-        ? `<b>${nome}</b> — Agente físico (sem bomba/amostrador química, registre apenas o tempo da medição)`
-        : `<b>${nome}</b> — não encontrado na guia. Vazão e tipo de amostrador devem ser informados manualmente.`;
-      estoqueInfo.style.display = 'none';
-      selAm.innerHTML = '<option value="">— Sem amostrador compatível na guia —</option>';
-      return;
-    }
-    // Usar o 1º método como padrão (pode ter vários)
-    const m1 = metodos[0];
-    const vazRange = ctrlFaixaMetodo(m1, 'vazao');
-    const volRange = ctrlFaixaMetodo(m1, 'volume');
-    window._ctrlNvMetodoAtual = {
-      nome: nome,
-      vazao_min: vazRange[0], vazao_max: vazRange[1],
-      volume_min: volRange[0], volume_max: volRange[1],
-      metodoCod: m1.metodoCod, amostradorCod: m1.amostradorCod,
-      amostradorDesc: m1.amostradorDesc,
-      tipos: d.tipos_compativeis || [],
-    };
-    info.style.display = 'block';
-    info.innerHTML = `
-      <div><b>${nome}</b> · ${m1.metodoCod||''}</div>
-      <div style="margin-top:4px; font-size:.75rem;">
-        Vazão: <b>${m1.vazao||'—'}</b> · Volume: <b>${m1.volume||'—'}</b> · Amostrador: <b>${m1.amostradorCod||'—'}</b>
-      </div>
-      ${metodos.length > 1 ? `<div style="margin-top:4px; font-size:.7rem; color:var(--text3);">+${metodos.length-1} métodos alternativos</div>` : ''}`;
-
-    // Box de estoque
-    const tipos = d.tipos_compativeis || [];
-    const porTipo = d.por_tipo || {};
-    const totalDisp = d.total_disponivel || 0;
-    estoqueInfo.style.display = 'block';
-    const corBorda = totalDisp > 0 ? '#0a7' : '#e22';
-    const corFundo = totalDisp > 0 ? 'rgba(0,170,119,.08)' : 'rgba(226,34,34,.08)';
-    estoqueInfo.style.background = corFundo;
-    estoqueInfo.style.borderLeftColor = corBorda;
-    const detalhes = Object.entries(porTipo)
-      .map(([t, v]) => `<b style="color:${v.estoque>0?'#0a7':'#e22'}">${t}: ${v.estoque}</b>/<span style="color:var(--text3)">${v.total}</span>`)
-      .join(' · ') || 'nenhum tipo cadastrado';
-    estoqueInfo.innerHTML = `
-      <div><b>📦 Estoque disponível:</b> ${totalDisp} amostrador${totalDisp!==1?'es':''} para coleta</div>
-      <div style="margin-top:4px; font-size:.72rem;">Tipos compatíveis: ${tipos.join(', ') || '—'} · Estoque/Total → ${detalhes}</div>`;
-
-    // Popular dropdown de amostradores compatíveis em estoque
-    // (backend manda status canônico 'disponivel' — 'estoque' só existia em dado legado)
-    const disponiveis = (d.amostradores || []).filter(a => {
-      const st = (a.status||'').toLowerCase();
-      return st.includes('dispon') || st.includes('estoque');
-    });
-    if (!disponiveis.length) {
-      selAm.innerHTML = `<option value="">⚠ Sem amostrador em estoque (${tipos.join(',')})</option>`;
-    } else {
-      selAm.innerHTML = '<option value="">— Selecione amostrador —</option>' +
-        disponiveis.map(a => `<option value="${a.tipo} ${a.codigo}" data-id="${a.id}">${a.tipo} ${a.codigo}</option>`).join('');
-    }
-  } catch(e) {
-    console.error('estoque agente', e);
-    info.style.display = 'block';
-    info.innerHTML = `<span style="color:#e22;">Erro: ${e.message}</span>`;
-  }
-}
-
-function ctrlNvPreencherSNs(modeloId) {
-  const sel = document.getElementById('ctrl-nv-bomba-sn');
-  if (!modeloId) { sel.innerHTML = '<option value="">— SN —</option>'; return; }
-  const b = (window._ctrlNvBombasCache?.modelos || []).find(x => x.id === modeloId);
-  if (!b) return;
-  sel.innerHTML = '<option value="">— SN —</option>' +
-    b.sns.map(sn => `<option value="${sn}">${sn}</option>`).join('');
-}
-
-function ctrlNvUsarVazaoMedia() {
-  const m = window._ctrlNvMetodoAtual;
-  if (!m || !m.vazao_min) { _showToast('⚠ Selecione um agente com método cadastrado', 'warn'); return; }
-  const sugerida = (m.vazao_min + m.vazao_max) / 2;
-  document.getElementById('ctrl-nv-vazao').value = sugerida.toFixed(3);
-  ctrlNvCalcTempoPreview();
-  _showToast(`✓ Vazão média: ${sugerida.toFixed(3)} L/min`, 'success');
-}
-
-function ctrlNvUsarVazaoTeto() {
-  const m = window._ctrlNvMetodoAtual;
-  if (!m || !m.vazao_max) { _showToast('⚠ Selecione um agente com método cadastrado', 'warn'); return; }
-  document.getElementById('ctrl-nv-vazao').value = m.vazao_max.toFixed(3);
-  ctrlNvCalcTempoPreview();
-  _showToast(`⬆ Vazão teto: ${m.vazao_max.toFixed(3)} L/min`, 'success');
-}
-
-function ctrlNvCalcTempoPreview() {
-  const vc = parseFloat(document.getElementById('ctrl-nv-vazao').value || 0);
-  const m = window._ctrlNvMetodoAtual;
-  const box = document.getElementById('ctrl-nv-tempo-preview');
-  const av = document.getElementById('ctrl-nv-vazao-aviso');
-  av.innerHTML = '';
-  if (vc <= 0 || !m || !m.volume_min) { box.style.display = 'none'; return; }
-  const tmin = m.volume_min / vc;
-  const tmax = m.volume_max / vc;
-  box.style.display = 'block';
-  box.innerHTML = `<b>Tempo de coleta:</b> <span style="color:#0a7;">${tmin.toFixed(1)} – ${tmax.toFixed(1)} min</span>`;
-  const av_msgs = [];
-  if (m.vazao_min && vc < m.vazao_min)
-    av_msgs.push(`Vazão ${vc} L/min está ABAIXO do mínimo (${m.vazao_min})`);
-  if (m.vazao_max && vc > m.vazao_max)
-    av_msgs.push(`Vazão ${vc} L/min está ACIMA do máximo (${m.vazao_max})`);
-  if (av_msgs.length) av.innerHTML = av_msgs.map(s =>
-    `<div style="margin-top:6px; padding:6px 10px; background:rgba(226,34,34,.1); border-left:3px solid #e22; border-radius:4px; font-size:.75rem; color:#fcc;">⚠ ${s}</div>`).join('');
-}
-
-function ctrlNvAdicionarItem() {
-  if (!window._ctrlNvEmpresa) { alert('Selecione uma empresa primeiro'); return; }
-  const agente = document.getElementById('ctrl-nv-agente').value.trim();
-  if (!agente) { alert('Informe o agente'); return; }
-  const vazao = parseFloat(document.getElementById('ctrl-nv-vazao').value || 0);
-  const m = window._ctrlNvMetodoAtual;
-  const modeloEl = document.getElementById('ctrl-nv-bomba-modelo');
-  const selAmEl = document.getElementById('ctrl-nv-amostr-sel');
-  // Prioriza select de estoque; se vazio, usa input manual
-  const amostradorTxt = (selAmEl.value || document.getElementById('ctrl-nv-amostr').value || '').trim();
-  const amostradorId = selAmEl.selectedOptions[0]?.dataset?.id || null;
-  const item = {
-    agente: agente,
-    bomba_modelo: modeloEl.selectedOptions[0]?.textContent.startsWith('—') ? '' : modeloEl.selectedOptions[0]?.textContent || '',
-    bomba_modelo_id: modeloEl.value,
-    bomba_sn: document.getElementById('ctrl-nv-bomba-sn').value,
-    amostrador: amostradorTxt,
-    amostrador_id: amostradorId,
-    funcao: document.getElementById('ctrl-nv-funcao').value.trim(),
-    vazao_calibrada: vazao || null,
-    tempo_min: (vazao > 0 && m?.volume_min) ? (m.volume_min / vazao) : null,
-    tempo_max: (vazao > 0 && m?.volume_max) ? (m.volume_max / vazao) : null,
-    metodo_cod: m?.metodoCod || '',
-    amostrador_recomendado: m?.amostradorCod || '',
-  };
-  window._ctrlNvItens.push(item);
-  // Limpar form de agente
-  document.getElementById('ctrl-nv-agente').value = '';
-  document.getElementById('ctrl-nv-vazao').value = '';
-  document.getElementById('ctrl-nv-amostr').value = '';
-  document.getElementById('ctrl-nv-amostr-sel').innerHTML = '<option value="">— Selecione agente primeiro —</option>';
-  document.getElementById('ctrl-nv-funcao').value = '';
-  document.getElementById('ctrl-nv-metodo-info').style.display = 'none';
-  document.getElementById('ctrl-nv-estoque-info').style.display = 'none';
-  document.getElementById('ctrl-nv-tempo-preview').style.display = 'none';
-  document.getElementById('ctrl-nv-vazao-aviso').innerHTML = '';
-  window._ctrlNvMetodoAtual = null;
-  ctrlNvRenderLista();
-}
-
-function ctrlNvRemoverItem(idx) {
-  window._ctrlNvItens.splice(idx, 1);
-  ctrlNvRenderLista();
-}
-
-function ctrlNvRenderLista() {
-  const cont = document.getElementById('ctrl-nv-lista');
-  const cnt = document.getElementById('ctrl-nv-count');
-  cnt.textContent = `(${window._ctrlNvItens.length})`;
-  if (!window._ctrlNvItens.length) {
-    cont.innerHTML = '<div style="color:var(--text3); text-align:center; padding:20px; font-size:.85rem;">Nenhum agente adicionado.</div>';
-    return;
-  }
-  cont.innerHTML = `
-    <table class="ctrl-table">
-      <thead><tr>
-        <th>#</th><th>Agente</th><th>Bomba</th><th>Vazão</th><th>Tempo (min)</th><th>Função/Setor</th><th></th>
-      </tr></thead>
-      <tbody>
-        ${window._ctrlNvItens.map((it, i) => `<tr>
-          <td>${i+1}</td>
-          <td><b>${_esc(it.agente)}</b><div style="color:var(--text3); font-size:.7rem;">${_esc(it.metodo_cod||'')}</div></td>
-          <td>${it.bomba_modelo||'—'}<div style="color:var(--text3); font-size:.7rem;">${it.bomba_sn||''}</div></td>
-          <td>${it.vazao_calibrada ? it.vazao_calibrada.toFixed(3) + ' L/min' : '—'}</td>
-          <td>${it.tempo_min ? `${it.tempo_min.toFixed(0)}–${it.tempo_max.toFixed(0)}` : '—'}</td>
-          <td>${it.funcao||'—'}</td>
-          <td><button onclick="ctrlNvRemoverItem(${i})" style="background:transparent; color:#e22; border:1px solid #e22; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:.75rem;">×</button></td>
-        </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
+// (As funções de agente/bomba/vazão da antiga Etapa 2 — ctrlNvBuscarAgente,
+//  ctrlNvAdicionarItem, ctrlNvRenderLista etc. — saíram em 09/10/2026 junto com
+//  a etapa. O bloco de químico da Etapa de Campo faz tudo isso por agente.)
 
 async function ctrlNvGerarPDF() {
   if (!window._ctrlNvEmpresa) { alert('Selecione uma empresa'); return; }
@@ -12984,7 +12723,6 @@ async function ctrlNvSalvarComoDemanda() {
     });
     _showToast(`✓ Demanda criada (#${r.id}) com ${window._ctrlNvItens.length} medições`, 'success');
     window._ctrlNvItens = [];
-    ctrlNvRenderLista();
     ctrlLoadStats();
   } catch(e) { alert('Erro: ' + e.message); }
 }
@@ -16383,26 +16121,35 @@ function _nvAplicarTravaPlano() {
   if (typeof nvCqRenderAgentes === 'function' && document.getElementById('nv-cqa-list')) nvCqRenderAgentes();
 }
 
+// Ordem das etapas pelo id interno. A antiga 2 (Planejamento) saiu em
+// 09/10/2026 (Helbert e Wesley: "o que importa já vem da etapa 1"); os ids
+// nv-s3/nv-s4/nv-s5 ficaram para não renomear nv-s3-* nem quebrar rascunho
+// salvo. O número que o técnico vê é a posição nesta lista.
+const _NV_ETAPAS = [1, 3, 4, 5];
+function _nvEtapaIdx(n) { return Math.max(_NV_ETAPAS.indexOf(n), 0); }
+
 function nvGotoStep(n) {
+  if (!_NV_ETAPAS.includes(n)) n = (n === 2) ? 3 : 1;   // rascunho antigo parado na Etapa 2
   _nvStep = n;
+  const pos = _nvEtapaIdx(n);
   for (let i = 1; i <= 5; i++) {
     const el = document.getElementById('nv-s' + i);
     if (el) el.style.display = (i === n) ? '' : 'none';
   }
   // Progress bar
-  document.querySelectorAll('#nv-prog .nv-prog-item').forEach((item, idx) => {
-    const s = idx + 1;
+  document.querySelectorAll('#nv-prog .nv-prog-item').forEach(item => {
+    const s = _nvEtapaIdx(parseInt(item.dataset.s, 10));
     item.classList.remove('active','done');
-    if (s < n)      item.classList.add('done');
-    else if (s === n) item.classList.add('active');
+    if (s < pos)      item.classList.add('done');
+    else if (s === pos) item.classList.add('active');
   });
   // Nav buttons
   const bk   = document.getElementById('nv-btn-back');
   const nx   = document.getElementById('nv-btn-next');
   const lbl  = document.getElementById('nv-step-label');
-  if (bk)  bk.style.visibility  = n > 1 ? 'visible' : 'hidden';
-  if (nx)  { nx.textContent = 'Próximo →'; nx.style.display = n === 5 ? 'none' : ''; }
-  if (lbl) lbl.textContent = `Etapa ${n} de 5`;
+  if (bk)  bk.style.visibility  = pos > 0 ? 'visible' : 'hidden';
+  if (nx)  { nx.textContent = 'Próximo →'; nx.style.display = pos === _NV_ETAPAS.length - 1 ? 'none' : ''; }
+  if (lbl) lbl.textContent = `Etapa ${pos + 1} de ${_NV_ETAPAS.length}`;
 
   if (n === 3) nvShowStep3();
   if (n === 4) { nvRunValidacoes(); }
@@ -16691,11 +16438,13 @@ function nvShowStep3() {
 
 function nvNext() {
   if (!nvValidateStep(_nvStep)) return;
-  if (_nvStep < 5) nvGotoStep(_nvStep + 1);
+  const pos = _nvEtapaIdx(_nvStep);
+  if (pos < _NV_ETAPAS.length - 1) nvGotoStep(_NV_ETAPAS[pos + 1]);
 }
 
 function nvBack() {
-  if (_nvStep > 1) nvGotoStep(_nvStep - 1);
+  const pos = _nvEtapaIdx(_nvStep);
+  if (pos > 0) nvGotoStep(_NV_ETAPAS[pos - 1]);
 }
 
 function nvValidateStep(s) {
@@ -16704,17 +16453,8 @@ function nvValidateStep(s) {
     if (!emp)          { _showToast('⚠ Informe a empresa', 'warn'); return false; }
     nvTipoChange();    // garante _nvTipos atualizado
     if (!_nvTipos.length) { _showToast('⚠ Selecione ao menos um tipo de medição', 'warn'); return false; }
-    nvAdaptStep2();
   }
   return true;
-}
-
-function nvAdaptStep2() {
-  // Mostra todos os painéis de planejamento correspondentes aos tipos selecionados
-  ['ruido','quimico','calor','vibracao'].forEach(v => {
-    const el = document.getElementById('nv-plan-' + v);
-    if (el) el.style.display = _nvTipos.includes(v) ? '' : 'none';
-  });
 }
 
 // ═══ CADASTRO DE EQUIPAMENTOS — Sprint 4 ═══════════════════════════
@@ -16877,8 +16617,6 @@ function nvReset() {
   const avt = document.getElementById('ctrl-nv-avaliador');
   if(avt) avt.value = (window._me && window._me.nome) || window._currentUserNome || '';
   nvGotoStep(1);
-  const lv = document.getElementById('ctrl-nv-lista');
-  if(lv) lv.innerHTML = '<div style="color:var(--text3);text-align:center;padding:14px;font-size:.84rem;">Nenhum agente adicionado.</div>';
 }
 
 // ── Calibração Ruído ──────────────────────────────────────────────────
@@ -16910,14 +16648,15 @@ function nvCalorAddSetor(nome) {
   nvCalorRenderSetores();
 }
 
-// Ao entrar na seção IBUTG, cria 1 setor por setor/função listado no
-// Planejamento ("Setores / Funções Prioritários"), já com o nome preenchido.
-// Sem planejamento → 1 setor em branco (comportamento antigo). Só semeia quando
-// está vazio (não atropela o que o técnico já preencheu nem o rascunho).
+// Ao entrar na seção IBUTG, cria 1 setor por função/setor dos agentes do
+// plano vinculado (_ctrlNvItens), já com o nome preenchido — era o que a
+// antiga Etapa 2 copiava para "Setores / Funções Prioritários". Sem plano → 1
+// setor em branco. Só semeia quando está vazio (não atropela o que o técnico
+// já preencheu nem o rascunho).
 function nvCalorSeedSetores() {
   if (window._nvCalorSetores && window._nvCalorSetores.length) { nvCalorRenderSetores(); return; }
-  const raw = (document.getElementById('nv-plan-setores')?.value || '').trim();
-  const nomes = raw ? raw.split(/[,;\/\n]+/).map(s => s.trim()).filter(Boolean) : [];
+  const nomes = [...new Set((window._ctrlNvItens || [])
+    .map(it => String(it.funcao || '').trim()).filter(Boolean))];
   if (nomes.length) nomes.forEach(n => nvCalorAddSetor(n));
   else nvCalorAddSetor();
 }
@@ -17993,8 +17732,8 @@ function nvValidarFisicaDosTubos(agentes) {
   return '';
 }
 
-// Leva da Etapa 5 ao agente químico cujo tubo barrou a finalização: abre a
-// Etapa 3, expande o bloco e rola até ele.
+// Leva da Finalização ao agente químico cujo tubo barrou a finalização: abre a
+// Etapa de Campo (id interno 3), expande o bloco e rola até ele.
 function nvIrCorrigirTubo(idx) {
   if (idx >= 0 && _nvCqAgentes[idx]) _nvCqAgentes[idx].expanded = true;
   nvGotoStep(3);
@@ -18047,12 +17786,19 @@ async function nvSalvarMedicao() {
     // calor e vibração juntos os dois liam o mesmo campo e gravavam o mesmo
     // horário no banco (e no relatório). Ver _nvCampoGenerico.
     const _itVibSalvar = (window._ctrlNvItens||[]).find(it => it.tipo === 'vibracao') || {};
+    // pontos/regime/tipo_vibr/fonte_vibr eram campos da antiga Etapa 2 e agora
+    // saem do que o técnico preencheu por setor/trabalhador na Etapa de Campo.
+    // O tipo_vibr nascia "VCI" no select e ia para o banco mesmo em visita só
+    // VMB (6 planilhas de produção) — agora é o subtipo real dos pontos.
+    const _vibPts = window._nvVibrPontos || [];
+    const _calSet = window._nvCalorSetores || [];
+    const _tipoVibrLbl = {vci:'VCI — Vibração de Corpo Inteiro', vbma:'VBMA — Vibração de Mãos e Braços', ambos:'VCI + VBMA'};
     const campoGenericoDe = (tp) => ({
       ..._nvCampoGenerico(tp),
-      pontos:      document.getElementById('nv-plan-pontos-calor')?.value||'',
-      regime:      document.getElementById('nv-plan-regime')?.value||'',
-      tipo_vibr:   document.getElementById('nv-plan-tipo-vibr')?.value||'',
-      fonte_vibr:  document.getElementById('nv-plan-fonte-vibr')?.value||'',
+      pontos:      String(tp === 'calor' ? _calSet.length : _vibPts.length),
+      regime:      tp === 'calor' ? [...new Set(_calSet.map(s => s.regime).filter(Boolean))].join(' · ') : '',
+      tipo_vibr:   tp === 'vibracao' ? (_tipoVibrLbl[_nvVibrSubtipoCalc(_itVibSalvar)] || '') : '',
+      fonte_vibr:  tp === 'vibracao' ? [...new Set(_vibPts.map(p => String(p.equip||'').trim()).filter(Boolean))].join(', ') : '',
       // instrumento (chrompack_1/2) — ia só pro PDF; sem salvar, a planilha
       // remontada em "Planilhas Feitas" ficava sem o Aparelho
       vib_aparelho: _itVibSalvar.aparelho || _itVibSalvar.vib_aparelho || '',

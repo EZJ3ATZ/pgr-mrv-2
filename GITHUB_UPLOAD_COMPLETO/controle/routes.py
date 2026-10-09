@@ -3782,15 +3782,38 @@ def _visita_payload_campo_completo(chave):
             if 'vibracao' not in tipos:
                 tipos.append('vibracao')
             pontos = extras.get('vibr_pontos') or []
-            # tipo_vibr vem do select como texto ("VCI — Vibração de Corpo
-            # Inteiro"); o gerador do PDF espera o código (vci/vbma/ambos)
-            _st = (extras.get('tipo_vibr') or '').lower()
-            if 'vbma' in _st or 'vmb' in _st:
+            # Subtipo da planilha: PRIMEIRO pelo tipo de cada ponto — é o que o
+            # técnico escolhe por trabalhador (planilha única VCI/VMB). O
+            # `tipo_vibr` da antiga Etapa 2 nascia "VCI" e era gravado sem
+            # ninguém olhar: 16 das 17 planilhas de vibração de produção o têm,
+            # 6 delas só VMB (coletas_outros 11, 12, 13, 20, 23, 24) e 2 mistas
+            # (16, 27), e a reimpressão saía "Subtipo: Corpo Inteiro (VCI)"
+            # (Helbert 08/10). Sem migração: o dado certo já está nos pontos.
+            _tps = {str((p or {}).get('tipo') or '').strip().lower()
+                    for p in pontos if isinstance(p, dict)}
+            _has_vmb = bool(_tps & {'vmb', 'vbma'})
+            _has_vci = 'vci' in _tps
+            if _has_vci and _has_vmb:
+                sub = 'ambos'
+            elif _has_vmb:
                 sub = 'vbma'
-            elif 'vci' in _st or 'corpo' in _st:
+            elif _has_vci:
                 sub = 'vci'
             else:
-                sub = 'vbma' if tp.endswith('vbma') else ('vci' if tp.endswith('vci') else '')
+                # Pontos sem tipo (planilhas anteriores a 11/06): cai no texto
+                # gravado ("VCI — Vibração de Corpo Inteiro", "VCI + VBMA") e,
+                # por último, no sufixo do tipo da coleta.
+                _st = (extras.get('tipo_vibr') or '').lower()
+                _st_vmb = 'vbma' in _st or 'vmb' in _st
+                _st_vci = 'vci' in _st or 'corpo' in _st
+                if _st_vmb and _st_vci:
+                    sub = 'ambos'
+                elif _st_vmb:
+                    sub = 'vbma'
+                elif _st_vci:
+                    sub = 'vci'
+                else:
+                    sub = 'vbma' if tp.endswith('vbma') else ('vci' if tp.endswith('vci') else '')
             # 2ª linha de vibração (VCI + VMB gravados separados): junta os pontos
             ja = d.get('vibracao')
             if ja:
