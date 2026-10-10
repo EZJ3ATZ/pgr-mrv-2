@@ -170,3 +170,58 @@ def test_nome_do_arquivo_sem_caractere_invalido():
 def test_sem_amostrador_nao_estoura():
     d = coletar_dados([])
     assert d['linhas'] == [] and d['avisos']
+
+
+# ── 09/10: os 3 defeitos do Wesley (08/10) ─────────────────────────────
+
+def test_xlsx_sai_identico_ao_modelo_fora_das_celulas_preenchidas():
+    """O Excel abria pedindo recuperação porque o openpyxl regravava o modelo do
+    lab e perdia partes (validação estendida, VML, printerSettings). Agora só as
+    abas escritas e o styles mudam; todo o resto é byte a byte o modelo."""
+    import io, zipfile
+    from controle.cadeia_custodia import TEMPLATE
+    dados = {'empresa': {'nome': 'X'}, 'linhas': [{
+        'codigo': 'A1', 'data': _fmt_data('2026-07-29'), 'funcionario': 'F', 'funcao': '',
+        'setor': '', 'tecnico': '', 'vazao': 1.5, 'volume': None,
+        'hora_ini': _fmt_hora('08:31'), 'hora_fim': None,
+        'intervalos': '', 'obs': '', 'agentes': ['Tolueno'],
+    }]}
+    modelo = zipfile.ZipFile(TEMPLATE)
+    saida = zipfile.ZipFile(io.BytesIO(gerar_xlsx(dados)))
+    assert saida.namelist() == modelo.namelist()
+    mudadas = {n for n in modelo.namelist() if modelo.read(n) != saida.read(n)}
+    assert mudadas <= {'xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml', 'xl/styles.xml'}
+    # e o que foi escrito está lá, com o estilo da célula do modelo preservado
+    x = saida.read('xl/worksheets/sheet2.xml').decode()
+    assert '<c r="D11" s="' in x and 'A1</t>' in x
+    assert '<dataValidation' in x and '<extLst' in x     # validação do lab intacta
+
+
+def test_empresa_avaliada_vem_da_coleta_quando_o_amostrador_nao_tem():
+    """Cadeia gerada pela tela de medições, sem demanda e com amostrador sem
+    empresa: a Empresa Avaliada saía vazia. A coleta química sabe a empresa."""
+    init_db()
+    with get_db() as conn:
+        conn.execute("DELETE FROM amostradores WHERE id=-301")
+        conn.execute("DELETE FROM coletas_quimico WHERE id=-301")
+        conn.execute("DELETE FROM empresas WHERE id=-301")
+        conn.execute("INSERT INTO empresas (id, nome, cnpj) VALUES (-301, 'Avaliada Teste Ltda', '11.111.111/0001-11')")
+        conn.execute("INSERT INTO amostradores (id, codigo, tipo, status, data_medicao, arquivado)"
+                     " VALUES (-301,'CCTEST301','TCP','campo','2026-10-08',0)")
+        conn.execute("INSERT INTO coletas_quimico (id, empresa_id, nome_funcionario, data_coleta)"
+                     " VALUES (-301, -301, 'Func', '2026-10-08')")
+        conn.execute("INSERT INTO coletas_quimico_amostr (coleta_id, id_amostrador, substancia,"
+                     " vazao_inicial, vazao_final, vazao_media) VALUES (-301, 'CCTEST301', 'Tolueno', 0.2, 0, 0)")
+    try:
+        d = coletar_dados([-301])
+        assert d['empresa'].get('nome') == 'Avaliada Teste Ltda'
+        assert d['empresa'].get('cnpj') == '11.111.111/0001-11'
+        assert 'Empresa avaliada sem razão social' not in d['avisos']
+        # vazão: só a inicial foi lida -> é ela que vai, não zero nem a final
+        assert d['linhas'][0]['vazao'] == 0.2
+    finally:
+        with get_db() as conn:
+            conn.execute("DELETE FROM coletas_quimico_amostr WHERE coleta_id=-301")
+            conn.execute("DELETE FROM coletas_quimico WHERE id=-301")
+            conn.execute("DELETE FROM amostradores WHERE id=-301")
+            conn.execute("DELETE FROM empresas WHERE id=-301")

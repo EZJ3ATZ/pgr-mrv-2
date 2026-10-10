@@ -26,7 +26,7 @@ import io
 import os
 import re
 import logging
-from datetime import datetime
+from datetime import date, datetime, time
 
 from .db import get_db, row_to_dict, agora_brt
 
@@ -272,9 +272,11 @@ def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
             ph2 = ','.join(['?'] * len(chaves))
             for r in conn.execute(f"""
                 SELECT cqa.id_amostrador, cqa.substancia, cqa.vazao_media, cqa.volume_l,
+                       cqa.vazao_inicial, cqa.vazao_final,
                        cqa.hora_inicio, cqa.hora_final, cqa.tempo_min, cqa.intervalos,
                        cq.nome_funcionario, cq.funcao, cq.setor, cq.responsavel_coleta,
-                       cq.data_coleta, cq.observacao
+                       cq.data_coleta, cq.observacao, cq.empresa_id AS cq_empresa_id,
+                       cq.demanda_id AS cq_demanda_id
                 FROM coletas_quimico_amostr cqa
                 JOIN coletas_quimico cq ON cq.id = cqa.coleta_id
                 WHERE REPLACE(UPPER(TRIM(cqa.id_amostrador)), ' ', '') IN ({ph2})
@@ -283,6 +285,27 @@ def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
                 dono = chave_de.get(_norm_cod(d.get('id_amostrador')))
                 if dono:
                     coletas.setdefault(dono, []).append(d)
+
+        # Empresa Avaliada saía VAZIA quando a cadeia era gerada pela tela de
+        # medições sem demanda e o amostrador não tinha empresa (Wesley 08/10):
+        # a coleta química sabe de que empresa/OS ela é — usa isso.
+        if not empresa:
+            for cs_ in coletas.values():
+                for x in cs_:
+                    e_id = x.get('cq_empresa_id')
+                    if not e_id and x.get('cq_demanda_id'):
+                        dd = conn.execute('SELECT empresa_id FROM demandas WHERE id=?',
+                                          (x['cq_demanda_id'],)).fetchone()
+                        e_id = row_to_dict(dd).get('empresa_id') if dd else None
+                    if e_id:
+                        row = conn.execute('SELECT * FROM empresas WHERE id=?', (e_id,)).fetchone()
+                        if row:
+                            empresa = row_to_dict(row)
+                            if not demanda_id and x.get('cq_demanda_id'):
+                                demanda_id = x['cq_demanda_id']
+                            break
+                if empresa:
+                    break
 
         sugeridos = _agentes_sugeridos(conn, demanda_id)
         cnpj_texto = _cnpj_da_demanda(conn, demanda_id) if not empresa.get('cnpj') else ''
@@ -320,8 +343,9 @@ def coletar_dados(amostrador_ids, demanda_id=None, agentes_por_codigo=None):
             'funcao':      (_prim('funcao') or '').strip(),
             'setor':       (_prim('setor') or '').strip(),
             'tecnico':     (_prim('responsavel_coleta') or a.get('avaliador') or '').strip(),
-            'vazao':       _prim('vazao_media'),
-            'volume':      _volume(_prim('vazao_media'), _prim('tempo_min'), _prim('volume_l'),
+            'vazao':       _prim('vazao_media') or _prim('vazao_inicial') or _prim('vazao_final'),
+            'volume':      _volume(_prim('vazao_media') or _prim('vazao_inicial') or _prim('vazao_final'),
+                                   _prim('tempo_min'), _prim('volume_l'),
                                    _prim('hora_inicio'), _prim('hora_final')),
             'hora_ini':    _fmt_hora(_prim('hora_inicio')),
             'hora_fim':    _fmt_hora(_prim('hora_final')),
@@ -399,50 +423,184 @@ def _agentes_sugeridos(conn, demanda_id):
 
 
 def gerar_xlsx(dados, data_envio=None):
-    """Preenche o template e devolve os bytes do arquivo."""
-    import openpyxl
+    """Preenche o template e devolve os bytes do arquivo.
+
+    Escreve as células DIRETO no XML das abas e copia todas as outras partes do
+    xlsx byte a byte. Até 09/10 o openpyxl reabria e regravava o modelo do
+    laboratório, e no caminho perdia a validação de dados estendida, o VML dos
+    comentários e as printerSettings: o Excel abria com "Encontramos um problema
+    em um conteúdo... quer que tentemos recuperar?" (Wesley, 08/10). Aqui o
+    arquivo do lab sai idêntico ao modelo, só com os valores.
+    """
     if not os.path.exists(TEMPLATE):
         raise FileNotFoundError(f'template não encontrado: {TEMPLATE}')
-    wb = openpyxl.load_workbook(TEMPLATE)
-
     emp = dados.get('empresa') or {}
-    we = wb[ABA_EMPRESA]
-    we[CEL_DATA_ENVIO] = _fmt_data(data_envio) or datetime.now().date()
+    escr = _XlsxEscritor(TEMPLATE)
+    escr.set(ABA_EMPRESA, CEL_DATA_ENVIO, _fmt_data(data_envio) or datetime.now().date())
+    valores = {
+        'razao_social': emp.get('nome'), 'cnpj': emp.get('cnpj'),
+        'cidade': emp.get('cidade'), 'endereco': emp.get('endereco'),
+        'numero': emp.get('numero'), 'bairro': emp.get('bairro'),
+        'uf': emp.get('uf'), 'contato': emp.get('contato'),
+        'cep': emp.get('cep'), 'fone': emp.get('telefone'),
+        'email': emp.get('email'),
+    }
     for campo, cel in CEL_AVALIADA.items():
-        valor = {
-            'razao_social': emp.get('nome'), 'cnpj': emp.get('cnpj'),
-            'cidade': emp.get('cidade'), 'endereco': emp.get('endereco'),
-            'numero': emp.get('numero'), 'bairro': emp.get('bairro'),
-            'uf': emp.get('uf'), 'contato': emp.get('contato'),
-            'cep': emp.get('cep'), 'fone': emp.get('telefone'),
-            'email': emp.get('email'),
-        }.get(campo)
-        if valor:
-            we[cel] = valor
-
-    wa = wb[ABA_AGENTES]
+        if valores.get(campo):
+            escr.set(ABA_EMPRESA, cel, valores[campo])
     for i, ln in enumerate(dados.get('linhas') or []):
         r = LINHA_1 + i
-        wa.cell(r, 3, ln.get('data'))            # C  DATA AMOSTRAGEM
-        wa.cell(r, 4, ln.get('codigo'))          # D  NÚMERO DO AMOSTRADOR
-        wa.cell(r, 6, ln.get('funcionario'))     # F  NOME DO FUNCIONÁRIO
-        wa.cell(r, 7, ln.get('funcao'))          # G  FUNÇÃO
-        wa.cell(r, 8, ln.get('setor'))           # H  SETOR
-        wa.cell(r, 9, ln.get('tecnico'))         # I  TÉCNICO RESPONSÁVEL
+        escr.set(ABA_AGENTES, f'C{r}', ln.get('data'))            # C  DATA AMOSTRAGEM
+        escr.set(ABA_AGENTES, f'D{r}', ln.get('codigo'))          # D  NÚMERO DO AMOSTRADOR
+        escr.set(ABA_AGENTES, f'F{r}', ln.get('funcionario'))     # F  NOME DO FUNCIONÁRIO
+        escr.set(ABA_AGENTES, f'G{r}', ln.get('funcao'))          # G  FUNÇÃO
+        escr.set(ABA_AGENTES, f'H{r}', ln.get('setor'))           # H  SETOR
+        escr.set(ABA_AGENTES, f'I{r}', ln.get('tecnico'))         # I  TÉCNICO RESPONSÁVEL
         if ln.get('vazao') is not None:
-            wa.cell(r, 10, ln['vazao'])          # J  VAZÃO MÉDIA (L/min)
+            escr.set(ABA_AGENTES, f'J{r}', ln['vazao'])           # J  VAZÃO MÉDIA (L/min)
         if ln.get('volume') is not None:
-            wa.cell(r, 11, ln['volume'])         # K  VOLUME AMOSTRADO (L)
-        wa.cell(r, 12, ln.get('hora_ini'))       # L  INÍCIO
-        wa.cell(r, 13, ln.get('hora_fim'))       # M  TÉRMINO
+            escr.set(ABA_AGENTES, f'K{r}', ln['volume'])          # K  VOLUME AMOSTRADO (L)
+        escr.set(ABA_AGENTES, f'L{r}', ln.get('hora_ini'))        # L  INÍCIO
+        escr.set(ABA_AGENTES, f'M{r}', ln.get('hora_fim'))        # M  TÉRMINO
         if ln.get('obs'):
-            wa.cell(r, 16, ln['obs'])            # P  OBSERVAÇÕES
+            escr.set(ABA_AGENTES, f'P{r}', ln['obs'])             # P  OBSERVAÇÕES
         for j, ag in enumerate(ln.get('agentes') or []):
-            wa.cell(r, 17 + j, ag)               # Q..Z  AGENTE 1..10
+            escr.set(ABA_AGENTES, _col_letra(17 + j) + str(r), ag)   # Q..Z  AGENTE 1..10
+    return escr.bytes()
 
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()
+
+def _col_letra(n):
+    s = ''
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def _col_num(letras):
+    n = 0
+    for ch in letras:
+        n = n * 26 + (ord(ch) - 64)
+    return n
+
+
+_FMT_DATA, _FMT_HORA = 14, 20   # numFmtId embutidos do Excel: data curta, h:mm
+
+
+class _XlsxEscritor:
+    """Troca valores de células dentro do xlsx sem reescrever o resto do pacote."""
+
+    def __init__(self, caminho):
+        import zipfile
+        self._z = zipfile.ZipFile(caminho)
+        self._partes = {n: self._z.read(n) for n in self._z.namelist()}
+        wb = self._partes['xl/workbook.xml'].decode('utf-8')
+        rels = self._partes['xl/_rels/workbook.xml.rels'].decode('utf-8')
+        alvo = {m.group(1): m.group(2) for m in re.finditer(
+            r'<Relationship [^>]*Id="(rId\d+)"[^>]*Target="/?(?:xl/)?(worksheets/[^"]+)"', rels)}
+        alvo.update({m.group(2): m.group(1) for m in re.finditer(
+            r'<Relationship [^>]*Target="/?(?:xl/)?(worksheets/[^"]+)"[^>]*Id="(rId\d+)"', rels)})
+        self._aba = {}
+        for m in re.finditer(r'<sheet [^>]*?name="([^"]+)"[^>]*?r:id="(rId\d+)"', wb):
+            self._aba[m.group(1)] = 'xl/' + alvo[m.group(2)]
+        self._xml = {}
+        self._estilo_cache = {}
+        self._styles = self._partes['xl/styles.xml'].decode('utf-8')
+
+    # -- estilos: clona o xf da célula com o formato de data/hora --------------
+    def _estilo_com_formato(self, s_idx, num_fmt):
+        chave = (s_idx, num_fmt)
+        if chave in self._estilo_cache:
+            return self._estilo_cache[chave]
+        m = re.search(r'<cellXfs count="(\d+)">(.*?)</cellXfs>', self._styles, re.S)
+        xfs = re.findall(r'<xf\b[^>]*?(?:/>|>.*?</xf>)', m.group(2), re.S)
+        orig = xfs[int(s_idx)] if s_idx is not None and int(s_idx) < len(xfs) else '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+        novo = re.sub(r'numFmtId="\d+"', f'numFmtId="{num_fmt}"', orig, count=1)
+        if 'numFmtId=' not in novo:
+            novo = novo.replace('<xf ', f'<xf numFmtId="{num_fmt}" ', 1)
+        if 'applyNumberFormat=' in novo:
+            novo = re.sub(r'applyNumberFormat="\d"', 'applyNumberFormat="1"', novo, count=1)
+        else:
+            novo = novo.replace('<xf ', '<xf applyNumberFormat="1" ', 1)
+        idx = len(xfs)
+        self._styles = self._styles.replace(m.group(0),
+            f'<cellXfs count="{idx + 1}">{m.group(2)}{novo}</cellXfs>', 1)
+        self._estilo_cache[chave] = idx
+        return idx
+
+    @staticmethod
+    def _esc(t):
+        return (str(t).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+
+    def set(self, aba, ref, valor):
+        if valor is None or valor == '':
+            return
+        parte = self._aba[aba]
+        xml = self._xml.get(parte) or self._partes[parte].decode('utf-8')
+        col = re.match(r'[A-Z]+', ref).group(0)
+        lin = int(ref[len(col):])
+        fmt = None
+        if isinstance(valor, datetime):
+            valor = valor.date()
+        if isinstance(valor, date):
+            num = (valor - date(1899, 12, 30)).days
+            corpo_fn = lambda s: f'<v>{num}</v>'; fmt = _FMT_DATA; t_attr = ''
+        elif isinstance(valor, time):
+            num = (valor.hour * 3600 + valor.minute * 60 + valor.second) / 86400.0
+            corpo_fn = lambda s: f'<v>{num!r}</v>'; fmt = _FMT_HORA; t_attr = ''
+        elif isinstance(valor, bool):
+            corpo_fn = lambda s: f'<v>{int(valor)}</v>'; t_attr = ' t="b"'
+        elif isinstance(valor, (int, float)):
+            corpo_fn = lambda s: f'<v>{valor!r}</v>'; t_attr = ''
+        else:
+            texto = self._esc(valor)
+            corpo_fn = lambda s: f'<is><t xml:space="preserve">{texto}</t></is>'; t_attr = ' t="inlineStr"'
+
+        def celula(s_idx):
+            if fmt is not None:
+                s_idx = self._estilo_com_formato(s_idx, fmt)
+            s_attr = f' s="{s_idx}"' if s_idx is not None else ''
+            return f'<c r="{ref}"{s_attr}{t_attr}>{corpo_fn(s_idx)}</c>'
+
+        m = re.search(rf'<c r="{ref}"(?P<attrs>[^>]*?)(?:/>|>.*?</c>)', xml, re.S)
+        if m:
+            sm = re.search(r'\bs="(\d+)"', m.group('attrs'))
+            xml = xml[:m.start()] + celula(sm.group(1) if sm else None) + xml[m.end():]
+        else:
+            rm = re.search(rf'<row r="{lin}"[^>]*?(?:/>|>(?P<corpo>.*?)</row>)', xml, re.S)
+            nova = celula(None)
+            if rm and rm.group('corpo') is not None:
+                corpo = rm.group('corpo'); pos = len(corpo)
+                for cm in re.finditer(r'<c r="([A-Z]+)\d+"', corpo):
+                    if _col_num(cm.group(1)) > _col_num(col):
+                        pos = cm.start(); break
+                corpo = corpo[:pos] + nova + corpo[pos:]
+                inicio = rm.group(0)[:rm.group(0).index('>') + 1]
+                xml = xml[:rm.start()] + inicio + corpo + '</row>' + xml[rm.end():]
+            elif rm:
+                inicio = rm.group(0)[:-2] + '>'
+                xml = xml[:rm.start()] + inicio + nova + '</row>' + xml[rm.end():]
+            else:
+                pos = None
+                for r2 in re.finditer(r'<row r="(\d+)"', xml):
+                    if int(r2.group(1)) > lin:
+                        pos = r2.start(); break
+                if pos is None:
+                    pos = xml.index('</sheetData>')
+                xml = xml[:pos] + f'<row r="{lin}">{nova}</row>' + xml[pos:]
+        self._xml[parte] = xml
+
+    def bytes(self):
+        import zipfile
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as out:
+            for nome, conteudo in self._partes.items():
+                if nome in self._xml:
+                    conteudo = self._xml[nome].encode('utf-8')
+                elif nome == 'xl/styles.xml':
+                    conteudo = self._styles.encode('utf-8')
+                out.writestr(nome, conteudo)
+        return buf.getvalue()
 
 
 def nome_arquivo(dados, data_envio=None):
