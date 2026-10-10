@@ -4162,7 +4162,9 @@ def save_coleta_quimico(data):
             for i, am in enumerate(data['amostradores'], 1):
                 vi  = float(am.get('vazao_inicial') or 0)
                 vf  = float(am.get('vazao_final') or 0)
-                vm  = (vi + vf) / 2 if vi and vf else 0
+                # Com as duas calibrações, a média; com uma só, ela mesma (Wesley
+                # 08/10: a cadeia saía com a vazão errada quando só uma foi lida).
+                vm  = (vi + vf) / 2 if vi and vf else (vi or vf)
                 t   = _minutos_amostrados(am)
                 vol = round(vm * t, 3) if vm and t else 0
                 dv  = round(abs(vi - vf) / vi * 100, 2) if vi else 0
