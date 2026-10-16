@@ -80,7 +80,7 @@ def montar(conn, demanda_id):
         linhas += ['', 'Observações do comercial:' if origem == 'CRM' else 'Descrição da tarefa:',
                    dc['observacoes']]
     if dc.get('endereco') or dc.get('contato'):
-        linhas += ['', 'Cadastro da empresa no CRM:']
+        linhas += ['', 'Local da medição:' if dc.get('local_confirmado') else 'Cadastro da empresa no CRM:']
         linhas += [x for x in [f'Endereço: {dc["endereco"]}' if dc.get('endereco') else '',
                                f'Contato: {dc["contato"]}' if dc.get('contato') else ''] if x]
     linhas += ['', f'Portal de Medições: {PORTAL_URL}', '',
