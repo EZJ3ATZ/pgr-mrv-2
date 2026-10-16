@@ -278,6 +278,12 @@ def receber(p, teste=False):
                          f'({len(itens)} itens)', did, 'demanda', 'crm', request.remote_addr if request else None)
     except Exception as e:
         log.warning('[os_medicao] evento falhou: %s', e)
+    if criada:
+        try:
+            from .aviso_medicoes import avisar
+            avisar(did)
+        except Exception as e:
+            log.warning('[os_medicao] aviso por e-mail falhou: %s', e)
     return {'ok': True, 'demanda_id': did, 'criada': criada, 'numero_os': numero, 'prazo': prazo,
             'itens': resumo, 'avisos': avisos, 'dias_campo': dias_campo}, (201 if criada else 200)
 

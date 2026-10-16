@@ -1899,6 +1899,33 @@ def busca_demandas():
     return jsonify([row_to_dict(r) for r in rows])
 
 
+def _dados_campo_da_demanda(d):
+    """Endereço, contato e observações da OS para o técnico planejar a visita
+    (pedido do Wesley, 16/10/2026: a OS do CRM chegava sem nada disso na tela).
+    OS do CRM: `local`/`contato_local` vêm do CADASTRO da empresa no CRM e o
+    local real da medição costuma estar nas observações do comercial (Pacto x
+    Condomínio Portal do Igarapé) — por isso as duas coisas vão juntas.
+    OS do Planner: só há a descrição da tarefa."""
+    out = {'prazo': d.get('prazo') or '', 'endereco': '', 'contato': '', 'observacoes': '', 'solicitante': ''}
+    if (d.get('origem') or '') == 'crm_os' and d.get('dados_os'):
+        try:
+            p = json.loads(d['dados_os']) if isinstance(d['dados_os'], str) else (d['dados_os'] or {})
+        except Exception:
+            p = {}
+        loc, ct = p.get('local') or {}, p.get('contato_local') or {}
+        cid = '/'.join(x for x in [str(loc.get('cidade') or '').strip(), str(loc.get('uf') or '').strip()] if x)
+        out['endereco'] = ', '.join(x for x in [str(loc.get('unidade') or '').strip(),
+                                               str(loc.get('endereco') or '').strip(), cid,
+                                               str(loc.get('cep') or '').strip()] if x)
+        out['contato'] = ' · '.join(x for x in [str(ct.get(k) or '').strip()
+                                                for k in ('nome', 'telefone', 'email')] if x)
+        out['observacoes'] = str(p.get('observacoes') or '').strip()[:3000]
+        out['solicitante'] = str(p.get('solicitante_email') or '').strip()
+    else:
+        out['observacoes'] = str(d.get('descricao') or '').strip()[:3000]
+    return out
+
+
 @controle_bp.route('/demandas/por_os/<os_num>')
 def get_demanda_por_os(os_num):
     """Busca demanda pelo número de OS e retorna id, título e agentes extraídos."""
@@ -1908,12 +1935,12 @@ def get_demanda_por_os(os_num):
         os_clean = os_num.strip()
         with get_db() as conn:
             row = conn.execute(
-                "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual FROM demandas WHERE numero_os=? LIMIT 1",
+                "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual, origem, prazo, dados_os FROM demandas WHERE numero_os=? LIMIT 1",
                 (os_clean,)
             ).fetchone()
             if not row:
                 row = conn.execute(
-                    "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual FROM demandas WHERE titulo LIKE ? LIMIT 1",
+                    "SELECT id, titulo, descricao, checklist, planner_bucket, extracao_json, agentes_manual, origem, prazo, dados_os FROM demandas WHERE titulo LIKE ? LIMIT 1",
                     (f'%{os_clean}%',)
                 ).fetchone()
         if not row:
@@ -1949,6 +1976,8 @@ def get_demanda_por_os(os_num):
             'cnpj':         dem_full['cnpj'] if dem_full else '',
             'agentes':      agentes,
             'resumo':       resumo_agentes(agentes),
+            'origem':       d.get('origem') or '',
+            'dados_campo':  _dados_campo_da_demanda(d),
         })
     except Exception as e:
         import traceback
