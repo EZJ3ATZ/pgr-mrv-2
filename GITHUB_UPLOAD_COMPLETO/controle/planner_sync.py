@@ -903,6 +903,17 @@ def _sync_planner_interno(group_filter: str = None, label_filter: str = None) ->
                                 'assignee_id':     d['ms_assignee_id'],
                                 'demanda_id':      did,
                             })
+                            # E-mail ao grupo Medições (16/10/2026). Só tarefa aberta e
+                            # criada nos últimos 3 dias: um re-sync do plano inteiro não
+                            # pode virar enxurrada de aviso de OS antiga.
+                            try:
+                                from datetime import date as _date, timedelta as _td
+                                if (d['status'] != 'concluida' and d.get('criado_em_ms')
+                                        and d['criado_em_ms'] >= (_date.today() - _td(days=3)).isoformat()):
+                                    from .aviso_medicoes import avisar
+                                    avisar(did)
+                            except Exception as e:
+                                log.debug('[planner_sync] aviso e-mail %s: %s', did, e)
                         else:
                             stats['atualizadas'] += 1
 

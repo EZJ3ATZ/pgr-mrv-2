@@ -3881,6 +3881,7 @@
       <input type="text" id="plan-nv-os" placeholder="Ex: 6077430, 2A Engenharia, BRAHMA..." oninput="planOsChange(this.value)" autocomplete="off">
       <div id="plan-os-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:200;max-height:220px;overflow-y:auto;margin-top:2px;"></div>
       <div id="plan-os-info" style="display:none;margin-top:6px;padding:9px 11px;background:rgba(57,153,255,.08);border-left:3px solid #39f;border-radius:6px;font-size:.78rem;"></div>
+      <div id="plan-os-dados" style="display:none;margin-top:6px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:.8rem;line-height:1.45;"></div>
     </div>
 
     <div style="margin:-2px 0 12px;">
@@ -10713,6 +10714,7 @@ async function _planBuscarOs(os) {
     document.getElementById('plan-cnpj').value         = r.cnpj || '';
     document.getElementById('plan-demanda-id').value   = r.id || '';
     document.getElementById('plan-demanda-info').value = r.titulo ? r.titulo.substring(0,60) : 'Demanda #' + r.id;
+    _planMostrarDadosOS(r.dados_campo, r.origem);
 
     // Preencher agentes se disponíveis
     const agentes = r.agentes || [];
@@ -10765,7 +10767,7 @@ async function _planBuscarOs(os) {
         return [obj];
       });
       _planRenderizarAgentes();
-      info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — ${agentes.length} agente(s) importado(s) do Planner`;
+      info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — ${agentes.length} agente(s) importado(s) ${r.origem === 'crm_os' ? 'da OS do CRM' : 'do Planner'}`;
     } else {
       info.innerHTML = `<b>✅ ${_esc(r.empresa_nome||'Empresa vinculada')}</b> — OS encontrada. Adicione os agentes manualmente.`;
     }
@@ -10783,6 +10785,30 @@ function _planLimparDemanda() {
   document.getElementById('plan-demanda-info').value = '';
   const info = document.getElementById('plan-os-info');
   if (info) info.style.display = 'none';
+  _planMostrarDadosOS(null);
+}
+
+// Endereço, contato e observações da OS (pedido do Wesley, 16/10/2026).
+// Na OS do CRM o endereço/contato são do CADASTRO da empresa; o local real da
+// medição costuma estar nas observações do comercial, por isso elas vêm primeiro.
+function _planMostrarDadosOS(dc, origem) {
+  const box = document.getElementById('plan-os-dados');
+  if (!box) return;
+  if (!dc || !(dc.observacoes || dc.endereco || dc.contato)) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const lin = (rot, val) => val ? `<div><span style="color:var(--text3);">${rot}:</span> ${_esc(val)}</div>` : '';
+  const prazo = dc.prazo ? String(dc.prazo).slice(0, 10).split('-').reverse().join('/') : '';
+  let h = '<div style="font-weight:700;margin-bottom:6px;">📍 Dados da OS</div>';
+  if (dc.observacoes) {
+    h += `<div style="color:var(--text3);font-size:.74rem;">${origem === 'crm_os' ? 'Observações do comercial (local da medição e contato no cliente)' : 'Descrição da tarefa'}</div>`
+       + `<div style="white-space:pre-wrap;margin:2px 0 8px;max-height:220px;overflow-y:auto;overflow-wrap:anywhere;">${_esc(dc.observacoes)}</div>`;
+  }
+  if (dc.endereco || dc.contato) {
+    h += `<div style="color:var(--text3);font-size:.74rem;margin-bottom:2px;">Cadastro da empresa no CRM</div>`
+       + lin('Endereço', dc.endereco) + lin('Contato', dc.contato);
+  }
+  h += lin('Prazo', prazo) + lin('Aberta por', dc.solicitante);
+  box.innerHTML = h;
+  box.style.display = 'block';
 }
 
 // ── Empresa por contrato (planejamento SEM OS) ─────────────────────────
