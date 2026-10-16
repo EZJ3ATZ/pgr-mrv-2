@@ -1906,7 +1906,8 @@ def _dados_campo_da_demanda(d):
     local real da medição costuma estar nas observações do comercial (Pacto x
     Condomínio Portal do Igarapé) — por isso as duas coisas vão juntas.
     OS do Planner: só há a descrição da tarefa."""
-    out = {'prazo': d.get('prazo') or '', 'endereco': '', 'contato': '', 'observacoes': '', 'solicitante': ''}
+    out = {'prazo': d.get('prazo') or '', 'endereco': '', 'contato': '', 'observacoes': '', 'solicitante': '',
+           'local_confirmado': False}
     if (d.get('origem') or '') == 'crm_os' and d.get('dados_os'):
         try:
             p = json.loads(d['dados_os']) if isinstance(d['dados_os'], str) else (d['dados_os'] or {})
@@ -1921,6 +1922,8 @@ def _dados_campo_da_demanda(d):
                                                 for k in ('nome', 'telefone', 'email')] if x)
         out['observacoes'] = str(p.get('observacoes') or '').strip()[:3000]
         out['solicitante'] = str(p.get('solicitante_email') or '').strip()
+        # Local corrigido à mão para o lugar da medição (Pacto -> condomínio em Igarapé, 16/10).
+        out['local_confirmado'] = bool(p.get('local_confirmado'))
     else:
         out['observacoes'] = str(d.get('descricao') or '').strip()[:3000]
     return out
