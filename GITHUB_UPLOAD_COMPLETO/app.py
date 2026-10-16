@@ -286,6 +286,23 @@ def _start_planner_scheduler():
             replace_existing=True,
             max_instances=1,
         )
+
+        # OS de medição anda no OCP Conecta conforme anda aqui (16/10/2026).
+        def _conecta_os_job():
+            try:
+                from controle.conecta_os import sincronizar
+                r = sincronizar()
+                if r.get('feitos') or r.get('erros'):
+                    print(f'[conecta_os] feitos={r.get("feitos")} erros={r.get("erros")}')
+            except Exception as e:
+                print(f'[conecta_os] erro: {e}')
+
+        scheduler.add_job(
+            _conecta_os_job,
+            trigger=IntervalTrigger(minutes=15, start_date=_dt.now() + _td(minutes=2)),
+            id='conecta_os', name='OS de medição no OCP Conecta', replace_existing=True,
+            max_instances=1,
+        )
         # Consistência: roda 1x/dia às 06:00 UTC
         def _consistencia_job():
             try:
