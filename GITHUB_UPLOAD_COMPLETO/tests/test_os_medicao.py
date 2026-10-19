@@ -255,3 +255,19 @@ def test_cnpj_pontuado_no_cadastro_casa_com_o_cnpj_so_digitos_do_crm():
     d = _casamento(_post(_payload(origem='neg-osmed-arames',
                                   empresa={'nome': 'ARAMES TESTE LTDA', 'cnpj': '61000111000122'})))
     assert (d['empresa_id'], d['empresa_match_metodo']) == (eid, 'cnpj')
+
+
+def test_aviso_de_os_aberta_no_planner_acha_a_empresa_antiga_sem_cnpj():
+    # 19/10/2026: a OS da Mineral não avisou da 6470825 aberta na "Mineral do Brasil" (sem CNPJ)
+    with get_db() as conn:
+        r = conn.execute("SELECT id FROM empresas WHERE nome='Mineral do Brasil' AND cnpj IS NULL").fetchone()
+    antiga = r['id'] if r else _empresa('Mineral do Brasil')
+    with get_db() as conn:
+        pid = conn.execute("INSERT INTO demandas (numero_os, empresa_id, status, origem) "
+                           "VALUES ('6470825', ?, 'em_andamento', 'planner')", (antiga,)).lastrowid
+    try:
+        d = _post(_payload(origem='neg-osmed-mineral-aviso', teste=True, empresa=dict(MINERAL))).get_json()
+        assert any(f'#{pid}' in a and '6470825' in a for a in d['avisos']), d['avisos']
+    finally:
+        with get_db() as conn:
+            conn.execute('DELETE FROM demandas WHERE id=?', (pid,))

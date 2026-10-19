@@ -18,6 +18,7 @@ Rotas (auth server-to-server pelo `x-crm-secret`, ver `_require_login`):
 import json
 import logging
 import os
+import re
 from datetime import date, timedelta
 
 from flask import jsonify, request
@@ -150,11 +151,22 @@ def avisos_de_duplicidade(p):
                               f'Confira para não medir duas vezes.')
                 revisar = 1
         if not revisar and (cnpj or nome):
+            # Mesma empresa = CNPJ pelos dígitos ou `chave_nome` igual (sem LTDA,
+            # acento e caixa), com ou sem CNPJ: rede mais larga que a do casamento,
+            # porque aqui é só aviso. Comparava letra a letra e, em 19/10/2026, a OS
+            # "MINERAL DO BRASIL LTDA" não avisou da 6470825 aberta na "Mineral do
+            # Brasil", que não tinha CNPJ.
+            from .empresa_match import chave_nome
+            cnpj_dig, chave = re.sub(r'\D', '', cnpj), chave_nome(nome)
+            ids = [e['id'] for e in map(row_to_dict, conn.execute(
+                       'SELECT id, nome, cnpj FROM empresas').fetchall())
+                   if (cnpj_dig and re.sub(r'\D', '', e['cnpj'] or '') == cnpj_dig)
+                   or (chave and chave_nome(e['nome']) == chave)]
             rows = conn.execute(
-                "SELECT d.id, d.numero_os FROM demandas d JOIN empresas e ON e.id=d.empresa_id "
-                "WHERE d.origem='planner' AND d.status IN ('aberta','em_andamento','pendente') "
-                "AND ((? <> '' AND e.cnpj=?) OR e.nome=?) ORDER BY d.id DESC LIMIT 3",
-                (cnpj, cnpj, nome)).fetchall()
+                "SELECT id, numero_os FROM demandas WHERE origem='planner' "
+                "AND status IN ('aberta','em_andamento','pendente') "
+                f"AND empresa_id IN ({','.join('?' * len(ids))}) ORDER BY id DESC LIMIT 3",
+                ids).fetchall() if ids else []
             if rows:
                 lista = ', '.join(f'#{row_to_dict(x)["id"]} (OS {row_to_dict(x)["numero_os"] or "sem nº"})' for x in rows)
                 avisos.append(f'Esta empresa já tem OS de medição aberta pelo Planner: {lista}. '
