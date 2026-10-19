@@ -4097,7 +4097,9 @@
       <div class="nv-g3 nv-f" style="margin-bottom:12px;">
         <div><label>Unidade / Obra</label><input type="text" id="nv-unidade" placeholder="Ex: Parque Canoas"></div>
         <div><label>Cidade</label><input type="text" id="nv-cidade" placeholder="Ex: Canoas - RS"></div>
-        <div><label>Responsável na Empresa</label><input type="text" id="nv-resp-empresa" placeholder="Nome do responsável"></div>
+        <!-- É o acompanhante de TODAS as avaliações da visita: ruído, calor e vibração
+             não perguntam de novo (Helbert 19/10/2026). Ver _nvAcompanhante(). -->
+        <div><label>Responsável / Acompanhante</label><input type="text" id="nv-resp-empresa" placeholder="Quem acompanha as medições"></div>
       </div>
       <div class="nv-g4 nv-f" style="margin-bottom:12px;">
         <div>
@@ -4140,11 +4142,9 @@
     <div id="nv-s3-ruido" style="display:none;">
       <div class="nv-card">
         <div class="nv-card-title">Etapa 2 — Campo · Dosimetria de Ruído</div>
-        <div class="nv-g3 nv-f" style="margin-bottom:12px;">
-          <div><label>Acompanhante da Inspeção</label><input type="text" id="nv-cr-acomp" placeholder="Nome"></div>
+        <!-- O nome do acompanhante vem da Etapa 1 (Responsável / Acompanhante); aqui só o cargo. -->
+        <div class="nv-g3 nv-f">
           <div><label>Cargo do Acompanhante</label><input type="text" id="nv-cr-cargo-acomp" placeholder="Cargo"></div>
-        </div>
-        <div class="nv-g2 nv-f">
           <div><label>Hora de Início</label><input type="time" id="nv-cr-hora-ini"></div>
           <div><label>Término</label><input type="time" id="nv-cr-hora-fim"></div>
         </div>
@@ -4214,14 +4214,11 @@
              própria seção — antes os dois liam estes mesmos campos e o horário
              saía duplicado no relatório (Wesley 03/08). -->
         <div id="nv-gen-campo-row" class="nv-g2 nv-f" style="margin-bottom:12px;">
-          <div><label>Acompanhante</label><input type="text" id="nv-gen-acomp" placeholder="Nome"></div>
-          <div class="nv-g2">
-            <div><label>Hora de Início</label><input type="time" id="nv-gen-hora-ini"></div>
-            <div><label>Término</label><input type="time" id="nv-gen-hora-fim"></div>
-          </div>
+          <div><label>Hora de Início</label><input type="time" id="nv-gen-hora-ini"></div>
+          <div><label>Término</label><input type="time" id="nv-gen-hora-fim"></div>
         </div>
         <div id="nv-gen-obs-row" class="nv-f"><label>Observações de Campo</label><textarea id="nv-gen-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas, intercorrências..."></textarea></div>
-        <div id="nv-gen-split-note" style="display:none;font-size:.76rem;color:var(--blue);background:rgba(57,153,255,.08);border:1px solid rgba(57,153,255,.25);border-radius:6px;padding:7px 10px;">ℹ️ Esta visita tem <b>Calor e Vibração</b> — cada um tem acompanhante, horário e observações <b>próprios</b>, preenchidos na seção de cada agente abaixo.</div>
+        <div id="nv-gen-split-note" style="display:none;font-size:.76rem;color:var(--blue);background:rgba(57,153,255,.08);border:1px solid rgba(57,153,255,.25);border-radius:6px;padding:7px 10px;">ℹ️ Esta visita tem <b>Calor e Vibração</b> — cada um tem horário e observações <b>próprios</b>, preenchidos na seção de cada agente abaixo.</div>
       </div>
 
       <!-- Medições IBUTG (só aparece quando tipo=calor) -->
@@ -4234,11 +4231,8 @@
           <!-- Horário PRÓPRIO do calor — aparece só quando a visita tem calor E vibração -->
           <div id="nv-calor-campo-row" style="display:none;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
             <div class="nv-g2 nv-f" style="margin-bottom:10px;">
-              <div><label>Acompanhante — Calor</label><input type="text" id="nv-calor-acomp" placeholder="Nome"></div>
-              <div class="nv-g2">
-                <div><label>Hora de Início — Calor</label><input type="time" id="nv-calor-hora-ini"></div>
-                <div><label>Término — Calor</label><input type="time" id="nv-calor-hora-fim"></div>
-              </div>
+              <div><label>Hora de Início — Calor</label><input type="time" id="nv-calor-hora-ini"></div>
+              <div><label>Término — Calor</label><input type="time" id="nv-calor-hora-fim"></div>
             </div>
             <div class="nv-f"><label>Observações de Campo — Calor</label><textarea id="nv-calor-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas na medição de calor..."></textarea></div>
           </div>
@@ -4262,11 +4256,8 @@
           <!-- Horário PRÓPRIO da vibração — aparece só quando a visita tem calor E vibração -->
           <div id="nv-vibr-campo-row" style="display:none;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
             <div class="nv-g2 nv-f" style="margin-bottom:10px;">
-              <div><label>Acompanhante — Vibração</label><input type="text" id="nv-vibr-acomp" placeholder="Nome"></div>
-              <div class="nv-g2">
-                <div><label>Hora de Início — Vibração</label><input type="time" id="nv-vibr-hora-ini"></div>
-                <div><label>Término — Vibração</label><input type="time" id="nv-vibr-hora-fim"></div>
-              </div>
+              <div><label>Hora de Início — Vibração</label><input type="time" id="nv-vibr-hora-ini"></div>
+              <div><label>Término — Vibração</label><input type="time" id="nv-vibr-hora-fim"></div>
             </div>
             <div class="nv-f"><label>Observações de Campo — Vibração</label><textarea id="nv-vibr-obs" rows="2" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;color:var(--text);padding:8px 11px;font-family:inherit;font-size:.84rem;resize:vertical;" placeholder="Condições observadas na medição de vibração..."></textarea></div>
           </div>
@@ -16281,6 +16272,13 @@ function nvDraftRestore() {
   window._ctrlNvEmpresa = d.empresa || null; window._nvDemandaId = d.demandaId || null;
   ['ruido','quimico','calor','vibracao'].forEach(v => { const el = document.getElementById('nv-tipo-' + v); if (el) el.checked = _nvTipos.includes(v); });
   Object.entries(d.fields || {}).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+  // Rascunho de antes de 19/10/2026: o acompanhante podia estar só no campo
+  // de um agente, que não existe mais. Vai para o da Etapa 1 se ele estiver vazio.
+  const _resp = document.getElementById('nv-resp-empresa');
+  if (_resp && !_resp.value) {
+    const f = d.fields || {};
+    _resp.value = f['nv-cr-acomp'] || f['nv-gen-acomp'] || f['nv-calor-acomp'] || f['nv-vibr-acomp'] || '';
+  }
   try { nvTipoChange(); } catch (e) {}
   ['nvCrRenderTrabs','nvCqRenderAgentes','nvVibrRenderPontos','nvCalorRenderSetores','nvFotosRender'].forEach(fn => { try { if (typeof window[fn] === 'function') window[fn](); } catch (e) {} });
   try { nvGotoStep(d.step || 1); } catch (e) {}
@@ -16330,11 +16328,19 @@ function _nvGenPrefixo(tipo) {
   return tipo === 'calor' ? 'nv-calor' : 'nv-vibr';
 }
 
+// Acompanhante da visita: o "Responsável / Acompanhante" da Etapa 1. Ruído,
+// calor e vibração tinham cada um o seu campo e o técnico digitava o mesmo nome
+// em todos (Helbert 19/10/2026); as planilhas e a coleta seguem recebendo o
+// nome como acompanhante de cada agente, agora sempre o mesmo.
+function _nvAcompanhante() {
+  return (document.getElementById('nv-resp-empresa')?.value || '').trim();
+}
+
 // Lê acompanhante/horário/observações do tipo — da fonte certa em cada caso.
 function _nvCampoGenerico(tipo) {
   const p = _nvGenPrefixo(tipo);
   const v = id => (document.getElementById(id)?.value || '');
-  return { acomp: v(p + '-acomp'), hora_ini: v(p + '-hora-ini'),
+  return { acomp: _nvAcompanhante(), hora_ini: v(p + '-hora-ini'),
            hora_fim: v(p + '-hora-fim'), obs: v(p + '-obs') };
 }
 
@@ -16344,7 +16350,7 @@ function _nvGenSplitAplicar() {
   const split = _nvGenSplit();
   const set = (id, disp) => { const el = document.getElementById(id); if (el) el.style.display = disp; };
   if (split) {
-    ['acomp', 'hora-ini', 'hora-fim', 'obs'].forEach(campo => {
+    ['hora-ini', 'hora-fim', 'obs'].forEach(campo => {
       const src = document.getElementById('nv-gen-' + campo);
       if (!src || !src.value) return;
       ['nv-calor-', 'nv-vibr-'].forEach(pfx => {
@@ -17845,15 +17851,15 @@ async function nvSalvarMedicao() {
     // (Antes só o tipo primário era salvo; químico/calor/vibração em visitas
     //  multi-tipo eram descartados silenciosamente.)
     const campoRuido = {
-      acomp:document.getElementById('nv-cr-acomp')?.value||'', cargo_acomp:document.getElementById('nv-cr-cargo-acomp')?.value||'',
+      acomp:_nvAcompanhante(), cargo_acomp:document.getElementById('nv-cr-cargo-acomp')?.value||'',
       tecnico:document.getElementById('ctrl-nv-avaliador')?.value||'', hora_ini:document.getElementById('nv-cr-hora-ini')?.value||'',
       hora_fim:document.getElementById('nv-cr-hora-fim')?.value||'', calibrador:document.getElementById('nv-cr-calibrador')?.value||'',
       cal_ini:document.getElementById('nv-cr-cal-ini')?.value||'', cal_fim:document.getElementById('nv-cr-cal-fim')?.value||'',
       trabalhadores:_nvCrTrabs
     };
-    // Acompanhante/horário/obs vêm da fonte do PRÓPRIO tipo — numa visita com
-    // calor e vibração juntos os dois liam o mesmo campo e gravavam o mesmo
-    // horário no banco (e no relatório). Ver _nvCampoGenerico.
+    // Horário/obs vêm da fonte do PRÓPRIO tipo — numa visita com calor e
+    // vibração juntos os dois liam o mesmo campo e gravavam o mesmo horário no
+    // banco (e no relatório). O acompanhante é o da Etapa 1. Ver _nvCampoGenerico.
     const _itVibSalvar = (window._ctrlNvItens||[]).find(it => it.tipo === 'vibracao') || {};
     // pontos/regime/tipo_vibr/fonte_vibr eram campos da antiga Etapa 2 e agora
     // saem do que o técnico preencheu por setor/trabalhador na Etapa de Campo.
@@ -18090,7 +18096,7 @@ async function nvGerarRelatorioCampo() {
       return { endpoint:'/controle/relatorio/ruido',
         fname:`relatorio_campo_ruido_${_slug}.pdf`,
         payload:{ ...base,
-          acomp:        document.getElementById('nv-cr-acomp')?.value||'',
+          acomp:        _nvAcompanhante(),
           cargo_acomp:  document.getElementById('nv-cr-cargo-acomp')?.value||'',
           hora_ini:     document.getElementById('nv-cr-hora-ini')?.value||'',
           hora_fim:     document.getElementById('nv-cr-hora-fim')?.value||'',
@@ -18164,7 +18170,7 @@ async function nvGerarRelatorioCampo() {
     base,
     ruido: {
       ...base,
-      acomp:       document.getElementById('nv-cr-acomp')?.value||'',
+      acomp:       _nvAcompanhante(),
       cargo_acomp: document.getElementById('nv-cr-cargo-acomp')?.value||'',
       hora_ini:    document.getElementById('nv-cr-hora-ini')?.value||'',
       hora_fim:    document.getElementById('nv-cr-hora-fim')?.value||'',
