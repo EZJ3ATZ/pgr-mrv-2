@@ -3791,10 +3791,14 @@
         <option value="consultoria">Consultoria</option>
         <option value="treinamento">Treinamento</option>
       </select>
-      <select id="ctrl-fd-ordem" onchange="ctrlLoadDemand()">
-        <option value="empresa">A→Z (empresa)</option>
+      <!-- A ordem escolhida fica guardada no aparelho (ctrlDemandOrdemMudou) e o
+           Limpar não mexe nela: antes voltava para A→Z a cada recarga (Helbert 19/10). -->
+      <select id="ctrl-fd-ordem" onchange="ctrlDemandOrdemMudou()">
+        <option value="chegada">Chegada: mais nova primeiro</option>
+        <option value="chegada_antiga">Chegada: mais antiga primeiro</option>
         <option value="prazo">Prazo mais próximo</option>
         <option value="atrasadas">Mais atrasadas</option>
+        <option value="empresa">A→Z (empresa)</option>
       </select>
       <button onclick="ctrlDemandLimparFiltros()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 11px;color:var(--text3);font-size:.78rem;cursor:pointer;font-family:inherit;">✕ Limpar</button>
     </div>
@@ -13284,8 +13288,41 @@ async function ctrlMudarStatusAmostr(id, novoStatus, selEl) {
 
 async function ctrlDemandLimparFiltros() {
   ['ctrl-fd-empresa','ctrl-fd-os'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  ['ctrl-fd-status','ctrl-fd-bucket','ctrl-fd-tipo','ctrl-fd-ordem'].forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+  // A ordem não é filtro: fica a que o técnico escolheu.
+  ['ctrl-fd-status','ctrl-fd-bucket','ctrl-fd-tipo'].forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
   ctrlLoadDemand();
+}
+
+// Ordem da lista de Demandas / OS guardada no aparelho de quem escolheu.
+const _CTRL_ORDEM_KEY = 'ctrl_demandas_ordem';
+function ctrlDemandOrdemMudou() {
+  try { localStorage.setItem(_CTRL_ORDEM_KEY, document.getElementById('ctrl-fd-ordem').value); } catch(e) {}
+  ctrlLoadDemand();
+}
+function _ctrlDemandOrdemRestaurar() {
+  if (window._ctrlOrdemRestaurada) return;
+  window._ctrlOrdemRestaurada = true;
+  const sel = document.getElementById('ctrl-fd-ordem');
+  let salva = null;
+  try { salva = localStorage.getItem(_CTRL_ORDEM_KEY); } catch(e) {}
+  if (sel && salva && [...sel.options].some(o => o.value === salva)) sel.value = salva;
+}
+
+// Data em que a OS chegou: 'AAAA-MM-DD' (criação no Planner) ou data e hora
+// em UTC (OS que o CRM manda direto) → dd/mm, com o ano se não for o atual.
+function _ctrlChegadaFmt(s) {
+  if (!s) return '';
+  s = String(s);
+  let d;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    d = new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  } else {
+    const iso = s.replace(' ', 'T').replace(/(\.\d{3})\d*/, '$1').replace(/[+-]00(:?00)?$|Z$/, '');
+    d = new Date(iso + 'Z');
+  }
+  if (isNaN(d)) return s.slice(8, 10) + '/' + s.slice(5, 7);
+  const ano = d.getFullYear() !== new Date().getFullYear() ? '/' + d.getFullYear() : '';
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ano;
 }
 
 async function ctrlLoadBuckets() {
@@ -13328,13 +13365,14 @@ function ctrlRevisaoToggle() {
 }
 
 async function ctrlLoadDemand() {
+  _ctrlDemandOrdemRestaurar();
   const q = new URLSearchParams();
   const emp    = document.getElementById('ctrl-fd-empresa')?.value || '';
   const os     = document.getElementById('ctrl-fd-os')?.value || '';
   const st     = document.getElementById('ctrl-fd-status')?.value || '';
   const bucket = document.getElementById('ctrl-fd-bucket')?.value || '';
   const tipo   = document.getElementById('ctrl-fd-tipo')?.value || '';
-  const ordem  = document.getElementById('ctrl-fd-ordem')?.value || 'empresa';
+  const ordem  = document.getElementById('ctrl-fd-ordem')?.value || 'chegada';
   if (emp) q.set('empresa', emp);
   if (os) q.set('os', os);
   if (st) q.set('status', st);
@@ -13367,10 +13405,15 @@ async function ctrlLoadDemand() {
         else if (diff <= 7) { corUr = '#fc6'; lblUr = `prazo em ${diff}d`; }
         else                { corUr = '#999'; lblUr = `prazo em ${diff}d`; }
       }
+      // Na ordem de chegada, a data que decide a posição aparece na linha.
+      const chegou = ordem === 'chegada'
+        ? _ctrlChegadaFmt(e.chegada_pendente_nova || e.chegada_ultima)
+        : ordem === 'chegada_antiga' ? _ctrlChegadaFmt(e.chegada_pendente_antiga || e.chegada_ultima) : '';
+      const subEmp = [_esc(e.cnpj||''), chegou ? `chegou ${chegou}` : ''].filter(Boolean).join(' · ');
       return `
       <tr style="cursor:pointer;" onclick="ctrlToggleExpandDemandEmp(${e.empresa_id})">
         <td><span id="ctrl-dmarrow-${e.empresa_id}" style="display:inline-block; transition:transform .15s; color:var(--text3);">▶</span></td>
-        <td><b>${_esc(e.empresa_nome||'')}</b><br><span style="font-size:.7rem; color:var(--text3);">${_esc(e.cnpj||'')}</span></td>
+        <td><b>${_esc(e.empresa_nome||'')}</b><br><span style="font-size:.7rem; color:var(--text3);">${subEmp}</span></td>
         <td>
           <span style="color:#f80; font-weight:600;">${pend} OS pendente${pend!==1?'s':''}</span>
           ${concl > 0 ? `<span style="color:var(--text3); font-size:.75rem;"> / ${concl} concluída${concl!==1?'s':''}</span>` : ''}
