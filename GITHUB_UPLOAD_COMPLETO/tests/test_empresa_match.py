@@ -5,7 +5,7 @@ Protege contra a regressão em que 'ABC Engenharia' e 'ABC Comercio'
 normalizavam para 'abc' e casavam com score 1.0 (demanda vinculada
 à empresa errada).
 """
-from controle.empresa_match import extrair_campos, normalizar_nome, similaridade
+from controle.empresa_match import chave_nome, extrair_campos, normalizar_nome, similaridade
 
 
 # ── extrair_campos: formatos reais de título do Planner ──────────────
@@ -68,3 +68,22 @@ def test_similaridade_ramos_diferentes_nao_e_match_perfeito():
 def test_similaridade_vazio_e_zero():
     assert similaridade('', 'ABC') == 0.0
     assert similaridade('ABC', '') == 0.0
+
+
+# ── chave_nome: igualdade que casa empresa sem revisão (fix 19/10/2026) ──
+
+def test_chave_tira_forma_societaria_acento_e_caixa():
+    assert chave_nome('MINERAL DO BRASIL LTDA') == chave_nome('Mineral do Brasil') == 'mineral do brasil'
+    assert (chave_nome('Gontijo Engenharia e Fundacoes Especiais S/A')
+            == chave_nome('Gontijo - Engenharia e Fundações Especiais'))
+    assert (chave_nome('Multi Formato Distribuidora Sociedade Anônima')
+            == chave_nome('MULTI FORMATO DISTRIBUIDORA S.A.'))
+    assert chave_nome('DSA Automação Ltda - ME') == chave_nome('DSA Automacao')
+
+
+def test_chave_nao_junta_estabelecimentos_que_normalizar_nome_junta():
+    # normalizar_nome derruba "filial"/"matriz" e dígito solto: serve ao fuzzy,
+    # mas casaria a OS na ficha errada sem ninguém revisar.
+    assert normalizar_nome('XYZ Matriz') == normalizar_nome('XYZ Filial')
+    assert chave_nome('XYZ Matriz') != chave_nome('XYZ Filial')
+    assert chave_nome('Posto 1') != chave_nome('POSTO 2 LTDA')

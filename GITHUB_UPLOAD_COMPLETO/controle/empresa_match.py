@@ -108,6 +108,23 @@ def similaridade(a: str, b: str) -> float:
     return SequenceMatcher(None, na, nb).ratio()
 
 
+# Chave de IGUALDADE: casa empresa sem revisão humana, então é mais estreita que
+# `normalizar_nome` (que alimenta o fuzzy). Só a forma societária sai; "filial",
+# "matriz", dígito e letra solta FICAM — "XYZ Matriz" x "XYZ Filial" e
+# "Posto 1" x "Posto 2" são estabelecimentos diferentes, e em `normalizar_nome`
+# eles colidem.
+_FORMAS_SOCIETARIAS = {'ltda', 'limitada', 'me', 'epp', 'eireli', 'sa'}
+
+
+def chave_nome(nome: str) -> str:
+    """'MINERAL DO BRASIL LTDA' e 'Mineral do Brasil' -> 'mineral do brasil'."""
+    txt = _sem_acento(nome or '')
+    txt = re.sub(r'\bs\s*[./]\s*a\b', ' sa ', txt)              # S.A., S/A
+    txt = re.sub(r'\bsociedade\s+anonima\b', ' sa ', txt)
+    txt = re.sub(r'[^\w\s]', ' ', txt)
+    return ' '.join(p for p in txt.split() if p not in _FORMAS_SOCIETARIAS)
+
+
 # ── Extração de campos do título ──────────────────────────────────────
 
 def _limpar_nome_empresa(raw: str) -> str:
