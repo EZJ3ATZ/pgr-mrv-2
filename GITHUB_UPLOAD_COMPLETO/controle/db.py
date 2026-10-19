@@ -3612,6 +3612,14 @@ def list_operational_por_empresa(filtros=None):
                      THEN NULLIF(d.prazo,'')
                    END) AS prazo_mais_proximo,
                COALESCE(MAX(u.display_name), MAX(d.responsavel)) AS responsavel,
+               -- Chegada da OS: criação no Planner (criado_em_ms) ou, na OS que o CRM
+               -- manda direto, a entrada aqui (criado_em). Ordem de chegada pedida
+               -- pelo Helbert em 19/10/2026: as OS novas do CRM ficavam no meio da lista.
+               MAX(CASE WHEN d.status != 'concluida'
+                        THEN COALESCE(NULLIF(d.criado_em_ms,''), d.criado_em) END) AS chegada_pendente_nova,
+               MIN(CASE WHEN d.status != 'concluida'
+                        THEN COALESCE(NULLIF(d.criado_em_ms,''), d.criado_em) END) AS chegada_pendente_antiga,
+               MAX(COALESCE(NULLIF(d.criado_em_ms,''), d.criado_em)) AS chegada_ultima,
                COUNT(DISTINCT d.tipo_demanda) AS tipos_count,
                {_gcd("d.tipo_demanda")} AS tipos,
                SUM(CASE WHEN d.status!='concluida'
@@ -3654,7 +3662,18 @@ def list_operational_por_empresa(filtros=None):
     if f.get('os'):
         sql += ' AND d.numero_os LIKE ?'; params.append(f'%{f["os"]}%')
     ordem = f.get('ordem', 'empresa')
-    if ordem == 'prazo':
+    # Empresa com OS pendente vem antes da que só tem OS concluída, nas duas
+    # ordens de chegada; o desempate é a data da OS pendente.
+    _com_pendente = "CASE WHEN COUNT(DISTINCT CASE WHEN d.status!='concluida' THEN d.id END) > 0 THEN 0 ELSE 1 END"
+    if ordem == 'chegada':
+        sql += (f" GROUP BY e.id, e.nome ORDER BY {_com_pendente},"
+                " chegada_pendente_nova DESC NULLS LAST, chegada_ultima DESC NULLS LAST,"
+                " empresa_nome ASC LIMIT 500")
+    elif ordem == 'chegada_antiga':
+        sql += (f" GROUP BY e.id, e.nome ORDER BY {_com_pendente},"
+                " chegada_pendente_antiga ASC NULLS LAST, chegada_ultima ASC NULLS LAST,"
+                " empresa_nome ASC LIMIT 500")
+    elif ordem == 'prazo':
         sql += ' GROUP BY e.id, e.nome ORDER BY prazo_mais_proximo ASC NULLS LAST LIMIT 500'
     elif ordem == 'atrasadas':
         sql += ' GROUP BY e.id, e.nome ORDER BY demandas_atrasadas DESC LIMIT 500'
