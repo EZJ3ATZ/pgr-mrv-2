@@ -514,16 +514,26 @@ def abrir_os(payload, dry_run=False):
 def casar_ou_criar_empresa(conn, cnpj, nome, numero=''):
     """Empresa da OS -> (empresa_id, metodo, score, revisar).
 
-    CNPJ casa primeiro; se o nome do banco não bate com o da OS (similaridade
-    abaixo de MATCH_NOME_MIN), `revisar=1` — ver docstring abaixo. Sem CNPJ,
-    nome exato; sem nada, cria a empresa. Usada também pela OS de medição que
-    chega do CRM pronta (controle/os_medicao.py).
+    CNPJ casa primeiro, pelos dígitos; se o nome do banco não bate com o da OS
+    (similaridade abaixo de MATCH_NOME_MIN), `revisar=1` — ver docstring abaixo.
+    Sem CNPJ que case: nome exato; depois o mesmo nome sem forma societária,
+    acento e caixa (`chave_nome`) numa empresa SEM CNPJ; sem nada, cria a
+    empresa. Casou por nome uma empresa sem CNPJ: o CNPJ da OS é gravado nela.
+    Usada também pela OS de medição que chega do CRM pronta
+    (controle/os_medicao.py).
     """
-    from .empresa_match import similaridade
+    from .empresa_match import chave_nome, similaridade
     metodo, score, revisar = None, None, 0
     emp = None
-    if cnpj:
-        emp = conn.execute("SELECT id, nome FROM empresas WHERE cnpj=?", (cnpj,)).fetchone()
+    cnpj_dig = re.sub(r'\D', '', cnpj or '')
+    if cnpj_dig:
+        # Pelos dígitos: o CRM manda só números e 5 empresas guardam o CNPJ
+        # pontuado (medido 19/10/2026). `cnpj=?` não as achava e a OS criava
+        # outra empresa com o mesmo CNPJ (o índice único não pega: o texto difere).
+        emp = next((e for e in conn.execute(
+                        "SELECT id, nome, cnpj FROM empresas "
+                        "WHERE cnpj IS NOT NULL AND cnpj <> ''").fetchall()
+                    if re.sub(r'\D', '', row_to_dict(e)['cnpj']) == cnpj_dig), None)
         if emp:
             nome_banco = row_to_dict(emp).get('nome') or ''
             sim = similaridade(nome, nome_banco)
@@ -535,11 +545,42 @@ def casar_ou_criar_empresa(conn, cnpj, nome, numero=''):
             else:
                 metodo, score = 'cnpj', 1.0
     if not emp:
-        emp = conn.execute("SELECT id, nome FROM empresas WHERE nome=?", (nome,)).fetchone()
+        emp = conn.execute("SELECT id, nome, cnpj FROM empresas WHERE nome=?", (nome,)).fetchone()
         if emp:
             metodo, score = 'nome_exato', 1.0
+    if not emp:
+        # 19/10/2026: a OS MED-191026-001 ("MINERAL DO BRASIL LTDA", com CNPJ)
+        # criou uma empresa nova em vez de casar com "Mineral do Brasil", que
+        # veio do Planner sem CNPJ: a cliente em duas linhas de Demandas / OS e o
+        # histórico partido. 532 das 539 empresas não têm CNPJ, e a razão social
+        # do CRM quase nunca é letra a letra o nome que o Planner deu. Só empresa
+        # SEM CNPJ: com outro CNPJ é outro estabelecimento (ou dígito errado na
+        # OS), e criar é o seguro.
+        chave = chave_nome(nome)
+        gemeas = [e for e in conn.execute(
+                      "SELECT id, nome, cnpj FROM empresas "
+                      "WHERE cnpj IS NULL OR cnpj = '' ORDER BY id").fetchall()
+                  if chave and chave_nome(row_to_dict(e)['nome']) == chave]
+        if gemeas:
+            emp = gemeas[0]
+            metodo, score = 'nome_sem_cnpj', 1.0
+            if len(gemeas) > 1:
+                # Gêmeas antigas entre si (3 pares em 19/10/2026: Ceitel, DSA,
+                # Gontijo): a mais antiga recebe a OS e a demanda pede revisão.
+                metodo, revisar = 'nome_sem_cnpj_ambiguo', 1
+                log.warning('[orq] OS %s: "%s" casa por nome com %d empresas sem CNPJ (%s) — '
+                            'ficou na mais antiga, demanda marcada para revisão', numero, nome,
+                            len(gemeas), ', '.join(str(row_to_dict(g)['id']) for g in gemeas))
     if emp:
-        empresa_id = row_to_dict(emp)['id']
+        e = row_to_dict(emp)
+        empresa_id = e['id']
+        # Casou por nome uma empresa sem CNPJ: o da OS passa a ser dela, e a
+        # próxima OS casa direto pelo CNPJ. Gêmeas ambíguas não: qual ficha fica
+        # com o CNPJ é decisão de quem revisa. E só CNPJ completo: lixo gravado
+        # aqui tiraria a empresa do casamento por nome da OS seguinte.
+        if (metodo in ('nome_exato', 'nome_sem_cnpj') and len(cnpj_dig) == 14
+                and not (e.get('cnpj') or '').strip()):
+            conn.execute("UPDATE empresas SET cnpj=? WHERE id=?", (cnpj, empresa_id))
     else:
         conn.execute("INSERT INTO empresas (cnpj, nome) VALUES (?,?)", (cnpj or None, nome))
         empresa_id = row_to_dict(conn.execute(

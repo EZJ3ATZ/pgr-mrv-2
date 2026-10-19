@@ -40,6 +40,8 @@ def _payload(origem='neg-osmed-1', **mudar):
 def _ambiente(monkeypatch):
     monkeypatch.setenv('CRM_PLANNER_SECRET', SECRET)
     init_db()
+    with get_db() as conn:
+        ultima_empresa = conn.execute('SELECT COALESCE(MAX(id), 0) AS m FROM empresas').fetchone()['m']
     yield
     with get_db() as conn:
         ids = [row_to_dict(r)['id'] for r in conn.execute(
@@ -49,6 +51,8 @@ def _ambiente(monkeypatch):
             conn.execute('DELETE FROM coletas_ruido WHERE demanda_id=?', (did,))
             conn.execute('DELETE FROM demandas WHERE id=?', (did,))
         conn.execute("DELETE FROM empresas WHERE nome='OSMED Teste Ltda'")
+        # as empresas que o teste (ou a OS dele) criou
+        conn.execute('DELETE FROM empresas WHERE id > ?', (ultima_empresa,))
 
 
 def _post(p):
@@ -175,3 +179,79 @@ def test_mesma_os_ja_aberta_pelo_planner_vai_para_revisao():
     finally:
         with get_db() as conn:
             conn.execute("DELETE FROM demandas WHERE numero_os='7654321'")
+
+
+# ── casamento da empresa (fix 19/10/2026) ───────────────────────────────
+# A OS MED-191026-001 ("MINERAL DO BRASIL LTDA", com CNPJ) criou uma empresa
+# nova em vez de casar com "Mineral do Brasil", que veio do Planner sem CNPJ:
+# a mesma cliente em duas linhas de Demandas / OS e o histórico partido.
+MINERAL = {'nome': 'MINERAL DO BRASIL LTDA', 'cnpj': '17246638000290'}
+
+
+def _empresa(nome, cnpj=None):
+    with get_db() as conn:
+        return conn.execute('INSERT INTO empresas (nome, cnpj) VALUES (?,?)', (nome, cnpj)).lastrowid
+
+
+def _casamento(resp):
+    assert resp.status_code == 201, resp.get_json()
+    with get_db() as conn:
+        return row_to_dict(conn.execute(
+            'SELECT empresa_id, empresa_match_metodo, needs_review FROM demandas WHERE id=?',
+            (resp.get_json()['demanda_id'],)).fetchone())
+
+
+def _cnpj_da(empresa_id):
+    with get_db() as conn:
+        return conn.execute('SELECT cnpj FROM empresas WHERE id=?', (empresa_id,)).fetchone()['cnpj']
+
+
+def test_razao_social_do_crm_casa_com_a_empresa_antiga_sem_cnpj():
+    # a planilha seed traz "Mineral do Brasil" sem CNPJ, como em produção
+    with get_db() as conn:
+        r = conn.execute("SELECT id FROM empresas WHERE nome='Mineral do Brasil' AND cnpj IS NULL").fetchone()
+    antiga = r['id'] if r else _empresa('Mineral do Brasil')
+    try:
+        d = _casamento(_post(_payload(origem='neg-osmed-mineral', numero_os='MED-191026-001',
+                                      empresa=dict(MINERAL))))
+        assert (d['empresa_id'], d['empresa_match_metodo']) == (antiga, 'nome_sem_cnpj')
+        assert int(d['needs_review']) == 0
+        with get_db() as conn:
+            n = conn.execute("SELECT COUNT(*) AS c FROM empresas "
+                             "WHERE nome IN ('Mineral do Brasil', 'MINERAL DO BRASIL LTDA')").fetchone()['c']
+        assert n == 1                                   # não nasceu a segunda Mineral
+        assert _cnpj_da(antiga) == MINERAL['cnpj']      # a antiga ganhou o CNPJ...
+        d2 = _casamento(_post(_payload(origem='neg-osmed-mineral-2', empresa=dict(MINERAL))))
+        assert (d2['empresa_id'], d2['empresa_match_metodo']) == (antiga, 'cnpj')   # ...e a próxima casa por ele
+    finally:
+        with get_db() as conn:
+            conn.execute('UPDATE empresas SET cnpj=NULL WHERE id=?', (antiga,))
+
+
+def test_duas_gemeas_sem_cnpj_fica_na_mais_antiga_e_pede_revisao():
+    mais_antiga = _empresa('Fundição Gêmea Teste')
+    _empresa('Fundicao Gemea Teste Ltda')
+    d = _casamento(_post(_payload(origem='neg-osmed-gemeas',
+                                  empresa={'nome': 'FUNDIÇÃO GÊMEA TESTE LTDA', 'cnpj': '12345678000199'})))
+    assert (d['empresa_id'], d['empresa_match_metodo']) == (mais_antiga, 'nome_sem_cnpj_ambiguo')
+    assert int(d['needs_review']) == 1
+    assert not _cnpj_da(mais_antiga)                # qual ficha fica com o CNPJ é de quem revisa
+
+
+def test_outro_estabelecimento_nao_casa_por_nome():
+    _empresa('Posto Bandeira 1')                               # o número distingue
+    matriz = _empresa('Acme Filtros', '11111111000111')        # já tem outro CNPJ
+    d = _casamento(_post(_payload(origem='neg-osmed-posto',
+                                  empresa={'nome': 'POSTO BANDEIRA 2 LTDA', 'cnpj': '22222222000122'})))
+    assert d['empresa_match_metodo'] == 'criada'
+    d = _casamento(_post(_payload(origem='neg-osmed-acme',
+                                  empresa={'nome': 'ACME FILTROS LTDA', 'cnpj': '11111111000292'})))
+    assert d['empresa_match_metodo'] == 'criada' and d['empresa_id'] != matriz
+    assert _cnpj_da(matriz) == '11111111000111'
+
+
+def test_cnpj_pontuado_no_cadastro_casa_com_o_cnpj_so_digitos_do_crm():
+    eid = _empresa('Arames Teste Ltda', '61.000.111/0001-22')
+    d = _casamento(_post(_payload(origem='neg-osmed-arames',
+                                  empresa={'nome': 'ARAMES TESTE LTDA', 'cnpj': '61000111000122'})))
+    assert (d['empresa_id'], d['empresa_match_metodo']) == (eid, 'cnpj')
