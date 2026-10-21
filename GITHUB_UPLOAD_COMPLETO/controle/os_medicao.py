@@ -215,6 +215,80 @@ def _iniciada(conn, demanda_id):
     return False
 
 
+# ── Medição feita antes da OS (21/10/2026) ──────────────────────────────
+# Pergunta do Wesley na Ep-I23 Torre da Igreja: o cliente confirma o serviço, o
+# técnico mede pelo portal sem OS (planejamento e coletas com demanda_id vazio; a
+# visita junta por empresa + dia) e o comercial abre a OS depois, só para cobrar.
+# A OS nascia como demanda nova "a medir" e a medição feita ficava solta. Agora a
+# demanda que nasce da OS adota o que foi feito sem OS na mesma empresa, nos
+# agentes da OS e nos últimos JANELA_SEM_OS_DIAS dias, e vai para revisão.
+JANELA_SEM_OS_DIAS = 45
+_COLETAS_DO_TIPO = {
+    'ruido': ('coletas_ruido', None), 'quimico': ('coletas_quimico', None),
+    'particulado': ('coletas_quimico', None), 'calor': ('coletas_outros', 'calor'),
+    'vibracao_vci': ('coletas_outros', 'vibracao'), 'vibracao_vbma': ('coletas_outros', 'vibracao'),
+}
+_NOME_COLETA = {'coletas_ruido': 'ruído', 'coletas_quimico': 'químico', 'coletas_outros': 'calor/vibração'}
+_DIA_COLETA = "substr(COALESCE(NULLIF(data_coleta, ''), criado_em, ''), 1, 10)"
+_SEM_OS = '(demanda_id IS NULL OR demanda_id=0)'
+
+
+def adotar_medicao_sem_os(conn, demanda_id, empresa_id, itens):
+    """Passa para a demanda as coletas feitas sem OS na mesma empresa (só dos agentes
+    da OS), o planejamento delas e os anexos da visita. Devolve {} quando não havia
+    nada, senão {'coletas': {tabela: [ids]}, 'planejamentos': [ids], 'nota': texto}."""
+    if not empresa_id:
+        return {}
+    desde = (date.today() - timedelta(days=JANELA_SEM_OS_DIAS)).isoformat()
+    alvos = {}
+    for it in itens:
+        alvo = _COLETAS_DO_TIPO.get(it.get('tipo'))
+        if alvo:
+            alvos.setdefault(alvo[0], set()).add(alvo[1])
+    coletas, planos, visitas = {}, set(), set()
+    for tabela, subtipos in alvos.items():
+        sql = (f'SELECT id, planejamento_id, empresa_nome, {_DIA_COLETA} AS dia FROM {tabela} '
+               f'WHERE {_SEM_OS} AND empresa_id=? AND {_DIA_COLETA} >= ?')
+        params = [empresa_id, desde]
+        if None not in subtipos:
+            sql += f" AND tipo IN ({','.join('?' * len(subtipos))})"
+            params += sorted(subtipos)
+        rows = [row_to_dict(r) for r in conn.execute(sql, params).fetchall()]
+        if not rows:
+            continue
+        ids = [r['id'] for r in rows]
+        conn.execute(f"UPDATE {tabela} SET demanda_id=? WHERE id IN ({','.join('?' * len(ids))})",
+                     [demanda_id] + ids)
+        coletas[tabela] = ids
+        planos.update(r['planejamento_id'] for r in rows if r.get('planejamento_id'))
+        visitas.update(((r.get('empresa_nome') or '').strip().lower(), r['dia']) for r in rows)
+    if not coletas:
+        return {}
+    planos = sorted(planos)
+    if planos:
+        conn.execute(f"UPDATE planejamentos SET demanda_id=? WHERE {_SEM_OS} "
+                     f"AND id IN ({','.join('?' * len(planos))})", [demanda_id] + planos)
+    # Fotos e assinaturas seguem a chave da visita (empresa + dia sem OS). Só mudam
+    # junto quando nada daquela visita ficou sem OS, senão a parte que ficou perde os anexos.
+    for empresa_nome, dia in sorted(visitas):
+        sobrou = any(conn.execute(f'SELECT 1 FROM {t} WHERE {_SEM_OS} AND empresa_id=? AND {_DIA_COLETA}=? LIMIT 1',
+                                  (empresa_id, dia)).fetchone()
+                     for t in ('coletas_ruido', 'coletas_quimico', 'coletas_outros'))
+        if not sobrou:
+            conn.execute(f"UPDATE visita_anexos SET demanda_id=? WHERE {_SEM_OS} "
+                         "AND LOWER(COALESCE(empresa_nome,''))=? AND substr(COALESCE(data_coleta,''),1,10)=?",
+                         (demanda_id, empresa_nome, dia))
+    dias = ', '.join(f'{d[8:10]}/{d[5:7]}' for d in sorted({d for _, d in visitas}))
+    feito = ', '.join(f'{_NOME_COLETA[t]} {len(ids)}' for t, ids in coletas.items())
+    nota = (f'Medição feita antes da OS juntada a esta demanda: coletas de {feito} em {dias}'
+            + (f', planejamento #{", #".join(map(str, planos))}' if planos else '')
+            + '. Confira se é desta OS e dê baixa nos itens medidos.')
+    conn.execute("UPDATE demandas SET descricao=COALESCE(descricao, '') || ?, needs_review=1, "
+                 "status=CASE WHEN status IN ('aberta', 'pendente') THEN 'em_andamento' ELSE status END "
+                 "WHERE id=?", ('\nConferir: ' + nota, demanda_id))
+    return {'coletas': coletas, 'planejamentos': planos, 'nota': nota}
+
+
 def receber(p, teste=False):
     """Recebe a OS de medição. Devolve (corpo, status_http)."""
     erros, itens, avisos, dias_campo = validar(p)
@@ -285,9 +359,24 @@ def receber(p, teste=False):
             conn.execute("INSERT INTO medicoes (demanda_id, agente, qtd_pontos_prevista, qtd_pontos_feita, "
                          "status, observacao) VALUES (?,?,?,0,'pendente',?)",
                          (did, it['agente'], it['quantidade'], it['observacao'] or None))
+        juntou = {}
+        if criada:
+            # SAVEPOINT: no Postgres um erro aqui abortaria a transação e levaria a OS junto
+            conn.execute('SAVEPOINT sp_sem_os')
+            try:
+                juntou = adotar_medicao_sem_os(conn, did, empresa_id, itens)
+                conn.execute('RELEASE SAVEPOINT sp_sem_os')
+            except Exception as e:   # juntar é ajuda; a OS entra mesmo assim
+                conn.execute('ROLLBACK TO SAVEPOINT sp_sem_os')
+                conn.execute('RELEASE SAVEPOINT sp_sem_os')
+                juntou = {}
+                log.warning('[os_medicao] juntar medição feita sem OS falhou: %s', e)
+        if juntou:
+            avisos.append(juntou['nota'])
     try:
         registrar_evento('os_medicao_crm', f'{"Criada" if criada else "Atualizada"}: {titulo} '
-                         f'({len(itens)} itens)', did, 'demanda', 'crm', request.remote_addr if request else None)
+                         f'({len(itens)} itens)' + (' · juntou a medição feita sem OS' if juntou else ''),
+                         did, 'demanda', 'crm', request.remote_addr if request else None)
     except Exception as e:
         log.warning('[os_medicao] evento falhou: %s', e)
     if criada:
