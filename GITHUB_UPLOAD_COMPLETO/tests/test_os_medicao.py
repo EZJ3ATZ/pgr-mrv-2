@@ -271,3 +271,94 @@ def test_aviso_de_os_aberta_no_planner_acha_a_empresa_antiga_sem_cnpj():
     finally:
         with get_db() as conn:
             conn.execute('DELETE FROM demandas WHERE id=?', (pid,))
+
+
+# ── medição feita antes da OS (21/10/2026) ──────────────────────────────
+# Wesley na Ep-I23 Torre da Igreja: o cliente confirma, o técnico mede pelo portal
+# sem OS e o comercial abre a OS depois, para cobrar. A OS tem que pegar a
+# medição feita, não nascer como demanda nova "a medir".
+def _sem_os(eid, nome, dia, quimico=True, anexo=True):
+    with get_db() as conn:
+        pid = conn.execute("INSERT INTO planejamentos (empresa_id, tecnico, status, criado_em) "
+                           "VALUES (?, 'Wesley Teste', 'concluido', ?)", (eid, dia + ' 08:18:00')).lastrowid
+        rid = conn.execute("INSERT INTO coletas_ruido (empresa_id, empresa_nome, tecnico, data_coleta, "
+                           "planejamento_id, criado_em) VALUES (?,?, 'Wesley Teste', ?, ?, ?)",
+                           (eid, nome, dia, pid, dia + ' 08:46:00')).lastrowid
+        qid = conn.execute("INSERT INTO coletas_quimico (empresa_id, empresa_nome, data_coleta, planejamento_id, "
+                           "criado_em) VALUES (?,?,?,?,?)", (eid, nome, dia, pid, dia + ' 08:46:00')).lastrowid if quimico else None
+        aid = conn.execute("INSERT INTO visita_anexos (empresa_nome, data_coleta, tipo, seq, data_b64) "
+                           "VALUES (?, ?, 'foto', 1, 'eA==')", (nome, dia)).lastrowid if anexo else None
+    return pid, rid, qid, aid
+
+
+def _demanda_de(tabela, rid):
+    with get_db() as conn:
+        return conn.execute(f'SELECT demanda_id FROM {tabela} WHERE id=?', (rid,)).fetchone()['demanda_id']
+
+
+def _limpa_sem_os(eids):
+    with get_db() as conn:
+        for t in ('coletas_ruido', 'coletas_quimico', 'planejamentos'):
+            conn.execute(f"DELETE FROM {t} WHERE empresa_id IN ({','.join('?' * len(eids))})", eids)
+        conn.execute("DELETE FROM visita_anexos WHERE empresa_nome LIKE 'Torre Teste%'")
+
+
+def test_os_que_chega_depois_junta_a_medicao_feita_sem_os():
+    from datetime import date, timedelta
+    hoje = date.today().isoformat()
+    eid = _empresa('Torre Teste Empreendimento Ltda', '41.222.333/0001-44')
+    outra = _empresa('Torre Teste Vizinha Ltda', '41.222.333/0001-55')
+    pid, rid, qid, aid = _sem_os(eid, 'Torre Teste Empreendimento Ltda', hoje)
+    _, velha, _, _ = _sem_os(eid, 'Torre Teste Empreendimento Ltda',
+                             (date.today() - timedelta(days=90)).isoformat(), quimico=False, anexo=False)
+    _, alheia, _, _ = _sem_os(outra, 'Torre Teste Vizinha Ltda', hoje, quimico=False, anexo=False)
+    try:
+        r = _post(_payload(origem='neg-osmed-semos', empresa={'nome': 'TORRE TESTE EMPREENDIMENTO LTDA',
+                                                              'cnpj': '41222333000144'},
+                           itens=[{'produto': 'Ruído', 'quantidade': 2}]))
+        assert r.status_code == 201, r.get_json()
+        did = r.get_json()['demanda_id']
+        assert any('feita antes da OS' in a for a in r.get_json()['avisos'])
+        assert _demanda_de('coletas_ruido', rid) == did          # a medição de hoje entrou na OS
+        assert _demanda_de('planejamentos', pid) == did           # e o planejamento dela
+        assert not _demanda_de('coletas_quimico', qid)            # químico não está nesta OS: fica
+        assert not _demanda_de('visita_anexos', aid)              # a visita ficou com parte sem OS: anexos ficam
+        assert not _demanda_de('coletas_ruido', velha)            # fora da janela
+        assert not _demanda_de('coletas_ruido', alheia)           # outra empresa
+        with get_db() as conn:
+            d = row_to_dict(conn.execute('SELECT status, needs_review, descricao FROM demandas WHERE id=?',
+                                         (did,)).fetchone())
+        assert d['status'] == 'em_andamento' and int(d['needs_review']) == 1
+        assert 'feita antes da OS' in d['descricao'] and 'ruído 1' in d['descricao']
+    finally:
+        _limpa_sem_os([eid, outra])
+
+
+def test_os_com_todos_os_agentes_leva_tambem_os_anexos_da_visita():
+    from datetime import date
+    hoje = date.today().isoformat()
+    eid = _empresa('Torre Teste Dois Ltda', '41.222.333/0001-66')
+    pid, rid, qid, aid = _sem_os(eid, 'Torre Teste Dois Ltda', hoje)
+    try:
+        r = _post(_payload(origem='neg-osmed-semos-2', empresa={'nome': 'TORRE TESTE DOIS LTDA',
+                                                                'cnpj': '41222333000166'},
+                           itens=[{'produto': 'Ruído', 'quantidade': 1},
+                                  {'produto': 'Álcool Metílico (Metanol)', 'quantidade': 1}]))
+        did = r.get_json()['demanda_id']
+        assert (_demanda_de('coletas_ruido', rid), _demanda_de('coletas_quimico', qid),
+                _demanda_de('visita_anexos', aid)) == (did, did, did)
+    finally:
+        _limpa_sem_os([eid])
+
+
+def test_sem_medicao_feita_a_os_nasce_como_antes():
+    eid = _empresa('Torre Teste Tres Ltda', '41.222.333/0001-77')
+    r = _post(_payload(origem='neg-osmed-semos-3', empresa={'nome': 'TORRE TESTE TRES LTDA',
+                                                            'cnpj': '41222333000177'}))
+    assert r.status_code == 201
+    assert not any('feita antes da OS' in a for a in r.get_json()['avisos'])
+    with get_db() as conn:
+        d = row_to_dict(conn.execute('SELECT empresa_id, status, needs_review, descricao FROM demandas WHERE id=?',
+                                     (r.get_json()['demanda_id'],)).fetchone())
+    assert d['empresa_id'] == eid and d['status'] == 'pendente'
+    assert int(d['needs_review'] or 0) == 0 and 'feita antes da OS' not in d['descricao']
