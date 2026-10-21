@@ -275,3 +275,16 @@ def test_mesmo_numero_em_duas_fontes_ganha_bonus():
     _, conf_1, _ = extrair_os_multifonte(titulo='OS 123456')
     _, conf_2, _ = extrair_os_multifonte(titulo='OS 123456', descricao='referente à OS 123456')
     assert conf_2 > conf_1
+
+
+def test_nome_de_empresa_no_titulo_nao_vira_agente():
+    # 21/10/2026, Helbert: a OS 6745553 da "Combustol Minas Tratamento Térmico"
+    # pedia só 15 dosimetrias e o planejamento vinha com Calor (IBUTG)
+    ags = extrair_agentes_multifonte(titulo='6745553 Combustol Minas Tratamento Térmico Ltda.',
+                                     descricao='15 Dosimetria')
+    assert [a.canonical for a in ags] == ['Ruído Ocupacional']
+    assert extrair_agentes_multifonte(titulo='6700974  - Casa de Frios e Massas Ao Gosto Ltda') == []
+    # o calor de verdade continua entrando, inclusive pela "sobrecarga térmica"
+    assert 'Calor (IBUTG)' in [a.canonical for a in extrair_agentes_multifonte(descricao='- sobrecarga térmica 1 ponto')]
+    assert 'Calor (IBUTG)' in [a.canonical for a in extrair_agentes_multifonte(descricao='2 avaliações de calor IBUTG')]
+    assert 'Frio' in [a.canonical for a in extrair_agentes_multifonte(descricao='exposição ao frio na câmara')]

@@ -41,12 +41,16 @@ AGENTES_SST: Dict[str, List[str]] = {
         'nivel de ruido', 'nivel de pressao sonora', 'pressao sonora',
         'avaliacao acustica', 'avaliação acústica', 'dba',
     ],
+    # "térmico" sozinho saiu em 21/10/2026: o título do Planner é "<OS> <empresa>"
+    # e a "Combustol Minas Tratamento Térmico" ganhava Calor em toda OS (Helbert,
+    # OS 6745553, só 15 dosimetrias). "Conforto térmico" também é NR-17, não IBUTG.
+    # Nas 303 demandas de produção nenhuma descrição usava "térmico" sem "calor".
     'Calor (IBUTG)': [
         'calor', 'ibutg', 'estresse termico', 'estresse térmico',
         'calor ibutg', 'temperatura', 'nr15 calor', 'nr-15 calor',
-        'avaliacao calor', 'avaliação de calor', 'termico',
+        'avaliacao calor', 'avaliação de calor',
         'condicoes termicas', 'condições térmicas', 'avaliacao termica',
-        'avaliação térmica', 'heat stress',
+        'avaliação térmica', 'sobrecarga termica', 'sobrecarga térmica', 'heat stress',
     ],
     'Vibração de Corpo Inteiro (VCI)': [
         'vibracao corpo inteiro', 'vibração corpo inteiro',
@@ -725,6 +729,9 @@ _ALIASES_AMBIGUOS  = {'co', 'pb', 'mn', 'ni', 'cd', 'hg', 'uv', 'iv'}
 # solto (o agente é sempre detectado pelo nome por extenso: "arsênio", "umidade",
 # "ergonomia"). Sem isto, o artigo "as" de qualquer texto virava "Arsênio".
 _ALIAS_PALAVRA_PT  = {'as', 'ur', 'ler'}
+# Alias de 4+ letras que só vale como PALAVRA INTEIRA (o longo casa por substring):
+# "Casa de Frios e Massas" (OS 6700974) virava o agente Frio (21/10/2026).
+_ALIAS_PALAVRA_INTEIRA = {'frio'}
 
 
 def _upsert_max(
@@ -976,7 +983,7 @@ def _extrair_agentes_de_texto(
         # ("GGAL - 8 Ruídos ... GCM - 4 Ruídos"): dentro de UM texto as menções
         # SOMAM; entre aliases do mesmo canonical vale o MÁXIMO (o alias curto
         # re-casa as mesmas menções do longo — somar somas duplicaria).
-        if len(alias) < _ALIAS_CURTO_MINLEN:
+        if len(alias) < _ALIAS_CURTO_MINLEN or alias in _ALIAS_PALAVRA_INTEIRA:
             if alias in _ALIASES_AMBIGUOS:
                 # Símbolo/sigla (CO, UV, Pb...): só conta em MAIÚSCULA no texto
                 # original — distingue o símbolo de uma sílaba qualquer.
