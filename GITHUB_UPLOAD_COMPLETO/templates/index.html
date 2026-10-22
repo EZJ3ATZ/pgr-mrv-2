@@ -4554,6 +4554,7 @@
         <option value="coleta_quimico_criada">Coletas Químico</option>
         <option value="coleta_calor_criada">Coletas de Calor</option>
         <option value="coleta_vibracao_criada">Coletas de Vibração</option>
+        <option value="vazao_final_completada">Vazão final completada</option>
         <option value="planejamento_criado">Planejamentos</option>
         <option value="amostrador_criado">Amostrador criado</option>
         <option value="amostrador_atualizado">Amostrador atualizado</option>
@@ -5164,6 +5165,7 @@
       {% endif %}
     {% endif %}
   </div>
+  <div id="pf-vf-pend" style="display:none;margin-bottom:18px;"></div>
   <div id="pf-lista"><div style="color:var(--text3);font-size:.85rem;padding:10px 0;">Carregando...</div></div>
 </div>
 </div>
@@ -10005,7 +10007,7 @@ function ctrlFecharEmail() {
 const _NOTIF_ICON = {
   login:'🔑', logout:'🚪', amostrador_criado:'➕', amostrador_atualizado:'✏️',
   sync_planner:'🔄', importacao:'📥', coleta_ruido_criada:'🔊', coleta_quimico_criada:'🧪',
-  coleta_calor_criada:'🌡️', coleta_vibracao_criada:'📳',
+  coleta_calor_criada:'🌡️', coleta_vibracao_criada:'📳', vazao_final_completada:'💧',
   planejamento_criado:'📋', os_concluida:'✅', laudo_gerado:'📄', medicao_salva:'📊',
   demanda_baixa_manual:'✅', demanda_baixa_rapida:'⚡', limpeza_demandas:'🧹', erro_sync:'❌', demanda_criada_planner:'🆕',
   empresa_nova_planner:'🏢', empresa_fantasma_excluida:'🗑️', aviso_atualizacao:'📢',
@@ -10016,6 +10018,7 @@ const _NOTIF_LABEL = {
   importacao:'Importação', coleta_ruido_criada:'Coleta de Ruído',
   coleta_quimico_criada:'Coleta Químico',
   coleta_calor_criada:'Coleta de Calor', coleta_vibracao_criada:'Coleta de Vibração',
+  vazao_final_completada:'Vazão final completada',
   planejamento_criado:'Planejamento',
   os_concluida:'OS Concluída', laudo_gerado:'Laudo gerado', medicao_salva:'Medição salva',
   demanda_baixa_manual:'Baixa de OS', demanda_baixa_rapida:'Baixa rápida (sem amostrador)', limpeza_demandas:'Limpeza DB', erro_sync:'Erro de sync',
@@ -10351,7 +10354,7 @@ async function ctrlLoadAudit() {
       login: '🔑', logout: '🚪',
       amostrador_criado: '➕', amostrador_atualizado: '✏️',
       sync_planner: '🔄', importacao: '📥',
-      coleta_ruido_criada: '🔊', coleta_quimico_criada: '🧪',
+      coleta_ruido_criada: '🔊', coleta_quimico_criada: '🧪', vazao_final_completada: '💧',
       planejamento_criado: '📋', os_concluida: '✅',
       laudo_gerado: '📄', medicao_salva: '📊',
       limpeza_demandas: '🧹', erro_sync: '❌',
@@ -10360,7 +10363,7 @@ async function ctrlLoadAudit() {
       login: '#22c55e', logout: '#f59e0b',
       amostrador_criado: '#3b82f6', amostrador_atualizado: '#a78bfa',
       sync_planner: '#f59e0b', importacao: '#22c55e',
-      coleta_ruido_criada: '#22c55e', coleta_quimico_criada: '#3b82f6',
+      coleta_ruido_criada: '#22c55e', coleta_quimico_criada: '#3b82f6', vazao_final_completada: '#06b6d4',
       planejamento_criado: '#39f', os_concluida: '#22c55e',
       laudo_gerado: '#f59e0b', medicao_salva: '#8b5cf6',
       limpeza_demandas: '#6b7280', erro_sync: '#ef4444',
@@ -10370,6 +10373,7 @@ async function ctrlLoadAudit() {
       amostrador_criado: 'Amostrador criado', amostrador_atualizado: 'Amostrador atualizado',
       sync_planner: 'Sync Planner', importacao: 'Importação',
       coleta_ruido_criada: 'Coleta de Ruído', coleta_quimico_criada: 'Coleta Químico',
+      vazao_final_completada: 'Vazão final completada',
       planejamento_criado: 'Planejamento', os_concluida: 'OS Concluída',
       laudo_gerado: 'Laudo gerado', medicao_salva: 'Medição salva',
       limpeza_demandas: 'Limpeza DB', erro_sync: 'Erro de sync',
@@ -11584,9 +11588,61 @@ async function planilhasLoad() {
     const r = await ctrlFetch('/controle/coletas/visitas');
     _pfDados = Array.isArray(r) ? r : [];
     planilhasRender();
+    pfVazaoPendLoad();
   } catch(e) {
     if (lista) lista.innerHTML = `<div style="color:var(--red);font-size:.85rem;">Erro: ${e.message}</div>`;
   }
+}
+
+// Vazão final pendente: a planilha de campo finaliza com ela em branco e o
+// técnico completa aqui, depois do cálculo no escritório (Wesley 21/10).
+// O servidor recalcula Vm, volume e ΔV do tubo.
+async function pfVazaoPendLoad() {
+  const box = document.getElementById('pf-vf-pend');
+  if (!box) return;
+  let r;
+  try { r = await ctrlFetch('/controle/coletas/quimico/vazao-pendente'); }
+  catch(e) { box.style.display = 'none'; return; }
+  const itens = (r && r.itens) || [];
+  if (!itens.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const fmtData = (s) => { if(!s) return '—'; const p=String(s).slice(0,10).split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; };
+  const n = (v) => (v === null || v === undefined || v === '') ? '—' : String(v).replace('.', ',');
+  box.style.display = '';
+  box.innerHTML = `
+    <div style="border:1px solid var(--border);border-left:3px solid #06b6d4;border-radius:8px;padding:12px 14px;background:var(--surface);">
+      <div style="font-weight:700;font-size:.9rem;margin-bottom:2px;">💧 Vazão final pendente <span style="color:var(--text3);font-weight:500;">(${itens.length})</span></div>
+      <div style="font-size:.76rem;color:var(--text3);margin-bottom:10px;">Amostradores finalizados no campo sem a vazão final. Informe e salve: Vm, volume e ΔV são recalculados.</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${itens.map(a => `
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:7px 0;border-top:1px solid var(--border);font-size:.8rem;">
+            <span style="color:var(--text2);white-space:nowrap;">${fmtData(a.data_coleta)}</span>
+            <span style="font-weight:700;white-space:nowrap;">${_esc(a.id_amostrador)||'—'}</span>
+            <span style="flex:1 1 180px;min-width:0;color:var(--text2);">${_esc(a.empresa_nome)||'—'}${a.nome_funcionario?' · '+_esc(a.nome_funcionario):''}</span>
+            <span style="white-space:nowrap;color:var(--text2);">Vi ${n(a.vazao_inicial)}</span>
+            <span style="display:flex;gap:6px;align-items:center;">
+              <input id="pf-vf-in-${a.id}" type="text" inputmode="decimal" placeholder="Vf L/min" onkeydown="if(event.key==='Enter')pfVazaoFinalSalvar(${a.id})" style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.8rem;font-family:inherit;">
+              <button onclick="pfVazaoFinalSalvar(${a.id})" style="background:#0891b2;border:none;color:#fff;border-radius:6px;padding:6px 12px;font-size:.76rem;font-weight:600;cursor:pointer;">Salvar</button>
+            </span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+async function pfVazaoFinalSalvar(aid) {
+  const inp = document.getElementById('pf-vf-in-' + aid);
+  const v = (inp?.value || '').trim();
+  if (!v) { inp?.focus(); return; }
+  try {
+    const r = await ctrlFetch(`/controle/coletas/quimico/amostr/${aid}/vazao-final`,
+                              { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vazao_final: v }) });
+    if (r && r.ok) {
+      const br = (x) => String(x).replace('.', ',');
+      const dv = (r.variacao_vazao === null || r.variacao_vazao === undefined) ? '' : ` · ΔV ${br(r.variacao_vazao)}%`;
+      _showToast(`Vazão final salva · Vm ${br(r.vazao_media)} L/min · volume ${br(r.volume_l)} L${dv}`,
+                 r.status_variacao === 'divergente' ? 'warn' : 'success');
+      pfVazaoPendLoad();
+    } else { alert((r && r.erro) || 'Não foi possível salvar a vazão final.'); }
+  } catch(e) { alert(e.message || 'Não foi possível salvar a vazão final.'); }
 }
 
 // Admin: remove planilhas duplicadas da mesma OS, mantendo a MAIS NOVA
@@ -16495,7 +16551,7 @@ function nvShowStep3() {
             id_amostrador: _codPlano,
             tipo_amostrador: tipoAmostr,
             vazao_inicial: parseFloat(item.vazao_calibrada) || 0,
-            vazao_final: 0, hora_inicio:'', hora_final:'', intervalos:''
+            vazao_final: '', hora_inicio:'', hora_final:'', intervalos:''
           });
         }
         if (item.funcao) {
@@ -17121,7 +17177,7 @@ function nvCqAddAmostr(idx) {
   // e a conferência reprovava com "amostrador TCP não é o do método", em cima
   // de coleta certa. Vazio não reprova (`_tipo_confere` devolve None).
   const tp = _nvCqAgentes[idx]._tipo_amostr_guia || '';
-  _nvCqAgentes[idx].amostradores.push({id_amostrador:'',tipo_amostrador:tp,vazao_inicial:0,vazao_final:0,hora_inicio:'',hora_final:'',intervalos:''});
+  _nvCqAgentes[idx].amostradores.push({id_amostrador:'',tipo_amostrador:tp,vazao_inicial:0,vazao_final:'',hora_inicio:'',hora_final:'',intervalos:''});
   nvCqRenderAmostrTable(idx);
 }
 
@@ -17237,13 +17293,15 @@ function nvCqRenderAmostrTable(idx) {
     let t=0;
     if(am.hora_inicio&&am.hora_final){const[h1,m1]=am.hora_inicio.split(':').map(Number);const[h2,m2]=am.hora_final.split(':').map(Number);t=(h2*60+m2)-(h1*60+m1);(am.intervalos||'').split(/[,;]+/).forEach(iv=>{iv=iv.trim();if(iv.includes(':')){const pts=iv.split(':');t-=(parseInt(pts[0])||0)*60+(parseInt(pts[1])||0);}});if(t<0)t=0;}
     const vol=vm&&t?+(vm*t).toFixed(3):0;
-    const dv=vi?+(Math.abs(vi-vf)/vi*100).toFixed(2):0;
+    // ΔV só com as duas vazões: final em branco é PENDENTE (completa no
+    // escritório, em Planilhas Feitas), não 100 % de variação.
+    const dv=vi&&vf?+(Math.abs(vi-vf)/vi*100).toFixed(2):0;
     const dvS=dv>5?'color:#92400e;font-weight:700;background:#2a1500;':dv>0?'color:#065f46;':'';
     return `<tr>
       <td style="padding:4px;border:1px solid var(--border);text-align:center;">${ai+1}</td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.id_amostrador||''}" placeholder="ID" list="nv-cq-amostr-dl" autocomplete="off" style="${inp}width:90px;" onchange="nvCqUpdateAmostr(${idx},${ai},'id_amostrador',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_inicial||''}" placeholder="0.150" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_inicial',parseFloat(this.value)||0)"></td>
-      <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" placeholder="0.150" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_final',parseFloat(this.value)||0)"></td>
+      <td style="padding:2px;border:1px solid var(--border);"><input type="number" step="0.001" value="${am.vazao_final||''}" placeholder="opcional" title="Pode deixar em branco: completa depois em Planilhas Feitas" style="${inp}width:62px;" onchange="nvCqUpdateAmostr(${idx},${ai},'vazao_final',parseFloat(this.value)||'')"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_inicio||''}" style="${inp}width:78px;" onchange="nvCqUpdateAmostr(${idx},${ai},'hora_inicio',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="time" value="${am.hora_final||''}" style="${inp}width:78px;" onchange="nvCqUpdateAmostr(${idx},${ai},'hora_final',this.value)"></td>
       <td style="padding:2px;border:1px solid var(--border);"><input type="text" value="${am.intervalos||''}" placeholder="hh:mm" style="${inp}width:72px;" onchange="nvCqUpdateAmostr(${idx},${ai},'intervalos',this.value)"></td>
@@ -17446,6 +17504,7 @@ function _nvRunValidacoesCore(res) {
       (ag.amostradores||[]).forEach((am, ai) => {
         const vi=parseFloat(am.vazao_inicial)||0, vf=parseFloat(am.vazao_final)||0;
         if (vi&&vf) { const dv=Math.abs(vi-vf)/vi*100; checks.push({ok:dv<=5,warn:dv>5,msg:`Agente ${idx+1} Amostrador #${ai+1}: ΔV = <b>${dv.toFixed(2)}%</b>${dv>5?' ⚠ Ultrapassa ±5%!':' ✓'}`}); }
+        else if (vi && !vf) checks.push({ok:true, msg:`Agente ${idx+1} Amostrador #${ai+1}: vazão final em branco — completar depois em <b>Planilhas Feitas</b>`});
       });
     });
   }
@@ -17792,6 +17851,8 @@ function nvValidarFisicaDosTubos(agentes) {
                                      ['vazao_media', 'vazão média']]) {
         const v = num(am[campo]);
         if (v === null) continue;
+        // Vazão final 0/em branco fica pendente (completa no escritório) — espelho do servidor.
+        if (campo === 'vazao_final' && v === 0) continue;
         if (v <= 0) return `Amostrador ${cod}: ${rotulo} de ${v} L/min. A vazão tem de ser maior que zero — confira o rotâmetro.`;
         if (v > NV_VAZAO_MAX_LMIN) return `Amostrador ${cod}: ${rotulo} de ${v} L/min. Bomba de amostragem não passa de ${NV_VAZAO_MAX_LMIN} L/min — confira se faltou a vírgula (19974 no lugar de 1,9974).`;
       }

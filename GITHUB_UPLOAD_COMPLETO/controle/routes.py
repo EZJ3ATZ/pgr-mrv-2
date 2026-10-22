@@ -3999,6 +3999,66 @@ def api_coletas_dedup():
     return jsonify({'ok': True, 'removidos': len(removidos), 'detalhe': removidos})
 
 
+# Vazao final completada no escritorio. Wesley 21/10/2026: "A Vazao Final eu
+# so consigo colocar depois que faco o calculo ai no escritorio". A planilha de
+# campo finaliza com ela em branco (tubo `pendente`) e o tecnico completa aqui;
+# Vm, volume e DeltaV sao recalculados com a mesma conta do save da coleta.
+# Ferramenta do TECNICO, nao de admin: e o fluxo normal da medicao quimica.
+@controle_bp.route('/coletas/quimico/vazao-pendente')
+def api_vazao_final_pendente():
+    init_db()
+    with get_db() as conn:
+        rows = [row_to_dict(r) for r in conn.execute(
+            """SELECT cqa.id, cqa.coleta_id, cqa.id_amostrador, cqa.substancia,
+                      cqa.vazao_inicial, cqa.tempo_min, cqa.hora_inicio, cqa.hora_final,
+                      cq.empresa_nome, cq.data_coleta, cq.nome_funcionario,
+                      cq.substancias, cq.responsavel_coleta, cq.tecnico_login
+               FROM coletas_quimico_amostr cqa
+               JOIN coletas_quimico cq ON cq.id = cqa.coleta_id
+               WHERE COALESCE(cqa.vazao_final, 0) = 0
+                 AND COALESCE(cq.status, '') <> 'cancelado'
+               ORDER BY cq.data_coleta DESC, cqa.coleta_id DESC, cqa.seq""").fetchall()]
+    return jsonify({'itens': rows, 'total': len(rows)})
+
+
+@controle_bp.route('/coletas/quimico/amostr/<int:aid>/vazao-final', methods=['POST'])
+def api_completar_vazao_final(aid):
+    init_db()
+    from .db import calc_vazoes_amostrador
+    d = request.json or {}
+    vf = _safe_float(d.get('vazao_final'))
+    with get_db() as conn:
+        am = conn.execute('SELECT * FROM coletas_quimico_amostr WHERE id=?', (aid,)).fetchone()
+        if not am:
+            return jsonify({'ok': False, 'erro': 'Amostrador não encontrado.'}), 404
+        am = row_to_dict(am)
+        cod = str(am.get('id_amostrador') or '?').strip() or '?'
+        if vf is None or vf == 0:
+            return jsonify({'ok': False, 'erro':
+                            f'Amostrador {cod}: informe a vazão final em L/min.'}), 400
+        erro = _validar_fisica_dos_tubos([{'id_amostrador': cod, 'vazao_final': vf}])
+        if erro:
+            return jsonify({'ok': False, 'erro': erro}), 400
+        vi = _safe_float(am.get('vazao_inicial')) or 0
+        t = _safe_float(am.get('tempo_min')) or 0
+        vm, vol, dv, st = calc_vazoes_amostrador(vi, vf, t)
+        conn.execute(
+            'UPDATE coletas_quimico_amostr SET vazao_final=?, vazao_media=?, volume_L=?, '
+            'variacao_vazao=?, status_variacao=? WHERE id=?',
+            (vf, round(vm, 3), vol, dv, st, aid))
+        conn.execute('UPDATE coletas_quimico SET atualizado_em=CURRENT_TIMESTAMP WHERE id=?',
+                     (am.get('coleta_id'),))
+    quem = current_user.nome if current_user.is_authenticated else 'sistema'
+    try:
+        registrar_evento('vazao_final_completada',
+                         f'{cod}: vazão final {vf:g} L/min (antes {am.get("vazao_final") or "em branco"})',
+                         am.get('coleta_id'), 'coleta_quimico', quem, request.remote_addr)
+    except Exception as e:
+        log.warning('[vazao-final] evento do tubo %s falhou: %s', cod, e)
+    return jsonify({'ok': True, 'id': aid, 'vazao_final': vf, 'vazao_media': round(vm, 3),
+                    'volume_l': vol, 'variacao_vazao': dv, 'status_variacao': st})
+
+
 def _atualizar_demanda_por_coleta(demanda_id, coleta_status=None, planejamento_id=None):
     """Atualiza status da demanda quando uma coleta é salva.
     aberta → em_andamento ao criar coleta.
@@ -4795,6 +4855,11 @@ def _validar_fisica_dos_tubos(amostradores):
                               ('vazao_media', 'vazão média')):
             v = _safe_float(am.get(campo))
             if v is None:
+                continue
+            # Vazao final 0 = em branco: a tela antiga troca o vazio por 0, e
+            # a final so sai do calculo no escritorio (Wesley 21/10). Fica
+            # pendente e e completada em Planilhas Feitas.
+            if campo == 'vazao_final' and v == 0:
                 continue
             if v <= 0:
                 return (f'Amostrador {cod}: {rotulo} de {v:g} L/min. '
