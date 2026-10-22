@@ -4152,6 +4152,25 @@ def _minutos_amostrados(am):
     return t if t > 0 else 0
 
 
+def calc_vazoes_amostrador(vi, vf, t):
+    """(vazao_media, volume_L, variacao_vazao, status_variacao) de um tubo.
+
+    Com as duas calibracoes, a media; com uma so, ela mesma (Wesley 08/10: a
+    cadeia saia com a vazao errada quando so uma foi lida).
+    Vazao final em branco (0/None) e PENDENTE, nao divergente: ela so sai do
+    calculo no escritorio (Wesley 21/10). Antes gravava 0 e DeltaV de 100 %.
+    A tela de completar a vazao final usa a mesma conta."""
+    vi, vf = vi or 0, vf or 0
+    vm = (vi + vf) / 2 if vi and vf else (vi or vf)
+    vol = round(vm * t, 3) if vm and t else 0
+    if vi and vf:
+        dv = round(abs(vi - vf) / vi * 100, 2)
+        st = 'divergente' if dv > 5 else 'conforme'
+    else:
+        dv, st = None, 'pendente'
+    return vm, vol, dv, st
+
+
 def save_coleta_quimico(data):
     cid = data.get('id')
     # planejamento_id/visita_id: ver save_coleta_ruido — mesma omissao.
@@ -4181,12 +4200,8 @@ def save_coleta_quimico(data):
             for i, am in enumerate(data['amostradores'], 1):
                 vi  = float(am.get('vazao_inicial') or 0)
                 vf  = float(am.get('vazao_final') or 0)
-                # Com as duas calibrações, a média; com uma só, ela mesma (Wesley
-                # 08/10: a cadeia saía com a vazão errada quando só uma foi lida).
-                vm  = (vi + vf) / 2 if vi and vf else (vi or vf)
                 t   = _minutos_amostrados(am)
-                vol = round(vm * t, 3) if vm and t else 0
-                dv  = round(abs(vi - vf) / vi * 100, 2) if vi else 0
+                vm, vol, dv, st = calc_vazoes_amostrador(vi, vf, t)
                 conn.execute(
                     'INSERT INTO coletas_quimico_amostr '
                     '(coleta_id,seq,id_amostrador,tipo_amostrador,substancia,bomba,'
@@ -4194,8 +4209,7 @@ def save_coleta_quimico(data):
                     'intervalos,tempo_min,volume_L,variacao_vazao,status_variacao) '
                     'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     (cid, i, am.get('id_amostrador', ''), am.get('tipo_amostrador', ''),
-                     am.get('substancia', ''), am.get('bomba', ''), vi, vf, round(vm, 3),
-                     am.get('hora_inicio', ''), am.get('hora_final', ''),
-                     am.get('intervalos', ''), t, vol, dv,
-                     'divergente' if dv > 5 else 'conforme'))
+                     am.get('substancia', ''), am.get('bomba', ''), vi, (vf or None),
+                     round(vm, 3), am.get('hora_inicio', ''), am.get('hora_final', ''),
+                     am.get('intervalos', ''), t, vol, dv, st))
     return cid
