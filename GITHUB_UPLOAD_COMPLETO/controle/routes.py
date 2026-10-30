@@ -4842,6 +4842,32 @@ def _evento_coleta_criada(tipo, cid, payload, quem):
             cid, f'coleta_{familia}', quem or 'sistema', request.remote_addr)
     except Exception as e:
         log.warning('[coleta] evento de %s #%s falhou: %s', familia, cid, e)
+    _guardar_previsao_entrega(payload, quem)
+
+
+# A "Previsao de Entrega" da Etapa 1 da planilha de campo (`nv-prazo`) ia no POST
+# e o servidor descartava: nenhuma tabela guardava (medido em 30/10/2026). Ideia
+# do Helbert (28/10): com essa data o Conecta abre a tarefa de atualizar o PGR do
+# cliente, com prazo nela (conecta_os.py, marco "campo"). Vale a ultima digitada;
+# a mesma data nas outras planilhas da visita nao repete o evento.
+def _guardar_previsao_entrega(payload, quem):
+    prazo = str(payload.get('prazo') or '').strip()[:10]
+    try:
+        did = int(payload.get('demanda_id') or 0)
+        datetime.strptime(prazo, '%Y-%m-%d')
+    except (TypeError, ValueError):
+        return
+    if not did:
+        return
+    try:
+        with get_db() as conn:
+            ult = conn.execute("SELECT descricao FROM eventos WHERE tipo='previsao_entrega' AND ref_id=? "
+                               "ORDER BY id DESC LIMIT 1", (did,)).fetchone()
+        if ult and row_to_dict(ult)['descricao'] == prazo:
+            return
+        registrar_evento('previsao_entrega', prazo, did, 'demanda', quem or 'sistema', request.remote_addr)
+    except Exception as e:
+        log.warning('[coleta] previsao de entrega da demanda %s falhou: %s', did, e)
 
 
 def _validar_fisica_dos_tubos(amostradores):
