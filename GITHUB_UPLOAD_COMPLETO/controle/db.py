@@ -281,6 +281,14 @@ class _PGCursor:
     def lastrowid(self):
         return self._lastrowid
 
+    # O sqlite3 tem rowcount e o codigo usa (UPDATE condicional da baixa de
+    # medicao, devolucao de amostrador em lote). Sem ele, em producao a baixa
+    # estourava DENTRO da transacao e era desfeita: as 4 planilhas da OS
+    # LIP-161026-002 (Pacto, 30/10/2026) gravaram e nenhuma medicao baixou.
+    @property
+    def rowcount(self):
+        return self._cur.rowcount if self._cur is not None else -1
+
 
 class _PGConn:
     """Conexão psycopg2 com interface compatível com sqlite3.Connection.
