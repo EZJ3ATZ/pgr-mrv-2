@@ -4,7 +4,11 @@
 A OS de medição que o CRM abre também existe no Conecta (Portal Interno), só para
 acompanhar. Ela anda lá conforme anda aqui:
   planejamento feito  -> marco "planejada": conclui L1, executor = técnico do plano
-  demanda concluída   -> marco "concluida": conclui L2 e L3
+  campo finalizado    -> marco "campo": conclui L2 e abre a rota "Atualização do PGR
+                         pela medição" (a coordenação define quem atualiza o PGR), com
+                         a previsão de entrega da planilha de campo (Helbert, 28/10/2026)
+  demanda concluída   -> marco "concluida": conclui L3 (e o que faltar antes); se o
+                         campo não foi mandado, a rota do PGR abre aqui
 
 Roda no agendador a cada 15 min (e sob demanda), olha todas as demandas `crm_os`
 e manda ao Conecta só o marco que ainda não foi mandado (evento
@@ -25,12 +29,14 @@ from .db import get_db, row_to_dict
 log = logging.getLogger(__name__)
 
 URL_PADRAO = 'https://conectaocp.up.railway.app/api/os/medicao'
-ORDEM = {'planejada': 1, 'concluida': 2}
+ORDEM = {'planejada': 1, 'campo': 2, 'concluida': 3}
 
 
-def _marco(etapa):
+def _marco(etapa, campo_finalizado=False):
     if etapa == 'concluida':
         return 'concluida'
+    if campo_finalizado:
+        return 'campo'
     if etapa in ('planejada', 'em_campo'):
         return 'planejada'
     return None
@@ -58,7 +64,7 @@ def _post(url, chave, corpo):
 
 
 def pendentes():
-    """Lista (demanda_id, origem_id, marco, executor_email, detalhe) do que falta mandar."""
+    """Lista (demanda_id, origem_id, marco, executor_email, detalhe, previsao_entrega) do que falta mandar."""
     from .os_medicao import situacao
     with get_db() as conn:
         rows = [row_to_dict(r) for r in conn.execute(
@@ -67,19 +73,23 @@ def pendentes():
     for d in rows:
         origem_id = d['origem_ref'][4:]
         s = situacao(origem_id)
-        marco = _marco(s.get('etapa')) if s.get('encontrada') else None
+        marco = _marco(s.get('etapa'), s.get('campo_finalizado')) if s.get('encontrada') else None
         if not marco:
             continue
         with get_db() as conn:
             if _ja_mandado(conn, d['id']) >= ORDEM[marco]:
                 continue
             email = _email_do_tecnico(conn, s.get('tecnico'))
+        previsao = s.get('previsao_entrega')
         if marco == 'planejada':
             detalhe = 'planejamento feito' + (f' para {s["data_prevista"]}' if s.get('data_prevista') else '') \
                       + (f', técnico {s["tecnico"]}' if s.get('tecnico') else '')
+        elif marco == 'campo':
+            detalhe = 'campo finalizado, aguardando o laboratório' \
+                      + (f', previsão de entrega {"/".join(reversed(previsao.split("-")))}' if previsao else '')
         else:
             detalhe = 'medição concluída' + (f' em {str(s["concluida_em"])[:10]}' if s.get('concluida_em') else '')
-        out.append((d['id'], origem_id, marco, email, detalhe))
+        out.append((d['id'], origem_id, marco, email, detalhe, previsao))
     return out
 
 
@@ -89,10 +99,13 @@ def sincronizar():
         return {'ativo': False}
     url = (os.environ.get('CONECTA_OS_URL') or URL_PADRAO).strip()
     feitos, erros = [], []
-    for did, origem_id, marco, email, detalhe in pendentes():
+    for did, origem_id, marco, email, detalhe, previsao in pendentes():
         try:
-            r = _post(url, chave, {'origem': 'crm', 'origem_id': origem_id, 'marco': marco,
-                                   'executor_email': email, 'detalhe': detalhe})
+            corpo = {'origem': 'crm', 'origem_id': origem_id, 'marco': marco,
+                     'executor_email': email, 'detalhe': detalhe}
+            if previsao and marco != 'planejada':
+                corpo['prazo_entrega'] = previsao
+            r = _post(url, chave, corpo)
             if not r.get('ok'):
                 raise RuntimeError(r.get('erro') or 'resposta sem ok')
             if not r.get('encontrada'):

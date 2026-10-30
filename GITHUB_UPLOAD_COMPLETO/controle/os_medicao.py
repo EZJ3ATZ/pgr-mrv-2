@@ -407,6 +407,10 @@ def situacao(origem_id):
                                                     (d['id'],)).fetchone())['c'] or 0
             except Exception:
                 pass
+        status_med = [row_to_dict(r)['status'] for r in conn.execute(
+            'SELECT status FROM medicoes WHERE demanda_id=?', (d['id'],)).fetchall()]
+        prev = conn.execute("SELECT descricao FROM eventos WHERE tipo='previsao_entrega' AND ref_id=? "
+                            "ORDER BY id DESC LIMIT 1", (d['id'],)).fetchone()
     plano = row_to_dict(plano) if plano else None
     if d['status'] == 'concluida':
         etapa = 'concluida'
@@ -416,10 +420,15 @@ def situacao(origem_id):
         etapa = 'planejada'
     else:
         etapa = 'recebida'
+    # Campo finalizado (ideia do Helbert, 28/10/2026): toda medição prevista já saiu da planilha
+    # de campo, mesmo com o laboratório pendente ('aguardando_lab', ver _baixar_medicao_pendente).
+    # É quando o Conecta abre a tarefa de atualizar o PGR, com a previsão digitada na planilha.
+    campo_finalizado = bool(coletas and status_med and all(s in ('realizado', 'aguardando_lab') for s in status_med))
     return {'encontrada': True, 'demanda_id': d['id'], 'numero_os': d['numero_os'], 'etapa': etapa,
             'prazo': d['prazo'], 'data_prevista': (plano or {}).get('data_prevista'),
             'tecnico': (plano or {}).get('tecnico'), 'coletas': coletas,
-            'concluida_em': d.get('data_conclusao')}
+            'concluida_em': d.get('data_conclusao'), 'campo_finalizado': campo_finalizado,
+            'previsao_entrega': row_to_dict(prev)['descricao'] if prev else None}
 
 
 def _agora():
