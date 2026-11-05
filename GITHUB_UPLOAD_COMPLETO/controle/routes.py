@@ -89,20 +89,37 @@ def _parse_intervalos_min(s):
     """Soma intervalos em minutos. Aceita 'mm', 'hh:mm' e vários separados por
     vírgula/; (ex.: '0:30, 15'). Espelha o cálculo da tela do wizard — antes o
     backend fazia int(float('1:30')) e estourava, NÃO descontava o intervalo,
-    e o t/Volume do PDF saíam maiores que na tela."""
+    e o t/Volume do PDF saíam maiores que na tela.
+
+    05/11/2026 (Helbert): a pausa também vem como HORÁRIO, '12:00 13:00',
+    '12:00-13:00' ou '12:00 às 13:00' = fim − início (60 min). Antes isso dava
+    int('00 13') e o intervalo não era descontado no PDF."""
     total = 0
     for tok in str(s or '').replace(';', ',').split(','):
         tok = tok.strip()
         if not tok:
             continue
+        horas = re.findall(r'(\d{1,2}):(\d{2})', tok)
         try:
-            if ':' in tok:
+            if len(horas) >= 2:
+                total += _minutos_faixas(horas)
+            elif ':' in tok:
                 h, m = tok.split(':')[:2]
                 total += int(h) * 60 + int(m)
             else:
                 total += int(round(float(tok.replace(',', '.'))))
         except Exception:
             pass
+    return total
+
+
+def _minutos_faixas(horas):
+    """Minutos de faixas de horário [(h1, m1), (h2, m2), ...] lidas aos pares
+    (início, fim). Fim antes do início passa da meia-noite (23:30 00:30 = 60)."""
+    total = 0
+    for (h1, m1), (h2, m2) in zip(horas[0::2], horas[1::2]):
+        d = (int(h2) * 60 + int(m2)) - (int(h1) * 60 + int(m1))
+        total += d if d >= 0 else d + 1440
     return total
 
 

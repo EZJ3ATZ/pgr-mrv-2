@@ -35,6 +35,13 @@ from controle.routes import _parse_intervalos_min
     (' 20 ', 20),               # espaço em volta
     ('abc', 0),                 # lixo não derruba, só não conta
     ('0:30, abc, 15', 45),      # lixo no meio não perde os válidos
+    # pausa como horário (05/11/2026, Helbert digitou "12:00 13:00" e o t sumiu da tela)
+    ('12:00 13:00', 60),
+    ('12:00-13:00', 60),
+    ('12:00 às 13:00', 60),
+    ('12:00 13:00, 0:15', 75),  # horário e duração juntos
+    ('09:50 10:05; 12:00 13:00', 75),
+    ('23:30 00:30', 60),        # passa da meia-noite
 ])
 def test_parse_intervalos_min(entrada, minutos):
     assert _parse_intervalos_min(entrada) == minutos, \
@@ -128,3 +135,15 @@ def test_meia_noite_nao_inverte():
     assert not (b >= a), (
         'se isto passar a ser verdade, o gerador mudou e turno noturno virou '
         'suportado — atualizar este teste')
+
+
+def test_pausa_como_horario_na_cadeia():
+    """05/11/2026 (Helbert): 08:30 às 13:30 com pausa '12:00 13:00' = 240 min.
+    A conta da cadeia de custódia (db._minutos_amostrados) lia int('00 13'),
+    pulava a pausa e devolvia 300; a tela mostrava '—'."""
+    from controle.db import _minutos_amostrados
+    am = {'hora_inicio': '08:30', 'hora_final': '13:30', 'intervalos': '12:00 13:00'}
+    assert _minutos_amostrados(am) == 240
+    assert _minutos_amostrados({**am, 'intervalos': '12:00-13:00'}) == 240
+    assert _minutos_amostrados({**am, 'intervalos': '1:00'}) == 240      # duração continua valendo
+    assert _minutos_amostrados({**am, 'intervalos': ''}) == 300
