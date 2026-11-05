@@ -4150,6 +4150,13 @@ def _minutos_amostrados(am):
         return 0
     for iv in _re.split(r'[,;]+', str(am.get('intervalos') or '')):
         iv = iv.strip()
+        # pausa como horário (05/11/2026, Helbert): '12:00 13:00', '12:00-13:00' = fim − início
+        horas = _re.findall(r'(\d{1,2}):(\d{2})', iv)
+        if len(horas) >= 2:
+            for (h1, m1), (h2, m2) in zip(horas[0::2], horas[1::2]):
+                d = (int(h2) * 60 + int(m2)) - (int(h1) * 60 + int(m1))
+                t -= d if d >= 0 else d + 1440
+            continue
         if ':' not in iv:
             continue
         partes = iv.split(':')
