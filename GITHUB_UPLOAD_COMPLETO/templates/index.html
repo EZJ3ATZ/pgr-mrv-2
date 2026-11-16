@@ -11750,6 +11750,14 @@ async function equipLoad() {
         <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:12px;">${_esc(_TIPO_LABELS[tipo] || tipo)}</div>
         ${linhas}
       </div>`;
+    // Certificado de calibração em PDF (16/11/2026, Wesley): o técnico anexa aqui e o laudo usa.
+    const btnCert = 'align-self:flex-end;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:4px 10px;font-size:.72rem;cursor:pointer;font-family:inherit;';
+    const certPdf = e => e.cert_pdf
+      ? `<span style="align-self:flex-end;display:flex;gap:6px;align-items:center;">
+              <a href="/controle/equipamentos/${e.id}/certificado" target="_blank" rel="noopener" title="${_equipAttr(e.cert_pdf.nome)}" style="font-size:.74rem;color:var(--green);text-decoration:underline;padding-bottom:5px;">Certificado em PDF</a>
+              <button onclick="equipCertEscolher(${e.id})" title="Trocar o PDF do certificado" style="${btnCert}">Trocar</button>
+            </span>`
+      : `<button onclick="equipCertEscolher(${e.id})" title="Anexar o PDF do certificado de calibração" style="${btnCert}">Anexar PDF</button>`;
     const linhaEquip = e => `
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem;">
             <span style="min-width:150px;color:var(--text);font-weight:600;">${_esc(nomeDe(e))}</span>
@@ -11761,6 +11769,7 @@ async function equipLoad() {
             <label style="${lbl}">Data calibração
               <input type="date" value="${_equipAttr(e.data_calibracao)}" style="${inp}width:150px;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{data_calibracao:this.value},true)"></label>
             <span style="align-self:flex-end;padding-bottom:5px;">${_calibChip(e.data_calibracao, e.cert_validade)}</span>
+            ${certPdf(e)}
             <label style="${lbl}">Status
               <select style="${inp}width:auto;display:block;margin-top:2px;" onchange="equipSalvar(${e.id},{status:this.value})">
                 ${['disponivel','em_uso','manutencao','reservado'].map(s=>`<option value="${s}" ${e.status===s?'selected':''}>${s}</option>`).join('')}
@@ -11870,6 +11879,27 @@ async function equipAddSalvar() {
     if (t.categoria === 'equipamento' && typeof carregarCalibAlerta === 'function') carregarCalibAlerta();
   } catch(e) { falha(e.message); }
   finally { btn.disabled = false; }
+}
+
+// Certificado de calibração em PDF: escolhe o arquivo e manda para o inventário.
+// O servidor confere que é PDF, o tamanho (10 MB) e as páginas; o novo troca o antigo.
+function equipCertEscolher(id) {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'application/pdf,.pdf';
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { _showToast('O PDF passa de 10 MB', 'err'); return; }
+    const fd = new FormData();
+    fd.append('arquivo', f);
+    try {
+      await ctrlFetch('/controle/equipamentos/' + id + '/certificado', {method:'POST', body:fd});
+      _showToast('Certificado anexado', 'ok');
+      equipLoad();
+    } catch(e) { _showToast('Erro ao anexar: ' + e.message, 'err'); }
+  };
+  inp.click();
 }
 
 async function equipRemover(id) {

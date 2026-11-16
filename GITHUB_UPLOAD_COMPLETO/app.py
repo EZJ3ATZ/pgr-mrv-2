@@ -787,6 +787,27 @@ def _q_fit_extent(data, txt_w=5400040, txt_h=7811770):
     return txt_w, int(txt_w * 1.414)   # fallback A4 retrato
 
 
+def _cert_paginas_do_inventario(serie):
+    """Páginas (JPEG em data URL) do certificado de calibração em PDF que o técnico
+    anexou no inventário para o equipamento com este nº de série (16/11/2026).
+    Lista vazia se não houver ou se algo falhar: certificado faltando nunca derruba o laudo."""
+    try:
+        from controle.db import equip_cert_por_serie
+        raw = equip_cert_por_serie(serie)
+        if not raw:
+            return []
+        import fitz
+        imgs = []
+        with fitz.open(stream=raw, filetype='pdf') as doc:
+            for page in doc:
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                imgs.append('data:image/jpeg;base64,' + base64.b64encode(pix.tobytes('jpeg')).decode())
+        return imgs
+    except Exception as e:
+        print(f'[laudo] certificado do inventario ({serie}): {e}')
+        return []
+
+
 def _q_sec_head(xml, text):
     """Return (tbl_start, tbl_end) of the table that contains this section heading
     (second occurrence — first is TOC)."""
@@ -2121,6 +2142,7 @@ def gerar_quimico_bytes(d):
         if _bk and _bsn and (_bk, _bsn) not in _cert_pairs:
             _cert_pairs.append((_bk, _bsn))
     for _bk, _bsn in _cert_pairs:
+        _achou_fixo = False
         if _bk in _PUMP_CERT_PAGES and _bsn in _PUMP_CERT_PAGES[_bk]:
             for pg in range(1, _PUMP_CERT_PAGES[_bk][_bsn] + 1):
                 path = os.path.join(CERTS_DIR, f'cert_{_bk}_{_bsn}_p{pg}.jpg')
@@ -2128,6 +2150,14 @@ def gerar_quimico_bytes(d):
                     rid, iid = _q_add_file(path, extra_rels, extra_media, img_ctr)
                     with open(path, 'rb') as _cf: _cx, _cy = _q_fit_extent(_cf.read())
                     xi_new += _q_img_para(rid, iid, cx=_cx, cy=_cy)
+                    _achou_fixo = True
+        if not _achou_fixo:
+            # 16/11/2026 (Wesley): bomba nova, fora dos certificados fixos de static/certs.
+            # Vale o PDF que o técnico anexou no inventário, achado pelo nº de série.
+            for _img in _cert_paginas_do_inventario(_bsn):
+                rid, iid = _q_add_b64(_img, extra_rels, extra_media, img_ctr)
+                _cx, _cy = _q_fit_extent(base64.b64decode(_img.split(',', 1)[1]))
+                xi_new += _q_img_para(rid, iid, cx=_cx, cy=_cy)
     if calibrad and calibrad in _CALIB_CERT_PAGES:
         for pg in range(1, _CALIB_CERT_PAGES[calibrad] + 1):
             path = os.path.join(CERTS_DIR, f'cert_{calibrad}_p{pg}.jpg')
