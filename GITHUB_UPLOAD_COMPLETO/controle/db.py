@@ -1373,6 +1373,25 @@ def _migrate(conn):
     # 'manual' = cadastrado pela tela. O "Reconstruir dos certificados" apaga e
     # recria a frota dos PDFs; sem esta marca levaria junto o que o técnico cadastrou.
     _add_col(conn, 'equipamentos_inventario', 'origem', 'TEXT')
+    # Certificado de calibração em PDF, anexado pelo técnico no inventário (16/11/2026,
+    # Wesley: "consegui adicionar os aparelhos mas não os certificados de calibração").
+    # Fica no banco em base64, como as fotos da visita: arquivo gravado no disco do
+    # Railway some no deploy seguinte. Um certificado por equipamento (o novo troca o antigo).
+    _pk_cert = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+    conn.execute(f'''
+        CREATE TABLE IF NOT EXISTS equipamentos_certificados (
+            id              {_pk_cert},
+            equipamento_id  INTEGER NOT NULL,
+            nome            TEXT,
+            tamanho         INTEGER,
+            paginas         INTEGER,
+            pdf_b64         TEXT NOT NULL,
+            enviado_por     TEXT,
+            criado_em       TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_equip_cert_equip '
+                 'ON equipamentos_certificados(equipamento_id)')
 
 
     # ── amostradores ──
@@ -3075,6 +3094,67 @@ def equip_categoria(tipo):
     """Tipo fora do catálogo (legado) conta como equipamento: era o único que existia."""
     t = _EQUIP_TIPO.get(tipo)
     return t['categoria'] if t else 'equipamento'
+
+
+# ── Certificado de calibração em PDF (16/11/2026) ───────────────────────
+# Um por equipamento, guardado em base64 em `equipamentos_certificados`.
+
+def equip_cert_resumo():
+    """{equipamento_id: {nome, paginas, tamanho, criado_em}} para a lista do inventário.
+    Não traz o PDF: a lista é lida a cada abertura da tela."""
+    with get_db() as conn:
+        rows = conn.execute('SELECT equipamento_id, nome, paginas, tamanho, criado_em '
+                            'FROM equipamentos_certificados ORDER BY id').fetchall()
+    return {int(r['equipamento_id']): {k: r[k] for k in ('nome', 'paginas', 'tamanho', 'criado_em')}
+            for r in (row_to_dict(x) for x in rows)}
+
+
+def equip_cert_salvar(eid, nome, pdf_bytes, paginas, enviado_por=None):
+    """Grava o certificado do equipamento; o novo troca o antigo."""
+    import base64 as _b64
+    with get_db() as conn:
+        conn.execute('DELETE FROM equipamentos_certificados WHERE equipamento_id=?', (eid,))
+        conn.execute('INSERT INTO equipamentos_certificados '
+                     '(equipamento_id, nome, tamanho, paginas, pdf_b64, enviado_por) VALUES (?,?,?,?,?,?)',
+                     (eid, nome, len(pdf_bytes), paginas, _b64.b64encode(pdf_bytes).decode('ascii'),
+                      enviado_por))
+
+
+def equip_cert_get(eid):
+    """(nome, bytes do PDF) do certificado do equipamento, ou None."""
+    import base64 as _b64
+    with get_db() as conn:
+        row = conn.execute('SELECT nome, pdf_b64 FROM equipamentos_certificados '
+                           'WHERE equipamento_id=? ORDER BY id DESC LIMIT 1', (eid,)).fetchone()
+    if not row:
+        return None
+    r = row_to_dict(row)
+    return r.get('nome') or 'certificado.pdf', _b64.b64decode(r['pdf_b64'])
+
+
+def equip_cert_remover(eid):
+    """Apaga o certificado do equipamento. Devolve quantos apagou."""
+    with get_db() as conn:
+        n = conn.execute('SELECT COUNT(*) AS c FROM equipamentos_certificados WHERE equipamento_id=?',
+                         (eid,)).fetchone()
+        conn.execute('DELETE FROM equipamentos_certificados WHERE equipamento_id=?', (eid,))
+    return int(row_to_dict(n)['c'])
+
+
+def equip_cert_por_serie(serie):
+    """PDF (bytes) do certificado do equipamento com este nº de série, ou None.
+    O laudo usa quando o aparelho não está nos certificados fixos de static/certs.
+    Compara sem espaço nas pontas e sem diferença de maiúscula."""
+    import base64 as _b64
+    chave = str(serie or '').strip().lower()
+    if not chave:
+        return None
+    with get_db() as conn:
+        row = conn.execute(
+            'SELECT c.pdf_b64 FROM equipamentos_certificados c '
+            'JOIN equipamentos_inventario e ON e.id = c.equipamento_id '
+            'WHERE LOWER(TRIM(e.numero_serie)) = ? ORDER BY c.id DESC LIMIT 1', (chave,)).fetchone()
+    return _b64.b64decode(row_to_dict(row)['pdf_b64']) if row else None
 
 
 def equipamentos_calibracao(dias_alerta=90):

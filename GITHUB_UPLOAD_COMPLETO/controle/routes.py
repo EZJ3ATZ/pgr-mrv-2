@@ -1118,7 +1118,7 @@ def get_equipamentos():
     """Lista o inventário (equipamentos e acessórios). ?tipo=X&status=Y
     Cada linha volta com `categoria`, tirada do catálogo pelo tipo."""
     init_db()
-    from .db import equip_categoria
+    from .db import equip_categoria, equip_cert_resumo
     tipo   = request.args.get('tipo', '').strip()
     status = request.args.get('status', '').strip()
     with get_db() as conn:
@@ -1129,8 +1129,11 @@ def get_equipamentos():
         q += ' ORDER BY tipo, marca, observacao'
         rows = conn.execute(q, params).fetchall()
     itens = [row_to_dict(r) for r in rows]
+    certs = equip_cert_resumo()
     for e in itens:
         e['categoria'] = equip_categoria(e.get('tipo'))
+        # {nome, paginas, tamanho, criado_em} do PDF anexado, ou None
+        e['cert_pdf'] = certs.get(e.get('id'))
     return jsonify(itens)
 
 
@@ -1305,10 +1308,94 @@ def remove_equipamento(eid):
             return jsonify({'erro': 'Item não encontrado'}), 404
         e = row_to_dict(row)
         conn.execute('DELETE FROM equipamentos_inventario WHERE id=?', (eid,))
+        conn.execute('DELETE FROM equipamentos_certificados WHERE equipamento_id=?', (eid,))
     registrar_evento('equipamento_excluido',
                      f'{e["tipo"]}: {e.get("observacao") or e.get("modelo") or ""}'
                      + (f' (S/N {e["numero_serie"]})' if e.get('numero_serie') else ''),
                      eid, 'equipamento', None, request.remote_addr)
+    return jsonify({'ok': True})
+
+
+# ── Certificado de calibração em PDF (16/11/2026, Wesley: "consegui adicionar os
+# aparelhos mas não os certificados de calibração") ─────────────────────────────
+# O técnico anexa o PDF no próprio inventário; o laudo químico usa quando o aparelho
+# não está nos certificados fixos de static/certs (app.py, seção XI).
+_CERT_MAX_BYTES = 10 * 1024 * 1024
+_CERT_MAX_PAGINAS = 20
+
+
+def _equip_do_certificado(eid):
+    """Linha do equipamento, ou None. Acessório não tem calibração."""
+    with get_db() as conn:
+        row = conn.execute('SELECT id, tipo, observacao, modelo, numero_serie '
+                           'FROM equipamentos_inventario WHERE id=?', (eid,)).fetchone()
+    return row_to_dict(row) if row else None
+
+
+@controle_bp.route('/equipamentos/<int:eid>/certificado', methods=['POST'])
+def envia_certificado_equipamento(eid):
+    """Anexa (ou troca) o PDF do certificado de calibração. Aberto ao técnico, como o
+    cadastro do equipamento: é ele quem recebe o certificado do laboratório."""
+    init_db()
+    from .db import equip_categoria, equip_cert_salvar
+    e = _equip_do_certificado(eid)
+    if not e:
+        return jsonify({'erro': 'Item não encontrado'}), 404
+    if equip_categoria(e.get('tipo')) != 'equipamento':
+        return jsonify({'erro': 'Acessório não tem certificado de calibração.'}), 400
+    arq = request.files.get('arquivo')
+    if not arq or not (arq.filename or '').strip():
+        return jsonify({'erro': 'Escolha o PDF do certificado.'}), 400
+    raw = arq.read(_CERT_MAX_BYTES + 1)
+    if len(raw) > _CERT_MAX_BYTES:
+        return jsonify({'erro': 'O PDF passa de 10 MB.'}), 413
+    if b'%PDF' not in raw[:1024]:
+        return jsonify({'erro': 'O certificado precisa ser um arquivo PDF.'}), 400
+    try:
+        import fitz
+        with fitz.open(stream=raw, filetype='pdf') as doc:
+            if doc.needs_pass:
+                return jsonify({'erro': 'Este PDF tem senha. Envie o certificado sem senha.'}), 400
+            paginas = doc.page_count
+    except Exception:
+        return jsonify({'erro': 'Não consegui abrir este PDF. Confira o arquivo.'}), 400
+    if not 1 <= paginas <= _CERT_MAX_PAGINAS:
+        return jsonify({'erro': f'O certificado tem {paginas} páginas; o limite é {_CERT_MAX_PAGINAS}.'}), 400
+    nome = os.path.basename(str(arq.filename).replace('\\', '/')).strip()[:120] or 'certificado.pdf'
+    quem = (getattr(current_user, 'nome', '') or getattr(current_user, 'email', '') or '').strip() or None
+    equip_cert_salvar(eid, nome, raw, paginas, quem)
+    registrar_evento('equipamento_certificado',
+                     f'{e.get("observacao") or e.get("modelo") or e.get("tipo")}'
+                     + (f' (S/N {e["numero_serie"]})' if e.get('numero_serie') else '')
+                     + f': {nome}, {paginas} página(s)',
+                     eid, 'equipamento', None, request.remote_addr)
+    return jsonify({'ok': True, 'nome': nome, 'paginas': paginas}), 201
+
+
+@controle_bp.route('/equipamentos/<int:eid>/certificado')
+def abre_certificado_equipamento(eid):
+    """Abre o PDF do certificado no navegador."""
+    init_db()
+    from .db import equip_cert_get
+    cert = equip_cert_get(eid)
+    if not cert:
+        return jsonify({'erro': 'Este equipamento não tem certificado anexado.'}), 404
+    nome, pdf = cert
+    resp = send_file(io.BytesIO(pdf), mimetype='application/pdf', as_attachment=False, download_name=nome)
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Cache-Control'] = 'private, no-store'
+    return resp
+
+
+@controle_bp.route('/equipamentos/<int:eid>/certificado', methods=['DELETE'])
+def remove_certificado_equipamento(eid):
+    """Tira o certificado anexado. Só admin (_is_admin_only: DELETE em /equipamentos/);
+    o técnico troca enviando outro PDF."""
+    init_db()
+    from .db import equip_cert_remover
+    if not equip_cert_remover(eid):
+        return jsonify({'erro': 'Este equipamento não tem certificado anexado.'}), 404
+    registrar_evento('equipamento_certificado_removido', None, eid, 'equipamento', None, request.remote_addr)
     return jsonify({'ok': True})
 
 
