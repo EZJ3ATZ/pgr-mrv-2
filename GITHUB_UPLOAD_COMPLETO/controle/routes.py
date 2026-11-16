@@ -3701,6 +3701,14 @@ def api_visitas_feitas():
     return jsonify(list_visitas_feitas(limit))
 
 
+def _separa_ac_outro(texto):
+    """'Ciclone Nylon, Outro: Impinger' -> ('Ciclone Nylon, ', 'Impinger'). O acessório digitado em campo
+    (16/11/2026, Helbert) fica no fim, depois de "Outro:", e não vira caixinha da lista na releitura."""
+    t = texto or ''
+    i = t.lower().find('outro:')
+    return (t, '') if i < 0 else (t[:i], t[i + 6:].strip(' ,'))
+
+
 def _visita_payload_campo_completo(chave):
     """Remonta, a partir do banco, o MESMO payload que o wizard envia para
     /relatorio/campo-completo ao finalizar a medição.
@@ -3772,11 +3780,15 @@ def _visita_payload_campo_completo(chave):
         t = (texto or '').lower()
         return {k: True for k, agulha in pares if agulha in t}
 
+    def _acessorios(texto):
+        lista, outro = _separa_ac_outro(texto)
+        return {**_flags(lista, _AC_FLAGS), **({'ac_outro': outro} if outro else {})}
+
     if quimicos:
         tipos.append('quimico')
         # Um agente por coleta química (o wizard salva 1 coleta por agente).
         d['quimico'] = {'agentes': [{
-            **_flags(q.get('acessorios'), _AC_FLAGS),
+            **_acessorios(q.get('acessorios')),
             **_flags(q.get('epis'), _EPI_FLAGS),
             'substancias':  q.get('substancias') or '',
             'fracao':       q.get('fracao') or '',
@@ -4637,7 +4649,8 @@ def _prefill_quimico(cid):
             # SQLite, mostrava preenchido e escondia o defeito (10/09/2026).
             'volume':        am.get('volume_l', am.get('volume_L')),
             'tempoExposicao': c.get('tempo_exposto') or '',
-            'acessorios':    c.get('acessorios') or '',
+            # o "Outro: " marca o digitado para a releitura da planilha; no laudo sai só o nome
+            'acessorios':    re.sub(r'(?i)\boutro:\s*', '', c.get('acessorios') or ''),
         })
     dados = {'config': config, 'avaliacoes': avaliacoes}
     faltam = ['Concentração e data de análise (vêm do e-mail do laboratório)',
@@ -5090,11 +5103,13 @@ def api_salvar_medicao_wizard():
             'tempo_exposto':      cq.get('tempo_exp', ''),
             'epc':                cq.get('epc', ''),
             'observacao':         cq.get('obs', ''),
-            'acessorios':         ', '.join(lbl for k, lbl in (
+            # 16/11/2026 (Helbert): acessório fora da lista entra digitado, no fim, como "Outro: ..."
+            'acessorios':         ', '.join([lbl for k, lbl in (
                 ('ac_ciclone_al', 'Ciclone Alumínio'), ('ac_ciclone_ny', 'Ciclone Nylon'),
                 ('ac_redutor', 'Redutor de Vazão'), ('ac_iom', 'Suporte IOM'),
                 ('ac_termo', 'Termo-Higrômetro'), ('ac_supcass', 'Suporte Cassete'))
-                if cq.get(k)),
+                if cq.get(k)] + ([f"Outro: {str(cq.get('ac_outro')).strip()}"]
+                                 if str(cq.get('ac_outro') or '').strip() else [])),
             'epis':               ', '.join(lbl for k, lbl in (
                 ('epi_luvas', 'Luvas'), ('epi_oculos', 'Óculos'), ('epi_capacete', 'Capacete'),
                 ('epi_prot_auric', 'Protetor Auricular'), ('epi_resp', 'Respirador'),
@@ -5615,7 +5630,9 @@ def _quimico_agente_flowables(ag, idx, W, data_fmt='', dia_semana=''):
     if ag.get('ac_iom'):        ac_sel.append('SUPORTE IOM')
     if ag.get('ac_termo'):      ac_sel.append('TERMO-HIGRÔMETRO')
     if ag.get('ac_supcass'):    ac_sel.append('SUPORTE PARA CASSETE')
-    out.append(_full('Acessórios:', _chk(acs, ac_sel)))
+    # 16/11/2026 (Helbert): acessório fora da lista, digitado em campo (escapado: o texto vira marcação do Paragraph)
+    ac_outro = str(ag.get('ac_outro') or '').strip().replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    out.append(_full('Acessórios:', _chk(acs, ac_sel) + (f'  Outro: {ac_outro}' if ac_outro else '')))
     out.append(Spacer(1, 5))
 
     # ── Dados da Amostragem ──

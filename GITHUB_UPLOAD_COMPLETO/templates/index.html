@@ -17106,7 +17106,7 @@ function nvCqNewAgente() {
     ventilacao:'', ambiente:'', meteo:'', temperatura:'', umidade:'', outras_cond:'',
     bomba:'', id_bomba:'', cal_bomba:'', calibrador:'',
     amostrador_codigo:'', vazao_calibrada:'', tipo_coleta:'pessoal',
-    ac_ciclone_al:false, ac_ciclone_ny:false, ac_redutor:false, ac_iom:false, ac_termo:false, ac_supcass:false,
+    ac_ciclone_al:false, ac_ciclone_ny:false, ac_redutor:false, ac_iom:false, ac_termo:false, ac_supcass:false, ac_outro:'',
     substancias:'', fracao:'', tempo_exp:'',
     metodo:'', volume:'', vazao_min:0, vazao_max:0,
     amostradores:[],
@@ -17392,6 +17392,7 @@ function nvCqRenderAgentes() {
           <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.8rem;"><input type="checkbox" ${chk('ac_termo')} onchange="nvCqSetBool(${idx},'ac_termo',this.checked)"> Termo-Higrômetro</label>
           <label style="display:flex;gap:5px;align-items:center;font-weight:400;cursor:pointer;font-size:.8rem;"><input type="checkbox" ${chk('ac_supcass')} onchange="nvCqSetBool(${idx},'ac_supcass',this.checked)"> Suporte Cassete</label>
         </div>
+        <input type="text" value="${qEsc(ag.ac_outro||'')}" placeholder="Outro acessório (digite o tipo, se não estiver na lista)" style="${inp}margin-top:8px;" oninput="nvCqSet(${idx},'ac_outro',this.value)">
       </div>
     </div>
     <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:10px;">
