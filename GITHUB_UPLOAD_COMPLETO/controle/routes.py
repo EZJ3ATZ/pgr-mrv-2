@@ -3229,13 +3229,15 @@ def get_calibradores_ruido():
     hoje = datetime.now().strftime('%Y-%m-%d')
     itens = []
     for k, v in dados.items():
-        val = _validade(v.get('data_calib', ''))
         itens.append({
             'id': k, 'serie': v.get('serie', k),
             'marca': v.get('marca', marca), 'modelo': v.get('modelo', modelo),
             'cert': v.get('cert', ''), 'data_calib': v.get('data_calib', ''),
-            'validade': val, 'vencido': bool(val and val < hoje),
         })
+    itens = _com_inventario(itens, 'calibrador_ruido')
+    for it in itens:
+        it['validade'] = _validade(it.get('data_calib', ''))
+        it['vencido'] = bool(it['validade'] and it['validade'] < hoje)
     itens.sort(key=lambda x: (x['marca'], x['serie']))
     return jsonify({'marca': marca, 'modelo': modelo, 'calibradores': itens})
 
@@ -3266,15 +3268,61 @@ def get_dosimetros_ruido():
     for marca_key, grupo in dados.items():
         modelo = modelos.get(marca_key, '')
         for k, v in grupo.items():
-            val = _validade(v.get('data_calib', ''))
             itens.append({
                 'id': k, 'serie': v.get('serie', k),
                 'marca': marca_key.upper(), 'modelo': modelo,
                 'cert': v.get('cert', ''), 'data_calib': v.get('data_calib', ''),
-                'validade': val, 'vencido': bool(val and val < hoje),
             })
+    itens = _com_inventario(itens, 'dosimetro')
+    for it in itens:
+        it['validade'] = _validade(it.get('data_calib', ''))
+        it['vencido'] = bool(it['validade'] and it['validade'] < hoje)
     itens.sort(key=lambda x: (x['marca'], x['serie']))
     return jsonify({'dosimetros': itens})
+
+
+def _com_inventario(itens, tipo):
+    """Junta à lista fixa do app.py o que está no inventário (equipamentos_inventario).
+
+    17/11/2026 (Wesley, Os Medidores): "atualizei o sistema com o certificado de calibração
+    mas ainda aparece vencido". O planejamento lia só o mapa fixo (_DOSIM_RUIDO/_CALIB_RUIDO,
+    calibração de 2025) e mostrava VENCIDO o que o técnico já tinha recalibrado no
+    inventário, com o certificado antigo. Agora, pelo nº de série: data de calibração,
+    certificado, marca e modelo do inventário valem por cima do mapa fixo, e o aparelho
+    que só existe no inventário entra na lista. Sem nada no inventário, fica o mapa fixo.
+    """
+    try:
+        init_db()
+        with get_db() as conn:
+            rows = [row_to_dict(r) for r in conn.execute(
+                "SELECT numero_serie, marca, modelo, cert_numero, data_calibracao "
+                "FROM equipamentos_inventario WHERE tipo=? AND COALESCE(numero_serie,'') <> ''",
+                (tipo,)).fetchall()]
+    except Exception as e:
+        print(f'[controle] inventário {tipo} erro: {e}')
+        return itens
+    inv = {str(r['numero_serie']).strip().upper(): r for r in rows}
+    for it in itens:
+        r = inv.pop(str(it.get('serie') or '').strip().upper(), None)
+        if not r:
+            continue
+        dcal = str(r.get('data_calibracao') or '')[:10]
+        if dcal:
+            it['data_calib'] = dcal
+        if r.get('cert_numero'):
+            it['cert'] = str(r['cert_numero']).strip()
+        if r.get('marca'):
+            it['marca'] = str(r['marca']).strip().upper()
+        if r.get('modelo'):
+            it['modelo'] = str(r['modelo']).strip()
+    for serie, r in inv.items():
+        itens.append({
+            'id': str(r['numero_serie']).strip(), 'serie': str(r['numero_serie']).strip(),
+            'marca': str(r.get('marca') or '').strip().upper(), 'modelo': str(r.get('modelo') or '').strip(),
+            'cert': str(r.get('cert_numero') or '').strip(),
+            'data_calib': str(r.get('data_calibracao') or '')[:10],
+        })
+    return itens
 
 
 # ── Previsão de estoque baseada em demandas pendentes ────────────────
