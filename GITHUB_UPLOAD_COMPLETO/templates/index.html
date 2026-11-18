@@ -11241,6 +11241,12 @@ function planConfirmarAgente(tipo) {
   if (infoEl && infoEl.dataset.agenteJson) {
     try { metadados = JSON.parse(infoEl.dataset.agenteJson); } catch(e) {}
   }
+  // 18/11/2026 (Wesley, Os Medidores): "mesmo marcando Inlite eles não aparecem". Os campos do modal eram lidos
+  // DEPOIS de o modal sair da tela: a marca do dosímetro virava sempre Chrompack (e o tipo de coleta, o subtipo e
+  // o aparelho de vibração, sempre o padrão). Agora tudo é lido antes de fechar o modal.
+  const _campo = id => document.getElementById(id)?.value || '';
+  const marcaDos = _campo('plan-modal-marca-dos'), tipoColeta = _campo('plan-modal-tipo-coleta');
+  const vibSubtipo = _campo('plan-modal-vib-subtipo'), vibAparelho = _campo('plan-modal-vib-aparelho');
   document.getElementById('plan-add-modal')?.remove();
   const obj = {
     tipo, agente,
@@ -11259,15 +11265,15 @@ function planConfirmarAgente(tipo) {
     obj.vazao_real = obj.vazao_faixa.recomendada.toFixed(3);
   }
   if (tipo === 'ruido') {
-    obj.marca_dosimetro = document.getElementById('plan-modal-marca-dos')?.value || 'chrompack';
+    obj.marca_dosimetro = marcaDos || 'chrompack';
     obj.qtd_pessoas = obj.qtd;
   }
   if (tipo === 'quimico') {
-    obj.tipo_coleta = document.getElementById('plan-modal-tipo-coleta')?.value || 'pessoal';
+    obj.tipo_coleta = tipoColeta || 'pessoal';
   }
   if (tipo === 'vibracao') {
-    obj.subtipo  = document.getElementById('plan-modal-vib-subtipo')?.value  || 'vci';
-    obj.aparelho = document.getElementById('plan-modal-vib-aparelho')?.value || 'chrompack_1';
+    obj.subtipo  = vibSubtipo  || 'vci';
+    obj.aparelho = vibAparelho || 'chrompack_1';
   }
   if (tipo === 'calor') {
     obj.aparelho = 'chrompack_ibutg';
