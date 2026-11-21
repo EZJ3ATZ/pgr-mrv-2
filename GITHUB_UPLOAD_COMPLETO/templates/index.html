@@ -16527,24 +16527,30 @@ function nvShowStep3() {
   }
 
   // ── Ruído: herdar do planejamento (técnico, calibrador, dosímetros) ──
+  // 21/11/2026 (Wesley): o plano pode ter MAIS de um "Ruído (dosimetria)", um por marca (ex.: 10 Chrompack e 4
+  // Inlite, cada um com o seu calibrador). Só o primeiro item vinha para a planilha e os Inlite sumiam na etapa 2.
   if (temRuido && window._nvPlanejamentoId && !window._nvRuidoHerdado) {
-    const itR = (window._ctrlNvItens || []).find(it => (it.tipo || '') === 'ruido') || {};
-    // Calibrador / N° Série ← calibrador de ruído do plano
+    const itensR = (window._ctrlNvItens || []).filter(it => (it.tipo || '') === 'ruido');
+    const itsR = itensR.length ? itensR : [{}];
+    // Calibrador / N° Série ← calibrador(es) de ruído do plano (um por marca, separados por " / ")
     const calEl = document.getElementById('nv-cr-calibrador');
-    if (calEl && !calEl.value && itR.calibrador_ruido_serie) calEl.value = itR.calibrador_ruido_serie;
-    // 1 linha de trabalhador por dosímetro selecionado no plano
-    const dosim = itR.dosim_ruido || [];
+    const cals = [...new Set(itsR.map(it => it.calibrador_ruido_serie).filter(Boolean))];
+    if (calEl && !calEl.value && cals.length) calEl.value = cals.join(' / ');
+    // 1 linha de trabalhador por dosímetro selecionado no plano, de todos os itens de ruído
     if (!_nvCrTrabs.length) {
-      const parts = (itR.funcao || '').split('/');
-      const cargo = (parts[0] || '').trim();
-      const setor = (parts[1] || '').trim();
-      if (dosim.length) {
-        dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', almoco_fim:''}));
-      } else {
-        // #8: sem dosímetro no plano → cria 1 trabalhador por qtd planejada
-        const _qr = Math.max(parseInt(itR.qtd || itR.qtd_pessoas || 1, 10) || 1, 1);
-        for (let _k = 0; _k < _qr; _k++) _nvCrTrabs.push({sn:'', nome:'', cargo, setor, pausa:'', almoco_fim:''});
-      }
+      itsR.forEach(itR => {
+        const parts = (itR.funcao || '').split('/');
+        const cargo = (parts[0] || '').trim();
+        const setor = (parts[1] || '').trim();
+        const dosim = itR.dosim_ruido || [];
+        if (dosim.length) {
+          dosim.forEach(d => _nvCrTrabs.push({sn:d.serie||'', nome:'', cargo, setor, pausa:'', almoco_fim:''}));
+        } else {
+          // #8: sem dosímetro no plano → cria 1 trabalhador por qtd planejada
+          const _qr = Math.max(parseInt(itR.qtd || itR.qtd_pessoas || 1, 10) || 1, 1);
+          for (let _k = 0; _k < _qr; _k++) _nvCrTrabs.push({sn:'', nome:'', cargo, setor, pausa:'', almoco_fim:''});
+        }
+      });
       nvCrRenderTrabs();
     }
     window._nvRuidoHerdado = true;
